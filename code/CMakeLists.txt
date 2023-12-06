@@ -6,10 +6,15 @@ target_sources(vkmmc
 	PRIVATE
 
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderEngine.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderHandle.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Vertex.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Mesh.h"
 	
 	
 	
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Vertex.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/VertexInputDescription.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/VertexInputDescription.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/Mesh.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/Vertex.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderEngine.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/FunctionStack.h"

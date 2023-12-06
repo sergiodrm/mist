@@ -41,4 +41,12 @@ namespace vkmmc
 		std::vector<VkVertexInputAttributeDescription> Attributes;
 		VkPipelineVertexInputStateCreateFlags Flags = 0;
 	};
+
+
+	AllocatedBuffer CreateBuffer(VmaAllocator allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memUsage);
+	void DestroyBuffer(VmaAllocator allocator, AllocatedBuffer buffer);
+	/**
+	 * Copy data from source to specified allocation memory.
+	 */
+	void MemCopyDataToBuffer(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t size);
 }

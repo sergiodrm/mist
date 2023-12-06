@@ -8,5 +8,5 @@ namespace vkmmc
 	{
 		glm::vec3 Position;
 	};
-	struct VertexInputDescription GetDefaultVertexDescription();
+	
 }

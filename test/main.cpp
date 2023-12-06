@@ -1,6 +1,7 @@
 #include <cstdint>
 
 #include <vkmmc/RenderEngine.h>
+#include <vkmmc/Mesh.h>
 
 int main(uint32_t argc, char** argv)
 {

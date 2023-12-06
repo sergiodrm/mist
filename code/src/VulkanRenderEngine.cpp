@@ -10,7 +10,8 @@
 
 #include <vkbootstrap/VkBootstrap.h>
 #include "InitVulkanTypes.h"
-#include "Vertex.h"
+#include "VertexInputDescription.h"
+#include "Mesh.h"
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
@@ -22,8 +23,41 @@ namespace vkmmc_globals
 	const char* BasicFragmentShaders = SHADER_ROOT_PATH "basic.frag.spv";
 }
 
+namespace vkmmc_debug
+{
+	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+		VkDebugUtilsMessageTypeFlagsEXT type,
+		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+		void* userData)
+	{
+		printf("\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
+		return VK_FALSE;
+	}
+
+	VkBool32 DebugVulkanReportCallback(VkDebugReportFlagsEXT flags,
+		VkDebugReportObjectTypeEXT objectType,
+		uint64_t object, size_t location,
+		int32_t messageCode,
+		const char* layerPrefix,
+		const char* message, void* userData)
+	{
+		if (!(flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))
+		{
+			printf("Debug callback (%s): %s\n", layerPrefix, message);
+		}
+		return VK_FALSE;
+	}
+}
+
 namespace vkmmc
 {
+	RenderHandle GenerateRenderHandle()
+	{
+		static RenderHandle h{ InvalidRenderHandle };
+		++h.Handle;
+		return h;
+	}
+
 	Window Window::Create(uint32_t width, uint32_t height, const char* title)
 	{
 		Window newWindow;
@@ -36,6 +70,38 @@ namespace vkmmc
 			width, height, windowFlags
 		);
 		return newWindow;
+	}
+
+	RenderHandle AllocatedBufferContainer::Register(AllocatedBuffer buffer)
+	{
+		RenderHandle handle = GenerateRenderHandle();
+		vkmmc_check(handle.IsValid());
+		m_bufferMap[handle] = buffer;
+		return handle;
+	}
+
+	void AllocatedBufferContainer::Unregister(RenderHandle handle)
+	{
+		AllocatedBuffer buffer;
+		vkmmc_check(Find(handle, &buffer));
+		m_bufferMap.erase(handle);
+	}
+
+	AllocatedBuffer AllocatedBufferContainer::Find(RenderHandle handle) const
+	{
+		AllocatedBuffer buffer{ VK_NULL_HANDLE,VK_NULL_HANDLE };
+		Find(handle, &buffer);
+		return buffer;
+	}
+
+	bool AllocatedBufferContainer::Find(RenderHandle handle, AllocatedBuffer* outBuffer) const
+	{
+		if (m_bufferMap.contains(handle))
+		{
+			*outBuffer = const_cast<AllocatedBufferContainer*>(this)->m_bufferMap[handle];
+			return true;
+		}
+		return false;
 	}
 
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
@@ -74,6 +140,19 @@ namespace vkmmc
 
 		// Init sync vars
 		vkmmc_check(InitSync());
+
+		Mesh mesh;
+		const Vertex vertices[] = {
+			{ {-1.f, 1.f, 0.f} },
+			{ {1.f, 1.f, 0.f} },
+			{ {0.f, -1.f, 0.f} }
+		};
+		mesh.SetVertices(vertices, 3);
+		UploadMesh(mesh);
+		RenderableObject object;
+		object.Mesh = mesh;
+		object.Pipeline = m_renderPipeline;
+		m_renderables.push_back(object);
 	
 		printf("Window created successfully!\n");
 		return true;
@@ -118,13 +197,40 @@ namespace vkmmc
 		printf("Render engine terminated.\n");
 	}
 
+	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
+	{
+		// Prepare buffer creation
+		const size_t bufferSize = mesh.GetVertexCount() * sizeof(Vertex);
+		// Create allocated buffer
+		AllocatedBuffer buffer = CreateBuffer(m_renderContext.Allocator, bufferSize,
+			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		
+		// Fill buffer
+		MemCopyDataToBuffer(m_renderContext.Allocator, buffer.Alloc, mesh.GetVertices(), bufferSize);
+		
+		// Register new buffer
+		RenderHandle handle = m_bufferContainer.Register(buffer);
+		mesh.SetHandle(handle);
+
+		// Stack buffer destruction
+		m_shutdownStack.Add([this, buffer]() 
+			{
+				DestroyBuffer(m_renderContext.Allocator, buffer);
+			});
+	}
+
+	void VulkanRenderEngine::NewRenderable(RenderableObject object)
+	{
+		m_renderables.push_back(object);
+	}
+
 	void VulkanRenderEngine::Draw()
 	{
 		WaitFence(m_renderFence);
 
 		// Acquire render image from swapchain
 		uint32_t swapchainImageIndex;
-		vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1e9, m_presentSemaphore, nullptr, &swapchainImageIndex));
+		vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, m_presentSemaphore, nullptr, &swapchainImageIndex));
 
 		// Reset command buffer
 		vkmmc_vkcheck(vkResetCommandBuffer(m_graphicsCommandBuffer, 0));
@@ -156,6 +262,8 @@ namespace vkmmc
 		renderPassInfo.pClearValues = clearValues;
 		// Begin render pass
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		DrawRenderables(cmd, m_renderables.data(), m_renderables.size());
 
 		// End render pass
 		vkCmdEndRenderPass(cmd);
@@ -191,6 +299,29 @@ namespace vkmmc
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pImageIndices = &swapchainImageIndex;
 		vkmmc_vkcheck(vkQueuePresentKHR(m_graphicsQueue, &presentInfo));
+	}
+
+	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderableObject* renderables, size_t count)
+	{
+		RenderPipeline lastPipeline;
+		Mesh lastMesh;
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			const RenderableObject& renderable = renderables[i];
+			if (renderable.Pipeline != lastPipeline)
+			{
+				lastPipeline = renderable.Pipeline;
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, renderable.Pipeline.GetPipelineHandle());
+			}
+			if (lastMesh != renderable.Mesh)
+			{
+				VkDeviceSize offset = 0;
+				AllocatedBuffer buffer = m_bufferContainer.Find(renderable.Mesh.GetHandle());
+				vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.Buffer, &offset);
+				lastMesh = renderable.Mesh;
+			}
+			vkCmdDraw(cmd, (uint32_t)renderable.Mesh.GetVertexCount(), 1, 0, i);
+		}
 	}
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
@@ -266,7 +397,8 @@ namespace vkmmc
 			.set_app_name("Vulkan renderer")
 			.request_validation_layers(true)
 			.require_api_version(1, 1, 0)
-			.use_default_debug_messenger()
+			//.use_default_debug_messenger()
+			.set_debug_callback(&vkmmc_debug::DebugVulkanCallback)
 			.build();
 		vkb::Instance instance = instanceReturn.value();
 		m_renderContext.Instance = instance.instance;
@@ -404,7 +536,8 @@ namespace vkmmc
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
 		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetDefaultVertexDescription());
-
+		m_renderPipeline = pipeline;
 		return true;
 	}
+	
 }

@@ -4,6 +4,8 @@
 
 namespace vkmmc
 {
+	class Mesh;
+
 	struct InitializationSpecs
 	{
 		uint32_t WindowWidth;
@@ -18,6 +20,8 @@ namespace vkmmc
 		virtual bool Init(const InitializationSpecs& initSpec) = 0;
 		virtual void RenderLoop() = 0;
 		virtual void Shutdown() = 0;
+
+		virtual void UploadMesh(Mesh& mesh) = 0;
 	};
 
 	IRenderEngine* NewRenderEngine();
