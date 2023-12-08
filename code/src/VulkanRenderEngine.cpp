@@ -50,7 +50,7 @@ namespace vkmmc_globals
 				Direction += glm::vec3{ 0.f, 0.f, -1.f };
 				break;
 			case SDLK_d:
-				Direction += glm::vec3{ -1.f, 0.f, 1.f };
+				Direction += glm::vec3{ -1.f, 0.f, 0.f };
 				break;
 			}
 		}

@@ -16,11 +16,15 @@ int main(uint32_t argc, char** argv)
 
 	vkmmc::Mesh mesh;
 	const vkmmc::Vertex vertices[] = {
-		{ {-1.f, 1.f, 0.f} },
-		{ {1.f, 1.f, 0.f} },
-		{ {0.f, -1.f, 0.f} }
+		{{-1.f, 1.f, 0.f}},
+		{{1.f, 1.f, 0.f}},
+		{{1.f, -1.f, 0.f}},
+
+		{{1.f, -1.f, 0.f}},
+		{{-1.f, -1.f, 0.f}},
+		{{-1.f, 1.f, 0.f}},
 	};
-	mesh.SetVertices(vertices, 3);
+	mesh.SetVertices(vertices, sizeof(vertices) / sizeof(vkmmc::Vertex));
 	engine->UploadMesh(mesh);
 	vkmmc::RenderObject object;
 	object.m_mesh = mesh;
