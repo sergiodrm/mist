@@ -57,10 +57,10 @@ namespace vkmmc
 	/**
 	 * Descriptor Sets
 	 */
-	VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutBinding* layoutBindings, uint32_t layoutBindingsCount, VkDescriptorSetLayoutCreateFlags flags = 0);
+	VkDescriptorSetLayoutCreateInfo DescriptorSetLayoutCreateInfo(const VkDescriptorSetLayoutBinding* layoutBindings, uint32_t layoutBindingsCount, VkDescriptorSetLayoutCreateFlags flags = 0);
 	VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* layouts, uint32_t layoutCount);
 	VkDescriptorSetLayoutBinding DescriptorSetLayoutBinding(VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t binding);
-	VkWriteDescriptorSet DescriptorSetWriteBuffer(VkDescriptorType type, VkDescriptorSet destSet, VkDescriptorBufferInfo* bufferInfo, uint32_t binding);
+	VkWriteDescriptorSet DescriptorSetWriteBuffer(VkDescriptorType type, VkDescriptorSet destSet, const VkDescriptorBufferInfo* bufferInfo, uint32_t binding);
 
 
 }

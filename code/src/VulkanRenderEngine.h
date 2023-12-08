@@ -4,6 +4,7 @@
 #include "RenderPass.h"
 #include "RenderHandle.h"
 #include "RenderPipeline.h"
+#include "RenderObject.h"
 #include "Swapchain.h"
 #include "Mesh.h"
 #include "FunctionStack.h"
@@ -16,13 +17,6 @@
 
 namespace vkmmc
 {
-
-	struct RenderableObject
-	{
-		Mesh Mesh;
-		RenderPipeline Pipeline;
-	};
-
 	struct RenderContext
 	{
 		VkInstance Instance;
@@ -32,6 +26,8 @@ namespace vkmmc
 		VkPhysicalDeviceProperties GPUProperties;
 		VkDevice Device;
 		VmaAllocator Allocator;
+		VkQueue GraphicsQueue;
+		uint32_t GraphicsQueueFamily;
 	};
 
 	struct Window
@@ -49,19 +45,23 @@ namespace vkmmc
 		static Window Create(uint32_t width, uint32_t height, const char* title);
 	};
 
-	class AllocatedBufferContainer
+	struct UploadContext
 	{
-	public:
-		RenderHandle Register(AllocatedBuffer buffer);
-		void Unregister(RenderHandle handle);
-		AllocatedBuffer Find(RenderHandle handle) const;
-		bool Find(RenderHandle handle, AllocatedBuffer* outBuffer) const;
-	private:
-		std::unordered_map<uint32_t, AllocatedBuffer> m_bufferMap;
+		VkFence Fence;
+		VkCommandPool CommandPool;
+		VkCommandBuffer CommandBuffer;
+	};
+
+	struct GPUCamera
+	{
+		glm::mat4 View;
+		glm::mat4 Projection;
+		glm::mat4 ViewProjection;
 	};
 
 	class VulkanRenderEngine : public IRenderEngine
 	{
+		static constexpr size_t MaxOverlappedFrames = 2;
 	public:
 		virtual bool Init(const InitializationSpecs& initSpec) override;
 		virtual void RenderLoop() override;
@@ -69,12 +69,16 @@ namespace vkmmc
 
 		virtual void UploadMesh(Mesh& mesh) override;
 
-		void NewRenderable(RenderableObject object);
+		virtual void AddRenderObject(RenderObject object) override;
 
 	protected:
 		void Draw();
-		void DrawRenderables(VkCommandBuffer cmd, const RenderableObject* renderables, size_t count);
+		void DrawRenderables(VkCommandBuffer cmd, const RenderObject* renderables, size_t count);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
+		FrameContext& GetFrameContext();
+		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
+		void ImGuiNewFrame();
+		void ImGuiProcessEvent(const SDL_Event& e);
 
 		// Initializations
 		bool InitVulkan();
@@ -82,6 +86,7 @@ namespace vkmmc
 		bool InitFramebuffers();
 		bool InitSync();
 		bool InitPipeline();
+		bool InitImGui();
 
 		// Builder utils
 		RenderPipeline CreatePipeline(
@@ -96,24 +101,24 @@ namespace vkmmc
 		Window m_window;
 		
 		RenderContext m_renderContext;
-		VkQueue m_graphicsQueue;
-		uint32_t m_graphicsQueueFamily;
 		
 		Swapchain m_swapchain;
 		RenderPass m_renderPass;
 		RenderPipeline m_renderPipeline;
 		std::vector<VkFramebuffer> m_framebuffers;
 
-		VkFence m_renderFence;
-		VkSemaphore m_renderSemaphore;
-		VkSemaphore m_presentSemaphore;
+		FrameContext m_frameContextArray[MaxOverlappedFrames];
+		size_t m_frameCounter;
 
-		VkCommandPool m_mainCommandPool;
-		VkCommandBuffer m_graphicsCommandBuffer;
+		VkDescriptorPool m_descriptorPool;
+		VkDescriptorSetLayout m_descriptorLayout;
 
-		AllocatedBufferContainer m_bufferContainer;
+		std::unordered_map<uint32_t, AllocatedBuffer> m_buffers;
+		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
 
-		std::vector<RenderableObject> m_renderables;
+		std::vector<RenderObject> m_renderables;
+
+		UploadContext m_immediateSubmitContext;
 
 		FunctionStack m_shutdownStack;
 	};

@@ -4,6 +4,7 @@
 #include <vk_mem_alloc.h>
 #include <cassert>
 #include <vector>
+#include <functional>
 
 #define expand(x) (x)
 #define vkmmc_check(expr) \
@@ -20,6 +21,8 @@ do \
 
 namespace vkmmc
 {
+	struct RenderContext;
+
 	struct Allocation
 	{
 		VmaAllocation Alloc;
@@ -35,11 +38,34 @@ namespace vkmmc
 		VkImage Image;
 	};
 
-	struct VertexInputDescription 
+	struct VertexInputDescription
 	{
 		std::vector<VkVertexInputBindingDescription> Bindings;
 		std::vector<VkVertexInputAttributeDescription> Attributes;
 		VkPipelineVertexInputStateCreateFlags Flags = 0;
+	};
+
+	struct ImmediateSynchedCommandContext
+	{
+		VkFence SyncFence;
+		VkCommandPool CommandPool;
+		VkCommandBuffer CommandBuffer;
+	};
+
+	struct FrameContext
+	{
+		// Sync vars
+		VkFence RenderFence {};
+		VkSemaphore RenderSemaphore {};
+		VkSemaphore PresentSemaphore {};
+
+		// Commands
+		VkCommandPool GraphicsCommandPool {};
+		VkCommandBuffer GraphicsCommand {};
+
+		// Descriptors
+		VkDescriptorSet DescriptorSet {};
+		AllocatedBuffer DescriptorSetBuffer {};
 	};
 
 

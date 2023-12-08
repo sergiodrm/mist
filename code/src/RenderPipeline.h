@@ -58,6 +58,7 @@ namespace vkmmc
 		inline bool IsValid() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
 
 		inline VkPipeline GetPipelineHandle() const { return m_pipeline; }
+		inline VkPipelineLayout GetPipelineLayoutHandle() const { return m_pipelineLayout; }
 
 		bool operator==(const RenderPipeline& r) const { return m_pipeline == r.m_pipeline && m_pipelineLayout == r.m_pipelineLayout; }
 		bool operator!=(const RenderPipeline& r) const { return !(*this == r); }

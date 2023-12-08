@@ -9,9 +9,14 @@ target_sources(vkmmc
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderHandle.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Vertex.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Mesh.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Camera.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderObject.h"
 	
 	
 	
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderDescriptor.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderDescriptor.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/VertexInputDescription.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/VertexInputDescription.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/Mesh.cpp"

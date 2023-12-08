@@ -5,6 +5,7 @@
 namespace vkmmc
 {
 	class Mesh;
+	class RenderObject;
 
 	struct InitializationSpecs
 	{
@@ -21,6 +22,7 @@ namespace vkmmc
 		virtual void RenderLoop() = 0;
 		virtual void Shutdown() = 0;
 
+		virtual void AddRenderObject(RenderObject object) = 0;
 		virtual void UploadMesh(Mesh& mesh) = 0;
 	};
 

@@ -1,6 +1,7 @@
 #include "VulkanRenderEngine.h"
 
 #include <cstdio>
+#include <glm/gtx/transform.hpp>
 
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h>
@@ -12,6 +13,12 @@
 #include "InitVulkanTypes.h"
 #include "VertexInputDescription.h"
 #include "Mesh.h"
+#include "RenderDescriptor.h"
+#include "Camera.h"
+
+#include <imgui/imgui.h>
+#include <imgui/imgui_impl_vulkan.h>
+#include <imgui/imgui_impl_sdl2.h>
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
@@ -21,6 +28,41 @@ namespace vkmmc_globals
 	// Assets reference
 	const char* BasicVertexShaders = SHADER_ROOT_PATH "basic.vert.spv";
 	const char* BasicFragmentShaders = SHADER_ROOT_PATH "basic.frag.spv";
+
+	struct CameraController
+	{
+		vkmmc::Camera Camera;
+		glm::vec3 Direction{ 0.f };
+		float MaxSpeed = 1.f; // eu/s
+		float MaxRotSpeed = 0.2f; // rad/s
+
+		void ProcessInput(const SDL_Event& e)
+		{
+			switch (e.key.keysym.sym)
+			{
+			case SDLK_w:
+				Direction += glm::vec3{ 0.f, 0.f, 1.f };
+				break;
+			case SDLK_a:
+				Direction += glm::vec3{ 1.f, 0.f, 0.f };
+				break;
+			case SDLK_s:
+				Direction += glm::vec3{ 0.f, 0.f, -1.f };
+				break;
+			case SDLK_d:
+				Direction += glm::vec3{ -1.f, 0.f, 1.f };
+				break;
+			}
+		}
+
+		void Tick(float elapsedSeconds)
+		{
+			Direction = glm::normalize(Direction);
+			glm::vec3 speed = Direction * MaxSpeed;
+			Camera.SetPosition(Camera.GetPosition() + speed * elapsedSeconds);
+			Direction = glm::vec3{ 0.f };
+		}
+	} GCameraController;
 }
 
 namespace vkmmc_debug
@@ -72,38 +114,6 @@ namespace vkmmc
 		return newWindow;
 	}
 
-	RenderHandle AllocatedBufferContainer::Register(AllocatedBuffer buffer)
-	{
-		RenderHandle handle = GenerateRenderHandle();
-		vkmmc_check(handle.IsValid());
-		m_bufferMap[handle] = buffer;
-		return handle;
-	}
-
-	void AllocatedBufferContainer::Unregister(RenderHandle handle)
-	{
-		AllocatedBuffer buffer;
-		vkmmc_check(Find(handle, &buffer));
-		m_bufferMap.erase(handle);
-	}
-
-	AllocatedBuffer AllocatedBufferContainer::Find(RenderHandle handle) const
-	{
-		AllocatedBuffer buffer{ VK_NULL_HANDLE,VK_NULL_HANDLE };
-		Find(handle, &buffer);
-		return buffer;
-	}
-
-	bool AllocatedBufferContainer::Find(RenderHandle handle, AllocatedBuffer* outBuffer) const
-	{
-		if (m_bufferMap.contains(handle))
-		{
-			*outBuffer = const_cast<AllocatedBufferContainer*>(this)->m_bufferMap[handle];
-			return true;
-		}
-		return false;
-	}
-
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		printf("Initialize render engine.\n");
@@ -141,19 +151,9 @@ namespace vkmmc
 		// Init sync vars
 		vkmmc_check(InitSync());
 
-		Mesh mesh;
-		const Vertex vertices[] = {
-			{ {-1.f, 1.f, 0.f} },
-			{ {1.f, 1.f, 0.f} },
-			{ {0.f, -1.f, 0.f} }
-		};
-		mesh.SetVertices(vertices, 3);
-		UploadMesh(mesh);
-		RenderableObject object;
-		object.Mesh = mesh;
-		object.Pipeline = m_renderPipeline;
-		m_renderables.push_back(object);
-	
+		// ImGui
+		InitImGui();
+
 		printf("Window created successfully!\n");
 		return true;
 	}
@@ -168,13 +168,20 @@ namespace vkmmc
 		{
 			while (SDL_PollEvent(&e))
 			{
+				ImGuiProcessEvent(e);
 				switch (e.type)
 				{
 				case SDL_QUIT: shouldExit = true; break;
 				default:
+					vkmmc_globals::GCameraController.ProcessInput(e);
 					break;
 				}
 			}
+			ImGuiNewFrame();
+			ImGui::ShowDemoWindow();
+			vkmmc_globals::GCameraController.Tick(0.033f);
+
+			ImGui::Render();
 			Draw();
 		}
 		printf("End render loop.\n");
@@ -184,7 +191,8 @@ namespace vkmmc
 	{
 		printf("Shutdown render engine.\n");
 
-		WaitFence(m_renderFence);
+		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+			WaitFence(m_frameContextArray[i].RenderFence);
 
 		m_shutdownStack.Flush();
 		vkDestroyDevice(m_renderContext.Device, nullptr);
@@ -209,8 +217,9 @@ namespace vkmmc
 		MemCopyDataToBuffer(m_renderContext.Allocator, buffer.Alloc, mesh.GetVertices(), bufferSize);
 		
 		// Register new buffer
-		RenderHandle handle = m_bufferContainer.Register(buffer);
+		RenderHandle handle = GenerateRenderHandle();
 		mesh.SetHandle(handle);
+		m_buffers[handle] = buffer;
 
 		// Stack buffer destruction
 		m_shutdownStack.Add([this, buffer]() 
@@ -219,24 +228,25 @@ namespace vkmmc
 			});
 	}
 
-	void VulkanRenderEngine::NewRenderable(RenderableObject object)
+	void VulkanRenderEngine::AddRenderObject(RenderObject object)
 	{
 		m_renderables.push_back(object);
 	}
 
 	void VulkanRenderEngine::Draw()
 	{
-		WaitFence(m_renderFence);
+		FrameContext& frameContext = GetFrameContext();
+		WaitFence(frameContext.RenderFence);
 
 		// Acquire render image from swapchain
 		uint32_t swapchainImageIndex;
-		vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, m_presentSemaphore, nullptr, &swapchainImageIndex));
+		vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
 
 		// Reset command buffer
-		vkmmc_vkcheck(vkResetCommandBuffer(m_graphicsCommandBuffer, 0));
+		vkmmc_vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
 
 		// Prepare command buffer
-		VkCommandBuffer cmd = m_graphicsCommandBuffer;
+		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		VkCommandBufferBeginInfo cmdBeginInfo = {};
 		cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		cmdBeginInfo.pNext = nullptr;
@@ -263,7 +273,11 @@ namespace vkmmc
 		// Begin render pass
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
+		// Draw scene
 		DrawRenderables(cmd, m_renderables.data(), m_renderables.size());
+
+		// ImGui render
+		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
 		// End render pass
 		vkCmdEndRenderPass(cmd);
@@ -279,14 +293,14 @@ namespace vkmmc
 		submitInfo.pWaitDstStageMask = &waitStage;
 		// Wait for last frame terminates present image
 		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &m_presentSemaphore;
+		submitInfo.pWaitSemaphores = &frameContext.PresentSemaphore;
 		// Make wait present process until this Queue has finished.
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &m_renderSemaphore;
+		submitInfo.pSignalSemaphores = &frameContext.RenderSemaphore;
 		// The command buffer will be procesed
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &cmd;
-		vkmmc_vkcheck(vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_renderFence));
+		vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
 
 		// Present
 		VkPresentInfoKHR presentInfo = {};
@@ -295,32 +309,43 @@ namespace vkmmc
 		VkSwapchainKHR swapchain = m_swapchain.GetSwapchainHandle();
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.swapchainCount = 1;
-		presentInfo.pWaitSemaphores = &m_renderSemaphore;
+		presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pImageIndices = &swapchainImageIndex;
-		vkmmc_vkcheck(vkQueuePresentKHR(m_graphicsQueue, &presentInfo));
+		vkmmc_vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
 	}
 
-	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderableObject* renderables, size_t count)
+	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderObject* renderables, size_t count)
 	{
-		RenderPipeline lastPipeline;
+		// Update descriptor set buffer
+		GPUCamera camera;
+		camera.View = vkmmc_globals::GCameraController.Camera.GetView();
+		camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
+		camera.ViewProjection = camera.Projection * camera.View;
+
+		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().DescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
+
+		Material lastMaterial;
 		Mesh lastMesh;
 		for (uint32_t i = 0; i < count; ++i)
 		{
-			const RenderableObject& renderable = renderables[i];
-			if (renderable.Pipeline != lastPipeline)
+			const RenderObject& renderable = renderables[i];
+			if (renderable.m_material != lastMaterial || !renderable.m_material.GetHandle().IsValid())
 			{
-				lastPipeline = renderable.Pipeline;
-				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, renderable.Pipeline.GetPipelineHandle());
+				lastMaterial = renderable.m_material;
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					m_renderPipeline.GetPipelineLayoutHandle(), 0, 1,
+					&GetFrameContext().DescriptorSet, 0, nullptr);
 			}
-			if (lastMesh != renderable.Mesh)
+			if (lastMesh != renderable.m_mesh)
 			{
 				VkDeviceSize offset = 0;
-				AllocatedBuffer buffer = m_bufferContainer.Find(renderable.Mesh.GetHandle());
+				AllocatedBuffer buffer = m_buffers[renderable.m_mesh.GetHandle()];
 				vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.Buffer, &offset);
-				lastMesh = renderable.Mesh;
+				lastMesh = renderable.m_mesh;
 			}
-			vkCmdDraw(cmd, (uint32_t)renderable.Mesh.GetVertexCount(), 1, 0, i);
+			vkCmdDraw(cmd, (uint32_t)renderable.m_mesh.GetVertexCount(), 1, 0, i);
 		}
 	}
 
@@ -328,6 +353,39 @@ namespace vkmmc
 	{
 		vkmmc_vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
 		vkmmc_vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
+	}
+
+	FrameContext& VulkanRenderEngine::GetFrameContext()
+	{
+		return m_frameContextArray[m_frameCounter % MaxOverlappedFrames];
+	}
+
+	void VulkanRenderEngine::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn)
+	{
+		// Begin command buffer recording.
+		VkCommandBufferBeginInfo beginInfo = CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		vkmmc_vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
+		// Call to extern code to record commands.
+		fn(m_immediateSubmitContext.CommandBuffer);
+		// Finish recording.
+		vkmmc_vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
+
+		VkSubmitInfo info = SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
+		vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
+		WaitFence(m_immediateSubmitContext.Fence);
+		vkResetCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, 0);
+	}
+
+	void VulkanRenderEngine::ImGuiNewFrame()
+	{
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplSDL2_NewFrame(m_window.WindowInstance);
+		ImGui::NewFrame();
+	}
+
+	void VulkanRenderEngine::ImGuiProcessEvent(const SDL_Event& e)
+	{
+		ImGui_ImplSDL2_ProcessEvent(&e);
 	}
 
 	RenderPipeline VulkanRenderEngine::CreatePipeline(const ShaderModuleLoadDescription* shaderStages, size_t shaderStagesCount, const VkPipelineLayoutCreateInfo& layoutInfo, const VertexInputDescription& inputDescription)
@@ -418,8 +476,8 @@ namespace vkmmc
 		m_renderContext.GPUDevice = physicalDevice.physical_device;
 
 		// Graphics queue from device
-		m_graphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
-		m_graphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
+		m_renderContext.GraphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
+		m_renderContext.GraphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
 
 		// Dump physical device info
 		VkPhysicalDeviceProperties deviceProperties;
@@ -448,15 +506,27 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitCommands()
 	{
-		VkCommandPoolCreateInfo poolInfo = CommandPoolCreateInfo(m_graphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_mainCommandPool));
-		VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(m_mainCommandPool);
-		vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_graphicsCommandBuffer));
+		VkCommandPoolCreateInfo poolInfo = CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+		{
+			FrameContext& frameContext = m_frameContextArray[i];
+			vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
+			VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
+			vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
+			m_shutdownStack.Add([this, i]()
+				{
+					vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
+				}
+			);
+		}
+
+		vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
+		VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
+		vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
 		m_shutdownStack.Add([this]()
 			{
-				vkDestroyCommandPool(m_renderContext.Device, m_mainCommandPool, nullptr);
-			}
-		);
+				vkDestroyCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, nullptr);
+			});
 		return true;
 	}
 
@@ -499,35 +569,97 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitSync()
 	{
+		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
+			FrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
-			VkFenceCreateInfo info = FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-			vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_renderFence));
+			VkFenceCreateInfo fenceInfo = FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+			vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
+			// Render semaphore
+			VkSemaphoreCreateInfo semaphoreInfo = SemaphoreCreateInfo();
+			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
+			// Present semaphore
+			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
+			m_shutdownStack.Add([this, i]()
+				{
+					printf("Destroy fences and semaphores [#%Id].\n", i);
+					vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
+					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
+					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
+				});
 		}
 
-		{
-			// Render semaphore
-			VkSemaphoreCreateInfo info = SemaphoreCreateInfo();
-			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &info, nullptr, &m_renderSemaphore));
-			// Present semaphore
-			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &info, nullptr, &m_presentSemaphore));
-		}
-		m_shutdownStack.Add([this]() 
+		VkFenceCreateInfo info = FenceCreateInfo();
+		vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
+		m_shutdownStack.Add([this]()
 			{
-				printf("Destroy fences and semaphores.\n");
-				vkDestroyFence(m_renderContext.Device, m_renderFence, nullptr);
-				vkDestroySemaphore(m_renderContext.Device, m_renderSemaphore, nullptr);
-				vkDestroySemaphore(m_renderContext.Device, m_presentSemaphore, nullptr);
-			}
-		);
+				vkDestroyFence(m_renderContext.Device, m_immediateSubmitContext.Fence, nullptr);
+			});
 		return true;
 	}
 
 	bool VulkanRenderEngine::InitPipeline()
 	{
+		// Pipeline descriptors
+		vkmmc_check(CreateDescriptorPool(m_renderContext.Device, (uint32_t)m_swapchain.GetImageCount(), 1, 0, 0, &m_descriptorPool));
+		m_shutdownStack.Add([this]() 
+			{
+				printf("Destroy descriptor pool.\n");
+				DestroyDescriptorPool(m_renderContext.Device, m_descriptorPool);
+			});
+		// Descriptor layout
+		DescriptorSetLayoutBindingBuildInfo layoutBindingInfo[] =
+		{
+			{
+				.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
+				.ShaderFlags = VK_SHADER_STAGE_VERTEX_BIT,
+				.Binding = 0
+			}
+		};
+		const size_t layoutBindingInfoCount = sizeof(layoutBindingInfo) / sizeof(DescriptorSetLayoutBindingBuildInfo);
+		vkmmc_check(CreateDescriptorLayout(m_renderContext.Device, layoutBindingInfo, layoutBindingInfoCount, &m_descriptorLayout));
+		m_shutdownStack.Add([this]() 
+			{
+				printf("Destroy descriptor layout.\n");
+				DestroyDescriptorLayout(m_renderContext.Device, m_descriptorLayout);
+			});
+
+		// There is one descriptor set per overlapped frame.
+		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+		{
+			// Create buffers for the descriptors
+			m_frameContextArray[i].DescriptorSetBuffer = CreateBuffer(
+				m_renderContext.Allocator,
+				sizeof(GPUCamera),
+				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
+			);
+			m_shutdownStack.Add([this, i]()
+				{
+					printf("Destroy buffer for descriptor set [#%Id].\n", i);
+					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].DescriptorSetBuffer);
+				});
+
+			// Let vulkan know about these descriptors
+			DescriptorSetBufferInfo bufferInfo
+			{
+				.BufferInfo = { m_frameContextArray[i].DescriptorSetBuffer.Buffer, 0, sizeof(GPUCamera) },
+				.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+				.Binding = 0
+			};
+			DescriptorSetBuilder builder
+			{
+				.Device = m_renderContext.Device,
+				.DescriptorPool = m_descriptorPool,
+				.Layout = m_descriptorLayout
+			};
+			builder.BufferInfoArray.push_back(bufferInfo);
+			vkmmc_check(builder.Build(&m_frameContextArray[i].DescriptorSet));
+		}
+
 		// Create layout info
 		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
-		// TODO push constants, descriptors...
+		layoutInfo.setLayoutCount = 1;
+		layoutInfo.pSetLayouts = &m_descriptorLayout;
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{
@@ -538,6 +670,63 @@ namespace vkmmc
 		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetDefaultVertexDescription());
 		m_renderPipeline = pipeline;
 		return true;
+	}
+
+	bool VulkanRenderEngine::InitImGui()
+	{
+		// Create descriptor pool for imgui
+		VkDescriptorPoolSize poolSizes[] =
+		{
+			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
+			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
+			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
+		};
+		VkDescriptorPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+		poolInfo.pNext = nullptr;
+		poolInfo.maxSets = 1000;
+		poolInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
+		poolInfo.pPoolSizes = poolSizes;
+
+		VkDescriptorPool imguiPool;
+		vkmmc_vkcheck(vkCreateDescriptorPool(m_renderContext.Device, &poolInfo, nullptr, &imguiPool));
+
+		// Init imgui lib
+		ImGui::CreateContext();
+		ImGui_ImplSDL2_InitForVulkan(m_window.WindowInstance);
+		ImGui_ImplVulkan_InitInfo initInfo
+		{
+			.Instance = m_renderContext.Instance,
+			.PhysicalDevice = m_renderContext.GPUDevice,
+			.Device = m_renderContext.Device,
+			.Queue = m_renderContext.GraphicsQueue,
+			.DescriptorPool = imguiPool,
+			.MinImageCount = 3,
+			.ImageCount = 3,
+			.MSAASamples = VK_SAMPLE_COUNT_1_BIT
+		};
+		ImGui_ImplVulkan_Init(&initInfo, m_renderPass.GetRenderPassHandle());
+
+		// Execute gpu command to upload imgui font textures
+		ImmediateSubmit([&](VkCommandBuffer cmd)
+			{
+				ImGui_ImplVulkan_CreateFontsTexture(cmd);
+			});
+		ImGui_ImplVulkan_DestroyFontUploadObjects();
+		m_shutdownStack.Add([this, imguiPool]()
+			{
+				vkDestroyDescriptorPool(m_renderContext.Device, imguiPool, nullptr);
+				ImGui_ImplVulkan_Shutdown();
+			});
+		return false;
 	}
 	
 }

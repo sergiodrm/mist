@@ -1,5 +1,7 @@
 #include "RenderTypes.h"
 #include "RenderHandle.h"
+#include "InitVulkanTypes.h"
+#include "VulkanRenderEngine.h"
 
 template <>
 struct std::hash<vkmmc::RenderHandle>
@@ -44,4 +46,5 @@ namespace vkmmc
 		memcpy_s(data, size, source, size);
 		vmaUnmapMemory(allocator, allocation);
 	}
+	
 }
