@@ -2,6 +2,7 @@
 #include "VulkanRenderEngine.h"
 #include "InitVulkanTypes.h"
 #include "GenericUtils.h"
+#include "Logger.h"
 
 namespace vkmmc
 {
@@ -88,11 +89,11 @@ namespace vkmmc
 			nullptr,
 			&newPipeline) == VK_SUCCESS)
 		{
-			printf("New graphics pipeline created successfuly!\n");
+			Log(LogLevel::Info, "New graphics pipeline created successfuly!\n");
 		}
 		else
 		{
-			printf("Failed to create graphics pipeline.\n");
+			Log(LogLevel::Error, "Failed to create graphics pipeline.\n");
 			newPipeline = VK_NULL_HANDLE;
 		}
 
@@ -106,13 +107,13 @@ namespace vkmmc
 		vkmmc_check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
 		m_pipeline = pipeline;
 		m_pipelineLayout = layout;
-		printf("Render pipeline setup success.\n");
+		Log(LogLevel::Info, "Render pipeline setup success.\n");
 		return true;
 	}
 
 	void RenderPipeline::Destroy(const RenderContext& renderContext)
 	{
-		printf("Destroy render pipeline.\n");
+		Log(LogLevel::Info, "Destroy render pipeline.\n");
 		vkDestroyPipeline(renderContext.Device, m_pipeline, nullptr);
 		vkDestroyPipelineLayout(renderContext.Device, m_pipelineLayout, nullptr);
 		m_pipeline = VK_NULL_HANDLE;

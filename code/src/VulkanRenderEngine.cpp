@@ -19,6 +19,7 @@
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imgui_impl_sdl2.h>
+#include "Logger.h"
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
@@ -90,21 +91,14 @@ namespace vkmmc_debug
 		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
 		void* userData)
 	{
-		printf("\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
-		return VK_FALSE;
-	}
-
-	VkBool32 DebugVulkanReportCallback(VkDebugReportFlagsEXT flags,
-		VkDebugReportObjectTypeEXT objectType,
-		uint64_t object, size_t location,
-		int32_t messageCode,
-		const char* layerPrefix,
-		const char* message, void* userData)
-	{
-		if (!(flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT))
+		vkmmc::LogLevel level = vkmmc::LogLevel::Info;
+		switch (severity)
 		{
-			printf("Debug callback (%s): %s\n", layerPrefix, message);
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = vkmmc::LogLevel::Error; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = vkmmc::LogLevel::Debug; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
+		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
 		return VK_FALSE;
 	}
 }
@@ -134,7 +128,7 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
-		printf("Initialize render engine.\n");
+		Log(LogLevel::Info, "Initialize render engine.\n");
 		SDL_Init(SDL_INIT_VIDEO);
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
 
@@ -172,13 +166,13 @@ namespace vkmmc
 		// ImGui
 		InitImGui();
 
-		printf("Window created successfully!\n");
+		Log(LogLevel::Ok, "Window created successfully!\n");
 		return true;
 	}
 
 	void VulkanRenderEngine::RenderLoop()
 	{
-		printf("Begin render loop.\n");
+		Log(LogLevel::Info, "Begin render loop.\n");
 
 		SDL_Event e;
 		bool shouldExit = false;
@@ -202,12 +196,12 @@ namespace vkmmc
 			ImGui::Render();
 			Draw();
 		}
-		printf("End render loop.\n");
+		Log(LogLevel::Info, "End render loop.\n");
 	}
 
 	void VulkanRenderEngine::Shutdown()
 	{
-		printf("Shutdown render engine.\n");
+		Log(LogLevel::Info, "Shutdown render engine.\n");
 
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
@@ -220,7 +214,7 @@ namespace vkmmc
 		vkDestroyInstance(m_renderContext.Instance, nullptr);
 		SDL_DestroyWindow(m_window.WindowInstance);
 
-		printf("Render engine terminated.\n");
+		Log(LogLevel::Ok, "Render engine terminated.\n");
 	}
 
 	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
@@ -341,7 +335,7 @@ namespace vkmmc
 		camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
 		camera.ViewProjection = camera.Projection * camera.View;
 
-		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().DescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
+		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().CameraDescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
 
 		Material lastMaterial;
 		Mesh lastMesh;
@@ -500,7 +494,7 @@ namespace vkmmc
 		// Dump physical device info
 		VkPhysicalDeviceProperties deviceProperties;
 		vkGetPhysicalDeviceProperties(m_renderContext.GPUDevice, &deviceProperties);
-		printf("Physical device:\n\t- %s\n\t- Id: %d\n\t- VendorId: %d\n",
+		Logf(LogLevel::Info, "Physical device:\n\t- %s\n\t- Id: %d\n\t- VendorId: %d\n",
 			deviceProperties.deviceName, deviceProperties.deviceID, deviceProperties.vendorID);
 
 		// Init memory allocator
@@ -511,13 +505,13 @@ namespace vkmmc
 		vmaCreateAllocator(&allocatorInfo, &m_renderContext.Allocator);
 		m_shutdownStack.Add([this]() 
 			{
-				printf("Delete Allocator.\n");
+				Log(LogLevel::Info, "Delete Allocator.\n");
 				vmaDestroyAllocator(m_renderContext.Allocator);
 			});
 		m_renderContext.GPUProperties = device.physical_device.properties;
-		printf("GPU has minimum buffer alignment of %Id bytes.\n",
+		Logf(LogLevel::Info, "GPU has minimum buffer alignment of %Id bytes.\n",
 			m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment);
-		printf("GPU max bound descriptor sets: %d\n",
+		Logf(LogLevel::Info, "GPU max bound descriptor sets: %d\n",
 			m_renderContext.GPUProperties.limits.maxBoundDescriptorSets);
 		return true;
 	}
@@ -577,7 +571,7 @@ namespace vkmmc
 
 			m_shutdownStack.Add([this, i]
 				{
-					printf("Destroy framebuffer and imageview [#%Id].\n", i);
+					Logf(LogLevel::Info, "Destroy framebuffer and imageview [#%Id].\n", i);
 					vkDestroyFramebuffer(m_renderContext.Device, m_framebuffers[i], nullptr);
 				});
 		}
@@ -600,7 +594,7 @@ namespace vkmmc
 			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
 			m_shutdownStack.Add([this, i]()
 				{
-					printf("Destroy fences and semaphores [#%Id].\n", i);
+					Logf(LogLevel::Info, "Destroy fences and semaphores [#%Id].\n", i);
 					vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
 					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
 					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
@@ -622,7 +616,7 @@ namespace vkmmc
 		vkmmc_check(CreateDescriptorPool(m_renderContext.Device, (uint32_t)m_swapchain.GetImageCount(), 1, 0, 0, &m_descriptorPool));
 		m_shutdownStack.Add([this]() 
 			{
-				printf("Destroy descriptor pool.\n");
+				Log(LogLevel::Info, "Destroy descriptor pool.\n");
 				DestroyDescriptorPool(m_renderContext.Device, m_descriptorPool);
 			});
 		// Descriptor layout
@@ -632,13 +626,18 @@ namespace vkmmc
 				.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
 				.ShaderFlags = VK_SHADER_STAGE_VERTEX_BIT,
 				.Binding = 0
+			},
+			{
+				.Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+				.ShaderFlags = VK_SHADER_STAGE_VERTEX_BIT,
+				.Binding = 1
 			}
 		};
 		const size_t layoutBindingInfoCount = sizeof(layoutBindingInfo) / sizeof(DescriptorSetLayoutBindingBuildInfo);
 		vkmmc_check(CreateDescriptorLayout(m_renderContext.Device, layoutBindingInfo, layoutBindingInfoCount, &m_descriptorLayout));
 		m_shutdownStack.Add([this]() 
 			{
-				printf("Destroy descriptor layout.\n");
+				Log(LogLevel::Info, "Destroy descriptor layout.\n");
 				DestroyDescriptorLayout(m_renderContext.Device, m_descriptorLayout);
 			});
 
@@ -646,23 +645,35 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			// Create buffers for the descriptors
-			m_frameContextArray[i].DescriptorSetBuffer = CreateBuffer(
+			m_frameContextArray[i].CameraDescriptorSetBuffer = CreateBuffer(
 				m_renderContext.Allocator,
 				sizeof(GPUCamera),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
+			m_frameContextArray[i].ObjectDescriptorSetBuffer = CreateBuffer(
+				m_renderContext.Allocator,
+				sizeof(GPUObject),
+				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
+			);
 			m_shutdownStack.Add([this, i]()
 				{
-					printf("Destroy buffer for descriptor set [#%Id].\n", i);
-					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].DescriptorSetBuffer);
+					Logf(LogLevel::Info, "Destroy buffer for descriptor set [#%Id].\n", i);
+					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
+					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
 				});
 
 			// Let vulkan know about these descriptors
 			DescriptorSetBufferInfo bufferInfo
 			{
-				.BufferInfo = { m_frameContextArray[i].DescriptorSetBuffer.Buffer, 0, sizeof(GPUCamera) },
+				.BufferInfo = { m_frameContextArray[i].CameraDescriptorSetBuffer.Buffer, 0, sizeof(GPUCamera) },
 				.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 				.Binding = 0
+			};
+			DescriptorSetBufferInfo bufferInfo1
+			{
+				.BufferInfo = { m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer, 0, sizeof(GPUObject) },
+				.Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+				.Binding = 1
 			};
 			DescriptorSetBuilder builder
 			{
@@ -671,6 +682,7 @@ namespace vkmmc
 				.Layout = m_descriptorLayout
 			};
 			builder.BufferInfoArray.push_back(bufferInfo);
+			builder.BufferInfoArray.push_back(bufferInfo1);
 			vkmmc_check(builder.Build(&m_frameContextArray[i].DescriptorSet));
 		}
 

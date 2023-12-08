@@ -3,6 +3,7 @@
 #include <vk_mem_alloc.h>
 #include <InitVulkanTypes.h>
 #include <VulkanRenderEngine.h>
+#include "Logger.h"
 
 namespace vkmmc
 {
@@ -45,12 +46,10 @@ namespace vkmmc
 
 	void Swapchain::Destroy(const RenderContext& renderContext)
 	{
-		printf("Destroying swapchain data.\n");
+		Log(LogLevel::Info, "Destroying swapchain data.\n");
 
 		for (size_t i = 0; i < m_imageViews.size(); ++i)
-		{
 			vkDestroyImageView(renderContext.Device, m_imageViews[i], nullptr);
-		}
 
 		vkDestroyImageView(renderContext.Device, m_depthImageView, nullptr);
 		vmaDestroyImage(renderContext.Allocator, m_depthImage.Image, m_depthImage.Alloc);

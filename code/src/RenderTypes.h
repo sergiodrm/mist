@@ -65,7 +65,8 @@ namespace vkmmc
 
 		// Descriptors
 		VkDescriptorSet DescriptorSet {};
-		AllocatedBuffer DescriptorSetBuffer {};
+		AllocatedBuffer CameraDescriptorSetBuffer {};
+		AllocatedBuffer ObjectDescriptorSetBuffer {};
 	};
 
 

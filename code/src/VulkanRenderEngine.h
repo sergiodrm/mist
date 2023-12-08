@@ -59,6 +59,11 @@ namespace vkmmc
 		glm::mat4 ViewProjection;
 	};
 
+	struct GPUObject
+	{
+		glm::mat4 ModelTransform;
+	};
+
 	class VulkanRenderEngine : public IRenderEngine
 	{
 		static constexpr size_t MaxOverlappedFrames = 2;

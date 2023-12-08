@@ -1,6 +1,7 @@
 #include "RenderPass.h"
 #include <vector>
 #include "VulkanRenderEngine.h"
+#include "Logger.h"
 
 namespace vkmmc
 {
@@ -92,7 +93,7 @@ namespace vkmmc
 
 	void RenderPass::Destroy(const RenderContext& renderContext)
 	{
-		printf("Destroy RenderPass.\n");
+		Log(LogLevel::Info, "Destroy RenderPass.\n");
 		vkDestroyRenderPass(renderContext.Device, m_renderPass, nullptr);
 	}
 }

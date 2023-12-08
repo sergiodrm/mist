@@ -37,6 +37,8 @@ target_sources(vkmmc
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderPipeline.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/GenericUtils.h"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/GenericUtils.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/Logger.h"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/Logger.cpp"
 )
 
 set_property(TARGET vkmmc PROPERTY CXX_STANDARD 20)
