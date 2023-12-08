@@ -31,7 +31,7 @@ namespace vkmmc_globals
 
 	struct CameraController
 	{
-		vkmmc::Camera Camera;
+		vkmmc::Camera Camera{};
 		glm::vec3 Direction{ 0.f };
 		float MaxSpeed = 1.f; // eu/s
 		float MaxRotSpeed = 0.2f; // rad/s
@@ -57,12 +57,30 @@ namespace vkmmc_globals
 
 		void Tick(float elapsedSeconds)
 		{
-			Direction = glm::normalize(Direction);
-			glm::vec3 speed = Direction * MaxSpeed;
-			Camera.SetPosition(Camera.GetPosition() + speed * elapsedSeconds);
-			Direction = glm::vec3{ 0.f };
+			if (Direction != glm::vec3{0.f})
+			{
+				Direction = glm::normalize(Direction);
+				glm::vec3 speed = Direction * MaxSpeed;
+				Camera.SetPosition(Camera.GetPosition() + speed * elapsedSeconds);
+				Direction = glm::vec3{ 0.f };
+			}
 		}
-	} GCameraController;
+
+		void ImGuiDraw()
+		{
+			ImGui::Begin("Camera");
+			if (ImGui::Button("Reset position"))
+				Camera.SetPosition({ 0.f, 0.f, 0.f });
+			glm::vec3 pos = Camera.GetPosition();
+			if (ImGui::DragFloat3("Position", &pos[0], 0.5f))
+				Camera.SetPosition(pos);
+			glm::vec3 rot = Camera.GetRotation();
+			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
+				Camera.SetRotation(rot);
+			ImGui::DragFloat("MaxSpeed", &MaxSpeed, 0.2f);
+			ImGui::End();
+		}
+	} GCameraController{};
 }
 
 namespace vkmmc_debug
@@ -178,8 +196,8 @@ namespace vkmmc
 				}
 			}
 			ImGuiNewFrame();
-			ImGui::ShowDemoWindow();
 			vkmmc_globals::GCameraController.Tick(0.033f);
+			vkmmc_globals::GCameraController.ImGuiDraw();
 
 			ImGui::Render();
 			Draw();
