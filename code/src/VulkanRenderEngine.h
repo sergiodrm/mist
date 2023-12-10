@@ -14,6 +14,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <string.h>
+#include <array>
 
 namespace vkmmc
 {
@@ -100,6 +101,7 @@ namespace vkmmc
 			const VkPipelineLayoutCreateInfo& layoutInfo,
 			const VertexInputDescription& inputDescription
 		);
+		RenderHandle RegisterPipeline(RenderPipeline pipeline);
 
 	private:
 
@@ -109,19 +111,22 @@ namespace vkmmc
 		
 		Swapchain m_swapchain;
 		RenderPass m_renderPass;
-		RenderPipeline m_renderPipeline;
+		RenderHandle m_handleRenderPipeline;
 		std::vector<VkFramebuffer> m_framebuffers;
 
 		FrameContext m_frameContextArray[MaxOverlappedFrames];
 		size_t m_frameCounter;
 
 		VkDescriptorPool m_descriptorPool;
-		VkDescriptorSetLayout m_descriptorLayout;
+		VkDescriptorSetLayout m_globalDescriptorLayout;
+		VkDescriptorSetLayout m_objectDescriptorLayout;
 
 		std::unordered_map<uint32_t, AllocatedBuffer> m_buffers;
 		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
 
-		std::vector<RenderObject> m_renderables;
+		static constexpr size_t MaxRenderObjects = 5000;
+		std::array<RenderObject, MaxRenderObjects> m_renderables;
+		uint32_t m_renderablesCounter = 0;
 
 		UploadContext m_immediateSubmitContext;
 

@@ -1,7 +1,8 @@
 #include "Logger.h"
 #include <cstdio>
 #include <stdarg.h>
-
+#include <Windows.h>
+#include <debugapi.h>
 #define ANSI_RESET_ALL          "\x1b[0m"
 
 #define ANSI_COLOR_BLACK        "\x1b[30m"
@@ -56,12 +57,13 @@ namespace vkmmc
 
 	void Log(LogLevel level, const char* msg)
 	{
-		printf("%s[%s]: %s%s", LogLevelFormat(level), LogLevelToStr(level), msg, ANSI_RESET_ALL);
+		printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
+		OutputDebugString(msg);
 	}
 
 	void Logf(LogLevel level, const char* fmt, ...)
 	{
-		char buff[1024];
+		char buff[2048];
 		va_list lst;
 		va_start(lst, fmt);
 		vsprintf_s(buff, fmt, lst);

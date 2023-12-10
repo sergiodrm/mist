@@ -86,6 +86,7 @@ namespace vkmmc_globals
 
 namespace vkmmc_debug
 {
+	bool GTerminatedWithErrors = false;
 	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 		VkDebugUtilsMessageTypeFlagsEXT type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
@@ -94,12 +95,16 @@ namespace vkmmc_debug
 		vkmmc::LogLevel level = vkmmc::LogLevel::Info;
 		switch (severity)
 		{
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = vkmmc::LogLevel::Error; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = vkmmc::LogLevel::Error; GTerminatedWithErrors = true; break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = vkmmc::LogLevel::Debug; break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
 		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
 		return VK_FALSE;
+	}
+
+	void ImGuiDraw()
+	{
 	}
 }
 
@@ -192,6 +197,7 @@ namespace vkmmc
 			ImGuiNewFrame();
 			vkmmc_globals::GCameraController.Tick(0.033f);
 			vkmmc_globals::GCameraController.ImGuiDraw();
+			vkmmc_debug::ImGuiDraw();
 
 			ImGui::Render();
 			Draw();
@@ -215,6 +221,8 @@ namespace vkmmc
 		SDL_DestroyWindow(m_window.WindowInstance);
 
 		Log(LogLevel::Ok, "Render engine terminated.\n");
+		if (vkmmc_debug::GTerminatedWithErrors)
+			Log(LogLevel::Error, "Render engine was terminated with vulkan validation layer errors registered.\n");
 	}
 
 	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
@@ -242,7 +250,8 @@ namespace vkmmc
 
 	void VulkanRenderEngine::AddRenderObject(RenderObject object)
 	{
-		m_renderables.push_back(object);
+		m_renderables[m_renderablesCounter] = object;
+		++m_renderablesCounter;
 	}
 
 	void VulkanRenderEngine::Draw()
@@ -286,7 +295,7 @@ namespace vkmmc
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		// Draw scene
-		DrawRenderables(cmd, m_renderables.data(), m_renderables.size());
+		DrawRenderables(cmd, m_renderables.data(), m_renderablesCounter);
 
 		// ImGui render
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -336,20 +345,34 @@ namespace vkmmc
 		camera.ViewProjection = camera.Projection * camera.View;
 
 		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().CameraDescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
+		static std::vector<GPUObject> objects(MaxRenderObjects);
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			objects[i].ModelTransform = renderables[i].GetTransform();
+		}
+		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * MaxRenderObjects);
 
 		Material lastMaterial;
 		Mesh lastMesh;
 		for (uint32_t i = 0; i < count; ++i)
 		{
 			const RenderObject& renderable = renderables[i];
-			if (renderable.m_material != lastMaterial || !renderable.m_material.GetHandle().IsValid())
+			if (renderable.m_material != lastMaterial || !lastMaterial.GetHandle().IsValid())
 			{
 				lastMaterial = renderable.m_material;
-				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
+				RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
+					? m_pipelines[renderable.m_material.GetHandle()]
+					: m_pipelines[m_handleRenderPipeline];
+				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					m_renderPipeline.GetPipelineLayoutHandle(), 0, 1,
-					&GetFrameContext().DescriptorSet, 0, nullptr);
+					pipeline.GetPipelineLayoutHandle(), 0, 1,
+					&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
+				//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				//	pipeline.GetPipelineLayoutHandle(), 1, 1,
+				//	&GetFrameContext().ObjectDescriptorSet, 0, nullptr);
 			}
+
+
 			if (lastMesh != renderable.m_mesh)
 			{
 				VkDeviceSize offset = 0;
@@ -459,6 +482,13 @@ namespace vkmmc
 		return renderPipeline;
 	}
 
+	RenderHandle VulkanRenderEngine::RegisterPipeline(RenderPipeline pipeline)
+	{
+		RenderHandle h = GenerateRenderHandle();
+		m_pipelines[h] = pipeline;
+		return h;
+	}
+
 	bool VulkanRenderEngine::InitVulkan()
 	{
 		// Create Vulkan instance
@@ -483,6 +513,11 @@ namespace vkmmc
 			.select()
 			.value();
 		vkb::DeviceBuilder deviceBuilder{ physicalDevice };
+		VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParamsFeatures = {};
+		shaderDrawParamsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+		shaderDrawParamsFeatures.pNext = nullptr;
+		shaderDrawParamsFeatures.shaderDrawParameters = VK_TRUE;
+		deviceBuilder.add_pNext(&shaderDrawParamsFeatures);
 		vkb::Device device = deviceBuilder.build().value();
 		m_renderContext.Device = device.device;
 		m_renderContext.GPUDevice = physicalDevice.physical_device;
@@ -613,33 +648,63 @@ namespace vkmmc
 	bool VulkanRenderEngine::InitPipeline()
 	{
 		// Pipeline descriptors
-		vkmmc_check(CreateDescriptorPool(m_renderContext.Device, (uint32_t)m_swapchain.GetImageCount(), 1, 0, 0, &m_descriptorPool));
+		VkDescriptorPoolSize poolSizes[] =
+		{
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MaxOverlappedFrames * 2 },
+			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MaxOverlappedFrames * 2 },
+		};
+		vkmmc_check(CreateDescriptorPool(m_renderContext.Device, poolSizes, sizeof(poolSizes) / sizeof(VkDescriptorPoolSize), &m_descriptorPool));
 		m_shutdownStack.Add([this]() 
 			{
 				Log(LogLevel::Info, "Destroy descriptor pool.\n");
 				DestroyDescriptorPool(m_renderContext.Device, m_descriptorPool);
 			});
-		// Descriptor layout
-		DescriptorSetLayoutBindingBuildInfo layoutBindingInfo[] =
 		{
+			// Descriptor layout
+			VkDescriptorSetLayoutBinding layoutBindings[] = { {}, {} };
+			const uint32_t layoutBindingCount = sizeof(layoutBindings) / sizeof(VkDescriptorSetLayoutBinding);
+			for (uint32_t i = 0; i < layoutBindingCount; ++i)
 			{
-				.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 
-				.ShaderFlags = VK_SHADER_STAGE_VERTEX_BIT,
-				.Binding = 0
-			},
-			{
-				.Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-				.ShaderFlags = VK_SHADER_STAGE_VERTEX_BIT,
-				.Binding = 1
+				layoutBindings[i].binding = i;
+				layoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				layoutBindings[i].descriptorCount = 1;
+				layoutBindings[i].pImmutableSamplers = nullptr;
+				layoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 			}
-		};
-		const size_t layoutBindingInfoCount = sizeof(layoutBindingInfo) / sizeof(DescriptorSetLayoutBindingBuildInfo);
-		vkmmc_check(CreateDescriptorLayout(m_renderContext.Device, layoutBindingInfo, layoutBindingInfoCount, &m_descriptorLayout));
-		m_shutdownStack.Add([this]() 
-			{
-				Log(LogLevel::Info, "Destroy descriptor layout.\n");
-				DestroyDescriptorLayout(m_renderContext.Device, m_descriptorLayout);
-			});
+			layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			VkDescriptorSetLayoutCreateInfo createInfo = {};
+			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+			createInfo.bindingCount = layoutBindingCount;
+			createInfo.pBindings = layoutBindings;
+			vkmmc_vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_globalDescriptorLayout));
+			m_shutdownStack.Add([this]()
+				{
+					Log(LogLevel::Info, "Destroy descriptor layout.\n");
+					vkDestroyDescriptorSetLayout(m_renderContext.Device, m_globalDescriptorLayout, nullptr);
+				});
+		}
+		//{
+		//	VkDescriptorSetLayoutBinding layoutBinding =
+		//	{
+		//		.binding = 0,
+		//		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		//		.descriptorCount = 1,
+		//		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+		//		.pImmutableSamplers = nullptr,
+		//	};
+		//	VkDescriptorSetLayoutCreateInfo createInfo =
+		//	{
+		//		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		//		.bindingCount = 1,
+		//		.pBindings = &layoutBinding
+		//	};
+		//	vkmmc_vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_objectDescriptorLayout));
+		//	m_shutdownStack.Add([this]() 
+		//		{
+		//			Log(LogLevel::Info, "Destroy object descriptor set layout.\n");
+		//			vkDestroyDescriptorSetLayout(m_renderContext.Device, m_objectDescriptorLayout, nullptr);
+		//		});
+		//}
 
 		// There is one descriptor set per overlapped frame.
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
@@ -652,7 +717,7 @@ namespace vkmmc
 			);
 			m_frameContextArray[i].ObjectDescriptorSetBuffer = CreateBuffer(
 				m_renderContext.Allocator,
-				sizeof(GPUObject),
+				sizeof(GPUObject) * MaxRenderObjects,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
 			m_shutdownStack.Add([this, i]()
@@ -662,34 +727,46 @@ namespace vkmmc
 					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
 				});
 
+			// Allocate descriptor sets on pool
+			AllocateDescriptorSet(m_renderContext.Device, m_descriptorPool, &m_globalDescriptorLayout, 1, &m_frameContextArray[i].GlobalDescriptorSet);
+			//AllocateDescriptorSet(m_renderContext.Device, m_descriptorPool, &m_objectDescriptorLayout, 1, &m_frameContextArray[i].ObjectDescriptorSet);
+
 			// Let vulkan know about these descriptors
-			DescriptorSetBufferInfo bufferInfo
-			{
-				.BufferInfo = { m_frameContextArray[i].CameraDescriptorSetBuffer.Buffer, 0, sizeof(GPUCamera) },
-				.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-				.Binding = 0
-			};
-			DescriptorSetBufferInfo bufferInfo1
-			{
-				.BufferInfo = { m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer, 0, sizeof(GPUObject) },
-				.Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-				.Binding = 1
-			};
-			DescriptorSetBuilder builder
-			{
-				.Device = m_renderContext.Device,
-				.DescriptorPool = m_descriptorPool,
-				.Layout = m_descriptorLayout
-			};
-			builder.BufferInfoArray.push_back(bufferInfo);
-			builder.BufferInfoArray.push_back(bufferInfo1);
-			vkmmc_check(builder.Build(&m_frameContextArray[i].DescriptorSet));
+			VkDescriptorBufferInfo cameraBufferInfo = {};
+			cameraBufferInfo.buffer = m_frameContextArray[i].CameraDescriptorSetBuffer.Buffer;
+			cameraBufferInfo.offset = 0;
+			cameraBufferInfo.range = sizeof(GPUCamera);
+			VkDescriptorBufferInfo objectBufferInfo = {};
+			objectBufferInfo.buffer = m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer;
+			objectBufferInfo.offset = 0;
+			objectBufferInfo.range = sizeof(GPUObject) * MaxRenderObjects;
+
+			VkWriteDescriptorSet cameraWriteDescriptor = {};
+			cameraWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			cameraWriteDescriptor.dstBinding = 0;
+			cameraWriteDescriptor.dstArrayElement = 0;
+			cameraWriteDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			cameraWriteDescriptor.descriptorCount = 1;
+			cameraWriteDescriptor.dstSet = m_frameContextArray[i].GlobalDescriptorSet;
+			cameraWriteDescriptor.pBufferInfo = &cameraBufferInfo;
+			VkWriteDescriptorSet objectWriteDescriptor = {};
+			objectWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			objectWriteDescriptor.dstBinding = 1;
+			objectWriteDescriptor.dstArrayElement = 0;
+			objectWriteDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+			objectWriteDescriptor.descriptorCount = 1;
+			objectWriteDescriptor.dstSet = m_frameContextArray[i].GlobalDescriptorSet;
+			objectWriteDescriptor.pBufferInfo = &objectBufferInfo;
+			VkWriteDescriptorSet writeDescriptors[] = { cameraWriteDescriptor, objectWriteDescriptor };
+			uint32_t writeDescriptorCount = sizeof(writeDescriptors) / sizeof(VkWriteDescriptorSet);
+			vkUpdateDescriptorSets(m_renderContext.Device, writeDescriptorCount, writeDescriptors, 0, nullptr);
 		}
 
 		// Create layout info
+		VkDescriptorSetLayout layouts[] = { m_globalDescriptorLayout, m_objectDescriptorLayout };
 		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
 		layoutInfo.setLayoutCount = 1;
-		layoutInfo.pSetLayouts = &m_descriptorLayout;
+		layoutInfo.pSetLayouts = layouts;
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{
@@ -698,7 +775,7 @@ namespace vkmmc
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
 		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetDefaultVertexDescription());
-		m_renderPipeline = pipeline;
+		m_handleRenderPipeline = RegisterPipeline(pipeline);
 		return true;
 	}
 

@@ -5,39 +5,28 @@
 
 namespace vkmmc
 {
-	bool CreateDescriptorPool(VkDevice device, uint32_t imageCount,
-		uint32_t uniformBufferCount,
-		uint32_t storageBufferCount,
-		uint32_t samplerCount,
+	bool CreateDescriptorPool(VkDevice device, const VkDescriptorPoolSize* poolSizes,
+		uint32_t poolSizeCount,
 		VkDescriptorPool* outPool);
 	void DestroyDescriptorPool(VkDevice device, VkDescriptorPool pool);
 
-	struct DescriptorSetLayoutBindingBuildInfo
+	bool AllocateDescriptorSet(VkDevice device,
+		VkDescriptorPool pool,
+		const VkDescriptorSetLayout* layouts,
+		uint32_t layoutCount,
+		VkDescriptorSet* outDescSet);
+
+	struct UniformBufferSpecification
 	{
-		VkDescriptorType Type;
-		VkShaderStageFlagBits ShaderFlags;
+		uint32_t Size;
 		uint32_t Binding;
 	};
 
-	bool CreateDescriptorLayout(VkDevice device, const DescriptorSetLayoutBindingBuildInfo* buildInfo, size_t count, VkDescriptorSetLayout* outLayout);
-	void DestroyDescriptorLayout(VkDevice device, VkDescriptorSetLayout layout);
-
-	struct DescriptorSetBufferInfo
+	class UniformBuffer
 	{
-		VkDescriptorBufferInfo BufferInfo;
-		VkDescriptorType Type;
-		uint32_t Binding;
+	public:
+
+	private:
 	};
-
-	struct DescriptorSetBuilder
-	{
-		VkDevice Device;
-		VkDescriptorPool DescriptorPool;
-		VkDescriptorSetLayout Layout;
-		std::vector<DescriptorSetBufferInfo> BufferInfoArray;
-
-		bool Build(VkDescriptorSet* outDescriptor) const;
-	};
-
 
 }

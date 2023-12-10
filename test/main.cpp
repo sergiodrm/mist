@@ -4,7 +4,7 @@
 #include <vkmmc/RenderObject.h>
 #include <vkmmc/Mesh.h>
 
-int main(uint32_t argc, char** argv)
+int main(int32_t argc, char** argv)
 {
 	vkmmc::InitializationSpecs spec
 	{
@@ -26,9 +26,20 @@ int main(uint32_t argc, char** argv)
 	};
 	mesh.SetVertices(vertices, sizeof(vertices) / sizeof(vkmmc::Vertex));
 	engine->UploadMesh(mesh);
-	vkmmc::RenderObject object;
-	object.m_mesh = mesh;
-	engine->AddRenderObject(object);
+
+	constexpr int32_t dim[2] = { 20, 20 };
+	constexpr float dif = 10.f;
+	for (int32_t x = -dim[0]; x <= dim[0]; ++x)
+	{
+		for (int32_t y = -dim[1]; y <= dim[1]; ++y)
+		{
+			vkmmc::RenderObject object;
+			object.m_mesh = mesh;
+			object.m_position = { (float)x * dif, 0.f, (float)y * dif };
+			engine->AddRenderObject(object);
+		}
+	}
+
 	engine->RenderLoop();
 	engine->Shutdown();
 	vkmmc::FreeRenderEngine(&engine);

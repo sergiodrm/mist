@@ -14,6 +14,7 @@ target_sources(vkmmc
 	
 	
 	
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderObject.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderDescriptor.cpp"
 	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderDescriptor.h"

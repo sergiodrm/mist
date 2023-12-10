@@ -5,6 +5,7 @@
 #include <cassert>
 #include <vector>
 #include <functional>
+#include "Logger.h"
 
 #define expand(x) (x)
 #define vkmmc_check(expr) \
@@ -12,6 +13,7 @@ do \
 {\
 	if (!expand(expr)) \
 	{ \
+		Logf(LogLevel::Error, "Check failed: %s", #expr);	\
 		__debugbreak();\
 		assert(false && #expr);\
 	}\
@@ -55,18 +57,19 @@ namespace vkmmc
 	struct FrameContext
 	{
 		// Sync vars
-		VkFence RenderFence {};
-		VkSemaphore RenderSemaphore {};
-		VkSemaphore PresentSemaphore {};
+		VkFence RenderFence{};
+		VkSemaphore RenderSemaphore{};
+		VkSemaphore PresentSemaphore{};
 
 		// Commands
-		VkCommandPool GraphicsCommandPool {};
-		VkCommandBuffer GraphicsCommand {};
+		VkCommandPool GraphicsCommandPool{};
+		VkCommandBuffer GraphicsCommand{};
 
 		// Descriptors
-		VkDescriptorSet DescriptorSet {};
-		AllocatedBuffer CameraDescriptorSetBuffer {};
-		AllocatedBuffer ObjectDescriptorSetBuffer {};
+		VkDescriptorSet GlobalDescriptorSet{};
+		VkDescriptorSet ObjectDescriptorSet{};
+		AllocatedBuffer CameraDescriptorSetBuffer{};
+		AllocatedBuffer ObjectDescriptorSetBuffer{};
 	};
 
 

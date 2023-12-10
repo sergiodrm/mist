@@ -260,13 +260,13 @@ namespace vkmmc
 		return info;
 	}
 
-	VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* layouts, uint32_t layoutCount)
+	VkDescriptorSetAllocateInfo DescriptorSetAllocateInfo(VkDescriptorPool descriptorPool, const VkDescriptorSetLayout* layouts, uint32_t poolCount)
 	{
 		VkDescriptorSetAllocateInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		info.pNext = nullptr;
 		info.descriptorPool = descriptorPool;
-		info.descriptorSetCount = layoutCount;
+		info.descriptorSetCount = poolCount;
 		info.pSetLayouts = layouts;
 		return info;
 	}
