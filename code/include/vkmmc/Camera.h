@@ -24,7 +24,7 @@ namespace vkmmc
 
 	private:
 		// View
-		glm::vec3 m_position{ 0.f, 0.f, 3.f };
+		glm::vec3 m_position{ 0.f, 0.f, -3.f };
 		glm::vec3 m_rotation{ 0.f }; // Roll pitch yaw
 
 		// Projection
