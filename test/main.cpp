@@ -90,7 +90,11 @@ int main(int32_t argc, char** argv)
 	engine->UploadMesh(mesh);
 	engine->SetImGuiCallback(&ImGuiLogic);
 
+#ifdef _DEBUG
+	constexpr int32_t dim[2] = { 12, 12 };
+#else
 	constexpr int32_t dim[2] = { 120, 120 };
+#endif
 	constexpr float dif = 2.f;
 	for (int32_t x = -dim[0] / 2; x < dim[0] / 2; ++x)
 	{
