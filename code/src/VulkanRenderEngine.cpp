@@ -35,11 +35,14 @@ namespace vkmmc_globals
 		vkmmc::Camera Camera{};
 		glm::vec3 Direction{ 0.f };
 		float MaxSpeed = 1.f; // eu/s
-		float MaxRotSpeed = 0.2f; // rad/s
+		float MaxRotSpeed = 1.f; // rad/s
 
-		void ProcessInput(const SDL_Event& e)
+		bool IsMotionControlActive = false;
+		glm::vec2 MotionRotation{ 0.f };
+
+		void ProcessInputKeyButton(const SDL_KeyboardEvent& e)
 		{
-			switch (e.key.keysym.sym)
+			switch (e.keysym.sym)
 			{
 			case SDLK_w:
 				Direction += glm::vec3{ 0.f, 0.f, 1.f };
@@ -62,6 +65,48 @@ namespace vkmmc_globals
 			}
 		}
 
+		void ProcessInputMouseButton(const SDL_MouseButtonEvent& e)
+		{
+			switch (e.button)
+			{
+			case SDL_BUTTON_RIGHT:
+				IsMotionControlActive = e.state == SDL_PRESSED;
+				SDL_SetRelativeMouseMode(IsMotionControlActive ? SDL_TRUE : SDL_FALSE);
+				break;
+			}
+		}
+
+		void ProcessInputMouseMotion(const SDL_MouseMotionEvent& e)
+		{
+			if (IsMotionControlActive)
+			{
+				static constexpr float swidth = 1920.f;
+				static constexpr float sheight = 1080.f;
+				float yawdiff = (float)(e.xrel) / swidth;
+				float pitchdiff = (float)(e.yrel) / sheight;
+				MotionRotation += glm::vec2{ -pitchdiff, yawdiff };
+			}
+		}
+
+		void ProcessInput(const SDL_Event& e)
+		{
+			switch (e.type)
+			{
+			case SDL_KEYDOWN:
+				ProcessInputKeyButton(e.key);
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEBUTTONUP:
+				ProcessInputMouseButton(e.button);
+				break;
+			case SDL_MOUSEMOTION:
+				ProcessInputMouseMotion(e.motion);
+				break;
+			default:
+				break;
+			}
+		}
+
 		void Tick(float elapsedSeconds)
 		{
 			if (Direction != glm::vec3{0.f})
@@ -70,6 +115,11 @@ namespace vkmmc_globals
 				glm::vec3 speed = Direction * MaxSpeed;
 				Camera.SetPosition(Camera.GetPosition() + speed * elapsedSeconds);
 				Direction = glm::vec3{ 0.f };
+			}
+			if (MotionRotation != glm::vec2{ 0.f })
+			{
+				Camera.SetRotation(Camera.GetRotation() + MaxRotSpeed * glm::vec3{ MotionRotation.x, MotionRotation.y, 0.f });
+				MotionRotation = glm::vec2{ 0.f };
 			}
 		}
 
@@ -85,6 +135,7 @@ namespace vkmmc_globals
 			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
 				Camera.SetRotation(rot);
 			ImGui::DragFloat("MaxSpeed", &MaxSpeed, 0.2f);
+			ImGui::DragFloat("MaxRotSpeed", &MaxRotSpeed, 0.2f);
 			ImGui::End();
 		}
 	} GCameraController{};
