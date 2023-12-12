@@ -53,6 +53,12 @@ namespace vkmmc_globals
 			case SDLK_d:
 				Direction += glm::vec3{ -1.f, 0.f, 0.f };
 				break;
+			case SDLK_e:
+				Direction += glm::vec3{ 0.f, 1.f, 0.f };
+				break;
+			case SDLK_q:
+				Direction += glm::vec3{ 0.f, -1.f, 0.f };
+				break;
 			}
 		}
 
@@ -103,10 +109,78 @@ namespace vkmmc_debug
 		return VK_FALSE;
 	}
 
+	struct ProfilingTimer
+	{
+		std::chrono::high_resolution_clock::time_point m_start;
+
+		void Start()
+		{
+			m_start = std::chrono::high_resolution_clock::now();
+		}
+
+		double Stop()
+		{
+			auto stop = std::chrono::high_resolution_clock::now();
+			auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - m_start);
+			double s = (double)diff.count() * 1e-6;
+			return s;
+		}
+	};
+
+	struct ProfilerItem
+	{
+		double m_elapsed;
+	};
+
+	struct Profiler
+	{
+		std::unordered_map<std::string, ProfilerItem> m_items;
+	};
+
+	struct ScopedTimer
+	{
+		ScopedTimer(const char* nameId, Profiler* profiler)
+			: m_nameId(nameId), m_profiler(profiler)
+		{
+			m_timer.Start();
+		}
+
+		~ScopedTimer()
+		{
+			m_profiler->m_items[m_nameId] = ProfilerItem{ m_timer.Stop() };
+		}
+
+		std::string m_nameId;
+		Profiler* m_profiler;
+		ProfilingTimer m_timer;
+	};
+
+	struct RenderStats
+	{
+		Profiler m_profiler;
+		size_t m_trianglesCount{ 0 };
+		size_t m_drawCalls{ 0 };
+	} GRenderStats;
+
 	void ImGuiDraw()
 	{
+		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
+			| ImGuiWindowFlags_NoDecoration
+			| ImGuiWindowFlags_AlwaysAutoResize
+			| ImGuiWindowFlags_NoResize;
+		ImGui::Begin("Render stats", nullptr, flags);
+		for (auto item : GRenderStats.m_profiler.m_items)
+		{
+			ImGui::Text("%s: %.4f ms", item.first.c_str(), item.second.m_elapsed);
+		}
+		ImGui::Separator();
+		ImGui::Text("Draw calls: %zd", GRenderStats.m_drawCalls);
+		ImGui::Text("Triangles:  %zd", GRenderStats.m_trianglesCount);
+		ImGui::End();
 	}
 }
+
+#define PROFILE_SCOPE(name) vkmmc_debug::ScopedTimer __timer##name(#name, &vkmmc_debug::GRenderStats.m_profiler)
 
 namespace vkmmc
 {
@@ -133,6 +207,7 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
+		PROFILE_SCOPE(Init);
 		Log(LogLevel::Info, "Initialize render engine.\n");
 		SDL_Init(SDL_INIT_VIDEO);
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
@@ -183,6 +258,7 @@ namespace vkmmc
 		bool shouldExit = false;
 		while (!shouldExit)
 		{
+			PROFILE_SCOPE(Loop);
 			while (SDL_PollEvent(&e))
 			{
 				ImGuiProcessEvent(e);
@@ -198,11 +274,43 @@ namespace vkmmc
 			vkmmc_globals::GCameraController.Tick(0.033f);
 			vkmmc_globals::GCameraController.ImGuiDraw();
 			vkmmc_debug::ImGuiDraw();
+			vkmmc_debug::GRenderStats.m_trianglesCount = 0;
+			vkmmc_debug::GRenderStats.m_drawCalls = 0;
 
 			ImGui::Render();
 			Draw();
 		}
 		Log(LogLevel::Info, "End render loop.\n");
+	}
+
+	bool VulkanRenderEngine::RenderProcess()
+	{
+		PROFILE_SCOPE(Process);
+		bool res = true;
+		SDL_Event e;
+		while (SDL_PollEvent(&e))
+		{
+			ImGuiProcessEvent(e);
+			switch (e.type)
+			{
+			case SDL_QUIT: res = false; break;
+			default:
+				vkmmc_globals::GCameraController.ProcessInput(e);
+				break;
+			}
+		}
+		ImGuiNewFrame();
+		vkmmc_globals::GCameraController.Tick(0.033f);
+		vkmmc_globals::GCameraController.ImGuiDraw();
+		vkmmc_debug::ImGuiDraw();
+		vkmmc_debug::GRenderStats.m_trianglesCount = 0;
+		vkmmc_debug::GRenderStats.m_drawCalls = 0;
+		if (m_imguiCallback)
+			m_imguiCallback();
+
+		ImGui::Render();
+		Draw();
+		return res;
 	}
 
 	void VulkanRenderEngine::Shutdown()
@@ -248,54 +356,70 @@ namespace vkmmc
 			});
 	}
 
-	void VulkanRenderEngine::AddRenderObject(RenderObject object)
+	RenderObject VulkanRenderEngine::NewRenderObject()
 	{
-		m_renderables[m_renderablesCounter] = object;
-		++m_renderablesCounter;
+		RenderObject r;
+		r.Id = m_scene.New();
+		return r;
+	}
+
+	RenderObjectTransform* VulkanRenderEngine::GetObjectTransform(RenderObject object)
+	{
+		vkmmc_check(object.Id < m_scene.Count());
+		return &m_scene.Transforms[object.Id];
+	}
+
+	RenderObjectMesh* VulkanRenderEngine::GetObjectMesh(RenderObject object)
+	{
+		vkmmc_check(object.Id < m_scene.Count());
+		return &m_scene.Meshes[object.Id];
 	}
 
 	void VulkanRenderEngine::Draw()
 	{
+		PROFILE_SCOPE(Draw);
 		FrameContext& frameContext = GetFrameContext();
 		WaitFence(frameContext.RenderFence);
 
-		// Acquire render image from swapchain
-		uint32_t swapchainImageIndex;
-		vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
-
-		// Reset command buffer
-		vkmmc_vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
-
-		// Prepare command buffer
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
-		VkCommandBufferBeginInfo cmdBeginInfo = {};
-		cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBeginInfo.pNext = nullptr;
-		cmdBeginInfo.pInheritanceInfo = nullptr;
-		cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-		// Begin command buffer
-		vkmmc_vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+		uint32_t swapchainImageIndex;
+		{
+			PROFILE_SCOPE(PrepareFrame);
+			// Acquire render image from swapchain
+			vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
 
-		// Prepare render pass
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.pNext = nullptr;
-		renderPassInfo.renderPass = m_renderPass.GetRenderPassHandle();
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = { .width = m_window.Width, .height = m_window.Height };
-		renderPassInfo.framebuffer = m_framebuffers[swapchainImageIndex];
+			// Reset command buffer
+			vkmmc_vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
 
-		// Clear values
-		VkClearValue clearValues[2];
-		clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
-		clearValues[1].depthStencil.depth = 1.f;
-		renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
-		renderPassInfo.pClearValues = clearValues;
-		// Begin render pass
-		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+			// Prepare command buffer
+			VkCommandBufferBeginInfo cmdBeginInfo = {};
+			cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			cmdBeginInfo.pNext = nullptr;
+			cmdBeginInfo.pInheritanceInfo = nullptr;
+			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+			// Begin command buffer
+			vkmmc_vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-		// Draw scene
-		DrawRenderables(cmd, m_renderables.data(), m_renderablesCounter);
+			// Prepare render pass
+			VkRenderPassBeginInfo renderPassInfo = {};
+			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			renderPassInfo.pNext = nullptr;
+			renderPassInfo.renderPass = m_renderPass.GetRenderPassHandle();
+			renderPassInfo.renderArea.offset = { 0, 0 };
+			renderPassInfo.renderArea.extent = { .width = m_window.Width, .height = m_window.Height };
+			renderPassInfo.framebuffer = m_framebuffers[swapchainImageIndex];
+
+			// Clear values
+			VkClearValue clearValues[2];
+			clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
+			clearValues[1].depthStencil.depth = 1.f;
+			renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
+			renderPassInfo.pClearValues = clearValues;
+			// Begin render pass
+			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		}
+
+		DrawRenderables(cmd, m_scene.Transforms.data(), m_scene.Meshes.data(), m_scene.Count());
 
 		// ImGui render
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -306,81 +430,101 @@ namespace vkmmc
 		// Terminate command buffer
 		vkmmc_vkcheck(vkEndCommandBuffer(cmd));
 
-		// Submit command buffer
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pNext = nullptr;
-		VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		submitInfo.pWaitDstStageMask = &waitStage;
-		// Wait for last frame terminates present image
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &frameContext.PresentSemaphore;
-		// Make wait present process until this Queue has finished.
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &frameContext.RenderSemaphore;
-		// The command buffer will be procesed
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &cmd;
-		vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
+		{
+			PROFILE_SCOPE(QueueSubmit);
+			// Submit command buffer
+			VkSubmitInfo submitInfo = {};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+			submitInfo.pNext = nullptr;
+			VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			submitInfo.pWaitDstStageMask = &waitStage;
+			// Wait for last frame terminates present image
+			submitInfo.waitSemaphoreCount = 1;
+			submitInfo.pWaitSemaphores = &frameContext.PresentSemaphore;
+			// Make wait present process until this Queue has finished.
+			submitInfo.signalSemaphoreCount = 1;
+			submitInfo.pSignalSemaphores = &frameContext.RenderSemaphore;
+			// The command buffer will be procesed
+			submitInfo.commandBufferCount = 1;
+			submitInfo.pCommandBuffers = &cmd;
+			vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
+		}
 
-		// Present
-		VkPresentInfoKHR presentInfo = {};
-		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-		presentInfo.pNext = nullptr;
-		VkSwapchainKHR swapchain = m_swapchain.GetSwapchainHandle();
-		presentInfo.pSwapchains = &swapchain;
-		presentInfo.swapchainCount = 1;
-		presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
-		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pImageIndices = &swapchainImageIndex;
-		vkmmc_vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
+		{
+			PROFILE_SCOPE(Present);
+			// Present
+			VkPresentInfoKHR presentInfo = {};
+			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+			presentInfo.pNext = nullptr;
+			VkSwapchainKHR swapchain = m_swapchain.GetSwapchainHandle();
+			presentInfo.pSwapchains = &swapchain;
+			presentInfo.swapchainCount = 1;
+			presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pImageIndices = &swapchainImageIndex;
+			vkmmc_vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
+		}
 	}
 
-	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderObject* renderables, size_t count)
+	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count)
 	{
-		// Update descriptor set buffer
-		GPUCamera camera;
-		camera.View = vkmmc_globals::GCameraController.Camera.GetView();
-		camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
-		camera.ViewProjection = camera.Projection * camera.View;
-
-		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().CameraDescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
-		static std::vector<GPUObject> objects(MaxRenderObjects);
-		for (uint32_t i = 0; i < count; ++i)
+		vkmmc_check(count < RenderObjectContainer::MaxRenderObjects);
 		{
-			objects[i].ModelTransform = renderables[i].GetTransform();
+			PROFILE_SCOPE(UpdateBuffers);
+			// Update descriptor set buffer
+			GPUCamera camera;
+			camera.View = vkmmc_globals::GCameraController.Camera.GetView();
+			camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
+			camera.ViewProjection = camera.Projection * camera.View;
+
+			MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().CameraDescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
+			static std::vector<GPUObject> objects(RenderObjectContainer::MaxRenderObjects);
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				objects[i].ModelTransform = CalculateTransform(transforms[i]);
+			}
+			MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
 		}
-		MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * MaxRenderObjects);
 
-		Material lastMaterial;
-		Mesh lastMesh;
-		for (uint32_t i = 0; i < count; ++i)
 		{
-			const RenderObject& renderable = renderables[i];
-			if (renderable.m_material != lastMaterial || !lastMaterial.GetHandle().IsValid())
+			PROFILE_SCOPE(DrawScene);
+			RenderPipeline pipeline = m_pipelines[m_handleRenderPipeline];
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				pipeline.GetPipelineLayoutHandle(), 0, 1,
+				&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
+
+			Material lastMaterial;
+			Mesh lastMesh;
+			for (uint32_t i = 0; i < count; ++i)
 			{
-				lastMaterial = renderable.m_material;
-				RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
-					? m_pipelines[renderable.m_material.GetHandle()]
-					: m_pipelines[m_handleRenderPipeline];
-				vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					pipeline.GetPipelineLayoutHandle(), 0, 1,
-					&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
-				//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				//	pipeline.GetPipelineLayoutHandle(), 1, 1,
-				//	&GetFrameContext().ObjectDescriptorSet, 0, nullptr);
-			}
+				//if (renderable.m_material != lastMaterial || !lastMaterial.GetHandle().IsValid())
+				{
+					//lastMaterial = renderable.m_material;
+					//RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
+					//	? m_pipelines[renderable.m_material.GetHandle()]
+					//	: m_pipelines[m_handleRenderPipeline];
+					//vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
+					//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					//	pipeline.GetPipelineLayoutHandle(), 0, 1,
+					//	&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
+					//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					//	pipeline.GetPipelineLayoutHandle(), 1, 1,
+					//	&GetFrameContext().ObjectDescriptorSet, 0, nullptr);
+				}
 
 
-			if (lastMesh != renderable.m_mesh)
-			{
-				VkDeviceSize offset = 0;
-				AllocatedBuffer buffer = m_buffers[renderable.m_mesh.GetHandle()];
-				vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.Buffer, &offset);
-				lastMesh = renderable.m_mesh;
+				if (lastMesh != meshes[i].StaticMesh)
+				{
+					VkDeviceSize offset = 0;
+					AllocatedBuffer buffer = m_buffers[meshes[i].StaticMesh.GetHandle()];
+					vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.Buffer, &offset);
+					lastMesh = meshes[i].StaticMesh;
+				}
+				vkCmdDraw(cmd, (uint32_t)meshes[i].StaticMesh.GetVertexCount(), 1, 0, i);
+				vkmmc_debug::GRenderStats.m_drawCalls++;
+				vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)meshes[i].StaticMesh.GetVertexCount() / 3;
 			}
-			vkCmdDraw(cmd, (uint32_t)renderable.m_mesh.GetVertexCount(), 1, 0, i);
 		}
 	}
 
@@ -717,7 +861,7 @@ namespace vkmmc
 			);
 			m_frameContextArray[i].ObjectDescriptorSetBuffer = CreateBuffer(
 				m_renderContext.Allocator,
-				sizeof(GPUObject) * MaxRenderObjects,
+				sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
 			m_shutdownStack.Add([this, i]()
@@ -739,7 +883,7 @@ namespace vkmmc
 			VkDescriptorBufferInfo objectBufferInfo = {};
 			objectBufferInfo.buffer = m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer;
 			objectBufferInfo.offset = 0;
-			objectBufferInfo.range = sizeof(GPUObject) * MaxRenderObjects;
+			objectBufferInfo.range = sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects;
 
 			VkWriteDescriptorSet cameraWriteDescriptor = {};
 			cameraWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

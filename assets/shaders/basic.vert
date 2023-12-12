@@ -23,7 +23,7 @@ layout (std140, set = 0, binding = 1) readonly buffer ObjectBuffer
 
 void main()
 {
-    vec4 pos = camera.ViewProjection * objects.Data[gl_BaseInstance].Transform * vec4(LSPosition, 1.0f);
-    gl_Position = pos;
-    outColor = LSPosition;
+    vec4 wsPos = objects.Data[gl_BaseInstance].Transform * vec4(LSPosition, 1.0f);
+    gl_Position = camera.ViewProjection * wsPos;
+    outColor = wsPos.xyz;
 }

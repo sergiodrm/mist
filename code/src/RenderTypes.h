@@ -79,4 +79,5 @@ namespace vkmmc
 	 * Copy data from source to specified allocation memory.
 	 */
 	void MemCopyDataToBuffer(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t size);
+	void MemCopyDataToBufferAtIndex(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t elementSize, size_t atIndex);
 }

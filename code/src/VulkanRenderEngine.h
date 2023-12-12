@@ -65,21 +65,37 @@ namespace vkmmc
 		glm::mat4 ModelTransform;
 	};
 
+	struct RenderObjectContainer
+	{
+		static constexpr size_t MaxRenderObjects = 50000;
+		std::array<RenderObjectTransform, MaxRenderObjects> Transforms;
+		std::array<RenderObjectMesh, MaxRenderObjects> Meshes;
+		uint32_t Counter = 0;
+
+		uint32_t New() { vkmmc_check(Counter < MaxRenderObjects); return Counter++; }
+		uint32_t Count() const { return Counter; }
+	};
+
 	class VulkanRenderEngine : public IRenderEngine
 	{
 		static constexpr size_t MaxOverlappedFrames = 2;
 	public:
 		virtual bool Init(const InitializationSpecs& initSpec) override;
 		virtual void RenderLoop() override;
+		virtual bool RenderProcess() override;
 		virtual void Shutdown() override;
 
 		virtual void UploadMesh(Mesh& mesh) override;
 
-		virtual void AddRenderObject(RenderObject object) override;
+		virtual RenderObject NewRenderObject() override;
+		virtual RenderObjectTransform* GetObjectTransform(RenderObject object) override;
+		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) override;
+		virtual uint32_t GetObjectCount() const { return m_scene.Count(); }
+		virtual void SetImGuiCallback(std::function<void()>&& fn) { m_imguiCallback = fn; }
 
 	protected:
 		void Draw();
-		void DrawRenderables(VkCommandBuffer cmd, const RenderObject* renderables, size_t count);
+		void DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
 		FrameContext& GetFrameContext();
 		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
@@ -124,12 +140,11 @@ namespace vkmmc
 		std::unordered_map<uint32_t, AllocatedBuffer> m_buffers;
 		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
 
-		static constexpr size_t MaxRenderObjects = 5000;
-		std::array<RenderObject, MaxRenderObjects> m_renderables;
-		uint32_t m_renderablesCounter = 0;
+		RenderObjectContainer m_scene;
 
 		UploadContext m_immediateSubmitContext;
 
 		FunctionStack m_shutdownStack;
+		std::function<void()> m_imguiCallback;
 	};
 }

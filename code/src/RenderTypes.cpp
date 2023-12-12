@@ -46,5 +46,16 @@ namespace vkmmc
 		memcpy_s(data, size, source, size);
 		vmaUnmapMemory(allocator, allocation);
 	}
+
+	void MemCopyDataToBufferAtIndex(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t elementSize, size_t atIndex)
+	{
+		vkmmc_check(source && elementSize > 0);
+		void* data;
+		vkmmc_vkcheck(vmaMapMemory(allocator, allocation, &data));
+		uint8_t* byteData = reinterpret_cast<uint8_t*>(data);
+		uint8_t* element = byteData + elementSize * atIndex;
+		memcpy_s(element, elementSize, source, elementSize);
+		vmaUnmapMemory(allocator, allocation);
+	}
 	
 }

@@ -4,17 +4,24 @@
 
 namespace vkmmc
 {
-	class RenderObject
+	struct RenderObject
 	{
-	public:
-
-		glm::mat4 GetTransform() const;
-
-		Mesh m_mesh;
-		Material m_material;
-
-		glm::vec3 m_position{ 0.f };
-		glm::vec3 m_rotation{ 0.f };
-		glm::vec3 m_scale{ 1.f };
+		uint32_t Id{ UINT32_MAX };
 	};
+
+	struct RenderObjectTransform
+	{
+		glm::vec3 Position{ 0.f };
+		glm::vec3 Rotation{ 0.f };
+		glm::vec3 Scale{ 1.f };
+	};
+
+	glm::mat4 CalculateTransform(const RenderObjectTransform& objectTransform);
+
+	struct RenderObjectMesh
+	{
+		Mesh StaticMesh;
+		Material Mtl;
+	};
+
 }
