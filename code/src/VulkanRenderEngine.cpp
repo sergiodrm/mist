@@ -11,7 +11,6 @@
 
 #include <vkbootstrap/VkBootstrap.h>
 #include "InitVulkanTypes.h"
-#include "VertexInputDescription.h"
 #include "Mesh.h"
 #include "RenderDescriptor.h"
 #include "Camera.h"
@@ -264,10 +263,10 @@ namespace vkmmc
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
 
 		// Init vulkan context
-		vkmmc_check(InitVulkan());
+		check(InitVulkan());
 
 		// Swapchain
-		vkmmc_check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
+		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
 		m_shutdownStack.Add(
 			[this]() 
 			{
@@ -276,10 +275,10 @@ namespace vkmmc
 		);
 
 		// Commands
-		vkmmc_check(InitCommands());
+		check(InitCommands());
 
 		// RenderPass
-		vkmmc_check(m_renderPass.Init(m_renderContext, { m_swapchain.GetImageFormat(), m_swapchain.GetDepthFormat() }));
+		check(m_renderPass.Init(m_renderContext, { m_swapchain.GetImageFormat(), m_swapchain.GetDepthFormat() }));
 		m_shutdownStack.Add([this]() 
 			{
 				m_renderPass.Destroy(m_renderContext);
@@ -287,12 +286,12 @@ namespace vkmmc
 		);
 
 		// Framebuffers
-		vkmmc_check(InitFramebuffers());
+		check(InitFramebuffers());
 		// Pipelines
-		vkmmc_check(InitPipeline());
+		check(InitPipeline());
 
 		// Init sync vars
-		vkmmc_check(InitSync());
+		check(InitSync());
 
 		// ImGui
 		InitImGui();
@@ -387,23 +386,38 @@ namespace vkmmc
 	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
 	{
 		// Prepare buffer creation
-		const size_t bufferSize = mesh.GetVertexCount() * sizeof(Vertex);
-		// Create allocated buffer
-		AllocatedBuffer buffer = CreateBuffer(m_renderContext.Allocator, bufferSize,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-		
-		// Fill buffer
-		MemCopyDataToBuffer(m_renderContext.Allocator, buffer.Alloc, mesh.GetVertices(), bufferSize);
+		const uint32_t bufferSize = (uint32_t)mesh.GetVertexCount() * sizeof(Vertex);
+
+		// Fill temporal buffer
+		AllocatedBuffer stageBuffer = CreateBuffer(m_renderContext.Allocator,
+			bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+		MemCopyDataToBuffer(m_renderContext.Allocator, stageBuffer.Alloc, mesh.GetVertices(), bufferSize);
+
+		// Create vertex buffer
+		VertexBuffer buffer;
+		buffer.Init({
+			.RContext = m_renderContext,
+			.Type = EBufferType::Static,
+			.Size = bufferSize
+			});
+
+		// Copy data from temporal buffer to gpu buffer
+		ImmediateSubmit([=](VkCommandBuffer cmd) mutable
+			{
+				buffer.UpdateData(cmd, stageBuffer.Buffer, bufferSize);
+			});
+		// Delete temporal buffer
+		DestroyBuffer(m_renderContext.Allocator, stageBuffer);
 		
 		// Register new buffer
 		RenderHandle handle = GenerateRenderHandle();
 		mesh.SetHandle(handle);
-		m_buffers[handle] = buffer;
+		m_vertexBuffers[handle] = buffer;
 
 		// Stack buffer destruction
-		m_shutdownStack.Add([this, buffer]() 
+		m_shutdownStack.Add([this, buffer]() mutable
 			{
-				DestroyBuffer(m_renderContext.Allocator, buffer);
+				buffer.Destroy(m_renderContext);
 			});
 	}
 
@@ -416,13 +430,13 @@ namespace vkmmc
 
 	RenderObjectTransform* VulkanRenderEngine::GetObjectTransform(RenderObject object)
 	{
-		vkmmc_check(object.Id < m_scene.Count());
+		check(object.Id < m_scene.Count());
 		return &m_scene.Transforms[object.Id];
 	}
 
 	RenderObjectMesh* VulkanRenderEngine::GetObjectMesh(RenderObject object)
 	{
-		vkmmc_check(object.Id < m_scene.Count());
+		check(object.Id < m_scene.Count());
 		return &m_scene.Meshes[object.Id];
 	}
 
@@ -437,10 +451,10 @@ namespace vkmmc
 		{
 			PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
-			vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
+			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
 
 			// Reset command buffer
-			vkmmc_vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
+			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
 
 			// Prepare command buffer
 			VkCommandBufferBeginInfo cmdBeginInfo = {};
@@ -449,7 +463,7 @@ namespace vkmmc
 			cmdBeginInfo.pInheritanceInfo = nullptr;
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
-			vkmmc_vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
 			// Prepare render pass
 			VkRenderPassBeginInfo renderPassInfo = {};
@@ -479,7 +493,7 @@ namespace vkmmc
 		vkCmdEndRenderPass(cmd);
 
 		// Terminate command buffer
-		vkmmc_vkcheck(vkEndCommandBuffer(cmd));
+		vkcheck(vkEndCommandBuffer(cmd));
 
 		{
 			PROFILE_SCOPE(QueueSubmit);
@@ -498,7 +512,7 @@ namespace vkmmc
 			// The command buffer will be procesed
 			submitInfo.commandBufferCount = 1;
 			submitInfo.pCommandBuffers = &cmd;
-			vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
+			vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
 		}
 
 		{
@@ -513,13 +527,13 @@ namespace vkmmc
 			presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
 			presentInfo.waitSemaphoreCount = 1;
 			presentInfo.pImageIndices = &swapchainImageIndex;
-			vkmmc_vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
+			vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
 		}
 	}
 
 	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count)
 	{
-		vkmmc_check(count < RenderObjectContainer::MaxRenderObjects);
+		check(count < RenderObjectContainer::MaxRenderObjects);
 		{
 			PROFILE_SCOPE(UpdateBuffers);
 			// Update descriptor set buffer
@@ -567,9 +581,8 @@ namespace vkmmc
 
 				if (lastMesh != meshes[i].StaticMesh)
 				{
-					VkDeviceSize offset = 0;
-					AllocatedBuffer buffer = m_buffers[meshes[i].StaticMesh.GetHandle()];
-					vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.Buffer, &offset);
+					VertexBuffer buffer = m_vertexBuffers[meshes[i].StaticMesh.GetHandle()];
+					buffer.Bind(cmd);
 					lastMesh = meshes[i].StaticMesh;
 				}
 				vkCmdDraw(cmd, (uint32_t)meshes[i].StaticMesh.GetVertexCount(), 1, 0, i);
@@ -581,8 +594,8 @@ namespace vkmmc
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
 	{
-		vkmmc_vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
-		vkmmc_vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
+		vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
+		vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
 	}
 
 	FrameContext& VulkanRenderEngine::GetFrameContext()
@@ -594,14 +607,14 @@ namespace vkmmc
 	{
 		// Begin command buffer recording.
 		VkCommandBufferBeginInfo beginInfo = CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		vkmmc_vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
+		vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
 		// Call to extern code to record commands.
 		fn(m_immediateSubmitContext.CommandBuffer);
 		// Finish recording.
-		vkmmc_vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
+		vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
 
 		VkSubmitInfo info = SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
-		vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
+		vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
 		WaitFence(m_immediateSubmitContext.Fence);
 		vkResetCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, 0);
 	}
@@ -618,18 +631,18 @@ namespace vkmmc
 		ImGui_ImplSDL2_ProcessEvent(&e);
 	}
 
-	RenderPipeline VulkanRenderEngine::CreatePipeline(const ShaderModuleLoadDescription* shaderStages, size_t shaderStagesCount, const VkPipelineLayoutCreateInfo& layoutInfo, const VertexInputDescription& inputDescription)
+	RenderPipeline VulkanRenderEngine::CreatePipeline(const ShaderModuleLoadDescription* shaderStages, size_t shaderStagesCount, const VkPipelineLayoutCreateInfo& layoutInfo, const VertexInputLayout& inputDescription)
 	{
-		vkmmc_check(shaderStages && shaderStagesCount > 0);
+		check(shaderStages && shaderStagesCount > 0);
 		RenderPipelineBuilder builder;
 		// Input configuration
-		builder.InputDescription = GetDefaultVertexDescription();
+		builder.InputDescription = inputDescription;
 		// Shader stages
 		VkShaderModule* modules = new VkShaderModule[shaderStagesCount];
 		for (size_t i = 0; i < shaderStagesCount; ++i)
 		{
 			modules[i] = LoadShaderModule(m_renderContext.Device, shaderStages[i].ShaderFilePath.c_str());
-			vkmmc_check(modules[i] != VK_NULL_HANDLE);
+			check(modules[i] != VK_NULL_HANDLE);
 			builder.ShaderStages.push_back(PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
 		}
 		// Configure viewport settings.
@@ -752,9 +765,9 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			FrameContext& frameContext = m_frameContextArray[i];
-			vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
+			vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
 			VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
-			vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
+			vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
 			m_shutdownStack.Add([this, i]()
 				{
 					vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
@@ -762,9 +775,9 @@ namespace vkmmc
 			);
 		}
 
-		vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
+		vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
 		VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
-		vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
+		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
 		m_shutdownStack.Add([this]()
 			{
 				vkDestroyCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, nullptr);
@@ -797,7 +810,7 @@ namespace vkmmc
 
 			fbInfo.pAttachments = attachments;
 			fbInfo.attachmentCount = 2;
-			vkmmc_vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &m_framebuffers[i]));
+			vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &m_framebuffers[i]));
 
 			m_shutdownStack.Add([this, i]
 				{
@@ -816,12 +829,12 @@ namespace vkmmc
 			FrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
 			VkFenceCreateInfo fenceInfo = FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-			vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
+			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
 			// Render semaphore
 			VkSemaphoreCreateInfo semaphoreInfo = SemaphoreCreateInfo();
-			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
+			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
 			// Present semaphore
-			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
+			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
 			m_shutdownStack.Add([this, i]()
 				{
 					Logf(LogLevel::Info, "Destroy fences and semaphores [#%Id].\n", i);
@@ -832,7 +845,7 @@ namespace vkmmc
 		}
 
 		VkFenceCreateInfo info = FenceCreateInfo();
-		vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
+		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
 		m_shutdownStack.Add([this]()
 			{
 				vkDestroyFence(m_renderContext.Device, m_immediateSubmitContext.Fence, nullptr);
@@ -848,7 +861,7 @@ namespace vkmmc
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MaxOverlappedFrames * 2 },
 			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MaxOverlappedFrames * 2 },
 		};
-		vkmmc_check(CreateDescriptorPool(m_renderContext.Device, poolSizes, sizeof(poolSizes) / sizeof(VkDescriptorPoolSize), &m_descriptorPool));
+		check(CreateDescriptorPool(m_renderContext.Device, poolSizes, sizeof(poolSizes) / sizeof(VkDescriptorPoolSize), &m_descriptorPool));
 		m_shutdownStack.Add([this]() 
 			{
 				Log(LogLevel::Info, "Destroy descriptor pool.\n");
@@ -871,7 +884,7 @@ namespace vkmmc
 			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 			createInfo.bindingCount = layoutBindingCount;
 			createInfo.pBindings = layoutBindings;
-			vkmmc_vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_globalDescriptorLayout));
+			vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_globalDescriptorLayout));
 			m_shutdownStack.Add([this]()
 				{
 					Log(LogLevel::Info, "Destroy descriptor layout.\n");
@@ -969,7 +982,7 @@ namespace vkmmc
 			{.ShaderFilePath = vkmmc_globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
-		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetDefaultVertexDescription());
+		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetStaticMeshVertexLayout());
 		m_handleRenderPipeline = RegisterPipeline(pipeline);
 		return true;
 	}
@@ -999,7 +1012,7 @@ namespace vkmmc
 		poolInfo.pPoolSizes = poolSizes;
 
 		VkDescriptorPool imguiPool;
-		vkmmc_vkcheck(vkCreateDescriptorPool(m_renderContext.Device, &poolInfo, nullptr, &imguiPool));
+		vkcheck(vkCreateDescriptorPool(m_renderContext.Device, &poolInfo, nullptr, &imguiPool));
 
 		// Init imgui lib
 		ImGui::CreateContext();

@@ -7,11 +7,11 @@ namespace vkmmc
 {
 	bool CreateDescriptorPool(VkDevice device, const VkDescriptorPoolSize* poolSizes, uint32_t poolSizeCount, VkDescriptorPool* outPool)
 	{
-		vkmmc_check(outPool && poolSizeCount > 0);
+		check(outPool && poolSizeCount > 0);
 		uint32_t maxSets = UINT32_MAX;
 		for (uint32_t i = 0; i < poolSizeCount; ++i)
 			maxSets = __min(poolSizes[i].descriptorCount, maxSets);
-		vkmmc_check(maxSets != UINT32_MAX && maxSets > 0);
+		check(maxSets != UINT32_MAX && maxSets > 0);
 		const VkDescriptorPoolCreateInfo createInfo
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -21,7 +21,7 @@ namespace vkmmc
 			.poolSizeCount = poolSizeCount,
 			.pPoolSizes = poolSizes
 		};
-		vkmmc_vkcheck(vkCreateDescriptorPool(device, &createInfo, nullptr, outPool));
+		vkcheck(vkCreateDescriptorPool(device, &createInfo, nullptr, outPool));
 		return true;
 	}
 
@@ -32,7 +32,7 @@ namespace vkmmc
 
 	bool AllocateDescriptorSet(VkDevice device, VkDescriptorPool pool, const VkDescriptorSetLayout* layouts, uint32_t layoutCount, VkDescriptorSet* outDescSet)
 	{
-		vkmmc_check(outDescSet && layoutCount > 0);
+		check(outDescSet && layoutCount > 0);
 		VkDescriptorSetAllocateInfo info =
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -40,7 +40,7 @@ namespace vkmmc
 			.descriptorSetCount = layoutCount,
 			.pSetLayouts = layouts
 		};
-		vkmmc_vkcheck(vkAllocateDescriptorSets(device, &info, outDescSet));
+		vkcheck(vkAllocateDescriptorSets(device, &info, outDescSet));
 		return true;
 	}
 

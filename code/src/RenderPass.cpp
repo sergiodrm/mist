@@ -86,7 +86,7 @@ namespace vkmmc
 		info.pDependencies = dependencies;
 		
 		// Create render pass
-		vkmmc_vkcheck(vkCreateRenderPass(renderContext.Device, &info, nullptr, &m_renderPass));
+		vkcheck(vkCreateRenderPass(renderContext.Device, &info, nullptr, &m_renderPass));
 
 		return true;
 	}

@@ -18,19 +18,7 @@
 
 namespace vkmmc
 {
-	struct RenderContext
-	{
-		VkInstance Instance;
-		VkPhysicalDevice GPUDevice;
-		VkSurfaceKHR Surface;
-		VkDebugUtilsMessengerEXT DebugMessenger;
-		VkPhysicalDeviceProperties GPUProperties;
-		VkDevice Device;
-		VmaAllocator Allocator;
-		VkQueue GraphicsQueue;
-		uint32_t GraphicsQueueFamily;
-	};
-
+	
 	struct Window
 	{
 		SDL_Window* WindowInstance;
@@ -72,7 +60,7 @@ namespace vkmmc
 		std::array<RenderObjectMesh, MaxRenderObjects> Meshes;
 		uint32_t Counter = 0;
 
-		uint32_t New() { vkmmc_check(Counter < MaxRenderObjects); return Counter++; }
+		uint32_t New() { check(Counter < MaxRenderObjects); return Counter++; }
 		uint32_t Count() const { return Counter; }
 	};
 
@@ -115,7 +103,7 @@ namespace vkmmc
 			const ShaderModuleLoadDescription* shaderStagesDescriptions,
 			size_t shaderStagesCount,
 			const VkPipelineLayoutCreateInfo& layoutInfo,
-			const VertexInputDescription& inputDescription
+			const VertexInputLayout& inputDescription
 		);
 		RenderHandle RegisterPipeline(RenderPipeline pipeline);
 
@@ -137,7 +125,7 @@ namespace vkmmc
 		VkDescriptorSetLayout m_globalDescriptorLayout;
 		VkDescriptorSetLayout m_objectDescriptorLayout;
 
-		std::unordered_map<uint32_t, AllocatedBuffer> m_buffers;
+		std::unordered_map<uint32_t, VertexBuffer> m_vertexBuffers;
 		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
 
 		RenderObjectContainer m_scene;

@@ -28,7 +28,7 @@ namespace vkmmc
 			.usage = memUsage
 		};
 		AllocatedBuffer newBuffer;
-		vkmmc_vkcheck(vmaCreateBuffer(allocator, &bufferInfo, &allocInfo,
+		vkcheck(vmaCreateBuffer(allocator, &bufferInfo, &allocInfo,
 			&newBuffer.Buffer, &newBuffer.Alloc, nullptr));
 		return newBuffer;
 	}
@@ -40,18 +40,18 @@ namespace vkmmc
 
 	void MemCopyDataToBuffer(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t size)
 	{
-		vkmmc_check(source && size > 0);
+		check(source && size > 0);
 		void* data;
-		vkmmc_vkcheck(vmaMapMemory(allocator, allocation, &data));
+		vkcheck(vmaMapMemory(allocator, allocation, &data));
 		memcpy_s(data, size, source, size);
 		vmaUnmapMemory(allocator, allocation);
 	}
 
 	void MemCopyDataToBufferAtIndex(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t elementSize, size_t atIndex)
 	{
-		vkmmc_check(source && elementSize > 0);
+		check(source && elementSize > 0);
 		void* data;
-		vkmmc_vkcheck(vmaMapMemory(allocator, allocation, &data));
+		vkcheck(vmaMapMemory(allocator, allocation, &data));
 		uint8_t* byteData = reinterpret_cast<uint8_t*>(data);
 		uint8_t* element = byteData + elementSize * atIndex;
 		memcpy_s(element, elementSize, source, elementSize);

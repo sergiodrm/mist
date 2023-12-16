@@ -2,44 +2,32 @@
 
 add_library(vkmmc)
 
+file(GLOB_RECURSE SRC_FILES LIST_DIRECTORIES false
+		RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} src/*.c?? src/*.h)
+
+file(GLOB_RECURSE HEADER_FILES LIST_DIRECTORIES false
+		RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} include/vkmmc/*.h)
+
+function(MakeProjectDirs src_files)
+	string(REPLACE " " ";" src_array "${src_files}")
+	foreach(FILE ${src_array})
+		get_filename_component(PARENT_DIR "${FILE}" PATH)
+		set(GROUP "${PARENT_DIR}")
+		string(REPLACE "/" "\\" GROUP "${GROUP}")
+		source_group("${GROUP}" FILES "${FILE}")
+		message("-- Processing file: ${FILE} -> ${GROUP}")
+	endforeach()
+endfunction()
+
+string(REPLACE ";" " " FILES_ARRAY "${SRC_FILES}")
+MakeProjectDirs(${FILES_ARRAY})
+string(REPLACE ";" " " FILES_ARRAY "${HEADER_FILES}")
+MakeProjectDirs(${FILES_ARRAY})
+
 target_sources(vkmmc
 	PRIVATE
-
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderEngine.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderHandle.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Vertex.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Mesh.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/Camera.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc/RenderObject.h"
-	
-	
-	
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderObject.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Camera.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderDescriptor.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderDescriptor.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/VertexInputDescription.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/VertexInputDescription.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Mesh.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Vertex.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderEngine.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/FunctionStack.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/VulkanRenderEngine.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/VulkanRenderEngine.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Swapchain.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Swapchain.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderTypes.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderTypes.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/InitVulkanTypes.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/InitVulkanTypes.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderPass.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderPass.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderPipeline.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/RenderPipeline.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/GenericUtils.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/GenericUtils.cpp"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Logger.h"
-	"${CMAKE_CURRENT_SOURCE_DIR}/src/Logger.cpp"
+	${SRC_FILES}
+	${HEADER_FILES}
 )
 
 set_property(TARGET vkmmc PROPERTY CXX_STANDARD 20)

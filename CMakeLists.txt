@@ -1,6 +1,7 @@
 cmake_minimum_required (VERSION 3.8)
 
 project ("vkmmc")
+include(CommonMacros.txt)
 
 
 find_package(Vulkan REQUIRED)

@@ -8,7 +8,7 @@
 #include "Logger.h"
 
 #define expand(x) (x)
-#define vkmmc_check(expr) \
+#define check(expr) \
 do \
 {\
 	if (!expand(expr)) \
@@ -19,11 +19,22 @@ do \
 	}\
 } while(0)
 
-#define vkmmc_vkcheck(expr) vkmmc_check((VkResult)expand(expr) == VK_SUCCESS)
+#define vkcheck(expr) check((VkResult)expand(expr) == VK_SUCCESS)
 
 namespace vkmmc
 {
-	struct RenderContext;
+	struct RenderContext
+	{
+		VkInstance Instance;
+		VkPhysicalDevice GPUDevice;
+		VkSurfaceKHR Surface;
+		VkDebugUtilsMessengerEXT DebugMessenger;
+		VkPhysicalDeviceProperties GPUProperties;
+		VkDevice Device;
+		VmaAllocator Allocator;
+		VkQueue GraphicsQueue;
+		uint32_t GraphicsQueueFamily;
+	};
 
 	struct Allocation
 	{
@@ -38,13 +49,6 @@ namespace vkmmc
 	struct AllocatedImage : public Allocation
 	{
 		VkImage Image;
-	};
-
-	struct VertexInputDescription
-	{
-		std::vector<VkVertexInputBindingDescription> Bindings;
-		std::vector<VkVertexInputAttributeDescription> Attributes;
-		VkPipelineVertexInputStateCreateFlags Flags = 0;
 	};
 
 	struct ImmediateSynchedCommandContext

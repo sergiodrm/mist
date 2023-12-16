@@ -21,7 +21,7 @@ namespace vkmmc
 			createInfo.pCode = spirvBuffer.data();
 
 			// If fail, shader compilation failed...
-			vkmmc_vkcheck(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
+			vkcheck(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
 		}
 		return shaderModule;
 	}
@@ -30,17 +30,16 @@ namespace vkmmc
 	{
 		// Create VkPipelineLayout from LayoutInfo member
 		VkPipelineLayout pipelineLayout;
-		vkmmc_vkcheck(vkCreatePipelineLayout(device, &LayoutInfo, nullptr, &pipelineLayout));
+		vkcheck(vkCreatePipelineLayout(device, &LayoutInfo, nullptr, &pipelineLayout));
 
 		// Create vertex input vulkan structures
 		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = PipelineInputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		VkPipelineVertexInputStateCreateInfo inputInfo = PipelineVertexInputStageCreateInfo();
-		vkmmc_check(InputDescription.Attributes.size() > 0);
-		vkmmc_check(InputDescription.Bindings.size() > 0);
+		check(InputDescription.Attributes.size() > 0);
 		inputInfo.pVertexAttributeDescriptions = InputDescription.Attributes.data();
 		inputInfo.vertexAttributeDescriptionCount = (uint32_t)InputDescription.Attributes.size();
-		inputInfo.pVertexBindingDescriptions = InputDescription.Bindings.data();
-		inputInfo.vertexBindingDescriptionCount = (uint32_t)InputDescription.Bindings.size();
+		inputInfo.pVertexBindingDescriptions = &InputDescription.Binding;
+		inputInfo.vertexBindingDescriptionCount = 1;
 
 		// Make viewport state from our stored viewport and scissor.
 		// At the moment we won't support multiple viewport and scissor.
@@ -104,7 +103,7 @@ namespace vkmmc
 
 	bool RenderPipeline::SetupPipeline(VkPipeline pipeline, VkPipelineLayout layout)
 	{
-		vkmmc_check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
+		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
 		m_pipeline = pipeline;
 		m_pipelineLayout = layout;
 		Log(LogLevel::Info, "Render pipeline setup success.\n");

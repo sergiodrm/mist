@@ -9,8 +9,8 @@ namespace vkmmc
 {
 	bool Swapchain::Init(const RenderContext& renderContext, const SwapchainInitializationSpec& spec)
 	{
-		vkmmc_check(spec.ImageWidth > 0 && spec.ImageHeight > 0);
-		vkmmc_check(renderContext.Device != VK_NULL_HANDLE);
+		check(spec.ImageWidth > 0 && spec.ImageHeight > 0);
+		check(renderContext.Device != VK_NULL_HANDLE);
 		vkb::SwapchainBuilder swapchainBuilder
 		{ 
 			renderContext.GPUDevice, 
@@ -40,7 +40,7 @@ namespace vkmmc
 
 		// Image view
 		VkImageViewCreateInfo viewInfo = ImageViewCreateInfo(m_depthFormat, m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
-		vkmmc_vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_depthImageView));
+		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_depthImageView));
 		return true;
 	}
 

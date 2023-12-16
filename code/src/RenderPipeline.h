@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <string>
-#include "RenderTypes.h"
+#include "VulkanBuffer.h"
 
 namespace vkmmc
 {
@@ -44,7 +44,7 @@ namespace vkmmc
 		VkPipelineColorBlendAttachmentState ColorBlendAttachment;
 
 		// Vertex input. How the vertices are arranged in memory and how to bind them.
-		VertexInputDescription InputDescription;
+		VertexInputLayout InputDescription;
 
 		RenderPipeline Build(VkDevice device, VkRenderPass renderPass);
 	};
