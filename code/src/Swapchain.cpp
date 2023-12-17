@@ -3,7 +3,6 @@
 #include <vk_mem_alloc.h>
 #include <InitVulkanTypes.h>
 #include <VulkanRenderEngine.h>
-#include "Logger.h"
 
 namespace vkmmc
 {

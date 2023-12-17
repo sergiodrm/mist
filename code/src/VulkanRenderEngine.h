@@ -5,6 +5,8 @@
 #include "RenderHandle.h"
 #include "RenderPipeline.h"
 #include "RenderObject.h"
+#include "RenderTexture.h"
+#include "Debug.h"
 #include "Swapchain.h"
 #include "Mesh.h"
 #include "FunctionStack.h"
@@ -53,6 +55,12 @@ namespace vkmmc
 		glm::mat4 ModelTransform;
 	};
 
+	struct MaterialTextureData
+	{
+		RenderTexture Texture;
+		RenderTextureDescriptor TextureAccess;
+	};
+
 	struct RenderObjectContainer
 	{
 		static constexpr size_t MaxRenderObjects = 50000;
@@ -74,6 +82,7 @@ namespace vkmmc
 		virtual void Shutdown() override;
 
 		virtual void UploadMesh(Mesh& mesh) override;
+		virtual RenderHandle LoadTexture(const char* filename) override;
 
 		virtual RenderObject NewRenderObject() override;
 		virtual RenderObjectTransform* GetObjectTransform(RenderObject object) override;
@@ -124,9 +133,11 @@ namespace vkmmc
 		VkDescriptorPool m_descriptorPool;
 		VkDescriptorSetLayout m_globalDescriptorLayout;
 		VkDescriptorSetLayout m_objectDescriptorLayout;
+		VkDescriptorSetLayout m_textureDescriptorLayout;
 
 		std::unordered_map<uint32_t, VertexBuffer> m_vertexBuffers;
 		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
+		std::unordered_map<uint32_t, MaterialTextureData> m_textures;
 
 		RenderObjectContainer m_scene;
 

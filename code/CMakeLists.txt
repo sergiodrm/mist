@@ -30,7 +30,7 @@ target_sources(vkmmc
 	${HEADER_FILES}
 )
 
-set_property(TARGET vkmmc PROPERTY CXX_STANDARD 20)
+set_property(TARGET vkmmc PROPERTY CXX_STANDARD 23)
 target_compile_definitions(vkmmc PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 target_include_directories(vkmmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vkmmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc")

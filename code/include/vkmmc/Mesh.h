@@ -10,17 +10,18 @@ namespace vkmmc
 	{
 	public:
 		void SetHandle(RenderHandle handle);
-		inline RenderHandle GetHandle() const { return m_handle; }
-		inline bool operator==(const RenderResource& r) const { return m_handle == r.GetHandle(); }
+		inline RenderHandle GetHandle() const { return m_pipelineHandle; }
+		inline bool operator==(const RenderResource& r) const { return m_pipelineHandle == r.GetHandle(); }
 		inline bool operator!=(const RenderResource& r) const { return !(*this == r); }
 	private:
-		RenderHandle m_handle;
+		RenderHandle m_pipelineHandle;
 	};
 
 	class Material : public RenderResource
 	{
 	public:
 
+		RenderHandle m_textureHandle;
 	private:
 	};
 

@@ -1,13 +1,13 @@
 
 #include "Mesh.h"
-#include "RenderTypes.h"
+#include "Debug.h"
 
 namespace vkmmc
 {
 	void RenderResource::SetHandle(RenderHandle handle)
 	{
-		check(!m_handle.IsValid());
-		m_handle = handle;
+		check(!m_pipelineHandle.IsValid());
+		m_pipelineHandle = handle;
 	}
 
 	void Mesh::SetVertices(const Vertex* data, size_t count)

@@ -9,6 +9,7 @@ namespace vkmmc
 	struct RenderObject;
 	struct RenderObjectTransform;
 	struct RenderObjectMesh;
+	struct RenderHandle;
 
 	struct InitializationSpecs
 	{
@@ -31,6 +32,7 @@ namespace vkmmc
 		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) = 0;
 		virtual uint32_t GetObjectCount() const = 0;
 		virtual void UploadMesh(Mesh& mesh) = 0;
+		virtual RenderHandle LoadTexture(const char* filepath) = 0;
 		virtual void SetImGuiCallback(std::function<void()>&& fn) = 0;
 	};
 

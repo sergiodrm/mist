@@ -1,7 +1,6 @@
-#include "VulkanBuffer.h"
 // src file for vkmmc project 
 #include "VulkanBuffer.h"
-#include "Logger.h"
+#include "Debug.h"
 
 namespace vkmmc
 {
@@ -88,13 +87,19 @@ namespace vkmmc
 		static bool initialized = false;
 		if (!initialized)
 		{
-			layout = BuildVertexInputLayout({EAttributeType::Float3});
+			layout = BuildVertexInputLayout(
+				{
+					EAttributeType::Float3, // Position
+					EAttributeType::Float3, // Color
+					EAttributeType::Float2 // UVs
+				}
+			);
 		}
 		return layout;
 	}
 
 	VertexBuffer::VertexBuffer()
-		: m_type(EBufferType::Static), m_buffer{nullptr, VK_NULL_HANDLE}
+		: m_type(EBufferType::Static), m_buffer{nullptr, VK_NULL_HANDLE}, m_size(0)
 	{	}
 
 	void VertexBuffer::Init(const BufferCreateInfo& info)
@@ -107,11 +112,13 @@ namespace vkmmc
 			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY);
+		m_size = info.Size;
 	}
 
 	void VertexBuffer::Destroy(const RenderContext& renderContext)
 	{
 		vmaDestroyBuffer(renderContext.Allocator, m_buffer.Buffer, m_buffer.Alloc);
+		m_size = 0;
 	}
 
 	void VertexBuffer::Bind(VkCommandBuffer cmd)

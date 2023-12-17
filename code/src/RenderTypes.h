@@ -5,21 +5,7 @@
 #include <cassert>
 #include <vector>
 #include <functional>
-#include "Logger.h"
 
-#define expand(x) (x)
-#define check(expr) \
-do \
-{\
-	if (!expand(expr)) \
-	{ \
-		Logf(LogLevel::Error, "Check failed: %s", #expr);	\
-		__debugbreak();\
-		assert(false && #expr);\
-	}\
-} while(0)
-
-#define vkcheck(expr) check((VkResult)expand(expr) == VK_SUCCESS)
 
 namespace vkmmc
 {
@@ -38,7 +24,8 @@ namespace vkmmc
 
 	struct Allocation
 	{
-		VmaAllocation Alloc;
+		VmaAllocation Alloc{nullptr};
+		inline bool IsAllocated() const { return Alloc != nullptr; }
 	};
 
 	struct AllocatedBuffer : public Allocation

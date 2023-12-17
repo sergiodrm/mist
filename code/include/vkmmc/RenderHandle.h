@@ -10,6 +10,8 @@ namespace vkmmc
 	struct RenderHandle
 	{
 		uint32_t Handle = InvalidRenderHandle;
+		RenderHandle() = default;
+		RenderHandle(uint32_t h) : Handle(h) {}
 		inline bool IsValid() const { return Handle != InvalidRenderHandle; }
 		operator uint32_t() const { return Handle; }
 		inline bool operator==(const RenderHandle& r) const { return Handle == r.Handle; }

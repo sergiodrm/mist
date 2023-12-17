@@ -19,6 +19,7 @@
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imgui_impl_sdl2.h>
 #include "Logger.h"
+#include "Debug.h"
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
@@ -156,6 +157,12 @@ namespace vkmmc_debug
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
 		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
+#if defined(_DEBUG)
+		if (level == vkmmc::LogLevel::Error)
+		{
+			PrintCallstack();
+		}
+#endif
 		return VK_FALSE;
 	}
 
@@ -236,7 +243,7 @@ namespace vkmmc
 {
 	RenderHandle GenerateRenderHandle()
 	{
-		static RenderHandle h{ InvalidRenderHandle };
+		static RenderHandle h;
 		++h.Handle;
 		return h;
 	}
@@ -421,6 +428,51 @@ namespace vkmmc
 			});
 	}
 
+	RenderHandle VulkanRenderEngine::LoadTexture(const char* filename)
+	{
+		io::TextureRaw texData;
+		if (!io::LoadTexture(filename, texData))
+		{
+			Logf(LogLevel::Error, "Failed to load texture from %s.\n", filename);
+			return InvalidRenderHandle;
+		}
+		RenderTextureCreateInfo createInfo
+		{
+			.RContext = m_renderContext,
+			.Raw = texData,
+			.RecordCommandRutine = [this](auto fn) { ImmediateSubmit(std::move(fn)); }
+		};
+		RenderTexture texture;
+		texture.Init(createInfo);
+		RenderTextureDescriptorCreateInfo accessInfo
+		{
+			.RContext = m_renderContext,
+			.DescriptorPool = m_descriptorPool,
+			.DescriptorLayout = m_textureDescriptorLayout,
+			.ImageView = texture.GetImageView()
+		};
+		RenderTextureDescriptor textureDescriptor;
+		textureDescriptor.Init(accessInfo);
+
+		// Submit textures
+		RenderHandle h = GenerateRenderHandle();
+		MaterialTextureData materialTex
+		{
+			.Texture = texture,
+			.TextureAccess = textureDescriptor
+		};
+		m_textures[h] = materialTex;
+		m_shutdownStack.Add([this, materialTex]() mutable
+			{
+				materialTex.Texture.Destroy(m_renderContext);
+				materialTex.TextureAccess.Destroy(m_renderContext);
+			});
+
+		// Free raw texture data
+		io::FreeTexture(texData.Pixels);
+		return h;
+	}
+
 	RenderObject VulkanRenderEngine::NewRenderObject()
 	{
 		RenderObject r;
@@ -563,8 +615,12 @@ namespace vkmmc
 			Mesh lastMesh;
 			for (uint32_t i = 0; i < count; ++i)
 			{
-				//if (renderable.m_material != lastMaterial || !lastMaterial.GetHandle().IsValid())
+				const RenderObjectMesh& renderable = meshes[i];
+				if (renderable.Mtl != lastMaterial || !lastMaterial.GetHandle().IsValid())
 				{
+					lastMaterial = renderable.Mtl;
+					const MaterialTextureData& texData = m_textures[renderable.Mtl.m_textureHandle];
+					texData.TextureAccess.Bind(cmd, pipeline);
 					//lastMaterial = renderable.m_material;
 					//RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
 					//	? m_pipelines[renderable.m_material.GetHandle()]
@@ -860,6 +916,7 @@ namespace vkmmc
 		{
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MaxOverlappedFrames * 2 },
 			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MaxOverlappedFrames * 2 },
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
 		};
 		check(CreateDescriptorPool(m_renderContext.Device, poolSizes, sizeof(poolSizes) / sizeof(VkDescriptorPoolSize), &m_descriptorPool));
 		m_shutdownStack.Add([this]() 
@@ -870,49 +927,49 @@ namespace vkmmc
 		{
 			// Descriptor layout
 			VkDescriptorSetLayoutBinding layoutBindings[] = { {}, {} };
+			VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+			VkShaderStageFlags stageFlags[] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_VERTEX_BIT};
 			const uint32_t layoutBindingCount = sizeof(layoutBindings) / sizeof(VkDescriptorSetLayoutBinding);
 			for (uint32_t i = 0; i < layoutBindingCount; ++i)
 			{
 				layoutBindings[i].binding = i;
-				layoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+				layoutBindings[i].descriptorType = types[i];
 				layoutBindings[i].descriptorCount = 1;
 				layoutBindings[i].pImmutableSamplers = nullptr;
-				layoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+				layoutBindings[i].stageFlags = stageFlags[i];
 			}
-			layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 			VkDescriptorSetLayoutCreateInfo createInfo = {};
 			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 			createInfo.bindingCount = layoutBindingCount;
 			createInfo.pBindings = layoutBindings;
 			vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_globalDescriptorLayout));
+
+			// Texture descriptor layout
+			VkDescriptorSetLayoutBinding textureLayout
+			{
+				.binding = 0,
+				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+				.descriptorCount = 1,
+				.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+				.pImmutableSamplers = nullptr,
+			};
+			VkDescriptorSetLayoutCreateInfo texCreateInfo
+			{
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.pNext = nullptr,
+				.flags = 0,
+				.bindingCount = 1,
+				.pBindings = &textureLayout
+			};
+			vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device,
+				&texCreateInfo, nullptr, &m_textureDescriptorLayout));
 			m_shutdownStack.Add([this]()
 				{
 					Log(LogLevel::Info, "Destroy descriptor layout.\n");
 					vkDestroyDescriptorSetLayout(m_renderContext.Device, m_globalDescriptorLayout, nullptr);
+					vkDestroyDescriptorSetLayout(m_renderContext.Device, m_textureDescriptorLayout, nullptr);
 				});
 		}
-		//{
-		//	VkDescriptorSetLayoutBinding layoutBinding =
-		//	{
-		//		.binding = 0,
-		//		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		//		.descriptorCount = 1,
-		//		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		//		.pImmutableSamplers = nullptr,
-		//	};
-		//	VkDescriptorSetLayoutCreateInfo createInfo =
-		//	{
-		//		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		//		.bindingCount = 1,
-		//		.pBindings = &layoutBinding
-		//	};
-		//	vkmmc_vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_objectDescriptorLayout));
-		//	m_shutdownStack.Add([this]() 
-		//		{
-		//			Log(LogLevel::Info, "Destroy object descriptor set layout.\n");
-		//			vkDestroyDescriptorSetLayout(m_renderContext.Device, m_objectDescriptorLayout, nullptr);
-		//		});
-		//}
 
 		// There is one descriptor set per overlapped frame.
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
@@ -971,9 +1028,9 @@ namespace vkmmc
 		}
 
 		// Create layout info
-		VkDescriptorSetLayout layouts[] = { m_globalDescriptorLayout, m_objectDescriptorLayout };
+		VkDescriptorSetLayout layouts[] = { m_globalDescriptorLayout, m_textureDescriptorLayout };
 		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
-		layoutInfo.setLayoutCount = 1;
+		layoutInfo.setLayoutCount = 2;
 		layoutInfo.pSetLayouts = layouts;
 
 		ShaderModuleLoadDescription shaderStageDescs[] =

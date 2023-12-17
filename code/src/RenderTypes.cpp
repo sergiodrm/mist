@@ -2,6 +2,7 @@
 #include "RenderHandle.h"
 #include "InitVulkanTypes.h"
 #include "VulkanRenderEngine.h"
+#include "Debug.h"
 
 template <>
 struct std::hash<vkmmc::RenderHandle>

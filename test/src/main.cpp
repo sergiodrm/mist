@@ -77,15 +77,18 @@ int main(int32_t argc, char** argv)
 
 
 	vkmmc::Mesh mesh;
+	glm::vec3 color = { 0.5f, 0.2f, 0.1f };
 	const vkmmc::Vertex vertices[] = {
-		{{-1.f, 1.f, 0.f}},
-		{{1.f, 1.f, 0.f}},
-		{{1.f, -1.f, 0.f}},
+		{{-1.f, 1.f, 0.f}, color, {0.f, 0.f}},
+		{{1.f, 1.f, 0.f} , color, {1.f, 0.f}},
+		{{1.f, -1.f, 0.f}, color, {1.f, 1.f}},
 
-		{{1.f, -1.f, 0.f}},
-		{{-1.f, -1.f, 0.f}},
-		{{-1.f, 1.f, 0.f}},
+		{{1.f, -1.f, 0.f} , color, {1.f, 1.f}},
+		{{-1.f, -1.f, 0.f}, color, {0.f, 1.f}},
+		{{-1.f, 1.f, 0.f} , color, {0.f, 0.f}},
 	};
+
+	vkmmc::RenderHandle texHandle = engine->LoadTexture("../../assets/textures/test.png");
 	mesh.SetVertices(vertices, sizeof(vertices) / sizeof(vkmmc::Vertex));
 	engine->UploadMesh(mesh);
 	engine->SetImGuiCallback(&ImGuiLogic);
@@ -105,6 +108,7 @@ int main(int32_t argc, char** argv)
 			t.Position = { (float)x * dif, 0.f, (float)y * dif };
 			vkmmc::RenderObjectMesh& m = *engine->GetObjectMesh(obj);
 			m.StaticMesh = mesh;
+			m.Mtl.m_textureHandle = texHandle;
 			//t.Rotation = { glm::radians(90.f), 0.f, 0.f };
 		}
 	}

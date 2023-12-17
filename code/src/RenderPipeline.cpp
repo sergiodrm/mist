@@ -3,6 +3,7 @@
 #include "InitVulkanTypes.h"
 #include "GenericUtils.h"
 #include "Logger.h"
+#include "Debug.h"
 
 namespace vkmmc
 {
