@@ -34,7 +34,7 @@ namespace vkmmc_globals
 	{
 		vkmmc::Camera Camera{};
 		glm::vec3 Direction{ 0.f };
-		float MaxSpeed = 1.f; // eu/s
+		float MaxSpeed = 100.f; // eu/s
 		float MaxRotSpeed = 1.f; // rad/s
 
 		bool IsMotionControlActive = false;
@@ -224,7 +224,11 @@ namespace vkmmc_debug
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
 			| ImGuiWindowFlags_NoDecoration
 			| ImGuiWindowFlags_AlwaysAutoResize
-			| ImGuiWindowFlags_NoResize;
+			| ImGuiWindowFlags_NoResize
+			| ImGuiWindowFlags_NoInputs;
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 1.f });
+		ImGui::SetNextWindowBgAlpha(0.5f);
+		ImGui::SetNextWindowPos({ 0.f, 0.f });
 		ImGui::Begin("Render stats", nullptr, flags);
 		for (auto item : GRenderStats.m_profiler.m_items)
 		{
@@ -234,6 +238,7 @@ namespace vkmmc_debug
 		ImGui::Text("Draw calls: %zd", GRenderStats.m_drawCalls);
 		ImGui::Text("Triangles:  %zd", GRenderStats.m_trianglesCount);
 		ImGui::End();
+		ImGui::PopStyleColor();
 	}
 }
 
