@@ -15,3 +15,4 @@ target_sources(vkmmc_test
 
 target_link_libraries(vkmmc_test PUBLIC vkmmc)
 target_include_directories(vkmmc_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/code/include")
+set_property(TARGET vkmmc_test PROPERTY FOLDER "RenderEngine")

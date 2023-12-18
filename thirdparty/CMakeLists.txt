@@ -37,3 +37,17 @@ target_sources(vkbootstrap PRIVATE
 	vkbootstrap/vkbootstrap.cpp
 )
 
+set_property(TARGET imgui PROPERTY FOLDER "ThirdParty")
+set_property(TARGET vkbootstrap PROPERTY FOLDER "ThirdParty")
+set_property(TARGET sdl_headers_copy PROPERTY FOLDER "ThirdParty")
+set_property(TARGET SDL2-static PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-c PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-cpp PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-core PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-glsl PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-hlsl PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-msl PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-reflect PROPERTY FOLDER "ThirdParty")
+set_property(TARGET spirv-cross-util PROPERTY FOLDER "ThirdParty")
+
