@@ -20,7 +20,8 @@
 
 namespace vkmmc
 {
-	
+	struct ShaderModuleLoadDescription;
+
 	struct Window
 	{
 		SDL_Window* WindowInstance;

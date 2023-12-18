@@ -11,19 +11,6 @@ namespace vkmmc
 	struct RenderContext;
 	class RenderPipeline;
 
-	struct ShaderModuleLoadDescription
-	{
-		std::string ShaderFilePath;
-		VkShaderStageFlagBits Flags;
-	};
-
-	/**
-	 * Create VkShaderModule from a file.
-	 * This will compile the shader code in the file.
-	 * @return VkShaderModule valid if the compilation terminated successfully. VK_NULL_HANDLE otherwise.
-	 */
-	VkShaderModule LoadShaderModule(VkDevice device, const char* filename);
-
 	class RenderPipelineBuilder
 	{
 	public:

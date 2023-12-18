@@ -45,6 +45,7 @@ target_link_libraries(vkmmc PUBLIC
 	imgui
 	SDL2::SDL2
 	vkbootstrap
+	spirv-cross-glsl
 )
 
 #add_custom_command(

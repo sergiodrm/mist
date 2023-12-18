@@ -7,25 +7,6 @@
 
 namespace vkmmc
 {
-	VkShaderModule LoadShaderModule(VkDevice device, const char* filename)
-	{
-		VkShaderModule shaderModule = VK_NULL_HANDLE;
-		// Read file
-		std::vector<uint32_t> spirvBuffer;
-		if (vkmmc_utils::ReadFile(filename, spirvBuffer))
-		{
-			// Create shader
-			VkShaderModuleCreateInfo createInfo = {};
-			createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-			createInfo.pNext = nullptr;
-			createInfo.codeSize = spirvBuffer.size() * sizeof(uint32_t);
-			createInfo.pCode = spirvBuffer.data();
-
-			// If fail, shader compilation failed...
-			vkcheck(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
-		}
-		return shaderModule;
-	}
 
 	RenderPipeline RenderPipelineBuilder::Build(VkDevice device, VkRenderPass renderPass)
 	{

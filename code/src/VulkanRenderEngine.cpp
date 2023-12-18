@@ -20,6 +20,7 @@
 #include <imgui/imgui_impl_sdl2.h>
 #include "Logger.h"
 #include "Debug.h"
+#include "Shader.h"
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
@@ -699,10 +700,14 @@ namespace vkmmc
 		// Input configuration
 		builder.InputDescription = inputDescription;
 		// Shader stages
-		VkShaderModule* modules = new VkShaderModule[shaderStagesCount];
+		std::vector<VkShaderModule> modules(shaderStagesCount);
+		ShaderCompiler compiler(shaderStages, shaderStagesCount);
+
+		compiler.ProcessReflectionProperties();
+
+		compiler.Compile(m_renderContext, modules);
 		for (size_t i = 0; i < shaderStagesCount; ++i)
 		{
-			modules[i] = LoadShaderModule(m_renderContext.Device, shaderStages[i].ShaderFilePath.c_str());
 			check(modules[i] != VK_NULL_HANDLE);
 			builder.ShaderStages.push_back(PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
 		}
@@ -745,8 +750,7 @@ namespace vkmmc
 		// Vulkan modules destruction
 		for (size_t i = 0; i < shaderStagesCount; ++i)
 			vkDestroyShaderModule(m_renderContext.Device, modules[i], nullptr);
-		delete[] modules;
-		modules = nullptr;
+		modules.clear();
 
 		return renderPipeline;
 	}

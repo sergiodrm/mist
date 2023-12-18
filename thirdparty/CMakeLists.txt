@@ -6,10 +6,12 @@ find_package(Vulkan REQUIRED)
 add_library(glm INTERFACE)
 add_library(vma INTERFACE)
 add_library(stb_image INTERFACE)
+#add_library(SPIRV-Cross INTERFACE)
 add_library(imgui STATIC)
 add_library(vkbootstrap STATIC)
 
 add_subdirectory(SDL EXCLUDE_FROM_ALL)
+add_subdirectory(spirv-cross-main)
 
 target_include_directories(stb_image INTERFACE stb_image)
 target_include_directories(imgui PUBLIC imgui)
