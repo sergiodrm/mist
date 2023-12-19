@@ -453,8 +453,8 @@ namespace vkmmc
 		RenderTextureDescriptorCreateInfo accessInfo
 		{
 			.RContext = m_renderContext,
-			.DescriptorPool = m_descriptorPool,
-			.DescriptorLayout = m_textureDescriptorLayout,
+			.DescAllocator = m_descriptorAllocator,
+			.DescLayoutCache = m_descriptorLayoutCache,
 			.ImageView = texture.GetImageView()
 		};
 		RenderTextureDescriptor textureDescriptor;
@@ -701,7 +701,7 @@ namespace vkmmc
 		builder.InputDescription = inputDescription;
 		// Shader stages
 		std::vector<VkShaderModule> modules(shaderStagesCount);
-		ShaderCompiler compiler(shaderStages, shaderStagesCount);
+		ShaderCompiler compiler(shaderStages, (uint32_t)shaderStagesCount);
 
 		compiler.ProcessReflectionProperties();
 
@@ -921,65 +921,16 @@ namespace vkmmc
 	bool VulkanRenderEngine::InitPipeline()
 	{
 		// Pipeline descriptors
-		VkDescriptorPoolSize poolSizes[] =
-		{
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MaxOverlappedFrames * 2 },
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MaxOverlappedFrames * 2 },
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10 },
-		};
-		check(CreateDescriptorPool(m_renderContext.Device, poolSizes, sizeof(poolSizes) / sizeof(VkDescriptorPoolSize), &m_descriptorPool));
-		m_shutdownStack.Add([this]() 
+		m_descriptorLayoutCache.Init(m_renderContext);
+		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+		m_shutdownStack.Add([this]() mutable
 			{
 				Log(LogLevel::Info, "Destroy descriptor pool.\n");
-				DestroyDescriptorPool(m_renderContext.Device, m_descriptorPool);
+				m_descriptorAllocator.Destroy();
+				m_descriptorLayoutCache.Destroy();
 			});
-		{
-			// Descriptor layout
-			VkDescriptorSetLayoutBinding layoutBindings[] = { {}, {} };
-			VkDescriptorType types[] = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-			VkShaderStageFlags stageFlags[] = {VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_VERTEX_BIT};
-			const uint32_t layoutBindingCount = sizeof(layoutBindings) / sizeof(VkDescriptorSetLayoutBinding);
-			for (uint32_t i = 0; i < layoutBindingCount; ++i)
-			{
-				layoutBindings[i].binding = i;
-				layoutBindings[i].descriptorType = types[i];
-				layoutBindings[i].descriptorCount = 1;
-				layoutBindings[i].pImmutableSamplers = nullptr;
-				layoutBindings[i].stageFlags = stageFlags[i];
-			}
-			VkDescriptorSetLayoutCreateInfo createInfo = {};
-			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			createInfo.bindingCount = layoutBindingCount;
-			createInfo.pBindings = layoutBindings;
-			vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_globalDescriptorLayout));
-
-			// Texture descriptor layout
-			VkDescriptorSetLayoutBinding textureLayout
-			{
-				.binding = 0,
-				.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-				.descriptorCount = 1,
-				.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-				.pImmutableSamplers = nullptr,
-			};
-			VkDescriptorSetLayoutCreateInfo texCreateInfo
-			{
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = 0,
-				.bindingCount = 1,
-				.pBindings = &textureLayout
-			};
-			vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device,
-				&texCreateInfo, nullptr, &m_textureDescriptorLayout));
-			m_shutdownStack.Add([this]()
-				{
-					Log(LogLevel::Info, "Destroy descriptor layout.\n");
-					vkDestroyDescriptorSetLayout(m_renderContext.Device, m_globalDescriptorLayout, nullptr);
-					vkDestroyDescriptorSetLayout(m_renderContext.Device, m_textureDescriptorLayout, nullptr);
-				});
-		}
-
+	
+		VkDescriptorSetLayout globalLayout;
 		// There is one descriptor set per overlapped frame.
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
@@ -1001,9 +952,6 @@ namespace vkmmc
 					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
 				});
 
-			// Allocate descriptor sets on pool
-			AllocateDescriptorSet(m_renderContext.Device, m_descriptorPool, &m_globalDescriptorLayout, 1, &m_frameContextArray[i].GlobalDescriptorSet);
-			//AllocateDescriptorSet(m_renderContext.Device, m_descriptorPool, &m_objectDescriptorLayout, 1, &m_frameContextArray[i].ObjectDescriptorSet);
 
 			// Let vulkan know about these descriptors
 			VkDescriptorBufferInfo cameraBufferInfo = {};
@@ -1015,32 +963,24 @@ namespace vkmmc
 			objectBufferInfo.offset = 0;
 			objectBufferInfo.range = sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects;
 
-			VkWriteDescriptorSet cameraWriteDescriptor = {};
-			cameraWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			cameraWriteDescriptor.dstBinding = 0;
-			cameraWriteDescriptor.dstArrayElement = 0;
-			cameraWriteDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			cameraWriteDescriptor.descriptorCount = 1;
-			cameraWriteDescriptor.dstSet = m_frameContextArray[i].GlobalDescriptorSet;
-			cameraWriteDescriptor.pBufferInfo = &cameraBufferInfo;
-			VkWriteDescriptorSet objectWriteDescriptor = {};
-			objectWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			objectWriteDescriptor.dstBinding = 1;
-			objectWriteDescriptor.dstArrayElement = 0;
-			objectWriteDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			objectWriteDescriptor.descriptorCount = 1;
-			objectWriteDescriptor.dstSet = m_frameContextArray[i].GlobalDescriptorSet;
-			objectWriteDescriptor.pBufferInfo = &objectBufferInfo;
-			VkWriteDescriptorSet writeDescriptors[] = { cameraWriteDescriptor, objectWriteDescriptor };
-			uint32_t writeDescriptorCount = sizeof(writeDescriptors) / sizeof(VkWriteDescriptorSet);
-			vkUpdateDescriptorSets(m_renderContext.Device, writeDescriptorCount, writeDescriptors, 0, nullptr);
+
+			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+				.BindBuffer(0, cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(1, objectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, globalLayout);
 		}
+		m_descriptorLayouts.push_back(globalLayout);
+
+		VkDescriptorSetLayout textureLayout{ VK_NULL_HANDLE };
+		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+			.Build(m_renderContext, &textureLayout);
+		m_descriptorLayouts.push_back(textureLayout);
 
 		// Create layout info
-		VkDescriptorSetLayout layouts[] = { m_globalDescriptorLayout, m_textureDescriptorLayout };
 		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
-		layoutInfo.setLayoutCount = 2;
-		layoutInfo.pSetLayouts = layouts;
+		layoutInfo.setLayoutCount = (uint32_t)m_descriptorLayouts.size();
+		layoutInfo.pSetLayouts = m_descriptorLayouts.data();
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{

@@ -182,16 +182,6 @@ namespace vkmmc
 		};
 		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_sampler));
 
-		// Allocate descriptor
-		VkDescriptorSetAllocateInfo allocInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-			.pNext = nullptr,
-			.descriptorPool = info.DescriptorPool,
-			.descriptorSetCount = 1,
-			.pSetLayouts = &info.DescriptorLayout
-		};
-		vkcheck(vkAllocateDescriptorSets(info.RContext.Device, &allocInfo, &m_descriptorSet));
 
 		// Update descriptor set with our texture.
 		VkDescriptorImageInfo imageInfo
@@ -200,6 +190,10 @@ namespace vkmmc
 			.imageView = info.ImageView,
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
+		// Allocate descriptor
+		DescriptorBuilder::Create(*const_cast<DescriptorLayoutCache*>(&info.DescLayoutCache), *const_cast<DescriptorAllocator*>(&info.DescAllocator))
+			.BindImage(0, imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(info.RContext, m_descriptorSet);
 		VkWriteDescriptorSet writeDesc
 		{
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,

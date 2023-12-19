@@ -131,10 +131,9 @@ namespace vkmmc
 		FrameContext m_frameContextArray[MaxOverlappedFrames];
 		size_t m_frameCounter;
 
-		VkDescriptorPool m_descriptorPool;
-		VkDescriptorSetLayout m_globalDescriptorLayout;
-		VkDescriptorSetLayout m_objectDescriptorLayout;
-		VkDescriptorSetLayout m_textureDescriptorLayout;
+		DescriptorAllocator m_descriptorAllocator;
+		DescriptorLayoutCache m_descriptorLayoutCache;
+		std::vector<VkDescriptorSetLayout> m_descriptorLayouts;
 
 		std::unordered_map<uint32_t, VertexBuffer> m_vertexBuffers;
 		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;

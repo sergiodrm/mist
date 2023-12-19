@@ -3,6 +3,7 @@
 #pragma once
 
 #include "RenderTypes.h"
+#include "RenderDescriptor.h"
 
 namespace vkmmc
 {
@@ -48,8 +49,8 @@ namespace vkmmc
 	struct RenderTextureDescriptorCreateInfo
 	{
 		RenderContext RContext;
-		VkDescriptorPool DescriptorPool;
-		VkDescriptorSetLayout DescriptorLayout;
+		DescriptorAllocator DescAllocator;
+		DescriptorLayoutCache DescLayoutCache;
 		VkImageView ImageView;
 	};
 

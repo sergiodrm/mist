@@ -10,6 +10,17 @@
 
 namespace vkmmc
 {
+	VkBufferUsageFlags GetVulkanBufferUsage(VkDescriptorType type)
+	{
+		switch (type)
+		{
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: 
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		}
+		return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+	}
 
 	ShaderCompiler::~ShaderCompiler()
 	{
@@ -58,11 +69,9 @@ namespace vkmmc
 
 	bool ShaderCompiler::ProcessReflectionProperties()
 	{
-		VkShaderStageFlagBits flags[] = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-		const uint32_t count = sizeof(flags) / sizeof(VkShaderStageFlagBits);
-		for (uint32_t i = 0; i < count; ++i)
+		for (const std::pair<VkShaderStageFlagBits, std::vector<uint32_t>>& it : m_cachedBinarySources)
 		{
-			ProcessCachedSource(m_cachedBinarySources[flags[i]]);
+			ProcessCachedSource(it.first);
 		}
 		return true;
 	}
@@ -73,8 +82,9 @@ namespace vkmmc
 		return vkmmc_utils::ReadFile(file, outCachedData);
 	}
 
-	void ShaderCompiler::ProcessCachedSource(const std::vector<uint32_t>& cachedSource)
+	void ShaderCompiler::ProcessCachedSource(VkShaderStageFlagBits flag)
 	{
+		const std::vector<uint32_t>& cachedSource = m_cachedBinarySources[flag];
 		check(!cachedSource.empty() && "Invalid cached source.");
 		spirv_cross::CompilerGLSL compiler(cachedSource);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
@@ -88,6 +98,7 @@ namespace vkmmc
 			bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 			bufferInfo.Name = resource.name.c_str();
 			bufferInfo.Size = (uint32_t)compiler.get_declared_struct_size(bufferType);
+			bufferInfo.Stage = flag;
 			Logf(LogLevel::Debug, "> Uniform buffer [Set: %u; Binding: %u; Size: %u; Name:%s]\n",
 				bufferInfo.DescriptorSet, bufferInfo.Binding, bufferInfo.Size, bufferInfo.Name.c_str());
 
@@ -106,6 +117,7 @@ namespace vkmmc
 			bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 			bufferInfo.Name = resource.name.c_str();
 			bufferInfo.Size = (uint32_t)compiler.get_declared_struct_size(bufferType);
+			bufferInfo.Stage = flag;
 			Logf(LogLevel::Debug, "> Storage buffer [Set: %u; Binding: %u; Size: %u; Name:%s]\n",
 				bufferInfo.DescriptorSet, bufferInfo.Binding, bufferInfo.Size, bufferInfo.Name.c_str());
 
@@ -121,8 +133,9 @@ namespace vkmmc
 			ShaderImageSampler sampler;
 			sampler.DescriptorSet = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 			sampler.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
-			sampler.ArraySize = compiler.get_decoration(resource.id, spv::DecorationArrayStride);
+			sampler.Size = compiler.get_decoration(resource.id, spv::DecorationArrayStride);
 			sampler.Name = resource.name.c_str();
+			sampler.Stage = flag;
 			Logf(LogLevel::Debug, "> Sampler image [Set: %zd; Binding: %zd; Name:%s]\n",
 				sampler.DescriptorSet, sampler.Binding, sampler.Name.c_str());
 
@@ -139,5 +152,47 @@ namespace vkmmc
 		if (m_reflectionProperties.DescriptorSetArray.size() < setIndex + 1)
 			m_reflectionProperties.DescriptorSetArray.resize(setIndex + 1);
 		return m_reflectionProperties.DescriptorSetArray[setIndex];
+	}
+
+	void ShaderBuffer::Init(const ShaderBufferCreateInfo& info)
+	{
+		check(info.Resource.Type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+		uint32_t size = info.Resource.Type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ?
+			info.StorageSize : info.Resource.Size;
+		m_buffer = CreateBuffer(info.RContext.Allocator,
+			size, GetVulkanBufferUsage(info.Resource.Type),
+			VMA_MEMORY_USAGE_CPU_TO_GPU);
+		m_resource = info.Resource;
+		m_resource.Size = size;
+	}
+
+	void ShaderBuffer::Destroy(const RenderContext& renderContext)
+	{
+		DestroyBuffer(renderContext.Allocator, m_buffer);
+	}
+
+	void ShaderBuffer::SetBoundDescriptorSet(const RenderContext& renderContext, VkDescriptorSet newDescriptorSet)
+	{
+		VkDescriptorBufferInfo bufferInfo{};
+		bufferInfo.buffer = m_buffer.Buffer;
+		bufferInfo.offset = 0;
+		bufferInfo.range = m_resource.Size;
+		VkWriteDescriptorSet writeInfo{};
+		writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeInfo.pNext = nullptr;
+		writeInfo.dstBinding = m_resource.Binding;
+		writeInfo.dstArrayElement = 0;
+		writeInfo.descriptorType = m_resource.Type;
+		writeInfo.descriptorCount = 1;
+		writeInfo.dstSet = newDescriptorSet;
+		writeInfo.pBufferInfo = &bufferInfo;
+		vkUpdateDescriptorSets(renderContext.Device, 1, &writeInfo, 0, nullptr);
+	}
+
+	void ShaderBuffer::CopyData(const RenderContext& renderContext, const void* source, uint32_t size)
+	{
+		check(size <= m_resource.Size);
+		MemCopyDataToBuffer(renderContext.Allocator, m_buffer.Alloc, source, size);
 	}
 }

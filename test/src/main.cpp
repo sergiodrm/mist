@@ -31,6 +31,8 @@ private:
 	std::chrono::high_resolution_clock::time_point m_start;
 };
 
+Timer GTimer;
+bool GIsPaused = false;
 float GAmplitude = 2.f;
 float GFrequency = 1.f; // Hz
 float GAxisXPhase = 0.2f;
@@ -39,21 +41,26 @@ float GNoise = 0.02f;
 
 void ProcessLogic(vkmmc::IRenderEngine* engine, const Timer& timer)
 {
-	float time = timer.ElapsedNow();
-	for (uint32_t i = 0; i < engine->GetObjectCount(); ++i)
+	if (!GIsPaused)
 	{
-		vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform({ i });
-		int32_t r = std::rand();
-		float noise = GNoise * ((float)r / (float)RAND_MAX);
-		float rotY = GAmplitude * sinf(GFrequency * 2.f * (float)M_PI * time + t.Position.x * GAxisXPhase + t.Position.z * GAxisZPhase) + noise;
-		//t.Rotation.y += rotY;
-		t.Position.y = rotY;
+		float time = timer.ElapsedNow();
+		for (uint32_t i = 0; i < engine->GetObjectCount(); ++i)
+		{
+			vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform({ i });
+			int32_t r = std::rand();
+			float noise = GNoise * ((float)r / (float)RAND_MAX);
+			float rotY = GAmplitude * sinf(GFrequency * 2.f * (float)M_PI * time + t.Position.x * GAxisXPhase + t.Position.z * GAxisZPhase) + noise;
+			//t.Rotation.y += rotY;
+			t.Position.y = rotY;
+		}
 	}
 }
 
 void ImGuiLogic()
 {
 	ImGui::Begin("Magic params");
+	ImGui::Text("Time app: %.4f s", GTimer.ElapsedNow());
+	ImGui::Checkbox("Pause", &GIsPaused);
 	ImGui::DragFloat("Amplitude", &GAmplitude, 0.2f);
 	ImGui::DragFloat("Frequency (Hz)", &GFrequency, 0.02f);
 	float phase[] = { GAxisXPhase, GAxisZPhase };
@@ -113,11 +120,10 @@ int main(int32_t argc, char** argv)
 		}
 	}
 
-	Timer timer;
 	bool terminate = false;
 	while (!terminate)
 	{
-		ProcessLogic(engine, timer);
+		ProcessLogic(engine, GTimer);
 		terminate = !engine->RenderProcess();
 	}
 
