@@ -169,6 +169,7 @@ namespace vkmmc
 
 	void RenderTextureDescriptor::Init(const RenderTextureDescriptorCreateInfo& info)
 	{
+		check(m_sampler == VK_NULL_HANDLE && m_descriptorSet == VK_NULL_HANDLE);
 		// Sampler
 		VkSamplerCreateInfo samplerInfo
 		{
@@ -182,30 +183,27 @@ namespace vkmmc
 		};
 		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_sampler));
 
-
-		// Update descriptor set with our texture.
+		// Update descriptor with our texture.
 		VkDescriptorImageInfo imageInfo
 		{
 			.sampler = m_sampler,
 			.imageView = info.ImageView,
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
-		// Allocate descriptor
-		DescriptorBuilder::Create(*const_cast<DescriptorLayoutCache*>(&info.DescLayoutCache), *const_cast<DescriptorAllocator*>(&info.DescAllocator))
-			.BindImage(0, imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(info.RContext, m_descriptorSet);
 		VkWriteDescriptorSet writeDesc
 		{
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 			.pNext = nullptr,
-			.dstSet = m_descriptorSet,
-			.dstBinding = 0,
+			.dstSet = info.Descriptor,
+			.dstBinding = info.Binding,
+			.dstArrayElement = info.ArrayElement,
 			.descriptorCount = 1,
 			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
 			.pImageInfo = &imageInfo
 		};
-		vkUpdateDescriptorSets(info.RContext.Device, 1,
-			&writeDesc, 0, nullptr);
+		vkUpdateDescriptorSets(info.RContext.Device, 1, &writeDesc, 0, nullptr);
+
+		m_descriptorSet = info.Descriptor;
 	}
 
 	void RenderTextureDescriptor::Destroy(const RenderContext& renderContext)

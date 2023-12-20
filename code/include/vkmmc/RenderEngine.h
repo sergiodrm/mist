@@ -6,6 +6,7 @@
 namespace vkmmc
 {
 	class Mesh;
+	class Material;
 	struct RenderObject;
 	struct RenderObjectTransform;
 	struct RenderObjectMesh;
@@ -32,6 +33,7 @@ namespace vkmmc
 		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) = 0;
 		virtual uint32_t GetObjectCount() const = 0;
 		virtual void UploadMesh(Mesh& mesh) = 0;
+		virtual void UploadMaterial(Material& material) = 0;
 		virtual RenderHandle LoadTexture(const char* filepath) = 0;
 		virtual void SetImGuiCallback(std::function<void()>&& fn) = 0;
 	};

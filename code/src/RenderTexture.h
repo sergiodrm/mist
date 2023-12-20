@@ -49,8 +49,9 @@ namespace vkmmc
 	struct RenderTextureDescriptorCreateInfo
 	{
 		RenderContext RContext;
-		DescriptorAllocator DescAllocator;
-		DescriptorLayoutCache DescLayoutCache;
+		VkDescriptorSet Descriptor; // Previous allocated descriptor to be updated with texture.
+		uint32_t Binding;
+		uint32_t ArrayElement;
 		VkImageView ImageView;
 	};
 
@@ -62,8 +63,8 @@ namespace vkmmc
 
 		void Bind(VkCommandBuffer cmd, class RenderPipeline pipeline) const;
 	private:
-		VkDescriptorSet m_descriptorSet;
-		VkSampler m_sampler;
+		VkDescriptorSet m_descriptorSet = VK_NULL_HANDLE;
+		VkSampler m_sampler = VK_NULL_HANDLE;
 	};
 
 }

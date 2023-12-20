@@ -434,14 +434,27 @@ namespace vkmmc
 			});
 	}
 
+	void VulkanRenderEngine::UploadMaterial(Material& material)
+	{
+		check(!material.GetHandle().IsValid());
+
+		RenderHandle h = GenerateRenderHandle();
+		m_materials[h] = MaterialTextureData();
+		InitMaterial(material, m_materials[h]);
+		material.SetHandle(h);
+	}
+
 	RenderHandle VulkanRenderEngine::LoadTexture(const char* filename)
 	{
+		// Load texture from file
 		io::TextureRaw texData;
 		if (!io::LoadTexture(filename, texData))
 		{
 			Logf(LogLevel::Error, "Failed to load texture from %s.\n", filename);
 			return InvalidRenderHandle;
 		}
+
+		// Create gpu buffer with texture specifications
 		RenderTextureCreateInfo createInfo
 		{
 			.RContext = m_renderContext,
@@ -450,28 +463,11 @@ namespace vkmmc
 		};
 		RenderTexture texture;
 		texture.Init(createInfo);
-		RenderTextureDescriptorCreateInfo accessInfo
-		{
-			.RContext = m_renderContext,
-			.DescAllocator = m_descriptorAllocator,
-			.DescLayoutCache = m_descriptorLayoutCache,
-			.ImageView = texture.GetImageView()
-		};
-		RenderTextureDescriptor textureDescriptor;
-		textureDescriptor.Init(accessInfo);
-
-		// Submit textures
 		RenderHandle h = GenerateRenderHandle();
-		MaterialTextureData materialTex
-		{
-			.Texture = texture,
-			.TextureAccess = textureDescriptor
-		};
-		m_textures[h] = materialTex;
-		m_shutdownStack.Add([this, materialTex]() mutable
+		m_textures[h] = texture;
+		m_shutdownStack.Add([this, texture]() mutable
 			{
-				materialTex.Texture.Destroy(m_renderContext);
-				materialTex.TextureAccess.Destroy(m_renderContext);
+				texture.Destroy(m_renderContext);
 			});
 
 		// Free raw texture data
@@ -617,6 +613,17 @@ namespace vkmmc
 				pipeline.GetPipelineLayoutHandle(), 0, 1,
 				&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
 
+			auto bindTexture = [this](VkCommandBuffer cmd, RenderPipeline pipeline, RenderHandle texHandle)
+				{
+					if (texHandle.IsValid())
+					{
+						const MaterialTextureData& texData = m_materials[texHandle];
+						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+							pipeline.GetPipelineLayoutHandle(), DESCRIPTOR_SET_TEXTURE_LAYOUT, 1, &texData.Set,
+							0, nullptr);
+					}
+				};
+
 			Material lastMaterial;
 			Mesh lastMesh;
 			for (uint32_t i = 0; i < count; ++i)
@@ -625,8 +632,8 @@ namespace vkmmc
 				if (renderable.Mtl != lastMaterial || !lastMaterial.GetHandle().IsValid())
 				{
 					lastMaterial = renderable.Mtl;
-					const MaterialTextureData& texData = m_textures[renderable.Mtl.m_textureHandle];
-					texData.TextureAccess.Bind(cmd, pipeline);
+					
+					bindTexture(cmd, pipeline, renderable.Mtl.GetHandle());
 					//lastMaterial = renderable.m_material;
 					//RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
 					//	? m_pipelines[renderable.m_material.GetHandle()]
@@ -726,6 +733,13 @@ namespace vkmmc
 		builder.Rasterizer = PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
 		// Single blenc attachment without blending and writing RGBA
 		builder.ColorBlendAttachment = PipelineColorBlendAttachmentState();
+		//builder.ColorBlendAttachment.blendEnable = VK_TRUE;
+		//builder.ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		//builder.ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		//builder.ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		//builder.ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		//builder.ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		//builder.ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
 		// Disable multisampling by default
 		builder.Multisampler = PipelineMultisampleStateCreateInfo();
 		// Pass layout info
@@ -735,17 +749,10 @@ namespace vkmmc
 		RenderPipeline renderPipeline = builder.Build(m_renderContext.Device, m_renderPass.GetRenderPassHandle());;
 
 		// Destroy resources
-		struct  
-		{
-			RenderContext context;
-			RenderPipeline pipeline;
-
-			void operator()()
+		m_shutdownStack.Add([this, renderPipeline]() mutable
 			{
-				pipeline.Destroy(context);
-			}
-		} pipelineDestroyer{m_renderContext, renderPipeline};
-		m_shutdownStack.Add(pipelineDestroyer);
+				renderPipeline.Destroy(m_renderContext);
+			});
 
 		// Vulkan modules destruction
 		for (size_t i = 0; i < shaderStagesCount; ++i)
@@ -760,6 +767,66 @@ namespace vkmmc
 		RenderHandle h = GenerateRenderHandle();
 		m_pipelines[h] = pipeline;
 		return h;
+	}
+
+	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialTextureData& material)
+	{
+		check(material.Set == VK_NULL_HANDLE);
+		m_descriptorAllocator.Allocate(&material.Set, m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT]);
+		
+		auto submitTexture = [this](RenderHandle texHandle, MaterialTextureData& mtl, MaterialTextureData::ESamplerIndex index)
+			{
+				if (texHandle.IsValid())
+				{
+					RenderTexture texture = m_textures[texHandle];
+					SubmitMaterialTexture(mtl, index, texture.GetImageView());
+				}
+			};
+		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialTextureData::SAMPLER_INDEX_DIFFUSE);
+		submitTexture(materialHandle.GetNormalTexture(), material, MaterialTextureData::SAMPLER_INDEX_NORMAL);
+		submitTexture(materialHandle.GetSpecularTexture(), material, MaterialTextureData::SAMPLER_INDEX_SPECULAR);
+
+		return true;
+	}
+
+	void VulkanRenderEngine::SubmitMaterialTexture(MaterialTextureData& material, MaterialTextureData::ESamplerIndex sampler, const VkImageView& imageView)
+	{
+		if (material.ImageSamplers[sampler] != VK_NULL_HANDLE)
+		{
+			vkDestroySampler(m_renderContext.Device, material.ImageSamplers[sampler], nullptr);
+			material.ImageSamplers[sampler] = VK_NULL_HANDLE;
+		}
+
+		VkSamplerCreateInfo samplerCreateInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.magFilter = VK_FILTER_NEAREST,
+			.minFilter = VK_FILTER_NEAREST,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
+		};
+		vkcheck(vkCreateSampler(m_renderContext.Device, &samplerCreateInfo, nullptr, &material.ImageSamplers[sampler]));
+
+		VkDescriptorImageInfo imageInfo
+		{
+			.sampler = material.ImageSamplers[sampler],
+			.imageView = imageView,
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		};
+		VkWriteDescriptorSet writeSet
+		{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = material.Set,
+			.dstBinding = 0, // TODO: work out generic binding texture slot
+			.dstArrayElement = (uint32_t)sampler,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = &imageInfo
+		};
+		vkUpdateDescriptorSets(m_renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
 	bool VulkanRenderEngine::InitVulkan()
@@ -969,18 +1036,19 @@ namespace vkmmc
 				.BindBuffer(1, objectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, globalLayout);
 		}
-		m_descriptorLayouts.push_back(globalLayout);
+		m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT] = globalLayout;
 
 		VkDescriptorSetLayout textureLayout{ VK_NULL_HANDLE };
 		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialTextureData::SAMPLER_INDEX_COUNT)
+			//.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4)
 			.Build(m_renderContext, &textureLayout);
-		m_descriptorLayouts.push_back(textureLayout);
+		m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT] = textureLayout;
 
 		// Create layout info
 		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
-		layoutInfo.setLayoutCount = (uint32_t)m_descriptorLayouts.size();
-		layoutInfo.pSetLayouts = m_descriptorLayouts.data();
+		layoutInfo.setLayoutCount = DESCRIPTOR_SET_COUNT;
+		layoutInfo.pSetLayouts = m_descriptorLayouts;
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{

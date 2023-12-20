@@ -81,8 +81,12 @@ int main(int32_t argc, char** argv)
 	};
 	vkmmc::IRenderEngine* engine = vkmmc::NewRenderEngine();
 	engine->Init(spec);
+	engine->SetImGuiCallback(&ImGuiLogic);
 
 
+	vkmmc::RenderHandle marioTexHandle = engine->LoadTexture("../../assets/textures/test.png");
+	vkmmc::RenderHandle luigiTexHandle = engine->LoadTexture("../../assets/textures/luigi.png");
+	vkmmc::RenderHandle peachTexHandle = engine->LoadTexture("../../assets/textures/peach.png");
 	vkmmc::Mesh mesh;
 	glm::vec3 color = { 0.5f, 0.2f, 0.1f };
 	const vkmmc::Vertex vertices[] = {
@@ -94,11 +98,15 @@ int main(int32_t argc, char** argv)
 		{{-1.f, -1.f, 0.f}, color, {0.f, 1.f}},
 		{{-1.f, 1.f, 0.f} , color, {0.f, 0.f}},
 	};
-
-	vkmmc::RenderHandle texHandle = engine->LoadTexture("../../assets/textures/test.png");
 	mesh.SetVertices(vertices, sizeof(vertices) / sizeof(vkmmc::Vertex));
 	engine->UploadMesh(mesh);
-	engine->SetImGuiCallback(&ImGuiLogic);
+
+	vkmmc::Material material;
+	material.SetDiffuseTexture(marioTexHandle);
+	material.SetNormalTexture(luigiTexHandle);
+	material.SetSpecularTexture(peachTexHandle);
+	engine->UploadMaterial(material);
+
 
 #ifdef _DEBUG
 	constexpr int32_t dim[2] = { 12, 12 };
@@ -115,8 +123,7 @@ int main(int32_t argc, char** argv)
 			t.Position = { (float)x * dif, 0.f, (float)y * dif };
 			vkmmc::RenderObjectMesh& m = *engine->GetObjectMesh(obj);
 			m.StaticMesh = mesh;
-			m.Mtl.m_textureHandle = texHandle;
-			//t.Rotation = { glm::radians(90.f), 0.f, 0.f };
+			m.Mtl = material;
 		}
 	}
 

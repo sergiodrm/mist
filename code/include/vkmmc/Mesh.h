@@ -21,8 +21,19 @@ namespace vkmmc
 	{
 	public:
 
-		RenderHandle m_textureHandle;
+		inline RenderHandle GetDiffuseTexture() const { return m_diffuseTextureHandle; }
+		inline RenderHandle GetNormalTexture() const { return m_normalTextureHandle; }
+		inline RenderHandle GetSpecularTexture() const { return m_specularTextureHandle; }
+		inline void SetDiffuseTexture(RenderHandle texHandle) { m_diffuseTextureHandle = texHandle, m_dirty = true; }
+		inline void SetNormalTexture(RenderHandle texHandle) { m_normalTextureHandle = texHandle; m_dirty = true; }
+		inline void SetSpecularTexture(RenderHandle texHandle) { m_specularTextureHandle = texHandle; m_dirty = true; }
+		inline bool IsDirty() const { return m_dirty; }
+
 	private:
+		bool m_dirty{ true };
+		RenderHandle m_diffuseTextureHandle;
+		RenderHandle m_normalTextureHandle;
+		RenderHandle m_specularTextureHandle;
 	};
 
 

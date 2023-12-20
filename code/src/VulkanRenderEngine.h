@@ -58,8 +58,19 @@ namespace vkmmc
 
 	struct MaterialTextureData
 	{
-		RenderTexture Texture;
-		RenderTextureDescriptor TextureAccess;
+		enum ESamplerIndex
+		{
+			SAMPLER_INDEX_DIFFUSE,
+			SAMPLER_INDEX_NORMAL,
+			SAMPLER_INDEX_SPECULAR,
+
+			SAMPLER_INDEX_COUNT
+		};
+
+		VkDescriptorSet Set;
+		VkSampler ImageSamplers[SAMPLER_INDEX_COUNT];
+
+		MaterialTextureData() : Set(VK_NULL_HANDLE) { for (uint32_t i = 0; i < SAMPLER_INDEX_COUNT; ++i) ImageSamplers[i] = VK_NULL_HANDLE; }
 	};
 
 	struct RenderObjectContainer
@@ -83,6 +94,7 @@ namespace vkmmc
 		virtual void Shutdown() override;
 
 		virtual void UploadMesh(Mesh& mesh) override;
+		virtual void UploadMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* filename) override;
 
 		virtual RenderObject NewRenderObject() override;
@@ -117,6 +129,9 @@ namespace vkmmc
 		);
 		RenderHandle RegisterPipeline(RenderPipeline pipeline);
 
+		bool InitMaterial(const Material& materialHandle, MaterialTextureData& material);
+		void SubmitMaterialTexture(MaterialTextureData& material, MaterialTextureData::ESamplerIndex sampler, const VkImageView& imageView);
+
 	private:
 
 		Window m_window;
@@ -133,11 +148,23 @@ namespace vkmmc
 
 		DescriptorAllocator m_descriptorAllocator;
 		DescriptorLayoutCache m_descriptorLayoutCache;
-		std::vector<VkDescriptorSetLayout> m_descriptorLayouts;
 
-		std::unordered_map<uint32_t, VertexBuffer> m_vertexBuffers;
-		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
-		std::unordered_map<uint32_t, MaterialTextureData> m_textures;
+		enum EDescriptorLayoutType
+		{
+			DESCRIPTOR_SET_GLOBAL_LAYOUT,
+			DESCRIPTOR_SET_TEXTURE_LAYOUT,
+
+			DESCRIPTOR_SET_COUNT
+		};
+		VkDescriptorSetLayout m_descriptorLayouts[DESCRIPTOR_SET_COUNT];
+		VkDescriptorSet m_descriptorSets[DESCRIPTOR_SET_COUNT];
+
+		template <typename RenderResourceType>
+		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
+		ResourceMap<VertexBuffer> m_vertexBuffers;
+		ResourceMap<RenderPipeline> m_pipelines;
+		ResourceMap<RenderTexture> m_textures;
+		ResourceMap<MaterialTextureData> m_materials;
 
 		RenderObjectContainer m_scene;
 
