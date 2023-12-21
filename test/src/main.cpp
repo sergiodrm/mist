@@ -3,6 +3,7 @@
 #include <vkmmc/RenderEngine.h>
 #include <vkmmc/RenderObject.h>
 #include <vkmmc/Mesh.h>
+#include <vkmmc/SceneLoader.h>
 
 #include <chrono>
 #include <corecrt_math_defines.h>
@@ -82,6 +83,8 @@ int main(int32_t argc, char** argv)
 	vkmmc::IRenderEngine* engine = vkmmc::NewRenderEngine();
 	engine->Init(spec);
 	engine->SetImGuiCallback(&ImGuiLogic);
+
+	vkmmc::SceneLoader::LoadScene("../../assets/models/box/Box.gltf");
 
 
 	vkmmc::RenderHandle marioTexHandle = engine->LoadTexture("../../assets/textures/test.png");
