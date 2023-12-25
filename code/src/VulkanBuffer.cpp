@@ -4,6 +4,18 @@
 
 namespace vkmmc
 {
+	VkBufferUsageFlags GetVulkanBufferUsage(EBufferUsage usage)
+	{
+		switch (usage)
+		{
+		case vkmmc::EBufferUsage::UsageVertex: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		case vkmmc::EBufferUsage::UsageIndex: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		default:
+			break;
+		}
+		return 0;
+	}
+
 	VkFormat GetAttributeVkFormat(EAttributeType type)
 	{
 		switch (type)
@@ -87,6 +99,7 @@ namespace vkmmc
 		static bool initialized = false;
 		if (!initialized)
 		{
+			// Use vkmmc::Vertex struct
 			layout = BuildVertexInputLayout(
 				{
 					EAttributeType::Float3, // Position
@@ -98,36 +111,32 @@ namespace vkmmc
 		return layout;
 	}
 
-	VertexBuffer::VertexBuffer()
-		: m_type(EBufferType::Static), m_buffer{nullptr, VK_NULL_HANDLE}, m_size(0)
-	{	}
+	GPUBuffer::GPUBuffer()
+		: m_size(0)
+	{	
+		m_buffer.Buffer = VK_NULL_HANDLE;
+	}
 
-	void VertexBuffer::Init(const BufferCreateInfo& info)
+	void GPUBuffer::Init(const BufferCreateInfo& info)
 	{
 		check(info.RContext.Instance != VK_NULL_HANDLE);
 		check(m_buffer.Buffer == VK_NULL_HANDLE);
 		check(m_buffer.Alloc == nullptr);
 		m_buffer = CreateBuffer(info.RContext.Allocator,
 			info.Size,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+			GetVulkanBufferUsage(m_usage)
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY);
 		m_size = info.Size;
 	}
 
-	void VertexBuffer::Destroy(const RenderContext& renderContext)
+	void GPUBuffer::Destroy(const RenderContext& renderContext)
 	{
 		vmaDestroyBuffer(renderContext.Allocator, m_buffer.Buffer, m_buffer.Alloc);
 		m_size = 0;
 	}
 
-	void VertexBuffer::Bind(VkCommandBuffer cmd)
-	{
-		size_t offsets = 0;
-		vkCmdBindVertexBuffers(cmd, 0, 1, &m_buffer.Buffer, &offsets);
-	}
-
-	void VertexBuffer::UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t offset)
+	void GPUBuffer::UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t offset)
 	{
 		check(m_buffer.Buffer != VK_NULL_HANDLE);
 		check(size + offset <= m_size);
@@ -136,6 +145,18 @@ namespace vkmmc
 		copyBuffer.srcOffset = offset;
 		copyBuffer.size = size;
 		vkCmdCopyBuffer(cmd, buffer, m_buffer.Buffer, 1, &copyBuffer);
+	}
+
+	void VertexBuffer::Bind(VkCommandBuffer cmd) const
+	{
+		size_t offsets = 0;
+		vkCmdBindVertexBuffers(cmd, 0, 1, &m_buffer.Buffer, &offsets);
+	}
+
+	void IndexBuffer::Bind(VkCommandBuffer cmd) const
+	{
+		size_t offsets = 0;
+		vkCmdBindIndexBuffer(cmd, m_buffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
 	}
 
 }

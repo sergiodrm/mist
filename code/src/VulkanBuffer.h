@@ -30,32 +30,44 @@ namespace vkmmc
 
 	VertexInputLayout GetStaticMeshVertexLayout();
 
-	enum class EBufferType
+	enum class EBufferUsage
 	{
-		Static, Dynamic
+		UsageVertex, UsageIndex
 	};
 
 	struct BufferCreateInfo
 	{
 		RenderContext RContext;
-		EBufferType Type;
 		uint32_t Size;
 	};
 
-	class VertexBuffer
+	class GPUBuffer
 	{
 	public:
-		VertexBuffer();
+		GPUBuffer();
 		void Init(const BufferCreateInfo& info);
 		void Destroy(const RenderContext& renderContext);
 
-		void Bind(VkCommandBuffer cmd);
-
 		// To record a command to copy data from specified buffer.
 		void UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t offset = 0);
-	private:
-		EBufferType m_type;
+	protected:
 		uint32_t m_size;
+		EBufferUsage m_usage;
 		AllocatedBuffer m_buffer;
 	};
+
+	class VertexBuffer : public GPUBuffer
+	{
+	public:
+		VertexBuffer() : GPUBuffer() { m_usage = EBufferUsage::UsageVertex; }
+		void Bind(VkCommandBuffer cmd) const;
+	};
+
+	class IndexBuffer : public GPUBuffer
+	{
+	public:
+		IndexBuffer() : GPUBuffer() { m_usage = EBufferUsage::UsageIndex; }
+		void Bind(VkCommandBuffer cmd) const;
+	};
+
 }

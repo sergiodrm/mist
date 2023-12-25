@@ -6,6 +6,8 @@
 
 namespace vkmmc
 {
+	class Mesh;
+
 	enum : uint32_t {SCENE_NODE_INVALID_ID = UINT32_MAX};
 	struct SceneNode
 	{
@@ -14,15 +16,9 @@ namespace vkmmc
 		std::vector<uint32_t> Children;
 	};
 
-	struct MeshGeometry
-	{
-		std::vector<Vertex> Vertices;
-		std::vector<uint32_t> Indices;
-	};
-
 	struct SceneNodeMesh
 	{
-		std::vector<MeshGeometry> Geometries;
+		std::vector<Mesh> Meshes;
 	};
 
 	struct Scene
@@ -34,6 +30,6 @@ namespace vkmmc
 	class SceneLoader
 	{
 	public:
-		static void LoadScene(const char* sceneFilepath);
+		static Scene LoadScene(const char* sceneFilepath);
 	};
 }

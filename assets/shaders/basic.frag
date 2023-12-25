@@ -11,6 +11,7 @@ void main()
     float amplitude = 10.f;
     outColor = vec4((inColor.y + amplitude*0.5f) / amplitude, 0.4f, (1.f - (inColor.y + amplitude * 0.5f) / amplitude), 1.f);
     outColor = texture(texArray[2], inTexCoords);
-    if (outColor.a <= 0.1f)
-        discard;
+    // if (outColor.a <= 0.1f)
+    //     discard;
+    outColor = vec4(inColor, 1.f);
 }

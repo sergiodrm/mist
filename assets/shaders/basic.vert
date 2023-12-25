@@ -28,6 +28,6 @@ void main()
 {
     vec4 wsPos = objects.Data[gl_BaseInstance].Transform * vec4(LSPosition, 1.0f);
     gl_Position = camera.ViewProjection * wsPos;
-    outColor = vec3(TexCoords.x, TexCoords.y, 0.0);
+    outColor = VIColor;
     outTexCoords = TexCoords;
 }

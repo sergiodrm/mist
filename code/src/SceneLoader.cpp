@@ -11,6 +11,7 @@
 
 #include "Debug.h"
 #include <glm/gtx/transform.hpp>
+#include "Mesh.h"
 
 namespace gltf_api
 {
@@ -82,6 +83,7 @@ namespace gltf_api
 
 	void ReadAttribute(vkmmc::Vertex& vertex, const float* source, uint32_t index, cgltf_attribute_type type)
 	{
+		const char* attributeName = nullptr;
 		switch (type)
 		{
 		case cgltf_attribute_type_position:
@@ -99,12 +101,12 @@ namespace gltf_api
 				vertex.Normal = glm::normalize(vertex.Normal);
 			break;
 #endif // 0
-		case cgltf_attribute_type_color:
-		case cgltf_attribute_type_tangent:
-		case cgltf_attribute_type_joints:
-		case cgltf_attribute_type_weights:
-			vkmmc::Log(vkmmc::LogLevel::Error, "Attribute type not suported yet.");
+		case cgltf_attribute_type_color: 
+			vertex.Color = glm::vec3(source[index], source[index + 1], source[index + 2]);
 			break;
+		case cgltf_attribute_type_tangent: attributeName = "tangent"; break;
+		case cgltf_attribute_type_joints: attributeName = "joints"; break;
+		case cgltf_attribute_type_weights: attributeName = "weights"; break;
 		case cgltf_attribute_type_invalid:
 		case cgltf_attribute_type_custom:
 		case cgltf_attribute_type_max_enum:
@@ -112,6 +114,8 @@ namespace gltf_api
 		default:
 			break;
 		}
+		if (attributeName)
+			vkmmc::Logf(vkmmc::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
 	}
 
 	// Attributes are an continuous array of positions, normals, uvs...
@@ -167,23 +171,23 @@ namespace gltf_api
 		return data;
 	}
 
-	void LoadPrimitive(vkmmc::MeshGeometry& geometry, const cgltf_primitive* primitive, const cgltf_node* nodes, uint32_t nodeCount)
+	void LoadPrimitive(std::vector<vkmmc::Vertex>& vertices, std::vector<uint32_t>& indices, const cgltf_primitive* primitive, const cgltf_node* nodes, uint32_t nodeCount)
 	{
 		uint32_t attributeCount = (uint32_t)primitive->attributes_count;
-		geometry.Vertices.resize(primitive->attributes[0].data->count);
+		vertices.resize(primitive->attributes[0].data->count);
 		for (uint32_t i = 0; i < attributeCount; ++i)
 		{
 			const cgltf_attribute& attribute = primitive->attributes[i];
-			ReadAttributeArray(geometry.Vertices, attribute, nodes, nodeCount);
+			ReadAttributeArray(vertices, attribute, nodes, nodeCount);
 		}
 
 		if (primitive->indices)
 		{
 			uint32_t indexCount = (uint32_t)primitive->indices->count;
-			geometry.Indices.resize(indexCount);
+			indices.resize(indexCount);
 			for (uint32_t i = 0; i < indexCount; ++i)
 			{
-				geometry.Indices[i] = (uint32_t)cgltf_accessor_read_index(primitive->indices, i);
+				indices[i] = (uint32_t)cgltf_accessor_read_index(primitive->indices, i);
 			}
 		}
 	}
@@ -191,7 +195,7 @@ namespace gltf_api
 
 namespace vkmmc
 {
-	void SceneLoader::LoadScene(const char* sceneFilepath)
+	Scene SceneLoader::LoadScene(const char* sceneFilepath)
 	{
 		Scene scene;
 		cgltf_data* data = gltf_api::ParseFile(sceneFilepath);
@@ -204,14 +208,20 @@ namespace vkmmc
 			{
 				scene.Meshes.push_back(SceneNodeMesh());
 				SceneNodeMesh& mesh = scene.Meshes.back();
-				mesh.Geometries.resize(node.mesh->primitives_count);
+				mesh.Meshes.resize(node.mesh->primitives_count);
 				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
 				{
 					const cgltf_primitive& primitive = node.mesh->primitives[j];
-					gltf_api::LoadPrimitive(mesh.Geometries[j], &primitive, data->nodes, nodesCount);
+					std::vector<Vertex> vertices;
+					std::vector<uint32_t> indices;
+					gltf_api::LoadPrimitive(vertices, indices, &primitive, data->nodes, nodesCount);
+
+					mesh.Meshes[j].SetVertices(vertices.data(), vertices.size());
+					mesh.Meshes[j].SetIndices(indices.data(), indices.size());
 				}
 			}
 		}
 		gltf_api::FreeData(data);
+		return scene;
 	}
 }

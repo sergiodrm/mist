@@ -18,4 +18,12 @@ namespace vkmmc
 		memcpy_s(m_vertices.data(), sizeof(Vertex) * count, data, sizeof(Vertex) * count);
 	}
 
+	void Mesh::SetIndices(const uint32_t* data, size_t count)
+	{
+		check(!GetHandle().IsValid());
+		m_indices.clear();
+		m_indices.resize(count);
+		memcpy_s(m_indices.data(), sizeof(uint32_t) * count, data, sizeof(uint32_t) * count);
+	}
+
 }

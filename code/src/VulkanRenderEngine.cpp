@@ -43,7 +43,6 @@ namespace vkmmc_globals
 		bool IsMotionControlActive = false;
 		glm::vec2 MotionRotation{ 0.f };
 
-#if 1
 		glm::vec3 Rotate(const glm::vec3& vec) const
 		{
 			glm::mat4 rot = Camera.GetOrientation();
@@ -54,11 +53,6 @@ namespace vkmmc_globals
 		glm::vec3 GetForward() const { return Rotate(glm::vec3{0.f, 0.f, -1.f}); }
 		glm::vec3 GetUp() const { return Rotate(glm::vec3{ 0.f, 1.f, 0.f }); }
 		glm::vec3 GetRight() const { return Rotate(glm::vec3{1.f, 0.f, 0.f}); }
-#else
-		glm::vec3 GetForward() const { return { 0.f, 0.f, -1.f }; }
-		glm::vec3 GetUp() const { return { 0.f, 1.f, 0.f }; }
-		glm::vec3 GetRight() const { return { -1.f, 0.f, 0.f }; }
-#endif // 0
 
 		void ProcessInputMouseButton(const SDL_MouseButtonEvent& e)
 		{
@@ -116,7 +110,7 @@ namespace vkmmc_globals
 				Camera.SetPosition(Camera.GetPosition() + movement);
 				Direction = glm::vec3{ 0.f };
 			}
-			else 
+			else
 			{
 				Speed = 0.f;
 			}
@@ -423,39 +417,35 @@ namespace vkmmc
 
 	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
 	{
+		check(mesh.GetVertexCount() > 0 && mesh.GetIndexCount() > 0);
 		// Prepare buffer creation
-		const uint32_t bufferSize = (uint32_t)mesh.GetVertexCount() * sizeof(Vertex);
+		const uint32_t vertexBufferSize = (uint32_t)mesh.GetVertexCount() * sizeof(Vertex);
 
-		// Fill temporal buffer
-		AllocatedBuffer stageBuffer = CreateBuffer(m_renderContext.Allocator,
-			bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-		MemCopyDataToBuffer(m_renderContext.Allocator, stageBuffer.Alloc, mesh.GetVertices(), bufferSize);
-
+		MeshRenderData mrd{};
 		// Create vertex buffer
-		VertexBuffer buffer;
-		buffer.Init({
+		mrd.VertexBuffer.Init({
 			.RContext = m_renderContext,
-			.Type = EBufferType::Static,
-			.Size = bufferSize
+			.Size = vertexBufferSize
 			});
-
-		// Copy data from temporal buffer to gpu buffer
-		ImmediateSubmit([=](VkCommandBuffer cmd) mutable
-			{
-				buffer.UpdateData(cmd, stageBuffer.Buffer, bufferSize);
+		UpdateBufferData(&mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
+		
+		uint32_t indexBufferSize = (uint32_t)(mesh.GetIndexCount() * sizeof(uint32_t));
+		mrd.IndexBuffer.Init({
+			.RContext = m_renderContext,
+			.Size = indexBufferSize
 			});
-		// Delete temporal buffer
-		DestroyBuffer(m_renderContext.Allocator, stageBuffer);
+		UpdateBufferData(&mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
 		
 		// Register new buffer
 		RenderHandle handle = GenerateRenderHandle();
 		mesh.SetHandle(handle);
-		m_vertexBuffers[handle] = buffer;
+		m_meshRenderData[handle] = mrd;
 
 		// Stack buffer destruction
-		m_shutdownStack.Add([this, buffer]() mutable
+		m_shutdownStack.Add([this, mrd]() mutable
 			{
-				buffer.Destroy(m_renderContext);
+				mrd.VertexBuffer.Destroy(m_renderContext);
+				mrd.IndexBuffer.Destroy(m_renderContext);
 			});
 	}
 
@@ -617,7 +607,7 @@ namespace vkmmc
 			PROFILE_SCOPE(UpdateBuffers);
 			// Update descriptor set buffer
 			GPUCamera camera;
-			camera.View = vkmmc_globals::GCameraController.Camera.GetView();
+			camera.View = glm::inverse(vkmmc_globals::GCameraController.Camera.GetView());
 			camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
 			camera.ViewProjection = camera.Projection * camera.View;
 
@@ -638,17 +628,6 @@ namespace vkmmc
 				pipeline.GetPipelineLayoutHandle(), 0, 1,
 				&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
 
-			auto bindTexture = [this](VkCommandBuffer cmd, RenderPipeline pipeline, RenderHandle texHandle)
-				{
-					if (texHandle.IsValid())
-					{
-						const MaterialTextureData& texData = m_materials[texHandle];
-						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-							pipeline.GetPipelineLayoutHandle(), DESCRIPTOR_SET_TEXTURE_LAYOUT, 1, &texData.Set,
-							0, nullptr);
-					}
-				};
-
 			Material lastMaterial;
 			Mesh lastMesh;
 			for (uint32_t i = 0; i < count; ++i)
@@ -657,29 +636,26 @@ namespace vkmmc
 				if (renderable.Mtl != lastMaterial || !lastMaterial.GetHandle().IsValid())
 				{
 					lastMaterial = renderable.Mtl;
-					
-					bindTexture(cmd, pipeline, renderable.Mtl.GetHandle());
-					//lastMaterial = renderable.m_material;
-					//RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
-					//	? m_pipelines[renderable.m_material.GetHandle()]
-					//	: m_pipelines[m_handleRenderPipeline];
-					//vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
-					//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					//	pipeline.GetPipelineLayoutHandle(), 0, 1,
-					//	&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
-					//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					//	pipeline.GetPipelineLayoutHandle(), 1, 1,
-					//	&GetFrameContext().ObjectDescriptorSet, 0, nullptr);
+					RenderHandle mtlHandle = renderable.Mtl.GetHandle();
+					if (mtlHandle.IsValid())
+					{
+						const MaterialTextureData& texData = m_materials[mtlHandle];
+						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+							pipeline.GetPipelineLayoutHandle(), DESCRIPTOR_SET_TEXTURE_LAYOUT, 1, &texData.Set,
+							0, nullptr);
+					}
 				}
 
-
-				if (lastMesh != meshes[i].StaticMesh)
+				if (lastMesh != renderable.StaticMesh)
 				{
-					VertexBuffer buffer = m_vertexBuffers[meshes[i].StaticMesh.GetHandle()];
-					buffer.Bind(cmd);
+					const Mesh& staticMesh = renderable.StaticMesh;
+					check(staticMesh.GetHandle().IsValid());
+					const MeshRenderData& meshRenderData = m_meshRenderData[staticMesh.GetHandle()];
+					meshRenderData.VertexBuffer.Bind(cmd);
+					meshRenderData.IndexBuffer.Bind(cmd);
 					lastMesh = meshes[i].StaticMesh;
 				}
-				vkCmdDraw(cmd, (uint32_t)meshes[i].StaticMesh.GetVertexCount(), 1, 0, i);
+				vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
 				vkmmc_debug::GRenderStats.m_drawCalls++;
 				vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)meshes[i].StaticMesh.GetVertexCount() / 3;
 			}
@@ -810,6 +786,16 @@ namespace vkmmc
 		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialTextureData::SAMPLER_INDEX_DIFFUSE);
 		submitTexture(materialHandle.GetNormalTexture(), material, MaterialTextureData::SAMPLER_INDEX_NORMAL);
 		submitTexture(materialHandle.GetSpecularTexture(), material, MaterialTextureData::SAMPLER_INDEX_SPECULAR);
+
+		m_shutdownStack.Add([this, material]() 
+			{
+				Log(LogLevel::Info, "Destroying image samplers.\n");
+				for (uint32_t i = 0; i < MaterialTextureData::SAMPLER_INDEX_COUNT; ++i)
+				{
+					if (material.ImageSamplers[i] != VK_NULL_HANDLE)
+						vkDestroySampler(m_renderContext.Device, material.ImageSamplers[i], nullptr);
+				}
+			});
 
 		return true;
 	}
@@ -1141,6 +1127,24 @@ namespace vkmmc
 				ImGui_ImplVulkan_Shutdown();
 			});
 		return false;
+	}
+
+	void VulkanRenderEngine::UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size)
+	{
+		// Allocate cpu-gpu transfer buffer
+		AllocatedBuffer stageBuffer = CreateBuffer(m_renderContext.Allocator, size,
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+		// Set buffer data
+		MemCopyDataToBuffer(m_renderContext.Allocator, stageBuffer.Alloc, data, size);
+
+		ImmediateSubmit([=](VkCommandBuffer cmd)
+			{
+				buffer->UpdateData(cmd, stageBuffer.Buffer, size, 0);
+			});
+
+		// Destroy transfer buffer
+		DestroyBuffer(m_renderContext.Allocator, stageBuffer);
 	}
 	
 }

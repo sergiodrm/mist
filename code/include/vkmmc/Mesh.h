@@ -43,8 +43,12 @@ namespace vkmmc
 		const Vertex* GetVertices() const { return m_vertices.data(); }
 		inline size_t GetVertexCount() const { return m_vertices.size(); }
 		void SetVertices(const Vertex* data, size_t count);
+		const uint32_t* GetIndices() const { return m_indices.data(); }
+		inline size_t GetIndexCount() const { return m_indices.size(); }
+		void SetIndices(const uint32_t* data, size_t count);
 	private:
 		std::vector<Vertex> m_vertices;
+		std::vector<uint32_t> m_indices;
 	};
 	
 }

@@ -33,7 +33,7 @@ private:
 };
 
 Timer GTimer;
-bool GIsPaused = false;
+bool GIsPaused = true;
 float GAmplitude = 2.f;
 float GFrequency = 1.f; // Hz
 float GAxisXPhase = 0.2f;
@@ -84,25 +84,18 @@ int main(int32_t argc, char** argv)
 	engine->Init(spec);
 	engine->SetImGuiCallback(&ImGuiLogic);
 
-	vkmmc::SceneLoader::LoadScene("../../assets/models/box/Box.gltf");
-
+	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene("../../assets/models/box/Box.gltf");
+	for (uint32_t i = 0; i < scene.Meshes.size(); ++i)
+	{
+		for (vkmmc::Mesh& mesh : scene.Meshes[i].Meshes)
+		{
+			engine->UploadMesh(mesh);
+		}
+	}
 
 	vkmmc::RenderHandle marioTexHandle = engine->LoadTexture("../../assets/textures/test.png");
 	vkmmc::RenderHandle luigiTexHandle = engine->LoadTexture("../../assets/textures/luigi.png");
 	vkmmc::RenderHandle peachTexHandle = engine->LoadTexture("../../assets/textures/peach.png");
-	vkmmc::Mesh mesh;
-	glm::vec3 color = { 0.5f, 0.2f, 0.1f };
-	const vkmmc::Vertex vertices[] = {
-		{{-1.f, 1.f, 0.f}, color, {0.f, 0.f}},
-		{{1.f, 1.f, 0.f} , color, {1.f, 0.f}},
-		{{1.f, -1.f, 0.f}, color, {1.f, 1.f}},
-
-		{{1.f, -1.f, 0.f} , color, {1.f, 1.f}},
-		{{-1.f, -1.f, 0.f}, color, {0.f, 1.f}},
-		{{-1.f, 1.f, 0.f} , color, {0.f, 0.f}},
-	};
-	mesh.SetVertices(vertices, sizeof(vertices) / sizeof(vkmmc::Vertex));
-	engine->UploadMesh(mesh);
 
 	vkmmc::Material material;
 	material.SetDiffuseTexture(marioTexHandle);
@@ -125,7 +118,7 @@ int main(int32_t argc, char** argv)
 			vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform(obj);
 			t.Position = { (float)x * dif, 0.f, (float)y * dif };
 			vkmmc::RenderObjectMesh& m = *engine->GetObjectMesh(obj);
-			m.StaticMesh = mesh;
+			m.StaticMesh = scene.Meshes[0].Meshes[0];
 			m.Mtl = material;
 		}
 	}

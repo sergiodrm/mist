@@ -6,6 +6,7 @@
 #include "RenderPipeline.h"
 #include "RenderObject.h"
 #include "RenderTexture.h"
+#include "VulkanBuffer.h"
 #include "Debug.h"
 #include "Swapchain.h"
 #include "Mesh.h"
@@ -73,6 +74,12 @@ namespace vkmmc
 		MaterialTextureData() : Set(VK_NULL_HANDLE) { for (uint32_t i = 0; i < SAMPLER_INDEX_COUNT; ++i) ImageSamplers[i] = VK_NULL_HANDLE; }
 	};
 
+	struct MeshRenderData
+	{
+		VertexBuffer VertexBuffer;
+		IndexBuffer IndexBuffer;
+	};
+
 	struct RenderObjectContainer
 	{
 		static constexpr size_t MaxRenderObjects = 50000;
@@ -132,6 +139,8 @@ namespace vkmmc
 		bool InitMaterial(const Material& materialHandle, MaterialTextureData& material);
 		void SubmitMaterialTexture(MaterialTextureData& material, MaterialTextureData::ESamplerIndex sampler, const VkImageView& imageView);
 
+		void UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size);
+
 	private:
 
 		Window m_window;
@@ -161,9 +170,9 @@ namespace vkmmc
 
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
-		ResourceMap<VertexBuffer> m_vertexBuffers;
 		ResourceMap<RenderPipeline> m_pipelines;
 		ResourceMap<RenderTexture> m_textures;
+		ResourceMap<MeshRenderData> m_meshRenderData;
 		ResourceMap<MaterialTextureData> m_materials;
 
 		RenderObjectContainer m_scene;
