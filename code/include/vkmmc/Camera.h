@@ -7,20 +7,26 @@ namespace vkmmc
 	class Camera
 	{
 	public:
-		Camera() = default;
+		Camera();
 
 		glm::mat4 GetView() const;
+		glm::mat4 GetOrientation() const;
 		glm::mat4 GetProjection() const;
 
-		const glm::vec3& GetPosition() const { return m_position; }
-		const glm::vec3& GetRotation() const { return m_rotation; }
-		void SetPosition(const glm::vec3& pos) { m_position = pos; }
-		void SetRotation(const glm::vec3& rot) { m_rotation = rot; }
+		const glm::vec3& GetPosition() const;
+		const glm::vec3& GetRotation() const;
+		void SetPosition(const glm::vec3& pos);
+		void SetRotation(const glm::vec3& rot);
 
-		void SetFOV(float fov) { m_fov = fov; }
-		void SetAspectRatio(float aspectRatio) { m_aspectRatio = aspectRatio; }
-		void SetNearClip(float clip) { m_nearClip = clip; }
-		void SetFarClip(float clip) { m_farClip = clip; }
+		void SetFOV(float fov);
+		void SetAspectRatio(float aspectRatio);
+		void SetNearClip(float clip);
+		void SetFarClip(float clip);
+		void SetProjection(float fov, float aspectRatio, float nearClip, float farClip);
+
+	protected:
+		void RecalculateView();
+		void RecalculateProjection();
 
 	private:
 		// View
@@ -32,6 +38,10 @@ namespace vkmmc
 		float m_aspectRatio = 16.f / 9.f;
 		float m_nearClip = 0.1f;
 		float m_farClip = 1000.f;
+
+		// Cached data
+		glm::mat4 m_projection;
+		glm::mat4 m_view;
 	};
 	
 }

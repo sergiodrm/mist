@@ -35,36 +35,30 @@ namespace vkmmc_globals
 	{
 		vkmmc::Camera Camera{};
 		glm::vec3 Direction{ 0.f };
-		float MaxSpeed = 100.f; // eu/s
+		float Speed = 0.f;
+		float MaxSpeed = 2.f; // eu/s
 		float MaxRotSpeed = 1.f; // rad/s
+		float Acceleration = 2.f;
 
 		bool IsMotionControlActive = false;
 		glm::vec2 MotionRotation{ 0.f };
 
-		void ProcessInputKeyButton(const SDL_KeyboardEvent& e)
+#if 1
+		glm::vec3 Rotate(const glm::vec3& vec) const
 		{
-			switch (e.keysym.sym)
-			{
-			case SDLK_w:
-				Direction += glm::vec3{ 0.f, 0.f, 1.f };
-				break;
-			case SDLK_a:
-				Direction += glm::vec3{ 1.f, 0.f, 0.f };
-				break;
-			case SDLK_s:
-				Direction += glm::vec3{ 0.f, 0.f, -1.f };
-				break;
-			case SDLK_d:
-				Direction += glm::vec3{ -1.f, 0.f, 0.f };
-				break;
-			case SDLK_e:
-				Direction += glm::vec3{ 0.f, 1.f, 0.f };
-				break;
-			case SDLK_q:
-				Direction += glm::vec3{ 0.f, -1.f, 0.f };
-				break;
-			}
+			glm::mat4 rot = Camera.GetOrientation();
+			glm::vec4 v = rot * glm::vec4{ vec.x, vec.y, vec.z, 1.f };
+			return glm::vec3(v);
 		}
+
+		glm::vec3 GetForward() const { return Rotate(glm::vec3{0.f, 0.f, -1.f}); }
+		glm::vec3 GetUp() const { return Rotate(glm::vec3{ 0.f, 1.f, 0.f }); }
+		glm::vec3 GetRight() const { return Rotate(glm::vec3{1.f, 0.f, 0.f}); }
+#else
+		glm::vec3 GetForward() const { return { 0.f, 0.f, -1.f }; }
+		glm::vec3 GetUp() const { return { 0.f, 1.f, 0.f }; }
+		glm::vec3 GetRight() const { return { -1.f, 0.f, 0.f }; }
+#endif // 0
 
 		void ProcessInputMouseButton(const SDL_MouseButtonEvent& e)
 		{
@@ -85,17 +79,14 @@ namespace vkmmc_globals
 				static constexpr float sheight = 1080.f;
 				float yawdiff = (float)(e.xrel) / swidth;
 				float pitchdiff = (float)(e.yrel) / sheight;
-				MotionRotation += glm::vec2{ -pitchdiff, yawdiff };
+				MotionRotation += glm::vec2{ -pitchdiff, -yawdiff };
 			}
 		}
 
-		void ProcessInput(const SDL_Event& e)
+		void ProcessEvent(const SDL_Event& e)
 		{
 			switch (e.type)
 			{
-			case SDL_KEYDOWN:
-				ProcessInputKeyButton(e.key);
-				break;
 			case SDL_MOUSEBUTTONDOWN:
 			case SDL_MOUSEBUTTONUP:
 				ProcessInputMouseButton(e.button);
@@ -110,18 +101,43 @@ namespace vkmmc_globals
 
 		void Tick(float elapsedSeconds)
 		{
-			if (Direction != glm::vec3{0.f})
-			{
-				Direction = glm::normalize(Direction);
-				glm::vec3 speed = Direction * MaxSpeed;
-				Camera.SetPosition(Camera.GetPosition() + speed * elapsedSeconds);
-				Direction = glm::vec3{ 0.f };
-			}
+			ReadKeyboardState();
 			if (MotionRotation != glm::vec2{ 0.f })
 			{
 				Camera.SetRotation(Camera.GetRotation() + MaxRotSpeed * glm::vec3{ MotionRotation.x, MotionRotation.y, 0.f });
 				MotionRotation = glm::vec2{ 0.f };
 			}
+			if (Direction != glm::vec3{ 0.f })
+			{
+				Direction = glm::normalize(Direction);
+				Speed += Acceleration * elapsedSeconds;
+				Speed = __min(MaxSpeed, Speed);
+				glm::vec3 movement = Direction * Speed * elapsedSeconds;
+				Camera.SetPosition(Camera.GetPosition() + movement);
+				Direction = glm::vec3{ 0.f };
+			}
+			else 
+			{
+				Speed = 0.f;
+			}
+		}
+
+		void ReadKeyboardState()
+		{
+			int32_t numkeys;
+			const uint8_t* keystate = SDL_GetKeyboardState(&numkeys);
+			if (keystate[SDL_SCANCODE_W])
+				Direction += GetForward();
+			if (keystate[SDL_SCANCODE_A])
+				Direction += GetRight() * -1.f;
+			if (keystate[SDL_SCANCODE_S])
+				Direction += GetForward() * -1.f;
+			if (keystate[SDL_SCANCODE_D])
+				Direction += GetRight();
+			if (keystate[SDL_SCANCODE_E])
+				Direction += GetUp();
+			if (keystate[SDL_SCANCODE_Q])
+				Direction += GetUp() * -1.f;
 		}
 
 		void ImGuiDraw()
@@ -135,8 +151,16 @@ namespace vkmmc_globals
 			glm::vec3 rot = Camera.GetRotation();
 			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
 				Camera.SetRotation(rot);
-			ImGui::DragFloat("MaxSpeed", &MaxSpeed, 0.2f);
+			ImGui::DragFloat("MaxSpeed", &MaxSpeed, 1.f);
 			ImGui::DragFloat("MaxRotSpeed", &MaxRotSpeed, 0.2f);
+			ImGui::DragFloat("Acceleration", &Acceleration, 1.f);
+			ImGui::Text("Speed: %.4f ue/s", Speed);
+			glm::vec3 forw = GetForward();
+			glm::vec3 right = GetRight();
+			glm::vec3 up = GetUp();
+			ImGui::Text("Forward: %.3f, %.3f, %.3f", forw.x, forw.y, forw.z);
+			ImGui::Text("Right: %.3f, %.3f, %.3f", right.x, right.y, right.z);
+			ImGui::Text("Up: %.3f, %.3f, %.3f", up.x, up.y, up.z);
 			ImGui::End();
 		}
 	} GCameraController{};
@@ -329,10 +353,11 @@ namespace vkmmc
 				{
 				case SDL_QUIT: shouldExit = true; break;
 				default:
-					vkmmc_globals::GCameraController.ProcessInput(e);
+					vkmmc_globals::GCameraController.ProcessEvent(e);
 					break;
 				}
 			}
+			
 			ImGuiNewFrame();
 			vkmmc_globals::GCameraController.Tick(0.033f);
 			vkmmc_globals::GCameraController.ImGuiDraw();
@@ -358,7 +383,7 @@ namespace vkmmc
 			{
 			case SDL_QUIT: res = false; break;
 			default:
-				vkmmc_globals::GCameraController.ProcessInput(e);
+				vkmmc_globals::GCameraController.ProcessEvent(e);
 				break;
 			}
 		}
