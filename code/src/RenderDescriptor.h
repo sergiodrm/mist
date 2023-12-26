@@ -47,7 +47,7 @@ namespace vkmmc
 	private:
 		VkDescriptorPool UsePool();
 
-		static constexpr uint32_t MaxPoolCount = 10;
+		static constexpr uint32_t MaxPoolCount = 200;
 		const RenderContext* m_renderContext;
 		VkDescriptorPool m_pool{ VK_NULL_HANDLE };
 		DescriptorPoolSizes m_poolSizes;
