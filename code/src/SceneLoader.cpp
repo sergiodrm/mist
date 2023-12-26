@@ -95,14 +95,12 @@ namespace gltf_api
 			vertex.TexCoords = glm::vec2(source[index], source[index + 1]);
 			break;
 		case cgltf_attribute_type_normal:
-#if 0
 			vertex.Normal = glm::vec3(source[index], source[index + 1], source[index + 2]);
 			if (Length2(vertex.Normal) < 1e-5f)
 				vertex.Normal = glm::vec3{ 0.f, 1.f, 0.f };
 			else
 				vertex.Normal = glm::normalize(vertex.Normal);
 			break;
-#endif // 0
 		case cgltf_attribute_type_color: 
 			vertex.Color = glm::vec3(source[index], source[index + 1], source[index + 2]);
 			break;

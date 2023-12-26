@@ -2,7 +2,8 @@
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec3 inColor;
-layout(location = 1) in vec2 inTexCoords;
+layout(location = 1) in vec3 inNormal;
+layout(location = 2) in vec2 inTexCoords;
 
 layout(set = 1, binding = 0) uniform sampler2D texArray[3];
 
@@ -25,7 +26,7 @@ void main()
     }
     if (PushConstants.DrawDebug == 1)
     {
-        outColor = vec4(outColor.a, 0.f, 0.f, 1.f);
+        outColor = vec4(inNormal, 1.f);
     } 
     else if (PushConstants.DrawDebug == 2)
     {

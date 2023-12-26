@@ -103,6 +103,7 @@ namespace vkmmc
 			layout = BuildVertexInputLayout(
 				{
 					EAttributeType::Float3, // Position
+					EAttributeType::Float3, // Normal
 					EAttributeType::Float3, // Color
 					EAttributeType::Float2 // UVs
 				}
