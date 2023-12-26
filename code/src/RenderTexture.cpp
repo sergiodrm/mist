@@ -21,8 +21,7 @@ namespace vkmmc
 	{
 		switch (format)
 		{
-		case vkmmc::IMAGE_FORMAT_R8G8B8: //return VK_FORMAT_R8G8B8_SRGB;
-			Log(LogLevel::Warn, "Image loaded with 3 channels, this may cause some visual issues.\n");
+		case vkmmc::IMAGE_FORMAT_R8G8B8: // forced to be RGBA
 		case vkmmc::IMAGE_FORMAT_R8G8B8A8: return VK_FORMAT_R8G8B8A8_SRGB;
 		case vkmmc::IMAGE_FORMAT_INVALID: return VK_FORMAT_UNDEFINED;
 		}
@@ -35,7 +34,7 @@ namespace vkmmc
 		if (!path || !*path)
 			return false;
 
-		stbi_set_flip_vertically_on_load(true);
+		//stbi_set_flip_vertically_on_load(true);
 		int32_t width, height, channels;
 		stbi_uc* pixels = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
 		if (!pixels)
@@ -43,6 +42,14 @@ namespace vkmmc
 			Logf(LogLevel::Error, "Fail to load texture data from %s.\n", path);
 			return false;
 		}
+		if (channels != 4)
+		{
+			Logf(LogLevel::Warn,
+				"Resource: [%s].\nTrying to load texture with %d channels, forced to 4 channels due to unsupported format.\n",
+				path, channels);
+			channels = 4;
+		}
+
 		out.Channels = (uint32_t)channels;
 		out.Width = (uint32_t)width;
 		out.Height = (uint32_t)height;
@@ -165,57 +172,5 @@ namespace vkmmc
 	{
 		vmaDestroyImage(renderContext.Allocator, m_image.Image, m_image.Alloc);
 		vkDestroyImageView(renderContext.Device, m_imageView, nullptr);
-	}
-
-	void RenderTextureDescriptor::Init(const RenderTextureDescriptorCreateInfo& info)
-	{
-		check(m_sampler == VK_NULL_HANDLE && m_descriptorSet == VK_NULL_HANDLE);
-		// Sampler
-		VkSamplerCreateInfo samplerInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.pNext = nullptr,
-			.magFilter = VK_FILTER_NEAREST,
-			.minFilter = VK_FILTER_NEAREST,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
-		};
-		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_sampler));
-
-		// Update descriptor with our texture.
-		VkDescriptorImageInfo imageInfo
-		{
-			.sampler = m_sampler,
-			.imageView = info.ImageView,
-			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		};
-		VkWriteDescriptorSet writeDesc
-		{
-			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.pNext = nullptr,
-			.dstSet = info.Descriptor,
-			.dstBinding = info.Binding,
-			.dstArrayElement = info.ArrayElement,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.pImageInfo = &imageInfo
-		};
-		vkUpdateDescriptorSets(info.RContext.Device, 1, &writeDesc, 0, nullptr);
-
-		m_descriptorSet = info.Descriptor;
-	}
-
-	void RenderTextureDescriptor::Destroy(const RenderContext& renderContext)
-	{
-		check(m_sampler != VK_NULL_HANDLE);
-		vkDestroySampler(renderContext.Device, m_sampler, nullptr);
-	}
-
-	void RenderTextureDescriptor::Bind(VkCommandBuffer cmd, RenderPipeline pipeline) const
-	{
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-			pipeline.GetPipelineLayoutHandle(), 1, 1,
-			&m_descriptorSet, 0, nullptr);
 	}
 }
