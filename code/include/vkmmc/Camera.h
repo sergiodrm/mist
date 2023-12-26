@@ -30,14 +30,14 @@ namespace vkmmc
 
 	private:
 		// View
-		glm::vec3 m_position{ 0.f, 0.f, -3.f };
-		glm::vec3 m_rotation{ 0.f }; // Roll pitch yaw
+		glm::vec3 m_position;
+		glm::vec3 m_rotation; // Roll pitch yaw
 
 		// Projection
-		float m_fov = 45.f; // degrees
-		float m_aspectRatio = 16.f / 9.f;
-		float m_nearClip = 0.1f;
-		float m_farClip = 1000.f;
+		float m_fov; // degrees
+		float m_aspectRatio;
+		float m_nearClip;
+		float m_farClip;
 
 		// Cached data
 		glm::mat4 m_projection;
