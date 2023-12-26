@@ -123,7 +123,8 @@ namespace vkmmc
 		info.polygonMode = polygonMode;
 		info.lineWidth = 1.f;
 		// No backface culling
-		info.cullMode = VK_CULL_MODE_NONE;
+		//info.cullMode = VK_CULL_MODE_NONE;
+		info.cullMode = VK_CULL_MODE_FRONT_BIT;
 		info.frontFace = VK_FRONT_FACE_CLOCKWISE;
 		// No depth bias
 		info.depthBiasEnable = VK_FALSE;
