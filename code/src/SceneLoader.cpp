@@ -3,10 +3,8 @@
 #include "SceneLoader.h"
 
 #define CGLTF_IMPLEMENTATION
-#define _CRT_SECURE_NO_WARNINGS
 #pragma warning(disable:4996)
 #include <gltf/cgltf.h>
-#undef _CRT_SECURE_NO_WARNINGS
 #undef CGLTF_IMPLEMENTATION
 
 #include "Debug.h"
