@@ -1,6 +1,7 @@
 // header file for vkmmc project 
 #pragma once
 #include "Logger.h"
+#include <cassert>
 
 #define expand(x) (x)
 #define check(expr) \
