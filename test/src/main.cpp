@@ -57,21 +57,73 @@ void ProcessLogic(vkmmc::IRenderEngine* engine, const Timer& timer)
 	}
 }
 
-void ImGuiLogic()
+void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Material& mtl, const glm::ivec3& gridDim, const glm::vec3& cellSize)
 {
-	ImGui::Begin("Magic params");
-	ImGui::Text("Time app: %.4f s", GTimer.ElapsedNow());
-	ImGui::Checkbox("Pause", &GIsPaused);
-	ImGui::DragFloat("Amplitude", &GAmplitude, 0.2f);
-	ImGui::DragFloat("Frequency (Hz)", &GFrequency, 0.02f);
-	float phase[] = { GAxisXPhase, GAxisZPhase };
-	if (ImGui::DragFloat2("Phase", phase, 0.1f))
+	for (int32_t x = -gridDim[0] / 2; x < gridDim[0] / 2; ++x)
 	{
-		GAxisXPhase = phase[0];
-		GAxisZPhase = phase[1];
+		for (int32_t z = -gridDim[2] / 2; z < gridDim[2] / 2; ++z)
+		{
+			for (int32_t y = -gridDim[1] / 2; y < gridDim[1] / 2; ++y)
+			{
+				vkmmc::RenderObject obj = engine->NewRenderObject();
+				vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform(obj);
+				t.Position = { (float)x * cellSize.x, (float)y * cellSize.y, (float)z * cellSize.z };
+				vkmmc::RenderObjectMesh& m = *engine->GetObjectMesh(obj);
+				m.StaticMesh = mesh;
+				m.Mtl = mtl;
+			}
+		}
 	}
-	ImGui::DragFloat("Noise", &GNoise, 0.01f);
-	ImGui::End();
+
+	engine->SetImGuiCallback([]() 
+		{
+			ImGui::Begin("Magic params");
+			ImGui::Text("Time app: %.4f s", GTimer.ElapsedNow());
+			ImGui::Checkbox("Pause", &GIsPaused);
+			ImGui::DragFloat("Amplitude", &GAmplitude, 0.2f);
+			ImGui::DragFloat("Frequency (Hz)", &GFrequency, 0.02f);
+			float phase[] = { GAxisXPhase, GAxisZPhase };
+			if (ImGui::DragFloat2("Phase", phase, 0.1f))
+			{
+				GAxisXPhase = phase[0];
+				GAxisZPhase = phase[1];
+			}
+			ImGui::DragFloat("Noise", &GNoise, 0.01f);
+			ImGui::End();
+		});
+}
+
+void ExecuteSponza(vkmmc::IRenderEngine* engine)
+{
+	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene(engine, "../../assets/models/sponza/Sponza.gltf");
+
+	for (uint32_t i = 0; i < scene.Meshes.size(); ++i)
+	{
+		const vkmmc::SceneNodeMesh& node = scene.Meshes[i];
+		for (uint32_t j = 0; j < node.Meshes.size(); ++j)
+		{
+			vkmmc::RenderObject object = engine->NewRenderObject();
+			vkmmc::RenderObjectMesh* rom = engine->GetObjectMesh(object);
+			rom->StaticMesh = node.Meshes[j];
+			rom->Mtl = node.Materials[j];
+		}
+	}
+}
+
+void ExecuteBoxBiArray(vkmmc::IRenderEngine* engine)
+{
+	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene(engine, "../../assets/models/box/Box.gltf");
+	vkmmc::Mesh mesh = scene.Meshes[0].Meshes[0];
+	engine->UploadMesh(mesh);
+
+	vkmmc::Material material;
+	engine->UploadMaterial(material);
+
+#ifdef _DEBUG
+	SpawnMeshGrid(engine, mesh, material, glm::ivec3{ 20, 2, 20 }, glm::vec3{ 2.f });
+#else
+	SpawnMeshGrid(engine, mesh, material, glm::ivec3{ 120, 2, 120 }, glm::vec3{ 2.f });
+#endif
 }
 
 int main(int32_t argc, char** argv)
@@ -82,46 +134,8 @@ int main(int32_t argc, char** argv)
 	};
 	vkmmc::IRenderEngine* engine = vkmmc::NewRenderEngine();
 	engine->Init(spec);
-	engine->SetImGuiCallback(&ImGuiLogic);
 
-	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene("../../assets/models/box/Box.gltf");
-	for (uint32_t i = 0; i < scene.Meshes.size(); ++i)
-	{
-		for (vkmmc::Mesh& mesh : scene.Meshes[i].Meshes)
-		{
-			engine->UploadMesh(mesh);
-		}
-	}
-
-	vkmmc::RenderHandle marioTexHandle = engine->LoadTexture("../../assets/textures/test.png");
-	vkmmc::RenderHandle luigiTexHandle = engine->LoadTexture("../../assets/textures/luigi.png");
-	vkmmc::RenderHandle peachTexHandle = engine->LoadTexture("../../assets/textures/peach.png");
-
-	vkmmc::Material material;
-	material.SetDiffuseTexture(marioTexHandle);
-	material.SetNormalTexture(luigiTexHandle);
-	material.SetSpecularTexture(peachTexHandle);
-	engine->UploadMaterial(material);
-
-
-#ifdef _DEBUG
-	constexpr int32_t dim[2] = { 12, 12 };
-#else
-	constexpr int32_t dim[2] = { 120, 120 };
-#endif
-	constexpr float dif = 2.f;
-	for (int32_t x = -dim[0] / 2; x < dim[0] / 2; ++x)
-	{
-		for (int32_t y = -dim[1] / 2; y < dim[1] / 2; ++y)
-		{
-			vkmmc::RenderObject obj = engine->NewRenderObject();
-			vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform(obj);
-			t.Position = { (float)x * dif, 0.f, (float)y * dif };
-			vkmmc::RenderObjectMesh& m = *engine->GetObjectMesh(obj);
-			m.StaticMesh = scene.Meshes[0].Meshes[0];
-			m.Mtl = material;
-		}
-	}
+	ExecuteSponza(engine);
 
 	bool terminate = false;
 	while (!terminate)
