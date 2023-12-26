@@ -2,11 +2,14 @@
 #pragma once
 
 #include <vector>
+#include <string>
 #include "Vertex.h"
 
 namespace vkmmc
 {
 	class Mesh;
+	class Material;
+	class IRenderEngine;
 
 	enum : uint32_t {SCENE_NODE_INVALID_ID = UINT32_MAX};
 	struct SceneNode
@@ -19,6 +22,7 @@ namespace vkmmc
 	struct SceneNodeMesh
 	{
 		std::vector<Mesh> Meshes;
+		std::vector<Material> Materials;
 	};
 
 	struct Scene
@@ -27,9 +31,10 @@ namespace vkmmc
 		std::vector<SceneNodeMesh> Meshes;
 	};
 
+
 	class SceneLoader
 	{
 	public:
-		static Scene LoadScene(const char* sceneFilepath);
+		static Scene LoadScene(IRenderEngine* engine, const char* sceneFilepath);
 	};
 }

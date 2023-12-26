@@ -36,9 +36,9 @@ namespace vkmmc_globals
 		vkmmc::Camera Camera{};
 		glm::vec3 Direction{ 0.f };
 		float Speed = 0.f;
-		float MaxSpeed = 2.f; // eu/s
+		float MaxSpeed = 1000.f; // eu/s
 		float MaxRotSpeed = 1.f; // rad/s
-		float Acceleration = 2.f;
+		float Acceleration = 1500.f;
 
 		bool IsMotionControlActive = false;
 		glm::vec2 MotionRotation{ 0.f };
@@ -163,6 +163,7 @@ namespace vkmmc_globals
 namespace vkmmc_debug
 {
 	bool GTerminatedWithErrors = false;
+
 	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 		VkDebugUtilsMessageTypeFlagsEXT type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
@@ -238,6 +239,17 @@ namespace vkmmc_debug
 		size_t m_drawCalls{ 0 };
 	} GRenderStats;
 
+	struct DebugShaderConstants
+	{
+		enum EDrawDebug : int32_t
+		{
+			Disabled, Normals, TexCoords, InColor, Count
+		};
+
+		int32_t ForcedIndexTexture{ -1 };
+		int32_t DrawDebug{Disabled};
+	} GDebugShaderConstants;
+
 	void ImGuiDraw()
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
@@ -258,6 +270,11 @@ namespace vkmmc_debug
 		ImGui::Text("Triangles:  %zd", GRenderStats.m_trianglesCount);
 		ImGui::End();
 		ImGui::PopStyleColor();
+
+		ImGui::Begin("Debug shader constants");
+		ImGui::SliderInt("Forced texture index", &GDebugShaderConstants.ForcedIndexTexture, -1, 3);
+		ImGui::SliderInt("Draw debug mode", &GDebugShaderConstants.DrawDebug, 0, DebugShaderConstants::Count);
+		ImGui::End();
 	}
 }
 
@@ -628,6 +645,10 @@ namespace vkmmc
 				pipeline.GetPipelineLayoutHandle(), 0, 1,
 				&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
 
+			vkCmdPushConstants(cmd, pipeline.GetPipelineLayoutHandle(),
+				VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vkmmc_debug::DebugShaderConstants),
+				&vkmmc_debug::GDebugShaderConstants);
+
 			Material lastMaterial;
 			Mesh lastMesh;
 			for (uint32_t i = 0; i < count; ++i)
@@ -777,11 +798,18 @@ namespace vkmmc
 		
 		auto submitTexture = [this](RenderHandle texHandle, MaterialTextureData& mtl, MaterialTextureData::ESamplerIndex index)
 			{
+				RenderTexture texture;
 				if (texHandle.IsValid())
 				{
-					RenderTexture texture = m_textures[texHandle];
-					SubmitMaterialTexture(mtl, index, texture.GetImageView());
+					texture = m_textures[texHandle];
 				}
+				else
+				{
+					if (!m_defaultTexture.IsValid())
+						m_defaultTexture = LoadTexture("../../assets/textures/checkerboard.jpg");
+					texture = m_textures[m_defaultTexture];
+				}
+				SubmitMaterialTexture(mtl, index, texture.GetImageView());
 			};
 		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialTextureData::SAMPLER_INDEX_DIFFUSE);
 		submitTexture(materialHandle.GetNormalTexture(), material, MaterialTextureData::SAMPLER_INDEX_NORMAL);
@@ -1056,10 +1084,20 @@ namespace vkmmc
 			.Build(m_renderContext, &textureLayout);
 		m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT] = textureLayout;
 
+		// Debug push constants
+		VkPushConstantRange pushRange
+		{
+			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+			.offset = 0,
+			.size = sizeof(vkmmc_debug::DebugShaderConstants)
+		};
+
 		// Create layout info
 		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
 		layoutInfo.setLayoutCount = DESCRIPTOR_SET_COUNT;
 		layoutInfo.pSetLayouts = m_descriptorLayouts;
+		layoutInfo.pushConstantRangeCount = 1;
+		layoutInfo.pPushConstantRanges = &pushRange;
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{

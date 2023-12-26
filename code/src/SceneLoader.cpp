@@ -12,6 +12,8 @@
 #include "Debug.h"
 #include <glm/gtx/transform.hpp>
 #include "Mesh.h"
+#include "GenericUtils.h"
+#include "RenderEngine.h"
 
 namespace gltf_api
 {
@@ -114,8 +116,8 @@ namespace gltf_api
 		default:
 			break;
 		}
-		if (attributeName)
-			vkmmc::Logf(vkmmc::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
+		//if (attributeName)
+		//	vkmmc::Logf(vkmmc::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
 	}
 
 	// Attributes are an continuous array of positions, normals, uvs...
@@ -171,7 +173,7 @@ namespace gltf_api
 		return data;
 	}
 
-	void LoadPrimitive(std::vector<vkmmc::Vertex>& vertices, std::vector<uint32_t>& indices, const cgltf_primitive* primitive, const cgltf_node* nodes, uint32_t nodeCount)
+	void LoadMesh(std::vector<vkmmc::Vertex>& vertices, std::vector<uint32_t>& indices, const cgltf_primitive* primitive, const cgltf_node* nodes, uint32_t nodeCount)
 	{
 		uint32_t attributeCount = (uint32_t)primitive->attributes_count;
 		vertices.resize(primitive->attributes[0].data->count);
@@ -191,14 +193,59 @@ namespace gltf_api
 			}
 		}
 	}
+
+	vkmmc::RenderHandle LoadTexture(vkmmc::IRenderEngine* engine, const char* rootAssetPath, const cgltf_texture_view& texView)
+	{
+		char texturePath[512];
+		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
+		vkmmc::RenderHandle handle = engine->LoadTexture(texturePath);
+		return handle;
+	}
+
+	void LoadMaterial(vkmmc::IRenderEngine* engine, const char* rootAssetPath, vkmmc::Material& material, const cgltf_primitive& primitive)
+	{
+		if (primitive.material)
+		{
+			const cgltf_material& mtl = *primitive.material;
+			if (mtl.has_pbr_metallic_roughness)
+			{
+				vkmmc::RenderHandle diffHandle = LoadTexture(engine,
+					rootAssetPath,
+					mtl.pbr_metallic_roughness.base_color_texture);
+				material.SetDiffuseTexture(diffHandle);
+			}
+			else
+				vkmmc::Log(vkmmc::LogLevel::Warn, "Diffuse material texture not found.\n");
+			if (mtl.has_pbr_specular_glossiness)
+			{
+				vkmmc::RenderHandle handle = LoadTexture(engine,
+					rootAssetPath, 
+					mtl.pbr_specular_glossiness.diffuse_texture);
+				material.SetSpecularTexture(handle);
+			}
+			else
+				vkmmc::Log(vkmmc::LogLevel::Warn, "Specular material texture not found.\n");
+			if (mtl.normal_texture.texture)
+			{
+				vkmmc::RenderHandle handle = LoadTexture(engine,
+					rootAssetPath, 
+					mtl.normal_texture);
+				material.SetNormalTexture(handle);
+			}
+			else
+				vkmmc::Log(vkmmc::LogLevel::Warn, "Normal material texture not found.\n");
+		}
+	}
 }
 
 namespace vkmmc
 {
-	Scene SceneLoader::LoadScene(const char* sceneFilepath)
+	Scene SceneLoader::LoadScene(IRenderEngine* engine, const char* sceneFilepath)
 	{
 		Scene scene;
 		cgltf_data* data = gltf_api::ParseFile(sceneFilepath);
+		char rootAssetPath[512];
+		vkmmc_utils::GetRootDir(sceneFilepath, rootAssetPath, 512);
 		check(data);
 		uint32_t nodesCount = (uint32_t)data->nodes_count;
 		for (uint32_t i = 0; i < nodesCount; ++i)
@@ -209,15 +256,20 @@ namespace vkmmc
 				scene.Meshes.push_back(SceneNodeMesh());
 				SceneNodeMesh& mesh = scene.Meshes.back();
 				mesh.Meshes.resize(node.mesh->primitives_count);
+				mesh.Materials.resize(node.mesh->primitives_count);
 				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
 				{
 					const cgltf_primitive& primitive = node.mesh->primitives[j];
 					std::vector<Vertex> vertices;
 					std::vector<uint32_t> indices;
-					gltf_api::LoadPrimitive(vertices, indices, &primitive, data->nodes, nodesCount);
+					gltf_api::LoadMesh(vertices, indices, &primitive, data->nodes, nodesCount);
+					gltf_api::LoadMaterial(engine, rootAssetPath, mesh.Materials[j], primitive);
 
 					mesh.Meshes[j].SetVertices(vertices.data(), vertices.size());
 					mesh.Meshes[j].SetIndices(indices.data(), indices.size());
+
+					engine->UploadMesh(mesh.Meshes[j]);
+					engine->UploadMaterial(mesh.Materials[j]);
 				}
 			}
 		}

@@ -150,6 +150,7 @@ namespace vkmmc
 		Swapchain m_swapchain;
 		RenderPass m_renderPass;
 		RenderHandle m_handleRenderPipeline;
+		RenderHandle m_defaultTexture;
 		std::vector<VkFramebuffer> m_framebuffers;
 
 		FrameContext m_frameContextArray[MaxOverlappedFrames];
