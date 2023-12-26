@@ -1,6 +1,8 @@
 
 #include <vector>
 #include <fstream>
+#include "GenericUtils.h"
+#include "Debug.h"
 
 namespace vkmmc_utils
 {
@@ -22,5 +24,20 @@ namespace vkmmc_utils
 		// Terminated with file stream
 		file.close();
 		return true;
+	}
+
+	void vkmmc_utils::GetRootDir(const char* filepath, char* rootPath, size_t size)
+	{
+		size_t len = strlen(filepath);
+		check(size >= len);
+		for (size_t i = len - 1; i < len; --i)
+		{
+			if (filepath[i] == '/' || filepath[i] == '\\')
+			{
+				strncpy_s(rootPath, size, filepath, i + 1);
+				rootPath[i + 2] = '\0';
+				break;
+			}
+		}
 	}
 }
