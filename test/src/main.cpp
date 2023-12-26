@@ -9,6 +9,7 @@
 #include <corecrt_math_defines.h>
 
 #include <imgui/imgui.h>
+#include "vkmmc/Camera.h"
 
 class Timer
 {
@@ -75,7 +76,7 @@ void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Mater
 		}
 	}
 
-	engine->SetImGuiCallback([]() 
+	engine->AddImGuiCallback([]() 
 		{
 			ImGui::Begin("Magic params");
 			ImGui::Text("Time app: %.4f s", GTimer.ElapsedNow());
@@ -137,10 +138,18 @@ int main(int32_t argc, char** argv)
 
 	ExecuteSponza(engine);
 
+	vkmmc::CameraController cameraController;
+	engine->AddImGuiCallback([&cameraController]() 
+		{
+			cameraController.ImGuiDraw();
+		});
+
 	bool terminate = false;
 	while (!terminate)
 	{
+		cameraController.Tick(0.033f);
 		ProcessLogic(engine, GTimer);
+		engine->UpdateSceneView(cameraController.GetCamera().GetView(), cameraController.GetCamera().GetProjection());
 		terminate = !engine->RenderProcess();
 	}
 

@@ -31,133 +31,6 @@ namespace vkmmc_globals
 	const char* BasicVertexShaders = SHADER_ROOT_PATH "basic.vert.spv";
 	const char* BasicFragmentShaders = SHADER_ROOT_PATH "basic.frag.spv";
 
-	struct CameraController
-	{
-		vkmmc::Camera Camera{};
-		glm::vec3 Direction{ 0.f };
-		float Speed = 0.f;
-		float MaxSpeed = 1000.f; // eu/s
-		float MaxRotSpeed = 1.f; // rad/s
-		float Acceleration = 1500.f;
-
-		bool IsMotionControlActive = false;
-		glm::vec2 MotionRotation{ 0.f };
-
-		glm::vec3 Rotate(const glm::vec3& vec) const
-		{
-			glm::mat4 rot = Camera.GetOrientation();
-			glm::vec4 v = rot * glm::vec4{ vec.x, vec.y, vec.z, 1.f };
-			return glm::vec3(v);
-		}
-
-		glm::vec3 GetForward() const { return Rotate(glm::vec3{0.f, 0.f, -1.f}); }
-		glm::vec3 GetUp() const { return Rotate(glm::vec3{ 0.f, 1.f, 0.f }); }
-		glm::vec3 GetRight() const { return Rotate(glm::vec3{1.f, 0.f, 0.f}); }
-
-		void ProcessInputMouseButton(const SDL_MouseButtonEvent& e)
-		{
-			switch (e.button)
-			{
-			case SDL_BUTTON_RIGHT:
-				IsMotionControlActive = e.state == SDL_PRESSED;
-				SDL_SetRelativeMouseMode(IsMotionControlActive ? SDL_TRUE : SDL_FALSE);
-				break;
-			}
-		}
-
-		void ProcessInputMouseMotion(const SDL_MouseMotionEvent& e)
-		{
-			if (IsMotionControlActive)
-			{
-				static constexpr float swidth = 1920.f;
-				static constexpr float sheight = 1080.f;
-				float yawdiff = (float)(e.xrel) / swidth;
-				float pitchdiff = (float)(e.yrel) / sheight;
-				MotionRotation += glm::vec2{ -pitchdiff, -yawdiff };
-			}
-		}
-
-		void ProcessEvent(const SDL_Event& e)
-		{
-			switch (e.type)
-			{
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP:
-				ProcessInputMouseButton(e.button);
-				break;
-			case SDL_MOUSEMOTION:
-				ProcessInputMouseMotion(e.motion);
-				break;
-			default:
-				break;
-			}
-		}
-
-		void Tick(float elapsedSeconds)
-		{
-			ReadKeyboardState();
-			if (MotionRotation != glm::vec2{ 0.f })
-			{
-				Camera.SetRotation(Camera.GetRotation() + MaxRotSpeed * glm::vec3{ MotionRotation.x, MotionRotation.y, 0.f });
-				MotionRotation = glm::vec2{ 0.f };
-			}
-			if (Direction != glm::vec3{ 0.f })
-			{
-				Direction = glm::normalize(Direction);
-				Speed += Acceleration * elapsedSeconds;
-				Speed = __min(MaxSpeed, Speed);
-				glm::vec3 movement = Direction * Speed * elapsedSeconds;
-				Camera.SetPosition(Camera.GetPosition() + movement);
-				Direction = glm::vec3{ 0.f };
-			}
-			else
-			{
-				Speed = 0.f;
-			}
-		}
-
-		void ReadKeyboardState()
-		{
-			int32_t numkeys;
-			const uint8_t* keystate = SDL_GetKeyboardState(&numkeys);
-			if (keystate[SDL_SCANCODE_W])
-				Direction += GetForward();
-			if (keystate[SDL_SCANCODE_A])
-				Direction += GetRight() * -1.f;
-			if (keystate[SDL_SCANCODE_S])
-				Direction += GetForward() * -1.f;
-			if (keystate[SDL_SCANCODE_D])
-				Direction += GetRight();
-			if (keystate[SDL_SCANCODE_E])
-				Direction += GetUp();
-			if (keystate[SDL_SCANCODE_Q])
-				Direction += GetUp() * -1.f;
-		}
-
-		void ImGuiDraw()
-		{
-			ImGui::Begin("Camera");
-			if (ImGui::Button("Reset position"))
-				Camera.SetPosition({ 0.f, 0.f, 0.f });
-			glm::vec3 pos = Camera.GetPosition();
-			if (ImGui::DragFloat3("Position", &pos[0], 0.5f))
-				Camera.SetPosition(pos);
-			glm::vec3 rot = Camera.GetRotation();
-			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
-				Camera.SetRotation(rot);
-			ImGui::DragFloat("MaxSpeed", &MaxSpeed, 1.f);
-			ImGui::DragFloat("MaxRotSpeed", &MaxRotSpeed, 0.2f);
-			ImGui::DragFloat("Acceleration", &Acceleration, 1.f);
-			ImGui::Text("Speed: %.4f ue/s", Speed);
-			glm::vec3 forw = GetForward();
-			glm::vec3 right = GetRight();
-			glm::vec3 up = GetUp();
-			ImGui::Text("Forward: %.3f, %.3f, %.3f", forw.x, forw.y, forw.z);
-			ImGui::Text("Right: %.3f, %.3f, %.3f", right.x, right.y, right.z);
-			ImGui::Text("Up: %.3f, %.3f, %.3f", up.x, up.y, up.z);
-			ImGui::End();
-		}
-	} GCameraController{};
 }
 
 namespace vkmmc_debug
@@ -364,14 +237,11 @@ namespace vkmmc
 				{
 				case SDL_QUIT: shouldExit = true; break;
 				default:
-					vkmmc_globals::GCameraController.ProcessEvent(e);
 					break;
 				}
 			}
 			
 			ImGuiNewFrame();
-			vkmmc_globals::GCameraController.Tick(0.033f);
-			vkmmc_globals::GCameraController.ImGuiDraw();
 			vkmmc_debug::ImGuiDraw();
 			vkmmc_debug::GRenderStats.m_trianglesCount = 0;
 			vkmmc_debug::GRenderStats.m_drawCalls = 0;
@@ -394,18 +264,16 @@ namespace vkmmc
 			{
 			case SDL_QUIT: res = false; break;
 			default:
-				vkmmc_globals::GCameraController.ProcessEvent(e);
+				//vkmmc_globals::GCameraController.ProcessEvent(e);
 				break;
 			}
 		}
 		ImGuiNewFrame();
-		vkmmc_globals::GCameraController.Tick(0.033f);
-		vkmmc_globals::GCameraController.ImGuiDraw();
 		vkmmc_debug::ImGuiDraw();
 		vkmmc_debug::GRenderStats.m_trianglesCount = 0;
 		vkmmc_debug::GRenderStats.m_drawCalls = 0;
-		if (m_imguiCallback)
-			m_imguiCallback();
+		for (auto& fn : m_imguiCallbackArray)
+			fn();
 
 		ImGui::Render();
 		Draw();
@@ -430,6 +298,15 @@ namespace vkmmc
 		Log(LogLevel::Ok, "Render engine terminated.\n");
 		if (vkmmc_debug::GTerminatedWithErrors)
 			Log(LogLevel::Error, "Render engine was terminated with vulkan validation layer errors registered.\n");
+	}
+
+	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
+	{
+		m_cachedCameraData.View = glm::inverse(view);
+		m_cachedCameraData.Projection = projection;
+		m_cachedCameraData.ViewProjection = 
+			m_cachedCameraData.Projection * m_cachedCameraData.View;
+		m_dirtyCachedCamera = true;
 	}
 
 	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
@@ -623,12 +500,15 @@ namespace vkmmc
 		{
 			PROFILE_SCOPE(UpdateBuffers);
 			// Update descriptor set buffer
-			GPUCamera camera;
-			camera.View = glm::inverse(vkmmc_globals::GCameraController.Camera.GetView());
-			camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
-			camera.ViewProjection = camera.Projection * camera.View;
+			if (m_dirtyCachedCamera)
+			{
+				MemCopyDataToBuffer(m_renderContext.Allocator, 
+					GetFrameContext().CameraDescriptorSetBuffer.Alloc, 
+					&m_cachedCameraData, 
+					sizeof(GPUCamera));
+				m_dirtyCachedCamera = false;
+			}
 
-			MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().CameraDescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
 			static std::vector<GPUObject> objects(RenderObjectContainer::MaxRenderObjects);
 			for (uint32_t i = 0; i < count; ++i)
 			{

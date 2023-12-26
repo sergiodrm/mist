@@ -100,6 +100,8 @@ namespace vkmmc
 		virtual bool RenderProcess() override;
 		virtual void Shutdown() override;
 
+		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) override;
+
 		virtual void UploadMesh(Mesh& mesh) override;
 		virtual void UploadMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* filename) override;
@@ -108,7 +110,7 @@ namespace vkmmc
 		virtual RenderObjectTransform* GetObjectTransform(RenderObject object) override;
 		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) override;
 		virtual uint32_t GetObjectCount() const { return m_scene.Count(); }
-		virtual void SetImGuiCallback(std::function<void()>&& fn) { m_imguiCallback = fn; }
+		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 
 	protected:
 		void Draw();
@@ -177,10 +179,13 @@ namespace vkmmc
 		ResourceMap<MaterialTextureData> m_materials;
 
 		RenderObjectContainer m_scene;
+		bool m_dirtyCachedCamera;
+		GPUCamera m_cachedCameraData;
 
 		UploadContext m_immediateSubmitContext;
 
 		FunctionStack m_shutdownStack;
-		std::function<void()> m_imguiCallback;
+		typedef std::function<void()> ImGuiCallback;
+		std::vector<ImGuiCallback> m_imguiCallbackArray;
 	};
 }
