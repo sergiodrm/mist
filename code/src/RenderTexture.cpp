@@ -81,28 +81,14 @@ namespace vkmmc
 		Memory::MemCopyDataToBuffer(info.RContext.Allocator, stageBuffer.Alloc, info.Raw.Pixels, size);
 
 		// Prepare image creation
-		VkExtent3D extent
-		{
-			.width = info.Raw.Width,
-			.height = info.Raw.Height,
-			.depth = 1
-		};
-		VkImageCreateInfo imageInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-			.pNext = nullptr,
-			.imageType = VK_IMAGE_TYPE_2D,
-			.format = format,
-			.extent = extent,
-			.mipLevels = 1,
-			.arrayLayers = 1,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
-			.tiling = VK_IMAGE_TILING_OPTIMAL,
-			.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-		};
-		VmaAllocationCreateInfo allocInfo { .usage = VMA_MEMORY_USAGE_GPU_ONLY };
-		vkcheck(vmaCreateImage(info.RContext.Allocator, &imageInfo, &allocInfo,
-			&m_image.Image, &m_image.Alloc, nullptr));
+		VkExtent3D extent;
+		extent.width = info.Raw.Width;
+			extent.height = info.Raw.Height;
+			extent.depth = 1;
+		m_image = Memory::CreateImage(info.RContext.Allocator,
+			format, extent,
+			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		info.RecordCommandRutine([=](VkCommandBuffer cmd) 
 			{
@@ -174,7 +160,7 @@ namespace vkmmc
 
 	void RenderTexture::Destroy(const RenderContext& renderContext)
 	{
-		vmaDestroyImage(renderContext.Allocator, m_image.Image, m_image.Alloc);
+		Memory::DestroyImage(renderContext.Allocator, m_image);
 		vkDestroyImageView(renderContext.Device, m_imageView, nullptr);
 	}
 }

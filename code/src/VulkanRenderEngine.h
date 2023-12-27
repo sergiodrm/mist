@@ -1,5 +1,6 @@
 
 #pragma once
+
 #include "RenderEngine.h"
 #include "RenderPass.h"
 #include "RenderHandle.h"
@@ -17,7 +18,6 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <string.h>
-#include <array>
 
 namespace vkmmc
 {

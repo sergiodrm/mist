@@ -4,6 +4,7 @@
 #include "Memory.h"
 #include "Debug.h"
 #include <corecrt_memory.h>
+#include "InitVulkanTypes.h"
 
 namespace vkmmc
 {
@@ -38,5 +39,24 @@ namespace vkmmc
 		vkcheck(vmaMapMemory(allocator, allocation, &data));
 		memcpy_s(data, size, source, size);
 		vmaUnmapMemory(allocator, allocation);
+	}
+
+	AllocatedImage Memory::CreateImage(VmaAllocator allocator, VkFormat format, VkExtent3D extent, VkImageUsageFlags usageFlags, VmaMemoryUsage memUsage, VkMemoryPropertyFlags memProperties)
+	{
+		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, usageFlags, extent);
+		VmaAllocationCreateInfo allocInfo
+		{
+			.usage = memUsage,
+			.requiredFlags = memProperties
+		};
+		AllocatedImage image;
+		vkcheck(vmaCreateImage(allocator, &imageInfo, &allocInfo,
+			&image.Image, &image.Alloc, nullptr));
+		return image;
+	}
+
+	void Memory::DestroyImage(VmaAllocator allocator, AllocatedImage image)
+	{
+		vmaDestroyImage(allocator, image.Image, image.Alloc);
 	}
 }
