@@ -8,7 +8,7 @@
 #include "GenericUtils.h"
 #include "Debug.h"
 
-namespace vkmmc
+namespace vkutils
 {
 	VkBufferUsageFlags GetVulkanBufferUsage(VkDescriptorType type)
 	{
@@ -21,6 +21,10 @@ namespace vkmmc
 		}
 		return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
 	}
+}
+
+namespace vkmmc
+{
 
 	ShaderCompiler::~ShaderCompiler()
 	{
@@ -160,8 +164,8 @@ namespace vkmmc
 
 		uint32_t size = info.Resource.Type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ?
 			info.StorageSize : info.Resource.Size;
-		m_buffer = CreateBuffer(info.RContext.Allocator,
-			size, GetVulkanBufferUsage(info.Resource.Type),
+		m_buffer = Memory::CreateBuffer(info.RContext.Allocator,
+			size, vkutils::GetVulkanBufferUsage(info.Resource.Type),
 			VMA_MEMORY_USAGE_CPU_TO_GPU);
 		m_resource = info.Resource;
 		m_resource.Size = size;
@@ -169,7 +173,7 @@ namespace vkmmc
 
 	void ShaderBuffer::Destroy(const RenderContext& renderContext)
 	{
-		DestroyBuffer(renderContext.Allocator, m_buffer);
+		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
 	}
 
 	void ShaderBuffer::SetBoundDescriptorSet(const RenderContext& renderContext, VkDescriptorSet newDescriptorSet)
@@ -193,6 +197,6 @@ namespace vkmmc
 	void ShaderBuffer::CopyData(const RenderContext& renderContext, const void* source, uint32_t size)
 	{
 		check(size <= m_resource.Size);
-		MemCopyDataToBuffer(renderContext.Allocator, m_buffer.Alloc, source, size);
+		Memory::MemCopyDataToBuffer(renderContext.Allocator, m_buffer.Alloc, source, size);
 	}
 }

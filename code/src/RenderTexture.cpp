@@ -5,19 +5,19 @@
 #include "RenderPipeline.h"
 #include "Debug.h"
 
-namespace vkmmc
+namespace vkutils
 {
-	EImageFormat GetImageFormatFromChannels(uint32_t channels)
+	vkmmc::EImageFormat GetImageFormatFromChannels(uint32_t channels)
 	{
 		switch (channels)
 		{
-		case 3: return IMAGE_FORMAT_R8G8B8;
-		case 4: return IMAGE_FORMAT_R8G8B8A8;
+		case 3: return vkmmc::IMAGE_FORMAT_R8G8B8;
+		case 4: return vkmmc::IMAGE_FORMAT_R8G8B8A8;
 		}
-		Logf(LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
-		return IMAGE_FORMAT_INVALID;
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
+		return vkmmc::IMAGE_FORMAT_INVALID;
 	}
-	VkFormat GetImageVulkanFormat(EImageFormat format)
+	VkFormat GetImageVulkanFormat(vkmmc::EImageFormat format)
 	{
 		switch (format)
 		{
@@ -25,9 +25,13 @@ namespace vkmmc
 		case vkmmc::IMAGE_FORMAT_R8G8B8A8: return VK_FORMAT_R8G8B8A8_SRGB;
 		case vkmmc::IMAGE_FORMAT_INVALID: return VK_FORMAT_UNDEFINED;
 		}
-		Logf(LogLevel::Error, "Unknown image format %d.\n", (int32_t)format);
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Unknown image format %d.\n", (int32_t)format);
 		return VK_FORMAT_UNDEFINED;
 	}
+}
+
+namespace vkmmc
+{
 
 	bool io::LoadTexture(const char* path, TextureRaw& out)
 	{
@@ -70,11 +74,11 @@ namespace vkmmc
 
 		// Create transit buffer
 		VkDeviceSize size = info.Raw.Width * info.Raw.Height * info.Raw.Channels;
-		EImageFormat imageFormat = GetImageFormatFromChannels(info.Raw.Channels);
-		VkFormat format = GetImageVulkanFormat(imageFormat);
-		AllocatedBuffer stageBuffer = CreateBuffer(info.RContext.Allocator, size,
+		EImageFormat imageFormat = vkutils::GetImageFormatFromChannels(info.Raw.Channels);
+		VkFormat format = vkutils::GetImageVulkanFormat(imageFormat);
+		AllocatedBuffer stageBuffer = Memory::CreateBuffer(info.RContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-		MemCopyDataToBuffer(info.RContext.Allocator, stageBuffer.Alloc, info.Raw.Pixels, size);
+		Memory::MemCopyDataToBuffer(info.RContext.Allocator, stageBuffer.Alloc, info.Raw.Pixels, size);
 
 		// Prepare image creation
 		VkExtent3D extent
@@ -148,7 +152,7 @@ namespace vkmmc
 			});
 
 		// Destroy transfer buffer.
-		DestroyBuffer(info.RContext.Allocator, stageBuffer);
+		Memory::DestroyBuffer(info.RContext.Allocator, stageBuffer);
 
 		// Create Image view
 		VkImageViewCreateInfo viewInfo

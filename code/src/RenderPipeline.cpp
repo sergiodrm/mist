@@ -15,8 +15,8 @@ namespace vkmmc
 		vkcheck(vkCreatePipelineLayout(device, &LayoutInfo, nullptr, &pipelineLayout));
 
 		// Create vertex input vulkan structures
-		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = PipelineInputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		VkPipelineVertexInputStateCreateInfo inputInfo = PipelineVertexInputStageCreateInfo();
+		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		VkPipelineVertexInputStateCreateInfo inputInfo = vkinit::PipelineVertexInputStageCreateInfo();
 		check(InputDescription.Attributes.size() > 0);
 		inputInfo.pVertexAttributeDescriptions = InputDescription.Attributes.data();
 		inputInfo.vertexAttributeDescriptionCount = (uint32_t)InputDescription.Attributes.size();

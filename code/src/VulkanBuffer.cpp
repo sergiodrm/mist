@@ -2,9 +2,9 @@
 #include "VulkanBuffer.h"
 #include "Debug.h"
 
-namespace vkmmc
+namespace vkutils
 {
-	VkBufferUsageFlags GetVulkanBufferUsage(EBufferUsage usage)
+	VkBufferUsageFlags GetVulkanBufferUsage(vkmmc::EBufferUsage usage)
 	{
 		switch (usage)
 		{
@@ -16,7 +16,7 @@ namespace vkmmc
 		return 0;
 	}
 
-	VkFormat GetAttributeVkFormat(EAttributeType type)
+	VkFormat GetAttributeVkFormat(vkmmc::EAttributeType type)
 	{
 		switch (type)
 		{
@@ -29,11 +29,16 @@ namespace vkmmc
 		case vkmmc::EAttributeType::Int3:	return VK_FORMAT_R32G32B32_SINT;
 		case vkmmc::EAttributeType::Int4:	return VK_FORMAT_R32G32B32A32_SINT;
 		}
-		Logf(LogLevel::Error, "Unknown attribute type for %d.\n", (int32_t)type);
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Unknown attribute type for %d.\n", (int32_t)type);
 		return VK_FORMAT_UNDEFINED;
 	}
 
-	uint32_t GetAttributeSize(EAttributeType type)
+}
+
+namespace vkmmc
+{
+
+	uint32_t AttributeType::GetAttributeSize(EAttributeType type)
 	{
 		switch (type)
 		{
@@ -50,7 +55,7 @@ namespace vkmmc
 		return 0;
 	}
 
-	uint32_t GetAttributeCount(EAttributeType type)
+	uint32_t AttributeType::GetAttributeCount(EAttributeType type)
 	{
 		switch (type)
 		{
@@ -67,12 +72,12 @@ namespace vkmmc
 		return 0;
 	}
 
-	VertexInputLayout BuildVertexInputLayout(const std::initializer_list<EAttributeType>& attributes)
+	VertexInputLayout VertexInputLayout::BuildVertexInputLayout(const std::initializer_list<EAttributeType>& attributes)
 	{
 		return BuildVertexInputLayout(attributes.begin(), (uint32_t)attributes.size());
 	}
 
-	VertexInputLayout BuildVertexInputLayout(const EAttributeType* attributes, uint32_t count)
+	VertexInputLayout VertexInputLayout::BuildVertexInputLayout(const EAttributeType* attributes, uint32_t count)
 	{
 		VertexInputLayout layout(count);
 		uint32_t offset = 0;
@@ -82,10 +87,10 @@ namespace vkmmc
 		{	
 			layout.Attributes[i].binding = binding;
 			layout.Attributes[i].location = i; // TODO: make a function to calculate real location.
-			layout.Attributes[i].format = GetAttributeVkFormat(attributes[i]);
+			layout.Attributes[i].format = vkutils::GetAttributeVkFormat(attributes[i]);
 			layout.Attributes[i].offset = offset;
 
-			offset += GetAttributeSize(attributes[i]);
+			offset += AttributeType::GetAttributeSize(attributes[i]);
 		}
 		layout.Binding.binding = 0;
 		layout.Binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -93,7 +98,7 @@ namespace vkmmc
 		return layout;
 	}
 
-	VertexInputLayout GetStaticMeshVertexLayout()
+	VertexInputLayout VertexInputLayout::GetStaticMeshVertexLayout()
 	{
 		static VertexInputLayout layout;
 		static bool initialized = false;
@@ -123,9 +128,9 @@ namespace vkmmc
 		check(info.RContext.Instance != VK_NULL_HANDLE);
 		check(m_buffer.Buffer == VK_NULL_HANDLE);
 		check(m_buffer.Alloc == nullptr);
-		m_buffer = CreateBuffer(info.RContext.Allocator,
+		m_buffer = Memory::CreateBuffer(info.RContext.Allocator,
 			info.Size,
-			GetVulkanBufferUsage(m_usage)
+			vkutils::GetVulkanBufferUsage(m_usage)
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY);
 		m_size = info.Size;
@@ -133,7 +138,7 @@ namespace vkmmc
 
 	void GPUBuffer::Destroy(const RenderContext& renderContext)
 	{
-		vmaDestroyBuffer(renderContext.Allocator, m_buffer.Buffer, m_buffer.Alloc);
+		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
 		m_size = 0;
 	}
 

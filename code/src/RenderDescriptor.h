@@ -10,19 +10,6 @@ namespace vkmmc
 	struct ShaderDescriptorSet;
 	struct ShaderReflectionProperties;
 
-	bool CreateDescriptorPool(VkDevice device, const VkDescriptorPoolSize* poolSizes,
-		uint32_t poolSizeCount,
-		VkDescriptorPool* outPool);
-	void DestroyDescriptorPool(VkDevice device, VkDescriptorPool pool);
-
-	bool AllocateDescriptorSet(VkDevice device,
-		VkDescriptorPool pool,
-		const VkDescriptorSetLayout* layouts,
-		uint32_t layoutCount,
-		VkDescriptorSet* outDescSet);
-
-	VkDescriptorSetLayout BuildDescriptorSetLayout(const RenderContext& renderContext, const ShaderDescriptorSet& descriptorSetInfo);
-
 	struct DescriptorPoolTypeInfo
 	{
 		VkDescriptorType Type;

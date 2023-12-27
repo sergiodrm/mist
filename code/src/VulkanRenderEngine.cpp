@@ -502,7 +502,7 @@ namespace vkmmc
 			// Update descriptor set buffer
 			if (m_dirtyCachedCamera)
 			{
-				MemCopyDataToBuffer(m_renderContext.Allocator, 
+				Memory::MemCopyDataToBuffer(m_renderContext.Allocator, 
 					GetFrameContext().CameraDescriptorSetBuffer.Alloc, 
 					&m_cachedCameraData, 
 					sizeof(GPUCamera));
@@ -514,7 +514,7 @@ namespace vkmmc
 			{
 				objects[i].ModelTransform = CalculateTransform(transforms[i]);
 			}
-			MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
+			Memory::MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
 		}
 
 		{
@@ -577,14 +577,14 @@ namespace vkmmc
 	void VulkanRenderEngine::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn)
 	{
 		// Begin command buffer recording.
-		VkCommandBufferBeginInfo beginInfo = CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		VkCommandBufferBeginInfo beginInfo = vkinit::CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
 		// Call to extern code to record commands.
 		fn(m_immediateSubmitContext.CommandBuffer);
 		// Finish recording.
 		vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
 
-		VkSubmitInfo info = SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
+		VkSubmitInfo info = vkinit::SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
 		vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
 		WaitFence(m_immediateSubmitContext.Fence);
 		vkResetCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, 0);
@@ -618,7 +618,8 @@ namespace vkmmc
 		for (size_t i = 0; i < shaderStagesCount; ++i)
 		{
 			check(modules[i] != VK_NULL_HANDLE);
-			builder.ShaderStages.push_back(PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
+			builder.ShaderStages.push_back(
+				vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
 		}
 		// Configure viewport settings.
 		builder.Viewport.x = 0.f;
@@ -630,11 +631,11 @@ namespace vkmmc
 		builder.Scissor.offset = { 0, 0 };
 		builder.Scissor.extent = { .width = m_window.Width, .height = m_window.Height };
 		// Depth testing
-		builder.DepthStencil = PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		builder.DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 		// Rasterization: draw filled triangles
-		builder.Rasterizer = PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		builder.Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
 		// Single blenc attachment without blending and writing RGBA
-		builder.ColorBlendAttachment = PipelineColorBlendAttachmentState();
+		builder.ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
 		//builder.ColorBlendAttachment.blendEnable = VK_TRUE;
 		//builder.ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
 		//builder.ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -643,7 +644,7 @@ namespace vkmmc
 		//builder.ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 		//builder.ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
 		// Disable multisampling by default
-		builder.Multisampler = PipelineMultisampleStateCreateInfo();
+		builder.Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
 		// Pass layout info
 		builder.LayoutInfo = layoutInfo;
 
@@ -812,12 +813,12 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitCommands()
 	{
-		VkCommandPoolCreateInfo poolInfo = CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		VkCommandPoolCreateInfo poolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			FrameContext& frameContext = m_frameContextArray[i];
 			vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
-			VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
+			VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
 			vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
 			m_shutdownStack.Add([this, i]()
 				{
@@ -827,7 +828,7 @@ namespace vkmmc
 		}
 
 		vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
-		VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
+		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
 		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
 		m_shutdownStack.Add([this]()
 			{
@@ -879,10 +880,10 @@ namespace vkmmc
 		{
 			FrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
-			VkFenceCreateInfo fenceInfo = FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+			VkFenceCreateInfo fenceInfo = vkinit::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
 			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
 			// Render semaphore
-			VkSemaphoreCreateInfo semaphoreInfo = SemaphoreCreateInfo();
+			VkSemaphoreCreateInfo semaphoreInfo = vkinit::SemaphoreCreateInfo();
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
 			// Present semaphore
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
@@ -895,7 +896,7 @@ namespace vkmmc
 				});
 		}
 
-		VkFenceCreateInfo info = FenceCreateInfo();
+		VkFenceCreateInfo info = vkinit::FenceCreateInfo();
 		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
 		m_shutdownStack.Add([this]()
 			{
@@ -921,12 +922,12 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			// Create buffers for the descriptors
-			m_frameContextArray[i].CameraDescriptorSetBuffer = CreateBuffer(
+			m_frameContextArray[i].CameraDescriptorSetBuffer = Memory::CreateBuffer(
 				m_renderContext.Allocator,
 				sizeof(GPUCamera),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
-			m_frameContextArray[i].ObjectDescriptorSetBuffer = CreateBuffer(
+			m_frameContextArray[i].ObjectDescriptorSetBuffer = Memory::CreateBuffer(
 				m_renderContext.Allocator,
 				sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
@@ -934,8 +935,8 @@ namespace vkmmc
 			m_shutdownStack.Add([this, i]()
 				{
 					Logf(LogLevel::Info, "Destroy buffer for descriptor set [#%Id].\n", i);
-					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
-					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
+					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
+					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
 				});
 
 
@@ -973,7 +974,7 @@ namespace vkmmc
 		};
 
 		// Create layout info
-		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
+		VkPipelineLayoutCreateInfo layoutInfo = vkinit::PipelineLayoutCreateInfo();
 		layoutInfo.setLayoutCount = DESCRIPTOR_SET_COUNT;
 		layoutInfo.pSetLayouts = m_descriptorLayouts;
 		layoutInfo.pushConstantRangeCount = 1;
@@ -985,7 +986,7 @@ namespace vkmmc
 			{.ShaderFilePath = vkmmc_globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
-		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetStaticMeshVertexLayout());
+		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, VertexInputLayout::GetStaticMeshVertexLayout());
 		m_handleRenderPipeline = RegisterPipeline(pipeline);
 		return true;
 	}
@@ -1050,11 +1051,11 @@ namespace vkmmc
 	void VulkanRenderEngine::UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size)
 	{
 		// Allocate cpu-gpu transfer buffer
-		AllocatedBuffer stageBuffer = CreateBuffer(m_renderContext.Allocator, size,
+		AllocatedBuffer stageBuffer = Memory::CreateBuffer(m_renderContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
 		// Set buffer data
-		MemCopyDataToBuffer(m_renderContext.Allocator, stageBuffer.Alloc, data, size);
+		Memory::MemCopyDataToBuffer(m_renderContext.Allocator, stageBuffer.Alloc, data, size);
 
 		ImmediateSubmit([=](VkCommandBuffer cmd)
 			{
@@ -1062,7 +1063,7 @@ namespace vkmmc
 			});
 
 		// Destroy transfer buffer
-		DestroyBuffer(m_renderContext.Allocator, stageBuffer);
+		Memory::DestroyBuffer(m_renderContext.Allocator, stageBuffer);
 	}
 	
 }

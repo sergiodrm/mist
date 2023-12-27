@@ -3,12 +3,12 @@
 
 namespace vkmmc
 {
-	IRenderEngine* NewRenderEngine()
+	IRenderEngine* IRenderEngine::NewRenderEngine()
 	{
 		return new VulkanRenderEngine();
 	}
 
-	void FreeRenderEngine(IRenderEngine** engine)
+	void IRenderEngine::FreeRenderEngine(IRenderEngine** engine)
 	{
 		delete* engine;
 		*engine = nullptr;

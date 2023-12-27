@@ -19,10 +19,18 @@ namespace vkmmc
 		uint32_t WindowHeight;
 		char WindowTitle[32];
 	};
+
 	// Abstract class of main renderer
 	class IRenderEngine
 	{
+	protected:
+		IRenderEngine() = default;
 	public:
+		// Factory static methods
+		static IRenderEngine* NewRenderEngine();
+		static void FreeRenderEngine(IRenderEngine** engine);
+
+
 		virtual ~IRenderEngine() = default;
 		virtual bool Init(const InitializationSpecs& initSpec) = 0;
 		virtual void RenderLoop() = 0;
@@ -41,6 +49,4 @@ namespace vkmmc
 		virtual void AddImGuiCallback(std::function<void()>&& fn) = 0;
 	};
 
-	IRenderEngine* NewRenderEngine();
-	void FreeRenderEngine(IRenderEngine** engine);
 }

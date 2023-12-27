@@ -14,21 +14,26 @@ namespace vkmmc
 		Float, Float2, Float3, Float4,
 		Int, Int2, Int3, Int4, Bool = Int
 	};
-	uint32_t GetAttributeSize(EAttributeType type);
-	uint32_t GetAttributeCount(EAttributeType type);
+	namespace AttributeType
+	{
+		uint32_t GetAttributeSize(EAttributeType type);
+		uint32_t GetAttributeCount(EAttributeType type);
+	}
 
 	struct VertexInputLayout
 	{
 		VkVertexInputBindingDescription Binding{};
 		std::vector<VkVertexInputAttributeDescription> Attributes;
 		VkPipelineVertexInputStateCreateFlags Flags = 0;
+
 		VertexInputLayout() = default;
 		VertexInputLayout(uint32_t attributeCount) : Binding{}, Attributes(attributeCount), Flags(0) {}
-	};
-	VertexInputLayout BuildVertexInputLayout(const std::initializer_list<EAttributeType>& attributes);
-	VertexInputLayout BuildVertexInputLayout(const EAttributeType* attributes, uint32_t count);
 
-	VertexInputLayout GetStaticMeshVertexLayout();
+		static VertexInputLayout BuildVertexInputLayout(const std::initializer_list<EAttributeType>& attributes);
+		static VertexInputLayout BuildVertexInputLayout(const EAttributeType* attributes, uint32_t count);
+
+		static VertexInputLayout GetStaticMeshVertexLayout();
+	};
 
 	enum class EBufferUsage
 	{
