@@ -21,6 +21,7 @@
 #include "Logger.h"
 #include "Debug.h"
 #include "Shader.h"
+#include "Framebuffer.h"
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
@@ -406,7 +407,7 @@ namespace vkmmc
 	void VulkanRenderEngine::Draw()
 	{
 		PROFILE_SCOPE(Draw);
-		FrameContext& frameContext = GetFrameContext();
+		RenderFrameContext& frameContext = GetFrameContext();
 		WaitFence(frameContext.RenderFence);
 
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
@@ -514,7 +515,10 @@ namespace vkmmc
 			{
 				objects[i].ModelTransform = CalculateTransform(transforms[i]);
 			}
-			Memory::MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
+			Memory::MemCopyDataToBuffer(m_renderContext.Allocator, 
+				GetFrameContext().ObjectDescriptorSetBuffer.Alloc, 
+				objects.data(), 
+				sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
 		}
 
 		{
@@ -569,7 +573,7 @@ namespace vkmmc
 		vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
 	}
 
-	FrameContext& VulkanRenderEngine::GetFrameContext()
+	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
 		return m_frameContextArray[m_frameCounter % MaxOverlappedFrames];
 	}
@@ -816,7 +820,7 @@ namespace vkmmc
 		VkCommandPoolCreateInfo poolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
-			FrameContext& frameContext = m_frameContextArray[i];
+			RenderFrameContext& frameContext = m_frameContextArray[i];
 			vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
 			VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
 			vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
@@ -839,16 +843,6 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitFramebuffers()
 	{
-		// Create framebuffer for the swapchain images. This will connect render pass with the images for rendering.
-		VkFramebufferCreateInfo fbInfo = {};
-		fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fbInfo.pNext = nullptr;
-		fbInfo.renderPass = m_renderPass.GetRenderPassHandle();
-		fbInfo.attachmentCount = 1;
-		fbInfo.width = m_window.Width;
-		fbInfo.height = m_window.Height;
-		fbInfo.layers = 1;
-
 		// Collect image in the swapchain
 		const uint64_t swapchainImageCount = m_swapchain.GetImageCount();
 		m_framebuffers = std::vector<VkFramebuffer>(swapchainImageCount);
@@ -856,13 +850,11 @@ namespace vkmmc
 		// One framebuffer for each of the swapchain image view.
 		for (uint64_t i = 0; i < swapchainImageCount; ++i)
 		{
-			VkImageView attachments[2];
-			attachments[0] = m_swapchain.GetImageViewAt(i);
-			attachments[1] = m_swapchain.GetDepthImageView();
-
-			fbInfo.pAttachments = attachments;
-			fbInfo.attachmentCount = 2;
-			vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &m_framebuffers[i]));
+			m_framebuffers[i] = FramebufferBuilder::Create()
+				.AddAttachment(m_swapchain.GetImageViewAt(i))
+				.AddAttachment(m_swapchain.GetDepthImageView())
+				.Build(m_renderContext.Device, m_renderPass.GetRenderPassHandle(),
+					m_window.Width, m_window.Height);
 
 			m_shutdownStack.Add([this, i]
 				{
@@ -878,7 +870,7 @@ namespace vkmmc
 	{
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
-			FrameContext& frameContext = m_frameContextArray[i];
+			RenderFrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
 			VkFenceCreateInfo fenceInfo = vkinit::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
 			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));

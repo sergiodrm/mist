@@ -116,7 +116,7 @@ namespace vkmmc
 		void Draw();
 		void DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
-		FrameContext& GetFrameContext();
+		RenderFrameContext& GetFrameContext();
 		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
 		void ImGuiNewFrame();
 		void ImGuiProcessEvent(const SDL_Event& e);
@@ -155,7 +155,7 @@ namespace vkmmc
 		RenderHandle m_defaultTexture;
 		std::vector<VkFramebuffer> m_framebuffers;
 
-		FrameContext m_frameContextArray[MaxOverlappedFrames];
+		RenderFrameContext m_frameContextArray[MaxOverlappedFrames];
 		size_t m_frameCounter;
 
 		DescriptorAllocator m_descriptorAllocator;

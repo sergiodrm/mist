@@ -28,7 +28,7 @@ namespace vkmmc
 		VkCommandBuffer CommandBuffer;
 	};
 
-	struct FrameContext
+	struct RenderFrameContext
 	{
 		// Sync vars
 		VkFence RenderFence{};

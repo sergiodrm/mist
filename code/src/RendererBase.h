@@ -1,40 +1,30 @@
 // header file for vkmmc project 
 
-#include "RenderTypes.h"
-#include "RenderDescriptor.h"
+#include "RenderPass.h"
 
 namespace vkmmc
 {
 	struct RenderContext;
+	struct RenderFrameContext;
+
 	class IRendererBase
 	{
 	public:
-		IRendererBase(const RenderContext& renderContext);
+		IRendererBase();
 		virtual ~IRendererBase() = default;
 
-		virtual void RecordCommandBuffer(VkCommandBuffer cmd, size_t imageIndex) = 0;
+		virtual void Init(const RenderContext& renderContext) = 0;
+		virtual void Destroy(const RenderContext& renderContext) = 0;
+		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) = 0;
 
 	protected:
-		void BeginRenderPass(VkCommandBuffer cmd, size_t imageIndex);
-		bool CreateUniformBuffer(size_t bufferSize);
 	private:
-		// Info about current render context
-		RenderContext m_renderContext;
-		uint32_t m_framebufferWidth;
-		uint32_t m_framebufferHeight;
+		RenderPass m_renderPass;
 
-		// Descriptors info
-		VkDescriptorSetLayout m_descriptorSetLayout;
-		DescriptorAllocator m_descriptorAllocator;
-		std::vector<VkDescriptorSet> m_descriptorSetArray;
 
 		// Render State
-		// TODO: depth image
-		VkRenderPass m_renderPass;
+		VkDescriptorSetLayout m_descriptorSetLayout;
 		VkPipelineLayout m_pipelineLayout;
 		VkPipeline m_pipeline;
-
-		// Uniform buffers
-		std::vector<AllocatedBuffer> m_uniformBufferArray;
 	};
 }
