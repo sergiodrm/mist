@@ -163,7 +163,6 @@ namespace vkmmc
 		{
 			glm::ivec2 diff;
 			SDL_GetRelativeMouseState(&diff[0], &diff[1]);
-			Logf(LogLevel::Debug, "Mouse diff: [%d, %d]\n", diff.x, diff.y);
 			static constexpr float swidth = 1920.f;
 			static constexpr float sheight = 1080.f;
 			const float yawdiff = (float)(diff.x) / swidth;
