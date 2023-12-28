@@ -9,6 +9,7 @@
 namespace vkmmc
 {
 	struct RenderContext;
+	struct AllocatedImage;
 
 	struct FramebufferBuilder
 	{
@@ -26,5 +27,39 @@ namespace vkmmc
 		std::vector<VkImageView> m_attachments;
 	};
 
+	enum EAttachmentType
+	{
+		FRAMEBUFFER_COLOR_ATTACHMENT,
+		FRAMEBUFFER_DEPTH_STENCIL_ATTACHMENT
+	};
 
+	struct FramebufferCreateInfo
+	{
+		VkRenderPass RenderPass;
+		uint32_t Width;
+		uint32_t Height;
+		std::vector<EAttachmentType> AttachmentTypes;
+	};
+
+	class Framebuffer
+	{
+	public:
+		void Init(const RenderContext& renderContext, const FramebufferCreateInfo& info);
+		void Destroy(const RenderContext& renderContext);
+
+		VkFramebuffer GetFramebufferHandle() const;
+		uint32_t GetWidth() const { return m_width; }
+		uint32_t GetHeight() const { return m_height; }
+	private:
+
+		void CreateColorAttachment(const RenderContext& renderContext, AllocatedImage* outImage, VkImageView* outImageView);
+		void CreateDepthAttachment(const RenderContext& renderContext, AllocatedImage* outImage, VkImageView* outImageView);
+
+		VkFramebuffer m_framebuffer;
+		uint32_t m_width;
+		uint32_t m_height;
+
+		std::vector<AllocatedImage> m_attachmentArray;
+		std::vector<VkImageView> m_atttachmentViewArray;
+	};
 }
