@@ -18,6 +18,9 @@ namespace vkmmc
 		VmaAllocator Allocator;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
+		// Viewport size. TODO: Find another way to communicate these data.
+		uint32_t Width;
+		uint32_t Height;
 	};
 
 
