@@ -4,6 +4,7 @@
 #include "GenericUtils.h"
 #include "Logger.h"
 #include "Debug.h"
+#include "Shader.h"
 
 namespace vkmmc
 {
@@ -81,6 +82,68 @@ namespace vkmmc
 		RenderPipeline pipelineObject;
 		pipelineObject.SetupPipeline(newPipeline, pipelineLayout);
 		return pipelineObject;
+	}
+
+	RenderPipeline RenderPipeline::Create(RenderContext renderContext, 
+		const RenderPass& renderPass,
+		const ShaderModuleLoadDescription* shaderStages, 
+		uint32_t shaderStageCount, 
+		const VkPipelineLayoutCreateInfo& layoutInfo, 
+		const VertexInputLayout& inputDescription)
+	{
+		check(shaderStages && shaderStageCount > 0);
+		RenderPipelineBuilder builder;
+		// Input configuration
+		builder.InputDescription = inputDescription;
+		// Shader stages
+		std::vector<VkShaderModule> modules(shaderStageCount);
+		ShaderCompiler compiler(shaderStages, (uint32_t)shaderStageCount);
+
+		compiler.ProcessReflectionProperties();
+
+		compiler.Compile(renderContext, modules);
+		for (size_t i = 0; i < shaderStageCount; ++i)
+		{
+			check(modules[i] != VK_NULL_HANDLE);
+			builder.ShaderStages.push_back(
+				vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
+		}
+		// Configure viewport settings.
+		builder.Viewport.x = 0.f;
+		builder.Viewport.y = 0.f;
+		builder.Viewport.width = (float)renderContext.Width;
+		builder.Viewport.height = (float)renderContext.Height;
+		builder.Viewport.minDepth = 0.f;
+		builder.Viewport.maxDepth = 1.f;
+		builder.Scissor.offset = { 0, 0 };
+		builder.Scissor.extent = { .width = renderContext.Width, .height = renderContext.Height };
+		// Depth testing
+		builder.DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		// Rasterization: draw filled triangles
+		builder.Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		// Single blenc attachment without blending and writing RGBA
+		builder.ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
+		//builder.ColorBlendAttachment.blendEnable = VK_TRUE;
+		//builder.ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		//builder.ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		//builder.ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+		//builder.ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+		//builder.ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		//builder.ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
+		// Disable multisampling by default
+		builder.Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
+		// Pass layout info
+		builder.LayoutInfo = layoutInfo;
+
+		// Build the new pipeline
+		RenderPipeline renderPipeline = builder.Build(renderContext.Device, renderPass.GetRenderPassHandle());;
+
+		// Vulkan modules destruction
+		for (size_t i = 0; i < shaderStageCount; ++i)
+			vkDestroyShaderModule(renderContext.Device, modules[i], nullptr);
+		modules.clear();
+
+		return renderPipeline;
 	}
 
 	bool RenderPipeline::SetupPipeline(VkPipeline pipeline, VkPipelineLayout layout)

@@ -10,6 +10,8 @@ namespace vkmmc
 	// Forward declarations
 	struct RenderContext;
 	class RenderPipeline;
+	class RenderPass;
+	struct ShaderModuleLoadDescription;
 
 	class RenderPipelineBuilder
 	{
@@ -39,6 +41,14 @@ namespace vkmmc
 	class RenderPipeline
 	{
 	public:
+
+		static RenderPipeline Create(
+			RenderContext renderContext,
+			const RenderPass& renderPass,
+			const ShaderModuleLoadDescription* shaderStages,
+			uint32_t shaderStageCount,
+			const VkPipelineLayoutCreateInfo& layoutInfo,
+			const VertexInputLayout& inputDescription);
 
 		bool SetupPipeline(VkPipeline pipeline, VkPipelineLayout pipelineLayout);
 		void Destroy(const RenderContext& renderContext);
