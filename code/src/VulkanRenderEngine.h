@@ -12,6 +12,7 @@
 #include "Swapchain.h"
 #include "Mesh.h"
 #include "FunctionStack.h"
+#include "Framebuffer.h"
 #include <cstdio>
 
 #include <vk_mem_alloc.h>
@@ -21,6 +22,7 @@
 
 namespace vkmmc
 {
+	class Framebuffer;
 	struct ShaderModuleLoadDescription;
 
 	struct Window
@@ -154,6 +156,7 @@ namespace vkmmc
 		RenderHandle m_handleRenderPipeline;
 		RenderHandle m_defaultTexture;
 		std::vector<VkFramebuffer> m_framebuffers;
+		std::vector<Framebuffer> m_framebufferArray;
 
 		RenderFrameContext m_frameContextArray[MaxOverlappedFrames];
 		size_t m_frameCounter;

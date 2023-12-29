@@ -21,18 +21,7 @@
 #include "Logger.h"
 #include "Debug.h"
 #include "Shader.h"
-#include "Framebuffer.h"
-
-#define ASSET_ROOT_PATH "../../assets/"
-#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
-
-namespace vkmmc_globals
-{
-	// Assets reference
-	const char* BasicVertexShaders = SHADER_ROOT_PATH "basic.vert.spv";
-	const char* BasicFragmentShaders = SHADER_ROOT_PATH "basic.frag.spv";
-
-}
+#include "Globals.h"
 
 namespace vkmmc_debug
 {
@@ -184,6 +173,8 @@ namespace vkmmc
 		Log(LogLevel::Info, "Initialize render engine.\n");
 		SDL_Init(SDL_INIT_VIDEO);
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
+		m_renderContext.Width = spec.WindowWidth;
+		m_renderContext.Height = spec.WindowHeight;
 
 		// Init vulkan context
 		check(InitVulkan());
@@ -439,6 +430,7 @@ namespace vkmmc
 			renderPassInfo.renderArea.offset = { 0, 0 };
 			renderPassInfo.renderArea.extent = { .width = m_window.Width, .height = m_window.Height };
 			renderPassInfo.framebuffer = m_framebuffers[swapchainImageIndex];
+			//renderPassInfo.framebuffer = m_framebufferArray[swapchainImageIndex].GetFramebufferHandle();
 
 			// Clear values
 			VkClearValue clearValues[2];
@@ -865,6 +857,21 @@ namespace vkmmc
 				});
 		}
 
+		//m_framebufferArray.resize(swapchainImageCount);
+		//for (uint32_t i = 0; i < swapchainImageCount; ++i)
+		//{
+		//	FramebufferCreateInfo info;
+		//	info.Width = m_window.Width;
+		//	info.Height = m_window.Height;
+		//	info.RenderPass = m_renderPass.GetRenderPassHandle();
+		//	info.AttachmentTypes.push_back(EAttachmentType::FRAMEBUFFER_COLOR_ATTACHMENT);
+		//	info.AttachmentTypes.push_back(EAttachmentType::FRAMEBUFFER_DEPTH_STENCIL_ATTACHMENT);
+		//	m_framebufferArray[i].Init(m_renderContext, info);
+		//	m_shutdownStack.Add([this, i]()
+		//		{
+		//			m_framebufferArray[i].Destroy(m_renderContext);
+		//		});
+		//}
 		return true;
 	}
 
@@ -976,12 +983,20 @@ namespace vkmmc
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{
-			{.ShaderFilePath = vkmmc_globals::BasicVertexShaders, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = vkmmc_globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
+			{.ShaderFilePath = globals::BasicVertexShaders, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
+			{.ShaderFilePath = globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
-		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, VertexInputLayout::GetStaticMeshVertexLayout());
+		RenderPipeline pipeline = RenderPipeline::Create(
+			m_renderContext,
+			m_renderPass,
+			shaderStageDescs, 
+			shaderCount, 
+			layoutInfo, 
+			VertexInputLayout::GetStaticMeshVertexLayout());
 		m_handleRenderPipeline = RegisterPipeline(pipeline);
+
+		m_shutdownStack.Add([this, pipeline]() mutable {pipeline.Destroy(m_renderContext); });
 		return true;
 	}
 
