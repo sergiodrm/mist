@@ -1,30 +1,37 @@
 // header file for vkmmc project 
 
 #include "RenderPass.h"
+#include "RenderPipeline.h"
+#include "RenderTypes.h"
+#include "Framebuffer.h"
 
 namespace vkmmc
 {
-	struct RenderContext;
 	struct RenderFrameContext;
+
+	struct RendererCreateInfo
+	{
+		RenderContext RContext;
+		VkDescriptorSetLayout GlobalDescriptorSet;
+		VkPushConstantRange ConstantRange;
+	};
 
 	class IRendererBase
 	{
 	public:
-		IRendererBase();
+		IRendererBase() = default;
 		virtual ~IRendererBase() = default;
 
-		virtual void Init(const RenderContext& renderContext) = 0;
+		virtual void Init(const RendererCreateInfo& info) = 0;
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) = 0;
 
 	protected:
-	private:
 		RenderPass m_renderPass;
-
+		Framebuffer m_framebuffer;
 
 		// Render State
 		VkDescriptorSetLayout m_descriptorSetLayout;
-		VkPipelineLayout m_pipelineLayout;
-		VkPipeline m_pipeline;
+		RenderPipeline m_renderPipeline;
 	};
 }
