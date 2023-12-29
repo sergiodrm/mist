@@ -180,6 +180,7 @@ namespace vkmmc
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		PROFILE_SCOPE(Init);
+		InitLog("../../log.html");
 		Log(LogLevel::Info, "Initialize render engine.\n");
 		SDL_Init(SDL_INIT_VIDEO);
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
@@ -299,6 +300,7 @@ namespace vkmmc
 		Log(LogLevel::Ok, "Render engine terminated.\n");
 		if (vkmmc_debug::GTerminatedWithErrors)
 			Log(LogLevel::Error, "Render engine was terminated with vulkan validation layer errors registered.\n");
+		TerminateLog();
 	}
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
