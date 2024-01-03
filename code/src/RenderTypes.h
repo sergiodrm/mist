@@ -1,5 +1,6 @@
 #pragma once
 #include "Memory.h"
+#include "RenderHandle.h"
 #include <cassert>
 #include <vector>
 #include <functional>
@@ -7,6 +8,10 @@
 
 namespace vkmmc
 {
+
+	template <typename RenderResourceType>
+	using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
+
 	struct RenderContext
 	{
 		VkInstance Instance;
@@ -22,7 +27,6 @@ namespace vkmmc
 		uint32_t Width;
 		uint32_t Height;
 	};
-
 
 	struct ImmediateSynchedCommandContext
 	{
@@ -47,5 +51,9 @@ namespace vkmmc
 		VkDescriptorSet ObjectDescriptorSet{};
 		AllocatedBuffer CameraDescriptorSetBuffer{};
 		AllocatedBuffer ObjectDescriptorSetBuffer{};
+
+		// Push constants
+		const void* PushConstantData{ nullptr };
+		uint32_t PushConstantSize{ 0 };
 	};
 }

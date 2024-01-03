@@ -22,6 +22,7 @@
 #include "Debug.h"
 #include "Shader.h"
 #include "Globals.h"
+#include "Renderers/ModelRenderer.h"
 
 namespace vkmmc_debug
 {
@@ -210,6 +211,20 @@ namespace vkmmc
 		// ImGui
 		InitImGui();
 
+		RendererCreateInfo rendererCreateInfo;
+		rendererCreateInfo.RContext = m_renderContext;
+		rendererCreateInfo.GlobalDescriptorSetLayout = m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT];
+		VkPushConstantRange pcr;
+		pcr.offset = 0;
+		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
+		pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		rendererCreateInfo.ConstantRange = &pcr;
+		rendererCreateInfo.ConstantRangeCount = 1;
+
+		IRendererBase* modelRenderer = new ModelRenderer();
+		modelRenderer->Init(rendererCreateInfo);
+		m_renderers.push_back(modelRenderer);
+
 		Log(LogLevel::Ok, "Window created successfully!\n");
 		return true;
 	}
@@ -280,6 +295,9 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
 
+		for (IRendererBase* it : m_renderers)
+			it->Destroy(m_renderContext);
+
 		m_shutdownStack.Flush();
 		vkDestroyDevice(m_renderContext.Device, nullptr);
 		vkDestroySurfaceKHR(m_renderContext.Instance, m_renderContext.Surface, nullptr);
@@ -323,11 +341,13 @@ namespace vkmmc
 			.Size = indexBufferSize
 			});
 		UpdateBufferData(&mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
-		
+
 		// Register new buffer
 		RenderHandle handle = GenerateRenderHandle();
 		mesh.SetHandle(handle);
 		m_meshRenderData[handle] = mrd;
+
+		mesh.SetInternalData(&m_meshRenderData[handle]);
 
 		// Stack buffer destruction
 		m_shutdownStack.Add([this, mrd]() mutable
@@ -342,8 +362,9 @@ namespace vkmmc
 		check(!material.GetHandle().IsValid());
 
 		RenderHandle h = GenerateRenderHandle();
-		m_materials[h] = MaterialTextureData();
+		m_materials[h] = MaterialRenderData();
 		InitMaterial(material, m_materials[h]);
+		material.SetInternalData(&m_materials[h]);
 		material.SetHandle(h);
 	}
 
@@ -378,23 +399,23 @@ namespace vkmmc
 		return h;
 	}
 
-	RenderObject VulkanRenderEngine::NewRenderObject()
+	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
 	{
-		RenderObject r;
-		r.Id = m_scene.New();
-		return r;
+		static RenderHandle texture;
+		if (!texture.IsValid())
+			texture = const_cast<VulkanRenderEngine*>(this)->LoadTexture("../../assets/textures/checkerboard.jpg");
+		return texture;
 	}
 
-	RenderObjectTransform* VulkanRenderEngine::GetObjectTransform(RenderObject object)
+	Material VulkanRenderEngine::GetDefaultMaterial() const
 	{
-		check(object.Id < m_scene.Count());
-		return &m_scene.Transforms[object.Id];
-	}
-
-	RenderObjectMesh* VulkanRenderEngine::GetObjectMesh(RenderObject object)
-	{
-		check(object.Id < m_scene.Count());
-		return &m_scene.Meshes[object.Id];
+		static Material material;
+		if (!material.GetHandle().IsValid())
+		{
+			material.SetDiffuseTexture(GetDefaultTexture());
+			const_cast<VulkanRenderEngine*>(this)->UploadMaterial(material);
+		}
+		return material;
 	}
 
 	void VulkanRenderEngine::Draw()
@@ -442,7 +463,7 @@ namespace vkmmc
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		}
 
-		DrawRenderables(cmd, m_scene.Transforms.data(), m_scene.Meshes.data(), m_scene.Count());
+		DrawScene(cmd, m_scene);
 
 		// ImGui render
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -489,9 +510,10 @@ namespace vkmmc
 		}
 	}
 
-	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count)
+	void VulkanRenderEngine::DrawScene(VkCommandBuffer cmd, const Scene& scene)
 	{
-		check(count < RenderObjectContainer::MaxRenderObjects);
+		uint32_t count = scene.Count();
+		check(count < MaxRenderObjects);
 		{
 			PROFILE_SCOPE(UpdateBuffers);
 			// Update descriptor set buffer
@@ -504,20 +526,16 @@ namespace vkmmc
 				m_dirtyCachedCamera = false;
 			}
 
-			static std::vector<GPUObject> objects(RenderObjectContainer::MaxRenderObjects);
-			for (uint32_t i = 0; i < count; ++i)
-			{
-				objects[i].ModelTransform = CalculateTransform(transforms[i]);
-			}
+			const void* transformsData = m_scene.GetRawGlobalTransforms();
 			Memory::MemCopyDataToBuffer(m_renderContext.Allocator, 
 				GetFrameContext().ObjectDescriptorSetBuffer.Alloc, 
-				objects.data(), 
-				sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
+				transformsData, 
+				sizeof(glm::mat4) * count);
 		}
 
 		{
 			PROFILE_SCOPE(DrawScene);
-			RenderPipeline pipeline = m_pipelines[m_handleRenderPipeline];
+			RenderPipeline pipeline = m_renderPipeline;
 			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 				pipeline.GetPipelineLayoutHandle(), 0, 1,
@@ -529,34 +547,43 @@ namespace vkmmc
 
 			Material lastMaterial;
 			Mesh lastMesh;
-			for (uint32_t i = 0; i < count; ++i)
+			for (uint32_t i = 0; i < m_scene.GetModelCount(); ++i)
 			{
-				const RenderObjectMesh& renderable = meshes[i];
-				if (renderable.Mtl != lastMaterial || !lastMaterial.GetHandle().IsValid())
+				const Model& model = m_scene.GetModelArray()[i];
+				for (uint32_t meshIndex = 0; meshIndex < model.m_meshArray.size(); ++meshIndex)
 				{
-					lastMaterial = renderable.Mtl;
-					RenderHandle mtlHandle = renderable.Mtl.GetHandle();
-					if (mtlHandle.IsValid())
+					Mesh mesh = model.m_meshArray[meshIndex];
+					Material material = model.m_materialArray[meshIndex];
+					if (mesh.GetHandle().IsValid() && material.GetHandle().IsValid())
 					{
-						const MaterialTextureData& texData = m_materials[mtlHandle];
-						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-							pipeline.GetPipelineLayoutHandle(), DESCRIPTOR_SET_TEXTURE_LAYOUT, 1, &texData.Set,
-							0, nullptr);
+						if (material != lastMaterial || !lastMaterial.GetHandle().IsValid())
+						{
+							lastMaterial = material;
+							RenderHandle mtlHandle = material.GetHandle();
+							if (mtlHandle.IsValid())
+							{
+								const void* internalData = material.GetInternalData();
+								const MaterialRenderData& texData = *static_cast<const MaterialRenderData*>(internalData);
+								vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+									pipeline.GetPipelineLayoutHandle(), DESCRIPTOR_SET_TEXTURE_LAYOUT, 1, &texData.Set,
+									0, nullptr);
+							}
+						}
+
+						if (lastMesh != mesh)
+						{
+							check(mesh.GetHandle().IsValid());
+							const void* internalData = mesh.GetInternalData();
+							const MeshRenderData& meshRenderData = *static_cast<const MeshRenderData*>(internalData);
+							meshRenderData.VertexBuffer.Bind(cmd);
+							meshRenderData.IndexBuffer.Bind(cmd);
+							lastMesh = mesh;
+						}
+						vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
+						vkmmc_debug::GRenderStats.m_drawCalls++;
+						vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)mesh.GetVertexCount() / 3;
 					}
 				}
-
-				if (lastMesh != renderable.StaticMesh)
-				{
-					const Mesh& staticMesh = renderable.StaticMesh;
-					check(staticMesh.GetHandle().IsValid());
-					const MeshRenderData& meshRenderData = m_meshRenderData[staticMesh.GetHandle()];
-					meshRenderData.VertexBuffer.Bind(cmd);
-					meshRenderData.IndexBuffer.Bind(cmd);
-					lastMesh = meshes[i].StaticMesh;
-				}
-				vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
-				vkmmc_debug::GRenderStats.m_drawCalls++;
-				vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)meshes[i].StaticMesh.GetVertexCount() / 3;
 			}
 		}
 	}
@@ -600,82 +627,12 @@ namespace vkmmc
 		ImGui_ImplSDL2_ProcessEvent(&e);
 	}
 
-	RenderPipeline VulkanRenderEngine::CreatePipeline(const ShaderModuleLoadDescription* shaderStages, size_t shaderStagesCount, const VkPipelineLayoutCreateInfo& layoutInfo, const VertexInputLayout& inputDescription)
-	{
-		check(shaderStages && shaderStagesCount > 0);
-		RenderPipelineBuilder builder;
-		// Input configuration
-		builder.InputDescription = inputDescription;
-		// Shader stages
-		std::vector<VkShaderModule> modules(shaderStagesCount);
-		ShaderCompiler compiler(shaderStages, (uint32_t)shaderStagesCount);
-
-		compiler.ProcessReflectionProperties();
-
-		compiler.Compile(m_renderContext, modules);
-		for (size_t i = 0; i < shaderStagesCount; ++i)
-		{
-			check(modules[i] != VK_NULL_HANDLE);
-			builder.ShaderStages.push_back(
-				vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
-		}
-		// Configure viewport settings.
-		builder.Viewport.x = 0.f;
-		builder.Viewport.y = 0.f;
-		builder.Viewport.width = (float)m_window.Width;
-		builder.Viewport.height = (float)m_window.Height;
-		builder.Viewport.minDepth = 0.f;
-		builder.Viewport.maxDepth = 1.f;
-		builder.Scissor.offset = { 0, 0 };
-		builder.Scissor.extent = { .width = m_window.Width, .height = m_window.Height };
-		// Depth testing
-		builder.DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-		// Rasterization: draw filled triangles
-		builder.Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-		// Single blenc attachment without blending and writing RGBA
-		builder.ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
-		//builder.ColorBlendAttachment.blendEnable = VK_TRUE;
-		//builder.ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		//builder.ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		//builder.ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-		//builder.ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		//builder.ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		//builder.ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
-		// Disable multisampling by default
-		builder.Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
-		// Pass layout info
-		builder.LayoutInfo = layoutInfo;
-
-		// Build the new pipeline
-		RenderPipeline renderPipeline = builder.Build(m_renderContext.Device, m_renderPass.GetRenderPassHandle());;
-
-		// Destroy resources
-		m_shutdownStack.Add([this, renderPipeline]() mutable
-			{
-				renderPipeline.Destroy(m_renderContext);
-			});
-
-		// Vulkan modules destruction
-		for (size_t i = 0; i < shaderStagesCount; ++i)
-			vkDestroyShaderModule(m_renderContext.Device, modules[i], nullptr);
-		modules.clear();
-
-		return renderPipeline;
-	}
-
-	RenderHandle VulkanRenderEngine::RegisterPipeline(RenderPipeline pipeline)
-	{
-		RenderHandle h = GenerateRenderHandle();
-		m_pipelines[h] = pipeline;
-		return h;
-	}
-
-	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialTextureData& material)
+	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialRenderData& material)
 	{
 		check(material.Set == VK_NULL_HANDLE);
 		m_descriptorAllocator.Allocate(&material.Set, m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT]);
 		
-		auto submitTexture = [this](RenderHandle texHandle, MaterialTextureData& mtl, MaterialTextureData::ESamplerIndex index)
+		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mtl, MaterialRenderData::ESamplerIndex index)
 			{
 				RenderTexture texture;
 				if (texHandle.IsValid())
@@ -684,20 +641,19 @@ namespace vkmmc
 				}
 				else
 				{
-					if (!m_defaultTexture.IsValid())
-						m_defaultTexture = LoadTexture("../../assets/textures/checkerboard.jpg");
-					texture = m_textures[m_defaultTexture];
+					RenderHandle defTex = GetDefaultTexture();
+					texture = m_textures[defTex];
 				}
 				SubmitMaterialTexture(mtl, index, texture.GetImageView());
 			};
-		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialTextureData::SAMPLER_INDEX_DIFFUSE);
-		submitTexture(materialHandle.GetNormalTexture(), material, MaterialTextureData::SAMPLER_INDEX_NORMAL);
-		submitTexture(materialHandle.GetSpecularTexture(), material, MaterialTextureData::SAMPLER_INDEX_SPECULAR);
+		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialRenderData::SAMPLER_INDEX_DIFFUSE);
+		submitTexture(materialHandle.GetNormalTexture(), material, MaterialRenderData::SAMPLER_INDEX_NORMAL);
+		submitTexture(materialHandle.GetSpecularTexture(), material, MaterialRenderData::SAMPLER_INDEX_SPECULAR);
 
 		m_shutdownStack.Add([this, material]() 
 			{
 				Log(LogLevel::Info, "Destroying image samplers.\n");
-				for (uint32_t i = 0; i < MaterialTextureData::SAMPLER_INDEX_COUNT; ++i)
+				for (uint32_t i = 0; i < MaterialRenderData::SAMPLER_INDEX_COUNT; ++i)
 				{
 					if (material.ImageSamplers[i] != VK_NULL_HANDLE)
 						vkDestroySampler(m_renderContext.Device, material.ImageSamplers[i], nullptr);
@@ -707,7 +663,7 @@ namespace vkmmc
 		return true;
 	}
 
-	void VulkanRenderEngine::SubmitMaterialTexture(MaterialTextureData& material, MaterialTextureData::ESamplerIndex sampler, const VkImageView& imageView)
+	void VulkanRenderEngine::SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView)
 	{
 		if (material.ImageSamplers[sampler] != VK_NULL_HANDLE)
 		{
@@ -930,7 +886,7 @@ namespace vkmmc
 			);
 			m_frameContextArray[i].ObjectDescriptorSetBuffer = Memory::CreateBuffer(
 				m_renderContext.Allocator,
-				sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects,
+				sizeof(glm::mat4) * MaxRenderObjects,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
 			m_shutdownStack.Add([this, i]()
@@ -949,7 +905,7 @@ namespace vkmmc
 			VkDescriptorBufferInfo objectBufferInfo = {};
 			objectBufferInfo.buffer = m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer;
 			objectBufferInfo.offset = 0;
-			objectBufferInfo.range = sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects;
+			objectBufferInfo.range = sizeof(glm::mat4) * MaxRenderObjects;
 
 
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
@@ -961,7 +917,7 @@ namespace vkmmc
 
 		VkDescriptorSetLayout textureLayout{ VK_NULL_HANDLE };
 		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialTextureData::SAMPLER_INDEX_COUNT)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialRenderData::SAMPLER_INDEX_COUNT)
 			//.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4)
 			.Build(m_renderContext, &textureLayout);
 		m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT] = textureLayout;
@@ -987,16 +943,15 @@ namespace vkmmc
 			{.ShaderFilePath = globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
-		RenderPipeline pipeline = RenderPipeline::Create(
+		m_renderPipeline = RenderPipeline::Create(
 			m_renderContext,
 			m_renderPass,
 			shaderStageDescs, 
 			shaderCount, 
 			layoutInfo, 
 			VertexInputLayout::GetStaticMeshVertexLayout());
-		m_handleRenderPipeline = RegisterPipeline(pipeline);
 
-		m_shutdownStack.Add([this, pipeline]() mutable {pipeline.Destroy(m_renderContext); });
+		m_shutdownStack.Add([this]() { m_renderPipeline.Destroy(m_renderContext); });
 		return true;
 	}
 

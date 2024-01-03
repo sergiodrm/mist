@@ -13,6 +13,7 @@
 #include "Mesh.h"
 #include "FunctionStack.h"
 #include "Framebuffer.h"
+#include "Scene.h"
 #include <cstdio>
 
 #include <vk_mem_alloc.h>
@@ -23,6 +24,7 @@
 namespace vkmmc
 {
 	class Framebuffer;
+	class IRendererBase;
 	struct ShaderModuleLoadDescription;
 
 	struct Window
@@ -54,12 +56,7 @@ namespace vkmmc
 		glm::mat4 ViewProjection;
 	};
 
-	struct GPUObject
-	{
-		glm::mat4 ModelTransform;
-	};
-
-	struct MaterialTextureData
+	struct MaterialRenderData
 	{
 		enum ESamplerIndex
 		{
@@ -73,7 +70,7 @@ namespace vkmmc
 		VkDescriptorSet Set;
 		VkSampler ImageSamplers[SAMPLER_INDEX_COUNT];
 
-		MaterialTextureData() : Set(VK_NULL_HANDLE) { for (uint32_t i = 0; i < SAMPLER_INDEX_COUNT; ++i) ImageSamplers[i] = VK_NULL_HANDLE; }
+		MaterialRenderData() : Set(VK_NULL_HANDLE) { for (uint32_t i = 0; i < SAMPLER_INDEX_COUNT; ++i) ImageSamplers[i] = VK_NULL_HANDLE; }
 	};
 
 	struct MeshRenderData
@@ -82,21 +79,14 @@ namespace vkmmc
 		IndexBuffer IndexBuffer;
 	};
 
-	struct RenderObjectContainer
-	{
-		static constexpr size_t MaxRenderObjects = 50000;
-		std::array<RenderObjectTransform, MaxRenderObjects> Transforms;
-		std::array<RenderObjectMesh, MaxRenderObjects> Meshes;
-		uint32_t Counter = 0;
-
-		uint32_t New() { check(Counter < MaxRenderObjects); return Counter++; }
-		uint32_t Count() const { return Counter; }
-	};
-
 	class VulkanRenderEngine : public IRenderEngine
 	{
 		static constexpr size_t MaxOverlappedFrames = 2;
+		static constexpr size_t MaxRenderObjects = 1000;
 	public:
+		/**
+		 * IRenderEngine interface
+		 */
 		virtual bool Init(const InitializationSpecs& initSpec) override;
 		virtual void RenderLoop() override;
 		virtual bool RenderProcess() override;
@@ -108,15 +98,17 @@ namespace vkmmc
 		virtual void UploadMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* filename) override;
 
-		virtual RenderObject NewRenderObject() override;
-		virtual RenderObjectTransform* GetObjectTransform(RenderObject object) override;
-		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) override;
+		virtual Scene& GetScene() override { return m_scene; }
+		virtual const Scene& GetScene() const override { return m_scene; }
 		virtual uint32_t GetObjectCount() const { return m_scene.Count(); }
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 
+		virtual RenderHandle GetDefaultTexture() const;
+		virtual Material GetDefaultMaterial() const;
+
 	protected:
 		void Draw();
-		void DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count);
+		void DrawScene(VkCommandBuffer cmd, const Scene& scene);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
 		RenderFrameContext& GetFrameContext();
 		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
@@ -131,17 +123,8 @@ namespace vkmmc
 		bool InitPipeline();
 		bool InitImGui();
 
-		// Builder utils
-		RenderPipeline CreatePipeline(
-			const ShaderModuleLoadDescription* shaderStagesDescriptions,
-			size_t shaderStagesCount,
-			const VkPipelineLayoutCreateInfo& layoutInfo,
-			const VertexInputLayout& inputDescription
-		);
-		RenderHandle RegisterPipeline(RenderPipeline pipeline);
-
-		bool InitMaterial(const Material& materialHandle, MaterialTextureData& material);
-		void SubmitMaterialTexture(MaterialTextureData& material, MaterialTextureData::ESamplerIndex sampler, const VkImageView& imageView);
+		bool InitMaterial(const Material& materialHandle, MaterialRenderData& material);
+		void SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView);
 
 		void UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size);
 
@@ -153,8 +136,8 @@ namespace vkmmc
 		
 		Swapchain m_swapchain;
 		RenderPass m_renderPass;
-		RenderHandle m_handleRenderPipeline;
-		RenderHandle m_defaultTexture;
+		RenderPipeline m_renderPipeline;
+
 		std::vector<VkFramebuffer> m_framebuffers;
 		std::vector<Framebuffer> m_framebufferArray;
 
@@ -176,12 +159,13 @@ namespace vkmmc
 
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
-		ResourceMap<RenderPipeline> m_pipelines;
 		ResourceMap<RenderTexture> m_textures;
 		ResourceMap<MeshRenderData> m_meshRenderData;
-		ResourceMap<MaterialTextureData> m_materials;
+		ResourceMap<MaterialRenderData> m_materials;
 
-		RenderObjectContainer m_scene;
+		std::vector<IRendererBase*> m_renderers;
+
+		Scene m_scene;
 		bool m_dirtyCachedCamera;
 		GPUCamera m_cachedCameraData;
 

@@ -10,6 +10,7 @@
 
 #include <imgui/imgui.h>
 #include "vkmmc/Camera.h"
+#include "glm/gtx/transform.hpp"
 
 class Timer
 {
@@ -46,32 +47,38 @@ void ProcessLogic(vkmmc::IRenderEngine* engine, const Timer& timer)
 	if (!GIsPaused)
 	{
 		float time = timer.ElapsedNow();
-		for (uint32_t i = 0; i < engine->GetObjectCount(); ++i)
+		vkmmc::Scene& scene = engine->GetScene();
+		for (uint32_t i = 0; i < scene.Count(); ++i)
 		{
-			vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform({ i });
+			glm::mat4 transform = scene.GetTransform(i);
+			glm::vec3 pos = transform[3];
 			int32_t r = std::rand();
 			float noise = GNoise * ((float)r / (float)RAND_MAX);
-			float rotY = GAmplitude * sinf(GFrequency * 2.f * (float)M_PI * time + t.Position.x * GAxisXPhase + t.Position.z * GAxisZPhase) + noise;
-			//t.Rotation.y += rotY;
-			t.Position.y = rotY;
+			float rotY = GAmplitude * sinf(GFrequency * 2.f * (float)M_PI * time + pos.x * GAxisXPhase + pos.z * GAxisZPhase) + noise;
+			pos.y = rotY;
+			glm::mat4 newTransform = glm::translate(transform, pos);
+			scene.SetTransform(i, newTransform);
 		}
 	}
 }
 
 void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Material& mtl, const glm::ivec3& gridDim, const glm::vec3& cellSize)
 {
+	vkmmc::Scene& scene = engine->GetScene();
+	vkmmc::RenderObject root = scene.NewRenderObject(vkmmc::RenderObject::InvalidId);
+	vkmmc::Model model;
+	model.m_meshArray.push_back(mesh);
+	model.m_materialArray.push_back(mtl);
 	for (int32_t x = -gridDim[0] / 2; x < gridDim[0] / 2; ++x)
 	{
 		for (int32_t z = -gridDim[2] / 2; z < gridDim[2] / 2; ++z)
 		{
 			for (int32_t y = -gridDim[1] / 2; y < gridDim[1] / 2; ++y)
 			{
-				vkmmc::RenderObject obj = engine->NewRenderObject();
-				vkmmc::RenderObjectTransform& t = *engine->GetObjectTransform(obj);
-				t.Position = { (float)x * cellSize.x, (float)y * cellSize.y, (float)z * cellSize.z };
-				vkmmc::RenderObjectMesh& m = *engine->GetObjectMesh(obj);
-				m.StaticMesh = mesh;
-				m.Mtl = mtl;
+				vkmmc::RenderObject obj = scene.NewRenderObject(root);
+				glm::vec3 pos = { (float)x * cellSize.x, (float)y * cellSize.y, (float)z * cellSize.z };
+				scene.SetModel(obj, model);
+				scene.SetTransform(obj, glm::translate(glm::mat4(1.f), pos));
 			}
 		}
 	}
@@ -97,28 +104,22 @@ void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Mater
 void ExecuteSponza(vkmmc::IRenderEngine* engine)
 {
 	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene(engine, "../../assets/models/sponza/Sponza.gltf");
-
-	for (uint32_t i = 0; i < scene.Meshes.size(); ++i)
-	{
-		const vkmmc::SceneNodeMesh& node = scene.Meshes[i];
-		for (uint32_t j = 0; j < node.Meshes.size(); ++j)
-		{
-			vkmmc::RenderObject object = engine->NewRenderObject();
-			vkmmc::RenderObjectMesh* rom = engine->GetObjectMesh(object);
-			rom->StaticMesh = node.Meshes[j];
-			rom->Mtl = node.Materials[j];
-		}
-	}
+	engine->GetScene() = scene;
 }
 
 void ExecuteBoxBiArray(vkmmc::IRenderEngine* engine)
 {
 	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene(engine, "../../assets/models/box/Box.gltf");
-	vkmmc::Mesh mesh = scene.Meshes[0].Meshes[0];
-	engine->UploadMesh(mesh);
-
+	vkmmc::Mesh mesh;
 	vkmmc::Material material;
-	engine->UploadMaterial(material);
+	for (uint32_t i = 0; i < scene.GetModelCount(); ++i)
+	{
+		const vkmmc::Model& model = scene.GetModelArray()[i];
+		mesh = model.m_meshArray.empty() ? vkmmc::Mesh() : model.m_meshArray[0];
+		material = model.m_materialArray.empty() ? vkmmc::Material() : model.m_materialArray[0];
+		if (mesh.GetHandle().IsValid())
+			break;
+	}
 
 #ifdef _DEBUG
 	SpawnMeshGrid(engine, mesh, material, glm::ivec3{ 20, 2, 20 }, glm::vec3{ 2.f });

@@ -10,11 +10,16 @@ namespace vkmmc
 	{
 	public:
 		void SetHandle(RenderHandle handle);
-		inline RenderHandle GetHandle() const { return m_pipelineHandle; }
-		inline bool operator==(const RenderResource& r) const { return m_pipelineHandle == r.GetHandle(); }
+		inline RenderHandle GetHandle() const { return m_handle; }
+		inline bool operator==(const RenderResource& r) const { return m_handle == r.GetHandle(); }
 		inline bool operator!=(const RenderResource& r) const { return !(*this == r); }
+		const void* GetInternalData() const { return m_internalData; }
+		void SetInternalData(void* internalData) { m_internalData = internalData; }
+		void FreeInternalData();
 	private:
-		RenderHandle m_pipelineHandle;
+		RenderHandle m_handle;
+	protected:
+		void* m_internalData{ nullptr };
 	};
 
 	class Material : public RenderResource
@@ -49,6 +54,14 @@ namespace vkmmc
 	private:
 		std::vector<Vertex> m_vertices;
 		std::vector<uint32_t> m_indices;
+	};
+
+	class Model
+	{
+	public:
+
+		std::vector<Mesh> m_meshArray;
+		std::vector<Material> m_materialArray;
 	};
 	
 }

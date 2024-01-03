@@ -73,6 +73,11 @@ namespace gltf_api
 		return 0;
 	}
 
+	void ToMat4(glm::mat4* mat, const cgltf_float* cgltfMat4)
+	{
+		memcpy_s(&mat, sizeof(float) * 16, cgltfMat4, sizeof(cgltf_float) * 16);
+	}
+
 	void ReadValues(std::vector<float>& values, const cgltf_accessor& accessor)
 	{
 		uint32_t elementCount = GetElementCountFromType(accessor.type);
@@ -215,7 +220,7 @@ namespace gltf_api
 			if (mtl.has_pbr_specular_glossiness)
 			{
 				vkmmc::RenderHandle handle = LoadTexture(engine,
-					rootAssetPath, 
+					rootAssetPath,
 					mtl.pbr_specular_glossiness.diffuse_texture);
 				material.SetSpecularTexture(handle);
 			}
@@ -224,13 +229,15 @@ namespace gltf_api
 			if (mtl.normal_texture.texture)
 			{
 				vkmmc::RenderHandle handle = LoadTexture(engine,
-					rootAssetPath, 
+					rootAssetPath,
 					mtl.normal_texture);
 				material.SetNormalTexture(handle);
 			}
 			else
 				vkmmc::Log(vkmmc::LogLevel::Warn, "Normal material texture not found.\n");
 		}
+		else
+			material = engine->GetDefaultMaterial();
 	}
 }
 
@@ -244,10 +251,57 @@ namespace vkmmc
 		vkmmc_utils::GetRootDir(sceneFilepath, rootAssetPath, 512);
 		check(data);
 		uint32_t nodesCount = (uint32_t)data->nodes_count;
+		
 		for (uint32_t i = 0; i < nodesCount; ++i)
 		{
 			const cgltf_node& node = data->nodes[i];
+			RenderObject parent;
+			if (node.parent)
+			{
+				for (uint32_t j = 0; j < i; ++j)
+				{
+					if (&data->nodes[j] == node.parent)
+					{
+						parent = j;
+						break;
+					}
+				}
+			}
+			RenderObject renderObject = scene.NewRenderObject(parent);
+
+			if (node.has_matrix)
+			{
+				glm::mat4 localTransform;
+				gltf_api::ToMat4(&localTransform, node.matrix);
+				scene.SetTransform(renderObject, localTransform);
+			}
 			if (node.mesh)
+			{
+				Model model;
+				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
+				{
+					const cgltf_primitive& primitive = node.mesh->primitives[j];
+					// Load geometry data
+					std::vector<Vertex> vertices;
+					std::vector<uint32_t> indices;
+					gltf_api::LoadMesh(vertices, indices, &primitive, data->nodes, nodesCount);
+					Mesh mesh;
+					mesh.SetVertices(vertices.data(), vertices.size());
+					mesh.SetIndices(indices.data(), indices.size());
+					// Load material data
+					Material mtl;
+					gltf_api::LoadMaterial(engine, rootAssetPath, mtl, primitive);
+
+					// Submit data
+					engine->UploadMesh(mesh);
+					engine->UploadMaterial(mtl);
+					model.m_meshArray.push_back(mesh);
+					model.m_materialArray.push_back(mtl);
+				}
+				scene.SetModel(renderObject, model);
+			}
+
+	/*		if (node.mesh)
 			{
 				scene.Meshes.push_back(SceneNodeMesh());
 				SceneNodeMesh& mesh = scene.Meshes.back();
@@ -267,7 +321,7 @@ namespace vkmmc
 					engine->UploadMesh(mesh.Meshes[j]);
 					engine->UploadMaterial(mesh.Materials[j]);
 				}
-			}
+			}*/
 		}
 		gltf_api::FreeData(data);
 		return scene;

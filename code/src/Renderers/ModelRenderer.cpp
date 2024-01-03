@@ -5,6 +5,7 @@
 #include "InitVulkanTypes.h"
 #include "Shader.h"
 #include "Globals.h"
+#include "VulkanRenderEngine.h"
 
 namespace vkmmc
 {
@@ -23,9 +24,8 @@ namespace vkmmc
 		/*****************/
         FramebufferCreateInfo fbInfo;
         fbInfo.RenderPass = m_renderPass.GetRenderPassHandle();
-        // TODO: get frambuffer size from render engine, swapchain??
-        fbInfo.Width = 1920;
-        fbInfo.Height = 1080;
+        fbInfo.Width = info.RContext.Width;
+        fbInfo.Height = info.RContext.Height;
         fbInfo.AttachmentTypes.push_back(EAttachmentType::FRAMEBUFFER_COLOR_ATTACHMENT);
         fbInfo.AttachmentTypes.push_back(EAttachmentType::FRAMEBUFFER_DEPTH_STENCIL_ATTACHMENT);
         m_framebuffer.Init(info.RContext, fbInfo);
@@ -51,7 +51,7 @@ namespace vkmmc
             .pBindings = bindings
         };
         vkcheck(vkCreateDescriptorSetLayout(info.RContext.Device, &layoutCreateInfo, nullptr, &m_descriptorSetLayout));
-        VkDescriptorSetLayout setLayouts[] = { info.GlobalDescriptorSet, m_descriptorSetLayout };
+        VkDescriptorSetLayout setLayouts[] = { info.GlobalDescriptorSetLayout, m_descriptorSetLayout };
         const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(VkDescriptorSetLayout);
 
 		/**********************************/
@@ -66,8 +66,8 @@ namespace vkmmc
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::PipelineLayoutCreateInfo();
         pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
         pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
-        pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-        pipelineLayoutCreateInfo.pPushConstantRanges = &info.ConstantRange;
+        pipelineLayoutCreateInfo.pushConstantRangeCount = info.ConstantRangeCount;
+        pipelineLayoutCreateInfo.pPushConstantRanges = info.ConstantRange;
         m_renderPipeline = RenderPipeline::Create(
             info.RContext,
             m_renderPass,
@@ -86,7 +86,7 @@ namespace vkmmc
         m_renderPass.Destroy(renderContext);
     }
 
-    void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext)
+    void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount)
     {
         BeginRenderPass(renderFrameContext);
 
@@ -95,7 +95,55 @@ namespace vkmmc
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(),
             0, 1, &renderFrameContext.GlobalDescriptorSet, 0, nullptr);
 
-        // TODO: draw scene nodes
+        if (renderFrameContext.PushConstantData)
+        {
+            check(renderFrameContext.PushConstantSize);
+            vkCmdPushConstants(cmd, m_renderPipeline.GetPipelineLayoutHandle(),
+                VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+                renderFrameContext.PushConstantSize,
+                renderFrameContext.PushConstantData);
+        }
+
+		Material lastMaterial;
+		Mesh lastMesh;
+		for (uint32_t i = 0; i < modelCount; ++i)
+		{
+			const Model& model = models[i];
+			for (uint32_t meshIndex = 0; meshIndex < model.m_meshArray.size(); ++meshIndex)
+			{
+				Mesh mesh = model.m_meshArray[meshIndex];
+				Material material = model.m_materialArray[meshIndex];
+				if (mesh.GetHandle().IsValid() && material.GetHandle().IsValid())
+				{
+					if (material != lastMaterial || !lastMaterial.GetHandle().IsValid())
+					{
+						lastMaterial = material;
+						RenderHandle mtlHandle = material.GetHandle();
+						if (mtlHandle.IsValid())
+						{
+                            const void* internalData = material.GetInternalData();
+							const MaterialRenderData& texData = *static_cast<const MaterialRenderData*>(internalData);
+							vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+								m_renderPipeline.GetPipelineLayoutHandle(), 1, 1, &texData.Set,
+								0, nullptr);
+						}
+					}
+
+					if (lastMesh != mesh)
+					{
+						check(mesh.GetHandle().IsValid());
+                        const void* internalData = mesh.GetInternalData();
+						const MeshRenderData& meshRenderData = *static_cast<const MeshRenderData*>(internalData);
+						meshRenderData.VertexBuffer.Bind(cmd);
+						meshRenderData.IndexBuffer.Bind(cmd);
+						lastMesh = mesh;
+					}
+					vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
+					//vkmmc_debug::GRenderStats.m_drawCalls++;
+					//vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)mesh.GetVertexCount() / 3;
+				}
+			}
+		}
 
         EndRenderPass(renderFrameContext);
     }

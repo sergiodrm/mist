@@ -6,6 +6,7 @@
 
 namespace vkmmc
 {
+	class Scene;
 	class Mesh;
 	class Material;
 	struct RenderObject;
@@ -39,14 +40,14 @@ namespace vkmmc
 
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) = 0;
 
-		virtual RenderObject NewRenderObject() = 0;
-		virtual RenderObjectTransform* GetObjectTransform(RenderObject object) = 0;
-		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) = 0;
-		virtual uint32_t GetObjectCount() const = 0;
+		virtual Scene& GetScene() = 0;
+		virtual const Scene& GetScene() const = 0;
 		virtual void UploadMesh(Mesh& mesh) = 0;
 		virtual void UploadMaterial(Material& material) = 0;
 		virtual RenderHandle LoadTexture(const char* filepath) = 0;
 		virtual void AddImGuiCallback(std::function<void()>&& fn) = 0;
+		virtual RenderHandle GetDefaultTexture() const = 0;
+		virtual Material GetDefaultMaterial() const = 0;
 	};
 
 }
