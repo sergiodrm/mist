@@ -24,10 +24,10 @@ namespace vkmmc
 		inline VkFormat GetImageFormat() const { return m_imageFormat; }
 		inline VkFormat GetDepthFormat() const { return m_depthFormat; }
 
-		inline VkImage GetImageAt(size_t index) const { return m_images[index]; }
-		inline size_t GetImageCount() const { return m_images.size(); }
-		inline VkImageView GetImageViewAt(size_t index) const { return m_imageViews[index]; }
-		inline size_t GetImageViewCount() const { return m_imageViews.size(); }
+		inline VkImage GetImageAt(uint32_t index) const { return m_images[index]; }
+		inline uint32_t GetImageCount() const { return (uint32_t)m_images.size(); }
+		inline VkImageView GetImageViewAt(uint32_t index) const { return m_imageViews[index]; }
+		inline uint32_t GetImageViewCount() const { return (uint32_t)m_imageViews.size(); }
 
 		inline VkImage GetDepthImage() const { return m_depthImage.Image; }
 		inline VkImageView GetDepthImageView() const { return m_depthImageView; }
