@@ -27,9 +27,12 @@ namespace vkmmc
 	protected:
 		IRenderEngine() = default;
 	public:
-		// Factory static methods
-		static IRenderEngine* NewRenderEngine();
-		static void FreeRenderEngine(IRenderEngine** engine);
+		// Singleton static methods
+		static IRenderEngine* MakeInstance();
+		static IRenderEngine* GetRenderEngine();
+		template <typename T> 
+		static T* GetRenderEngineAs() { return static_cast<T*>(GetRenderEngine()); }
+		static void FreeRenderEngine();
 
 
 		virtual ~IRenderEngine() = default;

@@ -134,7 +134,7 @@ int main(int32_t argc, char** argv)
 	{
 		1920, 1080, "VkMMC Engine"
 	};
-	vkmmc::IRenderEngine* engine = vkmmc::IRenderEngine::NewRenderEngine();
+	vkmmc::IRenderEngine* engine = vkmmc::IRenderEngine::MakeInstance();
 	engine->Init(spec);
 
 	ExecuteSponza(engine);
@@ -155,6 +155,6 @@ int main(int32_t argc, char** argv)
 	}
 
 	engine->Shutdown();
-	vkmmc::IRenderEngine::FreeRenderEngine(&engine);
+	vkmmc::IRenderEngine::FreeRenderEngine();
 	return 0;
 }

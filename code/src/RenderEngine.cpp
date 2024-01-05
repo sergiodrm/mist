@@ -3,14 +3,25 @@
 
 namespace vkmmc
 {
-	IRenderEngine* IRenderEngine::NewRenderEngine()
+	static IRenderEngine* GRenderEngine = nullptr;
+
+	IRenderEngine* IRenderEngine::MakeInstance()
 	{
-		return new VulkanRenderEngine();
+		check(!GRenderEngine);
+		GRenderEngine = new VulkanRenderEngine();
+		return GRenderEngine;
 	}
 
-	void IRenderEngine::FreeRenderEngine(IRenderEngine** engine)
+	IRenderEngine* IRenderEngine::GetRenderEngine()
 	{
-		delete* engine;
-		*engine = nullptr;
+		check(GRenderEngine);
+		return GRenderEngine;
+	}
+
+	void IRenderEngine::FreeRenderEngine()
+	{
+		check(GRenderEngine);
+		delete GRenderEngine;
+		GRenderEngine = nullptr;
 	}
 }
