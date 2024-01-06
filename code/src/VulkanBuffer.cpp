@@ -1,6 +1,8 @@
 // src file for vkmmc project 
 #include "VulkanBuffer.h"
 #include "Debug.h"
+#include "InitVulkanTypes.h"
+#include "VulkanRenderEngine.h"
 
 namespace vkutils
 {
@@ -101,8 +103,7 @@ namespace vkmmc
 	VertexInputLayout VertexInputLayout::GetStaticMeshVertexLayout()
 	{
 		static VertexInputLayout layout;
-		static bool initialized = false;
-		if (!initialized)
+		if (layout.Attributes.empty())
 		{
 			// Use vkmmc::Vertex struct
 			layout = BuildVertexInputLayout(
@@ -117,10 +118,45 @@ namespace vkmmc
 		return layout;
 	}
 
+	VertexInputLayout VertexInputLayout::GetBasicVertexLayout()
+	{
+		static VertexInputLayout layout;
+		if (layout.Attributes.empty())
+		{
+			layout = BuildVertexInputLayout(
+				{
+					EAttributeType::Float3, // 3D World pos
+					EAttributeType::Float2 // UVs
+				}
+			);
+		}
+		return layout;
+	}
+
+	void GPUBuffer::SubmitBufferToGpu(GPUBuffer gpuBuffer, const void* cpuData, uint32_t size)
+	{
+		check(gpuBuffer.m_size == size);
+		check(gpuBuffer.m_usage != EBufferUsage::UsageInvalid);
+		check(gpuBuffer.m_buffer.Buffer != VK_NULL_HANDLE);
+		check(cpuData);
+
+		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+		const RenderContext& context = engine->GetContext();
+		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		Memory::MemCopyDataToBuffer(context.Allocator, stageBuffer.Alloc, cpuData, size);
+		engine->ImmediateSubmit([&](VkCommandBuffer cmd) 
+			{
+				gpuBuffer.UpdateData(cmd, stageBuffer.Buffer, size, 0);
+			});
+		Memory::DestroyBuffer(context.Allocator, stageBuffer);
+	}
+
 	GPUBuffer::GPUBuffer()
 		: m_size(0)
 	{	
 		m_buffer.Buffer = VK_NULL_HANDLE;
+		m_buffer.Alloc = VK_NULL_HANDLE;
+		m_usage = EBufferUsage::UsageInvalid;
 	}
 
 	void GPUBuffer::Init(const BufferCreateInfo& info)
@@ -134,6 +170,11 @@ namespace vkmmc
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY);
 		m_size = info.Size;
+
+		if (info.Data)
+		{
+			SubmitBufferToGpu(*this, info.Data, info.Size);
+		}
 	}
 
 	void GPUBuffer::Destroy(const RenderContext& renderContext)

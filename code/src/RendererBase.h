@@ -1,9 +1,10 @@
 // header file for vkmmc project 
-
+#pragma once
 #include "RenderPass.h"
 #include "RenderPipeline.h"
 #include "RenderTypes.h"
 #include "Framebuffer.h"
+#include "Swapchain.h"
 
 namespace vkmmc
 {
@@ -14,7 +15,7 @@ namespace vkmmc
 	{
 		RenderContext RContext;
 		VkDescriptorSetLayout GlobalDescriptorSetLayout;
-
+		Swapchain Swapchain;
 
 		VkPushConstantRange* ConstantRange = nullptr;
 		uint32_t ConstantRangeCount = 0;
@@ -30,12 +31,5 @@ namespace vkmmc
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount) = 0;
 
-	protected:
-		RenderPass m_renderPass;
-		Framebuffer m_framebuffer;
-
-		// Render State
-		VkDescriptorSetLayout m_descriptorSetLayout;
-		RenderPipeline m_renderPipeline;
 	};
 }

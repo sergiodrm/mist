@@ -23,6 +23,7 @@
 #include "Shader.h"
 #include "Globals.h"
 #include "Renderers/ModelRenderer.h"
+#include "Renderers/PresentRenderer.h"
 
 namespace vkmmc_debug
 {
@@ -214,6 +215,7 @@ namespace vkmmc
 		RendererCreateInfo rendererCreateInfo;
 		rendererCreateInfo.RContext = m_renderContext;
 		rendererCreateInfo.GlobalDescriptorSetLayout = m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT];
+		rendererCreateInfo.Swapchain = m_swapchain;
 		VkPushConstantRange pcr;
 		pcr.offset = 0;
 		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
@@ -221,9 +223,14 @@ namespace vkmmc
 		rendererCreateInfo.ConstantRange = &pcr;
 		rendererCreateInfo.ConstantRangeCount = 1;
 
-		IRendererBase* modelRenderer = new ModelRenderer();
+		ModelRenderer* modelRenderer = new ModelRenderer();
 		modelRenderer->Init(rendererCreateInfo);
 		m_renderers.push_back(modelRenderer);
+		PresentRenderer* presentRenderer = new PresentRenderer();
+		presentRenderer->Init(rendererCreateInfo);
+		presentRenderer->SetImageToRender(m_renderContext, modelRenderer->GetRenderedImage());
+		m_presentRenderer = presentRenderer;
+
 
 		Log(LogLevel::Ok, "Window created successfully!\n");
 		return true;
@@ -295,8 +302,14 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
 
+		m_presentRenderer->Destroy(m_renderContext);
+		delete m_presentRenderer;
+		m_presentRenderer = nullptr;
 		for (IRendererBase* it : m_renderers)
+		{
 			it->Destroy(m_renderContext);
+			delete it;
+		}
 
 		m_shutdownStack.Flush();
 		vkDestroyDevice(m_renderContext.Device, nullptr);
@@ -424,12 +437,35 @@ namespace vkmmc
 		RenderFrameContext& frameContext = GetFrameContext();
 		WaitFence(frameContext.RenderFence);
 
+		{
+			PROFILE_SCOPE(UpdateBuffers);
+			// Update descriptor set buffer
+			if (m_dirtyCachedCamera)
+			{
+				Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
+					GetFrameContext().CameraDescriptorSetBuffer.Alloc,
+					&m_cachedCameraData,
+					sizeof(GPUCamera));
+				m_dirtyCachedCamera = false;
+			}
+
+			const void* transformsData = m_scene.GetRawGlobalTransforms();
+			Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
+				GetFrameContext().ObjectDescriptorSetBuffer.Alloc,
+				transformsData,
+				sizeof(glm::mat4) * m_scene.Count());
+
+			frameContext.PushConstantData = &vkmmc_debug::GDebugShaderConstants;
+			frameContext.PushConstantSize = sizeof(vkmmc_debug::DebugShaderConstants);
+		}
+
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		uint32_t swapchainImageIndex;
 		{
 			PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
 			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
+			frameContext.Framebuffer = m_framebuffers[swapchainImageIndex];
 
 			// Reset command buffer
 			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
@@ -442,34 +478,15 @@ namespace vkmmc
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
 			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-
-			// Prepare render pass
-			VkRenderPassBeginInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.pNext = nullptr;
-			renderPassInfo.renderPass = m_renderPass.GetRenderPassHandle();
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = { .width = m_window.Width, .height = m_window.Height };
-			renderPassInfo.framebuffer = m_framebuffers[swapchainImageIndex];
-			//renderPassInfo.framebuffer = m_framebufferArray[swapchainImageIndex].GetFramebufferHandle();
-
-			// Clear values
-			VkClearValue clearValues[2];
-			clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
-			clearValues[1].depthStencil.depth = 1.f;
-			renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
-			renderPassInfo.pClearValues = clearValues;
-			// Begin render pass
-			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		}
 
-		DrawScene(cmd, m_scene);
+		for (IRendererBase* renderer : m_renderers)
+			renderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
+		m_presentRenderer->RecordCommandBuffer(frameContext, nullptr, 0);
 
 		// ImGui render
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+		//ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
-		// End render pass
-		vkCmdEndRenderPass(cmd);
 
 		// Terminate command buffer
 		vkcheck(vkEndCommandBuffer(cmd));
@@ -514,25 +531,6 @@ namespace vkmmc
 	{
 		uint32_t count = scene.Count();
 		check(count < MaxRenderObjects);
-		{
-			PROFILE_SCOPE(UpdateBuffers);
-			// Update descriptor set buffer
-			if (m_dirtyCachedCamera)
-			{
-				Memory::MemCopyDataToBuffer(m_renderContext.Allocator, 
-					GetFrameContext().CameraDescriptorSetBuffer.Alloc, 
-					&m_cachedCameraData, 
-					sizeof(GPUCamera));
-				m_dirtyCachedCamera = false;
-			}
-
-			const void* transformsData = m_scene.GetRawGlobalTransforms();
-			Memory::MemCopyDataToBuffer(m_renderContext.Allocator, 
-				GetFrameContext().ObjectDescriptorSetBuffer.Alloc, 
-				transformsData, 
-				sizeof(glm::mat4) * count);
-		}
-
 		{
 			PROFILE_SCOPE(DrawScene);
 			RenderPipeline pipeline = m_renderPipeline;
@@ -625,6 +623,13 @@ namespace vkmmc
 	void VulkanRenderEngine::ImGuiProcessEvent(const SDL_Event& e)
 	{
 		ImGui_ImplSDL2_ProcessEvent(&e);
+	}
+
+	VkDescriptorSet VulkanRenderEngine::AllocateDescriptorSet(VkDescriptorSetLayout layout)
+	{
+		VkDescriptorSet set;
+		m_descriptorAllocator.Allocate(&set, layout);
+		return set;
 	}
 
 	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialRenderData& material)
@@ -794,11 +799,11 @@ namespace vkmmc
 	bool VulkanRenderEngine::InitFramebuffers()
 	{
 		// Collect image in the swapchain
-		const uint64_t swapchainImageCount = m_swapchain.GetImageCount();
+		const uint32_t swapchainImageCount = m_swapchain.GetImageCount();
 		m_framebuffers = std::vector<VkFramebuffer>(swapchainImageCount);
 
 		// One framebuffer for each of the swapchain image view.
-		for (uint64_t i = 0; i < swapchainImageCount; ++i)
+		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
 			m_framebuffers[i] = FramebufferBuilder::Create()
 				.AddAttachment(m_swapchain.GetImageViewAt(i))
@@ -939,8 +944,8 @@ namespace vkmmc
 
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{
-			{.ShaderFilePath = globals::BasicVertexShaders, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
+			{.ShaderFilePath = globals::BasicVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
+			{.ShaderFilePath = globals::BasicFragmentShader, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
 		m_renderPipeline = RenderPipeline::Create(
@@ -1014,20 +1019,7 @@ namespace vkmmc
 
 	void VulkanRenderEngine::UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size)
 	{
-		// Allocate cpu-gpu transfer buffer
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(m_renderContext.Allocator, size,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-
-		// Set buffer data
-		Memory::MemCopyDataToBuffer(m_renderContext.Allocator, stageBuffer.Alloc, data, size);
-
-		ImmediateSubmit([=](VkCommandBuffer cmd)
-			{
-				buffer->UpdateData(cmd, stageBuffer.Buffer, size, 0);
-			});
-
-		// Destroy transfer buffer
-		Memory::DestroyBuffer(m_renderContext.Allocator, stageBuffer);
+		GPUBuffer::SubmitBufferToGpu(*buffer, data, size);
 	}
 	
 }

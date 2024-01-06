@@ -85,7 +85,7 @@ namespace vkmmc
         VkExtent3D extent = { m_width, m_height, 1 };
         VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
         *outImage = Memory::CreateImage(renderContext.Allocator,
-            format, extent, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            format, extent, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             VMA_MEMORY_USAGE_GPU_ONLY, 0);
         VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, outImage->Image, VK_IMAGE_ASPECT_COLOR_BIT);
         vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, outImageView));

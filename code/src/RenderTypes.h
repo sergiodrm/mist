@@ -28,19 +28,15 @@ namespace vkmmc
 		uint32_t Height;
 	};
 
-	struct ImmediateSynchedCommandContext
-	{
-		VkFence SyncFence;
-		VkCommandPool CommandPool;
-		VkCommandBuffer CommandBuffer;
-	};
-
 	struct RenderFrameContext
 	{
 		// Sync vars
 		VkFence RenderFence{};
 		VkSemaphore RenderSemaphore{};
 		VkSemaphore PresentSemaphore{};
+
+		// Framebuffer with swapchain attachment
+		VkFramebuffer Framebuffer;
 
 		// Commands
 		VkCommandPool GraphicsCommandPool{};

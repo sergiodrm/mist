@@ -106,12 +106,14 @@ namespace vkmmc
 		virtual RenderHandle GetDefaultTexture() const;
 		virtual Material GetDefaultMaterial() const;
 
+		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
+		const RenderContext& GetContext() const { return m_renderContext; }
+		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
 	protected:
 		void Draw();
 		void DrawScene(VkCommandBuffer cmd, const Scene& scene);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
 		RenderFrameContext& GetFrameContext();
-		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
 		void ImGuiNewFrame();
 		void ImGuiProcessEvent(const SDL_Event& e);
 
@@ -164,6 +166,7 @@ namespace vkmmc
 		ResourceMap<MaterialRenderData> m_materials;
 
 		std::vector<IRendererBase*> m_renderers;
+		IRendererBase* m_presentRenderer;
 
 		Scene m_scene;
 		bool m_dirtyCachedCamera;

@@ -59,8 +59,8 @@ namespace vkmmc
 		/**********************************/
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{
-			{.ShaderFilePath = globals::BasicVertexShaders, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
+			{.ShaderFilePath = globals::BasicVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
+			{.ShaderFilePath = globals::BasicFragmentShader, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::PipelineLayoutCreateInfo();
@@ -146,6 +146,11 @@ namespace vkmmc
 		}
 
         EndRenderPass(renderFrameContext);
+    }
+
+    VkImageView ModelRenderer::GetRenderedImage() const
+    {
+        return m_framebuffer.GetImageViewAt(0);
     }
 
     void ModelRenderer::BeginRenderPass(const RenderFrameContext& renderFrameContext)

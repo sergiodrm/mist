@@ -50,6 +50,7 @@ namespace vkmmc
 		VkFramebuffer GetFramebufferHandle() const;
 		uint32_t GetWidth() const { return m_width; }
 		uint32_t GetHeight() const { return m_height; }
+		VkImageView GetImageViewAt(uint32_t index) const { return m_atttachmentViewArray[index]; }
 	private:
 
 		void CreateColorAttachment(const RenderContext& renderContext, AllocatedImage* outImage, VkImageView* outImageView);
