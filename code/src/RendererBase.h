@@ -14,8 +14,9 @@ namespace vkmmc
 	struct RendererCreateInfo
 	{
 		RenderContext RContext;
+		VkRenderPass RenderPass;
 		VkDescriptorSetLayout GlobalDescriptorSetLayout;
-		Swapchain Swapchain;
+		VkDescriptorSetLayout InputAttachmentDescriptorSetLayout;
 
 		VkPushConstantRange* ConstantRange = nullptr;
 		uint32_t ConstantRangeCount = 0;

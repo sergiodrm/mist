@@ -16,11 +16,7 @@ namespace vkmmc
 
 		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount);
 
-		void SetImageToRender(const RenderContext& renderContext, VkImageView imageView);
 	private:
-		RenderPass m_renderPass;
-		std::vector<VkFramebuffer> m_framebufferArray;
-		uint32_t m_extent[2];
 		VkDescriptorSetLayout m_descriptorSetLayout;
 		RenderPipeline m_pipeline;
 

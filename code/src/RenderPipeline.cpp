@@ -57,7 +57,7 @@ namespace vkmmc
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = renderPass;
-		pipelineInfo.subpass = 0;
+		pipelineInfo.subpass = SubpassIndex;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 		// Build depth buffer
@@ -85,7 +85,8 @@ namespace vkmmc
 	}
 
 	RenderPipeline RenderPipeline::Create(RenderContext renderContext, 
-		const RenderPass& renderPass,
+		const VkRenderPass& renderPass,
+		uint32_t subpassIndex,
 		const ShaderModuleLoadDescription* shaderStages, 
 		uint32_t shaderStageCount, 
 		const VkPipelineLayoutCreateInfo& layoutInfo, 
@@ -123,20 +124,14 @@ namespace vkmmc
 		builder.Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
 		// Single blenc attachment without blending and writing RGBA
 		builder.ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
-		//builder.ColorBlendAttachment.blendEnable = VK_TRUE;
-		//builder.ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		//builder.ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		//builder.ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-		//builder.ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-		//builder.ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-		//builder.ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_SUBTRACT;
 		// Disable multisampling by default
 		builder.Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
 		// Pass layout info
 		builder.LayoutInfo = layoutInfo;
+		builder.SubpassIndex = subpassIndex;
 
 		// Build the new pipeline
-		RenderPipeline renderPipeline = builder.Build(renderContext.Device, renderPass.GetRenderPassHandle());;
+		RenderPipeline renderPipeline = builder.Build(renderContext.Device, renderPass);
 
 		// Vulkan modules destruction
 		for (size_t i = 0; i < shaderStageCount; ++i)

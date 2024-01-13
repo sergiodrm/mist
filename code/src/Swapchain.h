@@ -21,8 +21,8 @@ namespace vkmmc
 
 		VkSwapchainKHR GetSwapchainHandle() const { return m_swapchain; }
 
-		inline VkFormat GetImageFormat() const { return m_imageFormat; }
-		inline VkFormat GetDepthFormat() const { return m_depthFormat; }
+		inline EFormat GetImageFormat() const { return m_imageFormat; }
+		inline EFormat GetDepthFormat() const { return m_depthFormat; }
 
 		inline VkImage GetImageAt(uint32_t index) const { return m_images[index]; }
 		inline uint32_t GetImageCount() const { return (uint32_t)m_images.size(); }
@@ -34,11 +34,11 @@ namespace vkmmc
 
 	private:
 		VkSwapchainKHR m_swapchain;
-		VkFormat m_imageFormat;
+		EFormat m_imageFormat;
 		std::vector<VkImage> m_images;
 		std::vector<VkImageView> m_imageViews;
 
-		VkFormat m_depthFormat;
+		EFormat m_depthFormat;
 		AllocatedImage m_depthImage;
 		VkImageView m_depthImageView;
 	};

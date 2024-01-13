@@ -45,6 +45,7 @@ namespace vkmmc
 		// Descriptors
 		VkDescriptorSet GlobalDescriptorSet{};
 		VkDescriptorSet ObjectDescriptorSet{};
+		VkDescriptorSet InputAttachmentDescriptorSet{};
 		AllocatedBuffer CameraDescriptorSetBuffer{};
 		AllocatedBuffer ObjectDescriptorSetBuffer{};
 
@@ -52,4 +53,33 @@ namespace vkmmc
 		const void* PushConstantData{ nullptr };
 		uint32_t PushConstantSize{ 0 };
 	};
+
+	enum EImageLayout
+	{
+		IMAGE_LAYOUT_UNDEFINED,
+		IMAGE_LAYOUT_GENERAL,
+		IMAGE_LAYOUT_COLOR_ATTACHMENT,
+		IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT,
+		IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY,
+		IMAGE_LAYOUT_SHADER_READ_ONLY,
+		IMAGE_LAYOUT_PRESENT_SRC,
+	};
+	enum EFormat
+	{
+		FORMAT_R8G8B8,
+		FORMAT_B8G8R8,
+		FORMAT_R8G8B8A8,
+		FORMAT_B8G8R8A8,
+		FORMAT_D32,
+		FORMAT_INVALID = 0x7fffffff
+	};
+	namespace types
+	{
+		VkImageLayout ImageLayoutType(EImageLayout layout);
+		EImageLayout ImageLayoutType(VkImageLayout layout);
+
+		VkFormat FormatType(EFormat format);
+		EFormat FormatType(VkFormat format);
+	}
+
 }

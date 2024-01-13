@@ -109,6 +109,7 @@ namespace vkmmc
 		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
 		const RenderContext& GetContext() const { return m_renderContext; }
 		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
+		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
 	protected:
 		void Draw();
 		void DrawScene(VkCommandBuffer cmd, const Scene& scene);
@@ -137,7 +138,7 @@ namespace vkmmc
 		RenderContext m_renderContext;
 		
 		Swapchain m_swapchain;
-		RenderPass m_renderPass;
+		VkRenderPass m_renderPass;
 		RenderPipeline m_renderPipeline;
 
 		std::vector<VkFramebuffer> m_framebuffers;
@@ -153,6 +154,7 @@ namespace vkmmc
 		{
 			DESCRIPTOR_SET_GLOBAL_LAYOUT,
 			DESCRIPTOR_SET_TEXTURE_LAYOUT,
+			DESCRIPTOR_SET_RENDERPASS_INPUT_ATTACHMENT_LAYOUT,
 
 			DESCRIPTOR_SET_COUNT
 		};

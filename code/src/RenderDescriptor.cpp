@@ -61,7 +61,8 @@ namespace vkmmc
 		static const DescriptorPoolSizes sizes({
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f},
 			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f},
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f}
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f},
+			{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f}
 		});
 		return sizes;
 	}
@@ -237,17 +238,18 @@ namespace vkmmc
 				{ return a.binding < b.binding; });
 		}
 		auto it = m_cached.find(layoutInfo);
+		VkDescriptorSetLayout layout;
 		if (it != m_cached.end())
-			return (*it).second;
+		{
+			layout = (*it).second;
+		}
 		else
 		{
-			VkDescriptorSetLayout layout;
 			vkcheck(vkCreateDescriptorSetLayout(m_renderContext->Device,
 				&info, nullptr, &layout));
 			m_cached[layoutInfo] = layout;
-			return layout;
 		}
-		return VK_NULL_HANDLE;
+		return layout;
 	}
 
 	DescriptorSetLayoutBuilder DescriptorSetLayoutBuilder::Create(DescriptorLayoutCache& layoutCache)

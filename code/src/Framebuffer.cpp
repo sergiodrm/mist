@@ -6,71 +6,102 @@
 #include "RenderTypes.h"
 #include "InitVulkanTypes.h"
 
+#define BIT_N(n) (1 << n)
+
 namespace vkmmc
-{    
-    FramebufferBuilder FramebufferBuilder::Create()
+{   
+    Framebuffer::Builder Framebuffer::Builder::Create(const RenderContext& renderContext, uint32_t width, uint32_t height)
     {
-        FramebufferBuilder builder;   
+        Builder builder(renderContext);
+        builder.m_width = width;
+        builder.m_height = height;
         return builder;
     }
 
-    FramebufferBuilder& vkmmc::FramebufferBuilder::AddAttachment(VkImageView imageView)
+    Framebuffer::Builder& Framebuffer::Builder::AddAttachment(VkImageView imageView)
     {
+        check(m_attachments.size() < 8); // m_cleanFlags maximum capacity
         m_attachments.push_back(imageView);
         return *this;
     }
 
-	VkFramebuffer vkmmc::FramebufferBuilder::Build(VkDevice device, VkRenderPass renderPass, uint32_t width, uint32_t height)
+    Framebuffer::Builder& Framebuffer::Builder::CreateColorAttachment()
     {
-        VkFramebufferCreateInfo info
-        {
-            .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .pNext = nullptr,
-            .renderPass = renderPass,
-            .attachmentCount = (uint32_t)m_attachments.size(),
-            .pAttachments = m_attachments.data(),
-            .width = width,
-            .height = height,
-            .layers = 1
-        };
-        VkFramebuffer framebuffer;
-        vkcheck(vkCreateFramebuffer(device, &info, nullptr, &framebuffer));
-        return framebuffer;
-}
-
-    void Framebuffer::Init(const RenderContext& renderContext, const FramebufferCreateInfo& info)
-    {
-        m_width = info.Width;
-        m_height = info.Height;
-        FramebufferBuilder builder = FramebufferBuilder::Create();
-        for (uint32_t i = 0; i < info.AttachmentTypes.size(); ++i)
-        {
-            AllocatedImage image;
-            VkImageView imageView;
-            switch (info.AttachmentTypes[i])
-            {
-            case EAttachmentType::FRAMEBUFFER_COLOR_ATTACHMENT:
-                CreateColorAttachment(renderContext, &image, &imageView);
-                break;
-            case EAttachmentType::FRAMEBUFFER_DEPTH_STENCIL_ATTACHMENT:
-                CreateDepthAttachment(renderContext, &image, &imageView);
-                break;
-            default:
-                check(false);
-            }
-            m_attachmentArray.push_back(image);
-            m_atttachmentViewArray.push_back(imageView);
-            builder.AddAttachment(imageView);
-        }
-        m_framebuffer = builder.Build(renderContext.Device, info.RenderPass, info.Width, info.Height);
+		VkExtent3D extent = { m_width, m_height, 1 };
+		VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+        AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator,
+			format, extent, 
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
+            //VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			VMA_MEMORY_USAGE_GPU_ONLY, 0);
+		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, VK_IMAGE_ASPECT_COLOR_BIT);
+        VkImageView view;
+		vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
+        MarkToClean((uint32_t)m_attachments.size());
+        return AddAttachment(view);
     }
+
+    Framebuffer::Builder& Framebuffer::Builder::CreateDepthStencilAttachment()
+    {
+		// Create depth buffer
+		VkExtent3D depthExtent = { m_width, m_height, 1 };
+		VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator,
+			depthFormat, depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
+			VMA_MEMORY_USAGE_GPU_ONLY, 0);
+
+		// Image view
+		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(depthFormat, image.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
+        VkImageView view;
+		vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
+
+        MarkToClean((uint32_t)m_attachments.size());
+        return AddAttachment(view);
+    }
+
+    Framebuffer Framebuffer::Builder::Build(VkRenderPass renderPass)
+    {
+		VkFramebufferCreateInfo info
+		{
+			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+			.pNext = nullptr,
+			.renderPass = renderPass,
+			.attachmentCount = (uint32_t)m_attachments.size(),
+			.pAttachments = m_attachments.data(),
+			.width = m_width,
+			.height = m_height,
+			.layers = 1
+		};
+		VkFramebuffer framebufferHandle;
+		vkcheck(vkCreateFramebuffer(m_renderContext.Device, &info, nullptr, &framebufferHandle));
+
+        Framebuffer framebuffer;
+        framebuffer.m_attachmentArray = std::move(m_imageArray);
+        framebuffer.m_atttachmentViewArray = std::move(m_attachments);
+        framebuffer.m_width = m_width;
+        framebuffer.m_height = m_height;
+        framebuffer.m_cleanFlags = m_cleanFlags;
+        framebuffer.m_framebuffer = framebufferHandle;
+		return framebuffer;
+    }
+
+    void Framebuffer::Builder::MarkToClean(uint32_t index)
+    {
+        m_cleanFlags |= BIT_N(index);
+    }
+
+    Framebuffer::Builder::Builder(const RenderContext& renderContext) : m_renderContext(renderContext), m_cleanFlags(0) {}
 
     void Framebuffer::Destroy(const RenderContext& renderContext)
     {
         for (uint32_t i = 0; i < m_attachmentArray.size(); ++i)
         {
             Memory::DestroyImage(renderContext.Allocator, m_attachmentArray[i]);
-            vkDestroyImageView(renderContext.Device, m_atttachmentViewArray[i], nullptr);
+        }
+        for (uint32_t i = 0; i < m_atttachmentViewArray.size(); ++i)
+        {
+            if (m_cleanFlags & BIT_N(i))
+                vkDestroyImageView(renderContext.Device, m_atttachmentViewArray[i], nullptr);
         }
         vkDestroyFramebuffer(renderContext.Device, m_framebuffer, nullptr);
     }
@@ -79,30 +110,4 @@ namespace vkmmc
     {
         return m_framebuffer;
     }
-
-    void Framebuffer::CreateColorAttachment(const RenderContext& renderContext, AllocatedImage* outImage, VkImageView* outImageView)
-    {
-        VkExtent3D extent = { m_width, m_height, 1 };
-        VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-        *outImage = Memory::CreateImage(renderContext.Allocator,
-            format, extent, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VMA_MEMORY_USAGE_GPU_ONLY, 0);
-        VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, outImage->Image, VK_IMAGE_ASPECT_COLOR_BIT);
-        vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, outImageView));
-    }
-
-    void Framebuffer::CreateDepthAttachment(const RenderContext& renderContext, AllocatedImage* outImage, VkImageView* outImageView)
-    {
-		// Create depth buffer
-		VkExtent3D depthExtent = { m_width, m_height, 1 };
-		VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
-		*outImage = Memory::CreateImage(renderContext.Allocator,
-			depthFormat, depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY, 0);
-
-		// Image view
-		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(depthFormat, outImage->Image, VK_IMAGE_ASPECT_DEPTH_BIT);
-		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, outImageView));
-    }
-
 }

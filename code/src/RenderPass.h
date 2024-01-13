@@ -1,25 +1,36 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include "RenderTypes.h"
 
 namespace vkmmc
 {
 	struct RenderContext;
 
-	struct RenderPassSpecification
+	struct RenderPassSubpassDescription
 	{
-		VkFormat ColorAttachmentFormat = VK_FORMAT_UNDEFINED;
-		VkFormat DepthStencilAttachmentFormat = VK_FORMAT_UNDEFINED;
+		std::vector<VkAttachmentReference> ColorAttachmentReferences;
+		VkAttachmentReference DepthAttachmentReference{UINT32_MAX, VK_IMAGE_LAYOUT_UNDEFINED};
+		std::vector<VkAttachmentReference> InputAttachmentReferences;
 	};
 
-	class RenderPass
+	class RenderPassBuilder
 	{
+		RenderPassBuilder() = default;
 	public:
-		bool Init(const RenderContext& renderContext, const RenderPassSpecification& spec);
-		void Destroy(const RenderContext& renderContext);
+		static RenderPassBuilder Create();
 
-		inline VkRenderPass GetRenderPassHandle() const { return m_renderPass; }
+		RenderPassBuilder& AddColorAttachmentDescription(EFormat format, bool presentAttachment = false);
+		RenderPassBuilder& AddDepthAttachmentDescription(EFormat format);
+		RenderPassBuilder& AddSubpass(const std::initializer_list<uint32_t>& colorAttachmentIndices,
+			uint32_t depthIndex, 
+			const std::initializer_list<uint32_t>& inputAttachments);
+		RenderPassBuilder& AddDependencies(const VkSubpassDependency* dependencies, uint32_t count);
+
+		VkRenderPass Build(const RenderContext& renderContext);
 	private:
-		VkRenderPass m_renderPass;
+		std::vector<VkAttachmentDescription> m_attachments;
+		std::vector<RenderPassSubpassDescription> m_subpassDescs;
+		std::vector<VkSubpassDependency> m_dependencies;
 	};
 }

@@ -49,6 +49,11 @@ namespace vkmmc
 		VkPipelineDepthStencilStateCreateInfo PipelineDepthStencilCreateInfo(bool depthTest, bool depthWrite, VkCompareOp operation);
 
 		/**
+		 * Render pass types
+		 */
+		VkAttachmentDescription RenderPassAttachmentDescription(VkFormat format, VkImageLayout finalLayout);
+
+		/**
 		 * Image types builders
 		 */
 		VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);

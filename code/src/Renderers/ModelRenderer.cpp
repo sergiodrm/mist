@@ -11,25 +11,6 @@ namespace vkmmc
 {
     void ModelRenderer::Init(const RendererCreateInfo& info)
     {
-        /***************/
-		/** Render pass **/
-        /***************/
-        RenderPassSpecification rpInfo;
-        rpInfo.ColorAttachmentFormat = VK_FORMAT_R8G8B8A8_SRGB;
-        rpInfo.DepthStencilAttachmentFormat = VK_FORMAT_D32_SFLOAT;
-        m_renderPass.Init(info.RContext, rpInfo);
-
-		/*****************/
-		/** Framebuffer **/
-		/*****************/
-        FramebufferCreateInfo fbInfo;
-        fbInfo.RenderPass = m_renderPass.GetRenderPassHandle();
-        fbInfo.Width = info.RContext.Width;
-        fbInfo.Height = info.RContext.Height;
-        fbInfo.AttachmentTypes.push_back(EAttachmentType::FRAMEBUFFER_COLOR_ATTACHMENT);
-        fbInfo.AttachmentTypes.push_back(EAttachmentType::FRAMEBUFFER_DEPTH_STENCIL_ATTACHMENT);
-        m_framebuffer.Init(info.RContext, fbInfo);
-
 		/***************************/
 		/** Descriptor set layout **/
 		/***************************/
@@ -70,7 +51,8 @@ namespace vkmmc
         pipelineLayoutCreateInfo.pPushConstantRanges = info.ConstantRange;
         m_renderPipeline = RenderPipeline::Create(
             info.RContext,
-            m_renderPass,
+            info.RenderPass,
+            0,
             shaderStageDescs,
             sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription),
             pipelineLayoutCreateInfo,
@@ -82,14 +64,10 @@ namespace vkmmc
     {
         m_renderPipeline.Destroy(renderContext);
         vkDestroyDescriptorSetLayout(renderContext.Device, m_descriptorSetLayout, nullptr);
-        m_framebuffer.Destroy(renderContext);
-        m_renderPass.Destroy(renderContext);
     }
 
     void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount)
     {
-        BeginRenderPass(renderFrameContext);
-
         VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
         vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(),
@@ -145,37 +123,6 @@ namespace vkmmc
 			}
 		}
 
-        EndRenderPass(renderFrameContext);
     }
 
-    VkImageView ModelRenderer::GetRenderedImage() const
-    {
-        return m_framebuffer.GetImageViewAt(0);
-    }
-
-    void ModelRenderer::BeginRenderPass(const RenderFrameContext& renderFrameContext)
-    {
-		// Prepare render pass
-		VkRenderPassBeginInfo renderPassInfo = {};
-		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.pNext = nullptr;
-		renderPassInfo.renderPass = m_renderPass.GetRenderPassHandle();
-		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = { .width = m_framebuffer.GetWidth(), .height = m_framebuffer.GetHeight() };
-		renderPassInfo.framebuffer = m_framebuffer.GetFramebufferHandle();
-
-		// Clear values
-		VkClearValue clearValues[2];
-		clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
-		clearValues[1].depthStencil.depth = 1.f;
-		renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
-		renderPassInfo.pClearValues = clearValues;
-		// Begin render pass
-		vkCmdBeginRenderPass(renderFrameContext.GraphicsCommand, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-    }
-
-    void ModelRenderer::EndRenderPass(const RenderFrameContext& renderFrameContext)
-    {
-        vkCmdEndRenderPass(renderFrameContext.GraphicsCommand);
-    }
 }

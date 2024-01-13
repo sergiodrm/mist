@@ -18,14 +18,7 @@ namespace vkmmc
 		};
 		bool LoadTexture(const char* path, TextureRaw& out);
 		void FreeTexture(unsigned char* data);
-	}
-
-	enum EImageFormat
-	{
-		IMAGE_FORMAT_R8G8B8,
-		IMAGE_FORMAT_R8G8B8A8,
-		IMAGE_FORMAT_INVALID = 0xffff
-	};
+	}	
 
 	struct RenderTextureCreateInfo
 	{

@@ -34,6 +34,8 @@ namespace vkmmc
 
 		// Vertex input. How the vertices are arranged in memory and how to bind them.
 		VertexInputLayout InputDescription;
+		// Subpass of renderpass
+		uint32_t SubpassIndex = 0;
 
 		RenderPipeline Build(VkDevice device, VkRenderPass renderPass);
 	};
@@ -44,7 +46,8 @@ namespace vkmmc
 
 		static RenderPipeline Create(
 			RenderContext renderContext,
-			const RenderPass& renderPass,
+			const VkRenderPass& renderPass,
+			uint32_t subpassIndex,
 			const ShaderModuleLoadDescription* shaderStages,
 			uint32_t shaderStageCount,
 			const VkPipelineLayoutCreateInfo& layoutInfo,

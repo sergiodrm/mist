@@ -4,29 +4,19 @@
 #include <stb_image.h>
 #include "RenderPipeline.h"
 #include "Debug.h"
+#include "RenderTypes.h"
 
 namespace vkutils
 {
-	vkmmc::EImageFormat GetImageFormatFromChannels(uint32_t channels)
+	vkmmc::EFormat GetImageFormatFromChannels(uint32_t channels)
 	{
 		switch (channels)
 		{
-		case 3: return vkmmc::IMAGE_FORMAT_R8G8B8;
-		case 4: return vkmmc::IMAGE_FORMAT_R8G8B8A8;
+		case 3: return vkmmc::FORMAT_R8G8B8;
+		case 4: return vkmmc::FORMAT_R8G8B8A8;
 		}
 		vkmmc::Logf(vkmmc::LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
-		return vkmmc::IMAGE_FORMAT_INVALID;
-	}
-	VkFormat GetImageVulkanFormat(vkmmc::EImageFormat format)
-	{
-		switch (format)
-		{
-		case vkmmc::IMAGE_FORMAT_R8G8B8: // forced to be RGBA
-		case vkmmc::IMAGE_FORMAT_R8G8B8A8: return VK_FORMAT_R8G8B8A8_SRGB;
-		case vkmmc::IMAGE_FORMAT_INVALID: return VK_FORMAT_UNDEFINED;
-		}
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Unknown image format %d.\n", (int32_t)format);
-		return VK_FORMAT_UNDEFINED;
+		return vkmmc::FORMAT_INVALID;
 	}
 }
 
@@ -74,8 +64,8 @@ namespace vkmmc
 
 		// Create transit buffer
 		VkDeviceSize size = info.Raw.Width * info.Raw.Height * info.Raw.Channels;
-		EImageFormat imageFormat = vkutils::GetImageFormatFromChannels(info.Raw.Channels);
-		VkFormat format = vkutils::GetImageVulkanFormat(imageFormat);
+		EFormat imageFormat = vkutils::GetImageFormatFromChannels(info.Raw.Channels);
+		VkFormat format = types::FormatType(imageFormat);
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(info.RContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 		Memory::MemCopyDataToBuffer(info.RContext.Allocator, stageBuffer.Alloc, info.Raw.Pixels, size);
