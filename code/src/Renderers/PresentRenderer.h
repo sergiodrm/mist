@@ -17,7 +17,6 @@ namespace vkmmc
 		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount);
 
 	private:
-		VkDescriptorSetLayout m_descriptorSetLayout;
 		RenderPipeline m_pipeline;
 
 		// Quad screen

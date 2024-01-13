@@ -13,9 +13,6 @@ namespace vkmmc
     void PresentRenderer::Init(const RendererCreateInfo& info)
     {
 		// Render pipeline
-		m_descriptorSetLayout = info.InputAttachmentDescriptorSetLayout;
-		VkDescriptorSetLayout setLayouts[] = { info.InputAttachmentDescriptorSetLayout };
-		const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(VkDescriptorSetLayout);
 		ShaderModuleLoadDescription shaderStageDescs[] =
 		{
 			{.ShaderFilePath = globals::PresentVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
@@ -23,8 +20,8 @@ namespace vkmmc
 		};
 
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::PipelineLayoutCreateInfo();
-		pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
-		pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
+		pipelineLayoutCreateInfo.setLayoutCount = 1;
+		pipelineLayoutCreateInfo.pSetLayouts = &info.InputAttachmentDescriptorSetLayout;
 		pipelineLayoutCreateInfo.pushConstantRangeCount = info.ConstantRangeCount;
 		pipelineLayoutCreateInfo.pPushConstantRanges = info.ConstantRange;
 		m_pipeline = RenderPipeline::Create(
@@ -58,7 +55,7 @@ namespace vkmmc
 
 		// Create descriptor to bind image render
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
-		m_descriptorSet = engine->AllocateDescriptorSet(m_descriptorSetLayout);
+		m_descriptorSet = engine->AllocateDescriptorSet(info.InputAttachmentDescriptorSetLayout);
 		// Create sampler
 		VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_sampler));
@@ -71,7 +68,6 @@ namespace vkmmc
 		m_quadVertexBuffer.Destroy(renderContext);
 
 		m_pipeline.Destroy(renderContext);
-		vkDestroyDescriptorSetLayout(renderContext.Device, m_descriptorSetLayout, nullptr);
     }
 	 
     void PresentRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount)
