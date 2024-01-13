@@ -34,6 +34,8 @@ namespace vkmmc
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
             //VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY, 0);
+		m_imageArray.push_back(image);
+
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, VK_IMAGE_ASPECT_COLOR_BIT);
         VkImageView view;
 		vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
@@ -49,6 +51,7 @@ namespace vkmmc
 		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator,
 			depthFormat, depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY, 0);
+        m_imageArray.push_back(image);
 
 		// Image view
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(depthFormat, image.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -76,7 +79,7 @@ namespace vkmmc
 		vkcheck(vkCreateFramebuffer(m_renderContext.Device, &info, nullptr, &framebufferHandle));
 
         Framebuffer framebuffer;
-        framebuffer.m_attachmentArray = std::move(m_imageArray);
+        framebuffer.m_imageArray = std::move(m_imageArray);
         framebuffer.m_atttachmentViewArray = std::move(m_attachments);
         framebuffer.m_width = m_width;
         framebuffer.m_height = m_height;
@@ -94,9 +97,9 @@ namespace vkmmc
 
     void Framebuffer::Destroy(const RenderContext& renderContext)
     {
-        for (uint32_t i = 0; i < m_attachmentArray.size(); ++i)
+        for (uint32_t i = 0; i < m_imageArray.size(); ++i)
         {
-            Memory::DestroyImage(renderContext.Allocator, m_attachmentArray[i]);
+            Memory::DestroyImage(renderContext.Allocator, m_imageArray[i]);
         }
         for (uint32_t i = 0; i < m_atttachmentViewArray.size(); ++i)
         {

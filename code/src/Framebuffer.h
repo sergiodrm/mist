@@ -49,7 +49,7 @@ namespace vkmmc
 		uint32_t m_height;
 		uint8_t m_cleanFlags;
 
-		std::vector<AllocatedImage> m_attachmentArray;
+		std::vector<AllocatedImage> m_imageArray;
 		std::vector<VkImageView> m_atttachmentViewArray;
 	};
 }
