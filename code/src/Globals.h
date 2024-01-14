@@ -10,8 +10,8 @@ namespace vkmmc
 		// Assets reference
 		extern const char* BasicVertexShader;
 		extern const char* BasicFragmentShader;
-		extern const char* PresentVertexShader;
-		extern const char* PresentFragmentShader;
+		extern const char* LineVertexShader;
+		extern const char* LineFragmentShader;
 
 	}
 }

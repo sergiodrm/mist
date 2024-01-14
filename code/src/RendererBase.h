@@ -10,13 +10,18 @@ namespace vkmmc
 {
 	struct RenderFrameContext;
 	class Model;
+	class DescriptorLayoutCache;
+	class DescriptorAllocator;
 
 	struct RendererCreateInfo
 	{
 		RenderContext RContext;
 		VkRenderPass RenderPass;
+		DescriptorLayoutCache* LayoutCache{nullptr};
+		DescriptorAllocator* DescriptorAllocator{nullptr};
+
 		VkDescriptorSetLayout GlobalDescriptorSetLayout;
-		VkDescriptorSetLayout InputAttachmentDescriptorSetLayout;
+		
 
 		VkPushConstantRange* ConstantRange = nullptr;
 		uint32_t ConstantRangeCount = 0;

@@ -16,6 +16,10 @@ namespace vkmmc
 	class RenderPipelineBuilder
 	{
 	public:
+		RenderPipelineBuilder(const RenderContext& renderContext);
+
+		const RenderContext& RContext;
+
 		// Layout configuration
 		VkPipelineLayoutCreateInfo LayoutInfo;
 
@@ -34,10 +38,12 @@ namespace vkmmc
 
 		// Vertex input. How the vertices are arranged in memory and how to bind them.
 		VertexInputLayout InputDescription;
+		// Input assembly type
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		// Subpass of renderpass
 		uint32_t SubpassIndex = 0;
 
-		RenderPipeline Build(VkDevice device, VkRenderPass renderPass);
+		RenderPipeline Build(VkRenderPass renderPass);
 	};
 
 	class RenderPipeline

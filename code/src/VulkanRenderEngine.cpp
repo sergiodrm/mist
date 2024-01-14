@@ -23,6 +23,7 @@
 #include "Shader.h"
 #include "Globals.h"
 #include "Renderers/ModelRenderer.h"
+#include "Renderers/DebugRenderer.h"
 
 namespace vkmmc_debug
 {
@@ -300,6 +301,8 @@ namespace vkmmc
 		RendererCreateInfo rendererCreateInfo;
 		rendererCreateInfo.RContext = m_renderContext;
 		rendererCreateInfo.RenderPass = m_renderPass;
+		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
+		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
 		rendererCreateInfo.GlobalDescriptorSetLayout = m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT];
 		VkPushConstantRange pcr;
 		pcr.offset = 0;
@@ -308,9 +311,10 @@ namespace vkmmc
 		rendererCreateInfo.ConstantRange = &pcr;
 		rendererCreateInfo.ConstantRangeCount = 1;
 
-		ModelRenderer* modelRenderer = new ModelRenderer();
-		modelRenderer->Init(rendererCreateInfo);
-		m_renderers.push_back(modelRenderer);
+		m_renderers.push_back(new ModelRenderer());
+		m_renderers.push_back(new DebugRenderer());
+		for (IRendererBase* renderer : m_renderers)
+			renderer->Init(rendererCreateInfo);
 
 
 		Log(LogLevel::Ok, "Window created successfully!\n");

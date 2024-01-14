@@ -13,8 +13,8 @@ namespace vkmmc
 		// Assets reference
 		const char* BasicVertexShader = SHADER_ROOT_PATH "basic.vert.spv";
 		const char* BasicFragmentShader = SHADER_ROOT_PATH "basic.frag.spv";
-		const char* PresentVertexShader = SHADER_ROOT_PATH "present.vert.spv";
-		const char* PresentFragmentShader = SHADER_ROOT_PATH "present.frag.spv";
+		const char* LineVertexShader = SHADER_ROOT_PATH "line.vert.spv";
+		const char* LineFragmentShader = SHADER_ROOT_PATH "line.frag.spv";
 
 	}
 }

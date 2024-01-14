@@ -8,15 +8,36 @@
 
 namespace vkmmc
 {
+	RenderPipelineBuilder::RenderPipelineBuilder(const RenderContext& renderContext)
+		: RContext(renderContext)
+	{
+		// Configure viewport settings.
+		Viewport.x = 0.f;
+		Viewport.y = 0.f;
+		Viewport.width = (float)renderContext.Width;
+		Viewport.height = (float)renderContext.Height;
+		Viewport.minDepth = 0.f;
+		Viewport.maxDepth = 1.f;
+		Scissor.offset = { 0, 0 };
+		Scissor.extent = { .width = renderContext.Width, .height = renderContext.Height };
+		// Depth testing
+		DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		// Rasterization: draw filled triangles
+		Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		// Single blenc attachment without blending and writing RGBA
+		ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
+		// Disable multisampling by default
+		Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
+	}
 
-	RenderPipeline RenderPipelineBuilder::Build(VkDevice device, VkRenderPass renderPass)
+	RenderPipeline RenderPipelineBuilder::Build(VkRenderPass renderPass)
 	{
 		// Create VkPipelineLayout from LayoutInfo member
 		VkPipelineLayout pipelineLayout;
-		vkcheck(vkCreatePipelineLayout(device, &LayoutInfo, nullptr, &pipelineLayout));
+		vkcheck(vkCreatePipelineLayout(RContext.Device, &LayoutInfo, nullptr, &pipelineLayout));
 
 		// Create vertex input vulkan structures
-		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(Topology);
 		VkPipelineVertexInputStateCreateInfo inputInfo = vkinit::PipelineVertexInputStageCreateInfo();
 		check(InputDescription.Attributes.size() > 0);
 		inputInfo.pVertexAttributeDescriptions = InputDescription.Attributes.data();
@@ -65,7 +86,7 @@ namespace vkmmc
 
 		// Create pipeline and check it's all set up correctly
 		VkPipeline newPipeline;
-		if (vkCreateGraphicsPipelines(device,
+		if (vkCreateGraphicsPipelines(RContext.Device,
 			VK_NULL_HANDLE,
 			1, &pipelineInfo,
 			nullptr,
@@ -93,15 +114,13 @@ namespace vkmmc
 		const VertexInputLayout& inputDescription)
 	{
 		check(shaderStages && shaderStageCount > 0);
-		RenderPipelineBuilder builder;
+		RenderPipelineBuilder builder(renderContext);
 		// Input configuration
 		builder.InputDescription = inputDescription;
 		// Shader stages
 		std::vector<VkShaderModule> modules(shaderStageCount);
 		ShaderCompiler compiler(shaderStages, (uint32_t)shaderStageCount);
-
 		compiler.ProcessReflectionProperties();
-
 		compiler.Compile(renderContext, modules);
 		for (size_t i = 0; i < shaderStageCount; ++i)
 		{
@@ -109,29 +128,12 @@ namespace vkmmc
 			builder.ShaderStages.push_back(
 				vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
 		}
-		// Configure viewport settings.
-		builder.Viewport.x = 0.f;
-		builder.Viewport.y = 0.f;
-		builder.Viewport.width = (float)renderContext.Width;
-		builder.Viewport.height = (float)renderContext.Height;
-		builder.Viewport.minDepth = 0.f;
-		builder.Viewport.maxDepth = 1.f;
-		builder.Scissor.offset = { 0, 0 };
-		builder.Scissor.extent = { .width = renderContext.Width, .height = renderContext.Height };
-		// Depth testing
-		builder.DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-		// Rasterization: draw filled triangles
-		builder.Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-		// Single blenc attachment without blending and writing RGBA
-		builder.ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
-		// Disable multisampling by default
-		builder.Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
 		// Pass layout info
 		builder.LayoutInfo = layoutInfo;
 		builder.SubpassIndex = subpassIndex;
 
 		// Build the new pipeline
-		RenderPipeline renderPipeline = builder.Build(renderContext.Device, renderPass);
+		RenderPipeline renderPipeline = builder.Build(renderPass);
 
 		// Vulkan modules destruction
 		for (size_t i = 0; i < shaderStageCount; ++i)

@@ -14,24 +14,9 @@ namespace vkmmc
 		/***************************/
 		/** Descriptor set layout **/
 		/***************************/
-        VkDescriptorSetLayoutBinding bindings[] =
-        {
-            {
-                .binding = 0,
-                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                .descriptorCount = 3,
-                .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                .pImmutableSamplers = nullptr
-            }
-        };
-        VkDescriptorSetLayoutCreateInfo layoutCreateInfo
-        {
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-            .pNext = nullptr,
-            .bindingCount = sizeof(bindings) / sizeof(VkDescriptorSetLayoutBinding),
-            .pBindings = bindings
-        };
-        vkcheck(vkCreateDescriptorSetLayout(info.RContext.Device, &layoutCreateInfo, nullptr, &m_descriptorSetLayout));
+        DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
+            .AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3)
+            .Build(info.RContext, &m_descriptorSetLayout);
         VkDescriptorSetLayout setLayouts[] = { info.GlobalDescriptorSetLayout, m_descriptorSetLayout };
         const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(VkDescriptorSetLayout);
 
@@ -63,7 +48,6 @@ namespace vkmmc
     void ModelRenderer::Destroy(const RenderContext& renderContext)
     {
         m_renderPipeline.Destroy(renderContext);
-        vkDestroyDescriptorSetLayout(renderContext.Device, m_descriptorSetLayout, nullptr);
     }
 
     void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount)
