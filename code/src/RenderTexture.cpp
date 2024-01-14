@@ -38,9 +38,6 @@ namespace vkmmc
 		}
 		if (channels != 4)
 		{
-			Logf(LogLevel::Warn,
-				"Resource: [%s].\nTrying to load texture with %d channels, forced to 4 channels due to unsupported format.\n",
-				path, channels);
 			channels = 4;
 		}
 

@@ -110,6 +110,7 @@ namespace vkmmc
 		const RenderContext& GetContext() const { return m_renderContext; }
 		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
 		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
+		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
 	protected:
 		void Draw();
 		void DrawScene(VkCommandBuffer cmd, const Scene& scene);
@@ -154,12 +155,10 @@ namespace vkmmc
 		{
 			DESCRIPTOR_SET_GLOBAL_LAYOUT,
 			DESCRIPTOR_SET_TEXTURE_LAYOUT,
-			DESCRIPTOR_SET_RENDERPASS_INPUT_ATTACHMENT_LAYOUT,
 
 			DESCRIPTOR_SET_COUNT
 		};
 		VkDescriptorSetLayout m_descriptorLayouts[DESCRIPTOR_SET_COUNT];
-		VkDescriptorSet m_descriptorSets[DESCRIPTOR_SET_COUNT];
 
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
@@ -168,7 +167,6 @@ namespace vkmmc
 		ResourceMap<MaterialRenderData> m_materials;
 
 		std::vector<IRendererBase*> m_renderers;
-		IRendererBase* m_presentRenderer;
 
 		Scene m_scene;
 		bool m_dirtyCachedCamera;

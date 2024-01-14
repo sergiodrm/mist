@@ -44,8 +44,6 @@ namespace vkmmc
 
 		// Descriptors
 		VkDescriptorSet GlobalDescriptorSet{};
-		VkDescriptorSet ObjectDescriptorSet{};
-		VkDescriptorSet InputAttachmentDescriptorSet{};
 		AllocatedBuffer CameraDescriptorSetBuffer{};
 		AllocatedBuffer ObjectDescriptorSetBuffer{};
 

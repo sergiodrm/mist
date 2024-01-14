@@ -23,7 +23,6 @@
 #include "Shader.h"
 #include "Globals.h"
 #include "Renderers/ModelRenderer.h"
-#include "Renderers/PresentRenderer.h"
 
 namespace vkmmc_debug
 {
@@ -251,13 +250,14 @@ namespace vkmmc
 		check(InitCommands());
 
 		// RenderPass
-		VkSubpassDependency dependencies[3];
-		/*dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		VkSubpassDependency dependencies[2];
+		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependencies[0].dstSubpass = 0;
 		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		dependencies[0].srcAccessMask = 0;
 		dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependencies[0].dependencyFlags = 0;
 
 		dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependencies[1].dstSubpass = 0;
@@ -266,38 +266,17 @@ namespace vkmmc
 		dependencies[1].srcAccessMask = 0;
 		dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
 			| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-		dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;*/
-		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependencies[0].dstSubpass = 0;
-		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-		dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-		// This dependency transitions the input attachment from color attachment to shader read
-		dependencies[1].srcSubpass = 0;
-		dependencies[1].dstSubpass = 1;
-		dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-		dependencies[2].srcSubpass = 0;
-		dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
-		dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[2].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[2].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+		dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		dependencies[1].dependencyFlags = 0;
 
 		m_renderPass = RenderPassBuilder::Create()
 			.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
-			.AddColorAttachmentDescription(FORMAT_R8G8B8A8, false)
 			.AddDepthAttachmentDescription(FORMAT_D32)
-			.AddSubpass({ 1 }, 2, {})
-			.AddSubpass({ 0 }, UINT32_MAX, { 1, 2 })
+			.AddSubpass(
+				{ 0 }, // Color attachments
+				1, // Depth attachment
+				{} // Input attachment
+			)
 			.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
 			.Build(m_renderContext);
 		m_shutdownStack.Add([this]() 
@@ -322,7 +301,6 @@ namespace vkmmc
 		rendererCreateInfo.RContext = m_renderContext;
 		rendererCreateInfo.RenderPass = m_renderPass;
 		rendererCreateInfo.GlobalDescriptorSetLayout = m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT];
-		rendererCreateInfo.InputAttachmentDescriptorSetLayout = m_descriptorLayouts[DESCRIPTOR_SET_RENDERPASS_INPUT_ATTACHMENT_LAYOUT];
 		VkPushConstantRange pcr;
 		pcr.offset = 0;
 		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
@@ -333,9 +311,6 @@ namespace vkmmc
 		ModelRenderer* modelRenderer = new ModelRenderer();
 		modelRenderer->Init(rendererCreateInfo);
 		m_renderers.push_back(modelRenderer);
-		PresentRenderer* presentRenderer = new PresentRenderer();
-		presentRenderer->Init(rendererCreateInfo);
-		m_presentRenderer = presentRenderer;
 
 
 		Log(LogLevel::Ok, "Window created successfully!\n");
@@ -408,9 +383,6 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
 
-		m_presentRenderer->Destroy(m_renderContext);
-		delete m_presentRenderer;
-		m_presentRenderer = nullptr;
 		for (IRendererBase* it : m_renderers)
 		{
 			it->Destroy(m_renderContext);
@@ -587,10 +559,10 @@ namespace vkmmc
 
 			// Begin render pass
 			// Clear values
-			VkClearValue clearValues[3];
+			VkClearValue clearValues[2];
 			clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
-			clearValues[1].color = { 0.2f, 0.2f, 0.f, 1.f };
-			clearValues[2].depthStencil.depth = 1.f;
+			//clearValues[1].color = { 0.2f, 0.2f, 0.f, 1.f };
+			clearValues[1].depthStencil.depth = 1.f;
 			
 			VkRenderPassBeginInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr};
 			renderPassInfo.renderPass = m_renderPass;
@@ -604,8 +576,8 @@ namespace vkmmc
 
 		for (IRendererBase* renderer : m_renderers)
 			renderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
-		vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
-		m_presentRenderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
+		//vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
+		//m_presentRenderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
 		
 		// ImGui render. TODO: move to UIRenderer
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -933,7 +905,7 @@ namespace vkmmc
 		{
 			m_framebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_window.Width, m_window.Height)
 				.AddAttachment(m_swapchain.GetImageViewAt(i))
-				.CreateColorAttachment()
+				//.CreateColorAttachment()
 				.CreateDepthStencilAttachment()
 				.Build(m_renderPass);
 			m_shutdownStack.Add([this, i]()
@@ -999,12 +971,6 @@ namespace vkmmc
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialRenderData::SAMPLER_INDEX_COUNT)
 			//.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4)
 			.Build(m_renderContext, &m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT]);
-
-		// Input attachments
-		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-			.AddBinding(1, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-			.Build(m_renderContext, &m_descriptorLayouts[DESCRIPTOR_SET_RENDERPASS_INPUT_ATTACHMENT_LAYOUT]);
 	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
@@ -1040,19 +1006,6 @@ namespace vkmmc
 				.BindBuffer(0, cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.BindBuffer(1, objectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT]);
-
-			// Update input attachment descriptors
-			VkDescriptorImageInfo inputImageInfo[2];
-			inputImageInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			inputImageInfo[0].imageView = m_framebufferArray[i].GetImageViewAt(1);
-			inputImageInfo[0].sampler = VK_NULL_HANDLE;
-			inputImageInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			inputImageInfo[1].imageView = m_framebufferArray[i].GetImageViewAt(2);
-			inputImageInfo[1].sampler = VK_NULL_HANDLE;
-			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindImage(0, inputImageInfo[0], VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.BindImage(1, inputImageInfo[1], VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(m_renderContext, m_frameContextArray[i].InputAttachmentDescriptorSet, m_descriptorLayouts[DESCRIPTOR_SET_RENDERPASS_INPUT_ATTACHMENT_LAYOUT]);
 		}
 
 		// Debug push constants
@@ -1127,7 +1080,7 @@ namespace vkmmc
 			.Device = m_renderContext.Device,
 			.Queue = m_renderContext.GraphicsQueue,
 			.DescriptorPool = imguiPool,
-			.Subpass = 1,
+			.Subpass = 0,
 			.MinImageCount = 3,
 			.ImageCount = 3,
 			.MSAASamples = VK_SAMPLE_COUNT_1_BIT,

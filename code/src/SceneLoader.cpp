@@ -13,6 +13,8 @@
 #include "GenericUtils.h"
 #include "RenderEngine.h"
 
+//#define VKMMC_ENABLE_LOADER_LOG
+
 namespace gltf_api
 {
 	void HandleError(cgltf_result result, const char* filepath)
@@ -215,8 +217,11 @@ namespace gltf_api
 					mtl.pbr_metallic_roughness.base_color_texture);
 				material.SetDiffuseTexture(diffHandle);
 			}
+#ifdef VKMMC_ENABLE_LOADER_LOG
 			else
 				vkmmc::Log(vkmmc::LogLevel::Warn, "Diffuse material texture not found.\n");
+#endif // VKMMC_ENABLE_LOADER_LOG
+
 			if (mtl.has_pbr_specular_glossiness)
 			{
 				vkmmc::RenderHandle handle = LoadTexture(engine,
@@ -224,8 +229,11 @@ namespace gltf_api
 					mtl.pbr_specular_glossiness.diffuse_texture);
 				material.SetSpecularTexture(handle);
 			}
+#ifdef VKMMC_ENABLE_LOADER_LOG
 			else
 				vkmmc::Log(vkmmc::LogLevel::Warn, "Specular material texture not found.\n");
+#endif // VKMMC_ENABLE_LOADER_LOG
+
 			if (mtl.normal_texture.texture)
 			{
 				vkmmc::RenderHandle handle = LoadTexture(engine,
@@ -233,8 +241,11 @@ namespace gltf_api
 					mtl.normal_texture);
 				material.SetNormalTexture(handle);
 			}
+#ifdef VKMMC_ENABLE_LOADER_LOG
 			else
 				vkmmc::Log(vkmmc::LogLevel::Warn, "Normal material texture not found.\n");
+#endif // VKMMC_ENABLE_LOADER_LOG
+
 		}
 		else
 			material = engine->GetDefaultMaterial();
