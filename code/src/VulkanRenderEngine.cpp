@@ -302,7 +302,7 @@ namespace vkmmc
 		rendererCreateInfo.RenderPass = m_renderPass;
 		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
-		rendererCreateInfo.GlobalDescriptorSetLayout = m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT];
+		rendererCreateInfo.GlobalDescriptorSetLayout = m_globalDescriptorLayout;
 		VkPushConstantRange pcr;
 		pcr.offset = 0;
 		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
@@ -396,14 +396,14 @@ namespace vkmmc
 			.RContext = m_renderContext,
 			.Size = vertexBufferSize
 			});
-		UpdateBufferData(&mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
+		GPUBuffer::SubmitBufferToGpu(mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
 		
 		uint32_t indexBufferSize = (uint32_t)(mesh.GetIndexCount() * sizeof(uint32_t));
 		mrd.IndexBuffer.Init({
 			.RContext = m_renderContext,
 			.Size = indexBufferSize
 			});
-		UpdateBufferData(&mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
+		GPUBuffer::SubmitBufferToGpu(mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
 
 		// Register new buffer
 		RenderHandle handle = GenerateRenderHandle();
@@ -546,6 +546,7 @@ namespace vkmmc
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		}
 
+		// Record command buffers from renderers
 		for (IRendererBase* renderer : m_renderers)
 			renderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
 		
@@ -592,65 +593,6 @@ namespace vkmmc
 		}
 	}
 
-	void VulkanRenderEngine::DrawScene(VkCommandBuffer cmd, const Scene& scene)
-	{
-		uint32_t count = scene.Count();
-		check(count < MaxRenderObjects);
-		{
-			PROFILE_SCOPE(DrawScene);
-			RenderPipeline pipeline = m_renderPipeline;
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				pipeline.GetPipelineLayoutHandle(), 0, 1,
-				&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
-
-			vkCmdPushConstants(cmd, pipeline.GetPipelineLayoutHandle(),
-				VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(vkmmc_debug::DebugShaderConstants),
-				&vkmmc_debug::GDebugShaderConstants);
-
-			Material lastMaterial;
-			Mesh lastMesh;
-			for (uint32_t i = 0; i < m_scene.GetModelCount(); ++i)
-			{
-				const Model& model = m_scene.GetModelArray()[i];
-				for (uint32_t meshIndex = 0; meshIndex < model.m_meshArray.size(); ++meshIndex)
-				{
-					Mesh mesh = model.m_meshArray[meshIndex];
-					Material material = model.m_materialArray[meshIndex];
-					if (mesh.GetHandle().IsValid() && material.GetHandle().IsValid())
-					{
-						if (material != lastMaterial || !lastMaterial.GetHandle().IsValid())
-						{
-							lastMaterial = material;
-							RenderHandle mtlHandle = material.GetHandle();
-							if (mtlHandle.IsValid())
-							{
-								const void* internalData = material.GetInternalData();
-								const MaterialRenderData& texData = *static_cast<const MaterialRenderData*>(internalData);
-								vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-									pipeline.GetPipelineLayoutHandle(), DESCRIPTOR_SET_TEXTURE_LAYOUT, 1, &texData.Set,
-									0, nullptr);
-							}
-						}
-
-						if (lastMesh != mesh)
-						{
-							check(mesh.GetHandle().IsValid());
-							const void* internalData = mesh.GetInternalData();
-							const MeshRenderData& meshRenderData = *static_cast<const MeshRenderData*>(internalData);
-							meshRenderData.VertexBuffer.Bind(cmd);
-							meshRenderData.IndexBuffer.Bind(cmd);
-							lastMesh = mesh;
-						}
-						vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
-						vkmmc_debug::GRenderStats.m_drawCalls++;
-						vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)mesh.GetVertexCount() / 3;
-					}
-				}
-			}
-		}
-	}
-
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
 	{
 		vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
@@ -688,7 +630,7 @@ namespace vkmmc
 	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialRenderData& material)
 	{
 		check(material.Set == VK_NULL_HANDLE);
-		m_descriptorAllocator.Allocate(&material.Set, m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT]);
+		m_descriptorAllocator.Allocate(&material.Set, m_materialDescriptorLayout);
 		
 		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mtl, MaterialRenderData::ESamplerIndex index)
 			{
@@ -920,13 +862,12 @@ namespace vkmmc
 		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Camera buffer
 			.AddBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Model transform storage buffer
-			.Build(m_renderContext, &m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT]);
+			.Build(m_renderContext, &m_globalDescriptorLayout);
 
 		// Texture
 		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialRenderData::SAMPLER_INDEX_COUNT)
-			//.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 4)
-			.Build(m_renderContext, &m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT]);
+			.Build(m_renderContext, &m_materialDescriptorLayout);
 	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
@@ -961,47 +902,8 @@ namespace vkmmc
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindBuffer(0, cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.BindBuffer(1, objectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT]);
+				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, m_globalDescriptorLayout);
 		}
-
-		// Debug push constants
-		VkPushConstantRange pushRange
-		{
-			.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.offset = 0,
-			.size = sizeof(vkmmc_debug::DebugShaderConstants)
-		};
-
-		// Create layout info
-		VkDescriptorSetLayout modelShaderSetLayouts[] = {m_descriptorLayouts[DESCRIPTOR_SET_GLOBAL_LAYOUT], m_descriptorLayouts[DESCRIPTOR_SET_TEXTURE_LAYOUT]};
-		VkPipelineLayoutCreateInfo layoutInfo = vkinit::PipelineLayoutCreateInfo();
-		layoutInfo.setLayoutCount = sizeof(modelShaderSetLayouts) / sizeof(VkDescriptorSetLayout);
-		layoutInfo.pSetLayouts = modelShaderSetLayouts;
-		layoutInfo.pushConstantRangeCount = 1;
-		layoutInfo.pPushConstantRanges = &pushRange;
-
-		ShaderModuleLoadDescription shaderStageDescs[] =
-		{
-			{.ShaderFilePath = globals::BasicVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = globals::BasicFragmentShader, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
-		};
-		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
-		m_renderPipeline = RenderPipeline::Create(
-			m_renderContext,
-			m_renderPass,
-			0, // subpass
-			shaderStageDescs, 
-			shaderCount, 
-			layoutInfo, 
-			VertexInputLayout::GetStaticMeshVertexLayout());
-
-		m_shutdownStack.Add([this]() { m_renderPipeline.Destroy(m_renderContext); });
 		return true;
-	}
-
-	void VulkanRenderEngine::UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size)
-	{
-		GPUBuffer::SubmitBufferToGpu(*buffer, data, size);
-	}
-	
+	}	
 }

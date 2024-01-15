@@ -112,7 +112,6 @@ namespace vkmmc
 		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
 	protected:
 		void Draw();
-		void DrawScene(VkCommandBuffer cmd, const Scene& scene);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
 		RenderFrameContext& GetFrameContext();
 
@@ -126,8 +125,6 @@ namespace vkmmc
 		bool InitMaterial(const Material& materialHandle, MaterialRenderData& material);
 		void SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView);
 
-		void UpdateBufferData(GPUBuffer* buffer, const void* data, uint32_t size);
-
 	private:
 
 		Window m_window;
@@ -136,7 +133,6 @@ namespace vkmmc
 		
 		Swapchain m_swapchain;
 		VkRenderPass m_renderPass;
-		RenderPipeline m_renderPipeline;
 
 		std::vector<VkFramebuffer> m_framebuffers;
 		std::vector<Framebuffer> m_framebufferArray;
@@ -147,14 +143,8 @@ namespace vkmmc
 		DescriptorAllocator m_descriptorAllocator;
 		DescriptorLayoutCache m_descriptorLayoutCache;
 
-		enum EDescriptorLayoutType
-		{
-			DESCRIPTOR_SET_GLOBAL_LAYOUT,
-			DESCRIPTOR_SET_TEXTURE_LAYOUT,
-
-			DESCRIPTOR_SET_COUNT
-		};
-		VkDescriptorSetLayout m_descriptorLayouts[DESCRIPTOR_SET_COUNT];
+		VkDescriptorSetLayout m_globalDescriptorLayout;
+		VkDescriptorSetLayout m_materialDescriptorLayout;
 
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
