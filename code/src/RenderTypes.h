@@ -5,6 +5,7 @@
 #include <vector>
 #include <functional>
 
+struct SDL_Window;
 
 namespace vkmmc
 {
@@ -14,6 +15,7 @@ namespace vkmmc
 
 	struct RenderContext
 	{
+		SDL_Window* Window;
 		VkInstance Instance;
 		VkPhysicalDevice GPUDevice;
 		VkSurfaceKHR Surface;

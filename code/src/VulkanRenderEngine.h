@@ -88,7 +88,6 @@ namespace vkmmc
 		 * IRenderEngine interface
 		 */
 		virtual bool Init(const InitializationSpecs& initSpec) override;
-		virtual void RenderLoop() override;
 		virtual bool RenderProcess() override;
 		virtual void Shutdown() override;
 
@@ -116,8 +115,6 @@ namespace vkmmc
 		void DrawScene(VkCommandBuffer cmd, const Scene& scene);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
 		RenderFrameContext& GetFrameContext();
-		void ImGuiNewFrame();
-		void ImGuiProcessEvent(const SDL_Event& e);
 
 		// Initializations
 		bool InitVulkan();
@@ -125,7 +122,6 @@ namespace vkmmc
 		bool InitFramebuffers();
 		bool InitSync();
 		bool InitPipeline();
-		bool InitImGui();
 
 		bool InitMaterial(const Material& materialHandle, MaterialRenderData& material);
 		void SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView);

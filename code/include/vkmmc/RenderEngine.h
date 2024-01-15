@@ -37,7 +37,6 @@ namespace vkmmc
 
 		virtual ~IRenderEngine() = default;
 		virtual bool Init(const InitializationSpecs& initSpec) = 0;
-		virtual void RenderLoop() = 0;
 		virtual bool RenderProcess() = 0;
 		virtual void Shutdown() = 0;
 

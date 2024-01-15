@@ -6,20 +6,15 @@
 
 namespace vkmmc
 {
-	class DebugRenderer : public IRendererBase
+	class UIRenderer : public IRendererBase
 	{
 	public:
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
-		virtual void BeginFrame(const RenderContext& renderContext) override {}
+		virtual void BeginFrame(const RenderContext& renderContext) override;
 		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext,
 			const Model* models, uint32_t modelCount) override;
-	protected:
-		// Render State
-		VkDescriptorSetLayout m_descriptorSetLayout;
-		VkDescriptorSet m_uniformSet;
-		AllocatedBuffer m_uniformBuffer;
-		RenderPipeline m_renderPipeline;
-		VertexBuffer m_lineVertexBuffer;
+	private:
+		VkDescriptorPool m_uiPool;
 	};
 }

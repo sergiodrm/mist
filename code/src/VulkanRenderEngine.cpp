@@ -24,6 +24,7 @@
 #include "Globals.h"
 #include "Renderers/ModelRenderer.h"
 #include "Renderers/DebugRenderer.h"
+#include "Renderers/UIRenderer.h"
 
 namespace vkmmc_debug
 {
@@ -234,6 +235,7 @@ namespace vkmmc
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
 		m_renderContext.Width = spec.WindowWidth;
 		m_renderContext.Height = spec.WindowHeight;
+		m_renderContext.Window = m_window.WindowInstance;
 
 		// Init vulkan context
 		check(InitVulkan());
@@ -295,9 +297,6 @@ namespace vkmmc
 		// Init sync vars
 		check(InitSync());
 
-		// ImGui
-		check(InitImGui());
-
 		RendererCreateInfo rendererCreateInfo;
 		rendererCreateInfo.RContext = m_renderContext;
 		rendererCreateInfo.RenderPass = m_renderPass;
@@ -313,43 +312,14 @@ namespace vkmmc
 
 		m_renderers.push_back(new ModelRenderer());
 		m_renderers.push_back(new DebugRenderer());
+		m_renderers.push_back(new UIRenderer());
 		for (IRendererBase* renderer : m_renderers)
 			renderer->Init(rendererCreateInfo);
 
+		AddImGuiCallback(&vkmmc_debug::ImGuiDraw);
 
 		Log(LogLevel::Ok, "Window created successfully!\n");
 		return true;
-	}
-
-	void VulkanRenderEngine::RenderLoop()
-	{
-		Log(LogLevel::Info, "Begin render loop.\n");
-
-		SDL_Event e;
-		bool shouldExit = false;
-		while (!shouldExit)
-		{
-			PROFILE_SCOPE(Loop);
-			while (SDL_PollEvent(&e))
-			{
-				ImGuiProcessEvent(e);
-				switch (e.type)
-				{
-				case SDL_QUIT: shouldExit = true; break;
-				default:
-					break;
-				}
-			}
-			
-			ImGuiNewFrame();
-			vkmmc_debug::ImGuiDraw();
-			vkmmc_debug::GRenderStats.m_trianglesCount = 0;
-			vkmmc_debug::GRenderStats.m_drawCalls = 0;
-
-			ImGui::Render();
-			Draw();
-		}
-		Log(LogLevel::Info, "End render loop.\n");
 	}
 
 	bool VulkanRenderEngine::RenderProcess()
@@ -359,23 +329,21 @@ namespace vkmmc
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
 		{
-			ImGuiProcessEvent(e);
+			ImGui_ImplSDL2_ProcessEvent(&e); 
 			switch (e.type)
 			{
 			case SDL_QUIT: res = false; break;
-			default:
-				//vkmmc_globals::GCameraController.ProcessEvent(e);
-				break;
 			}
 		}
-		ImGuiNewFrame();
-		vkmmc_debug::ImGuiDraw();
-		vkmmc_debug::GRenderStats.m_trianglesCount = 0;
-		vkmmc_debug::GRenderStats.m_drawCalls = 0;
+		for (IRendererBase* it : m_renderers)
+			it->BeginFrame(m_renderContext);
+
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
 
-		ImGui::Render();
+		// Reset stats
+		vkmmc_debug::GRenderStats.m_trianglesCount = 0;
+		vkmmc_debug::GRenderStats.m_drawCalls = 0;
 		Draw();
 		return res;
 	}
@@ -580,11 +548,7 @@ namespace vkmmc
 
 		for (IRendererBase* renderer : m_renderers)
 			renderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
-		//vkCmdNextSubpass(cmd, VK_SUBPASS_CONTENTS_INLINE);
-		//m_presentRenderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
 		
-		// ImGui render. TODO: move to UIRenderer
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
 
 		// Terminate render pass
 		vkCmdEndRenderPass(cmd);
@@ -712,18 +676,6 @@ namespace vkmmc
 		vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
 		WaitFence(m_immediateSubmitContext.Fence);
 		vkResetCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, 0);
-	}
-
-	void VulkanRenderEngine::ImGuiNewFrame()
-	{
-		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL2_NewFrame(m_window.WindowInstance);
-		ImGui::NewFrame();
-	}
-
-	void VulkanRenderEngine::ImGuiProcessEvent(const SDL_Event& e)
-	{
-		ImGui_ImplSDL2_ProcessEvent(&e);
 	}
 
 	VkDescriptorSet VulkanRenderEngine::AllocateDescriptorSet(VkDescriptorSetLayout layout)
@@ -1044,64 +996,6 @@ namespace vkmmc
 			VertexInputLayout::GetStaticMeshVertexLayout());
 
 		m_shutdownStack.Add([this]() { m_renderPipeline.Destroy(m_renderContext); });
-		return true;
-	}
-
-	bool VulkanRenderEngine::InitImGui()
-	{
-		// Create descriptor pool for imgui
-		VkDescriptorPoolSize poolSizes[] =
-		{
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
-		};
-		VkDescriptorPoolCreateInfo poolInfo = {};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.pNext = nullptr;
-		poolInfo.maxSets = 1000;
-		poolInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
-		poolInfo.pPoolSizes = poolSizes;
-
-		VkDescriptorPool imguiPool;
-		vkcheck(vkCreateDescriptorPool(m_renderContext.Device, &poolInfo, nullptr, &imguiPool));
-
-		// Init imgui lib
-		ImGui::CreateContext();
-		ImGui_ImplSDL2_InitForVulkan(m_window.WindowInstance);
-		ImGui_ImplVulkan_InitInfo initInfo
-		{
-			.Instance = m_renderContext.Instance,
-			.PhysicalDevice = m_renderContext.GPUDevice,
-			.Device = m_renderContext.Device,
-			.Queue = m_renderContext.GraphicsQueue,
-			.DescriptorPool = imguiPool,
-			.Subpass = 0,
-			.MinImageCount = 3,
-			.ImageCount = 3,
-			.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
-		};
-		ImGui_ImplVulkan_Init(&initInfo, m_renderPass);
-
-		// Execute gpu command to upload imgui font textures
-		ImmediateSubmit([&](VkCommandBuffer cmd)
-			{
-				ImGui_ImplVulkan_CreateFontsTexture(cmd);
-			});
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
-		m_shutdownStack.Add([this, imguiPool]()
-			{
-				vkDestroyDescriptorPool(m_renderContext.Device, imguiPool, nullptr);
-				ImGui_ImplVulkan_Shutdown();
-			});
 		return true;
 	}
 
