@@ -6,6 +6,7 @@
 #include "Shader.h"
 #include "Globals.h"
 #include "VulkanRenderEngine.h"
+#include "SceneImpl.h"
 
 namespace vkmmc
 {
@@ -50,7 +51,7 @@ namespace vkmmc
         m_renderPipeline.Destroy(renderContext);
     }
 
-    void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount)
+    void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext)
     {
         VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
@@ -68,6 +69,9 @@ namespace vkmmc
 
 		Material lastMaterial;
 		Mesh lastMesh;
+		Scene* scene = renderFrameContext.Scene;
+		const Model* models = scene->GetModelArray();
+		uint32_t modelCount = scene->GetModelCount();
 		for (uint32_t i = 0; i < modelCount; ++i)
 		{
 			const Model& model = models[i];

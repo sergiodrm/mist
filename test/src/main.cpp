@@ -3,7 +3,7 @@
 #include <vkmmc/RenderEngine.h>
 #include <vkmmc/RenderObject.h>
 #include <vkmmc/Mesh.h>
-#include <vkmmc/SceneLoader.h>
+#include <vkmmc/Scene.h>
 
 #include <chrono>
 #include <corecrt_math_defines.h>
@@ -47,8 +47,8 @@ void ProcessLogic(vkmmc::IRenderEngine* engine, const Timer& timer)
 	if (!GIsPaused)
 	{
 		float time = timer.ElapsedNow();
-		vkmmc::Scene& scene = engine->GetScene();
-		for (uint32_t i = 0; i < scene.Count(); ++i)
+		vkmmc::IScene& scene = *engine->GetScene();
+		for (uint32_t i = 0; i < scene.GetRenderObjectCount(); ++i)
 		{
 			glm::mat4 transform = scene.GetTransform(i);
 			glm::vec3 pos = transform[3];
@@ -64,8 +64,8 @@ void ProcessLogic(vkmmc::IRenderEngine* engine, const Timer& timer)
 
 void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Material& mtl, const glm::ivec3& gridDim, const glm::vec3& cellSize)
 {
-	vkmmc::Scene& scene = engine->GetScene();
-	vkmmc::RenderObject root = scene.NewRenderObject(vkmmc::RenderObject::InvalidId);
+	vkmmc::IScene& scene = *engine->GetScene();
+	vkmmc::RenderObject root = scene.CreateRenderObject(vkmmc::RenderObject::InvalidId);
 	vkmmc::Model model;
 	model.m_meshArray.push_back(mesh);
 	model.m_materialArray.push_back(mtl);
@@ -75,7 +75,7 @@ void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Mater
 		{
 			for (int32_t y = -gridDim[1] / 2; y < gridDim[1] / 2; ++y)
 			{
-				vkmmc::RenderObject obj = scene.NewRenderObject(root);
+				vkmmc::RenderObject obj = scene.CreateRenderObject(root);
 				glm::vec3 pos = { (float)x * cellSize.x, (float)y * cellSize.y, (float)z * cellSize.z };
 				scene.SetModel(obj, model);
 				scene.SetTransform(obj, glm::translate(glm::mat4(1.f), pos));
@@ -103,20 +103,20 @@ void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Mater
 
 void ExecuteSponza(vkmmc::IRenderEngine* engine)
 {
-	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene(engine, "../../assets/models/sponza/Sponza.gltf");
-	engine->GetScene() = scene;
+	vkmmc::IScene* scene = vkmmc::IScene::LoadScene(engine, "../../assets/models/sponza/Sponza.gltf");
+	engine->SetScene(scene);
 }
 
 void ExecuteBoxBiArray(vkmmc::IRenderEngine* engine)
 {
-	vkmmc::Scene scene = vkmmc::SceneLoader::LoadScene(engine, "../../assets/models/box/Box.gltf");
+	vkmmc::IScene* scene = vkmmc::IScene::LoadScene(engine, "../../assets/models/box/Box.gltf");
 	vkmmc::Mesh mesh;
 	vkmmc::Material material;
-	for (uint32_t i = 0; i < scene.GetModelCount(); ++i)
+	for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
 	{
-		const vkmmc::Model& model = scene.GetModelArray()[i];
-		mesh = model.m_meshArray.empty() ? vkmmc::Mesh() : model.m_meshArray[0];
-		material = model.m_materialArray.empty() ? vkmmc::Material() : model.m_materialArray[0];
+		const vkmmc::Model* model = scene->GetModel(i);
+		mesh = model ? model->m_meshArray[0] : vkmmc::Mesh();
+		material = model ? model->m_materialArray[0] : vkmmc::Material();
 		if (mesh.GetHandle().IsValid())
 			break;
 	}
@@ -153,7 +153,7 @@ int main(int32_t argc, char** argv)
 		engine->UpdateSceneView(cameraController.GetCamera().GetView(), cameraController.GetCamera().GetProjection());
 		terminate = !engine->RenderProcess();
 	}
-
+	delete engine->GetScene();
 	engine->Shutdown();
 	vkmmc::IRenderEngine::FreeRenderEngine();
 	return 0;

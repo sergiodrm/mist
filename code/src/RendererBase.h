@@ -37,7 +37,7 @@ namespace vkmmc
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 
 		virtual void BeginFrame(const RenderContext& renderContext) = 0;
-		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount) = 0;
+		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) = 0;
 		//virtual void EndFrame(const RenderContext& renderContext) = 0;
 
 	};

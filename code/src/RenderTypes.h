@@ -52,6 +52,9 @@ namespace vkmmc
 		// Push constants
 		const void* PushConstantData{ nullptr };
 		uint32_t PushConstantSize{ 0 };
+
+		// Scene to draw
+		class Scene* Scene;
 	};
 
 	enum EImageLayout

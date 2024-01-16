@@ -25,6 +25,7 @@
 #include "Renderers/ModelRenderer.h"
 #include "Renderers/DebugRenderer.h"
 #include "Renderers/UIRenderer.h"
+#include "SceneImpl.h"
 
 namespace vkmmc_debug
 {
@@ -485,6 +486,7 @@ namespace vkmmc
 	{
 		PROFILE_SCOPE(Draw);
 		RenderFrameContext& frameContext = GetFrameContext();
+		frameContext.Scene = static_cast<Scene*>(m_scene);
 		WaitFence(frameContext.RenderFence);
 
 		{
@@ -499,11 +501,11 @@ namespace vkmmc
 				m_dirtyCachedCamera = false;
 			}
 
-			const void* transformsData = m_scene.GetRawGlobalTransforms();
+			const void* transformsData = frameContext.Scene->GetRawGlobalTransforms();
 			Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
 				GetFrameContext().ObjectDescriptorSetBuffer.Alloc,
 				transformsData,
-				sizeof(glm::mat4) * m_scene.Count());
+				sizeof(glm::mat4) * frameContext.Scene->Count());
 
 			frameContext.PushConstantData = &vkmmc_debug::GDebugShaderConstants;
 			frameContext.PushConstantSize = sizeof(vkmmc_debug::DebugShaderConstants);
@@ -548,7 +550,7 @@ namespace vkmmc
 
 		// Record command buffers from renderers
 		for (IRendererBase* renderer : m_renderers)
-			renderer->RecordCommandBuffer(frameContext, m_scene.GetModelArray(), m_scene.GetModelCount());
+			renderer->RecordCommandBuffer(frameContext);
 		
 
 		// Terminate render pass

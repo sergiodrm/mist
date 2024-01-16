@@ -78,7 +78,7 @@ namespace vkmmc
         m_renderPipeline.Destroy(renderContext);
     }
 
-    void DebugRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext, const Model* models, uint32_t modelCount)
+    void DebugRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext)
     {
         vkCmdBindPipeline(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
         VkDescriptorSet sets[] = { renderFrameContext.GlobalDescriptorSet, m_uniformSet };

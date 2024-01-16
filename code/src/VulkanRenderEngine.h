@@ -97,9 +97,9 @@ namespace vkmmc
 		virtual void UploadMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* filename) override;
 
-		virtual Scene& GetScene() override { return m_scene; }
-		virtual const Scene& GetScene() const override { return m_scene; }
-		virtual uint32_t GetObjectCount() const { return m_scene.Count(); }
+		virtual IScene* GetScene() override { return m_scene; }
+		virtual const IScene* GetScene() const override { return m_scene; }
+		virtual void SetScene(IScene* scene) { m_scene = scene; }
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 
 		virtual RenderHandle GetDefaultTexture() const;
@@ -154,7 +154,7 @@ namespace vkmmc
 
 		std::vector<IRendererBase*> m_renderers;
 
-		Scene m_scene;
+		IScene* m_scene;
 		bool m_dirtyCachedCamera;
 		GPUCamera m_cachedCameraData;
 

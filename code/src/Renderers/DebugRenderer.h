@@ -12,8 +12,7 @@ namespace vkmmc
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void BeginFrame(const RenderContext& renderContext) override {}
-		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext,
-			const Model* models, uint32_t modelCount) override;
+		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) override;
 	protected:
 		// Render State
 		VkDescriptorSetLayout m_descriptorSetLayout;

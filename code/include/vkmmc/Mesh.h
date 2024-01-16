@@ -59,7 +59,6 @@ namespace vkmmc
 	class Model
 	{
 	public:
-
 		std::vector<Mesh> m_meshArray;
 		std::vector<Material> m_materialArray;
 	};

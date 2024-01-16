@@ -12,6 +12,7 @@
 namespace vkmmc
 {
 	// Forward declarations
+	class IRenderEngine;
 	
 	struct Hierarchy
 	{
@@ -21,35 +22,27 @@ namespace vkmmc
 		int32_t Level = 0;
 	};
 
-	class Scene
+	class IScene
 	{
 	public:
-		RenderObject NewRenderObject(RenderObject parent);
-		RenderObject GetRoot() const;
-		const Model* GetModel(RenderObject renderObject) const;
-		void SetModel(RenderObject renderObject, const Model& model);
-		void SetRenderObjectName(RenderObject renderObject, const char* name);
-		const glm::mat4& GetTransform(RenderObject renderObject) const;
-		void SetTransform(RenderObject renderObject, const glm::mat4& transform);
-		void MarkAsDirty(RenderObject renderObject);
-		void RecalculateTransforms();
-		uint32_t Count() const { return (uint32_t)m_hierarchy.size(); }
+		// Scene factory
+		static IScene* CreateScene();
+		static IScene* LoadScene(IRenderEngine* engine, const char* sceneFilepath);
+		static void DestroyScene(IScene* scene);
 
-		const glm::mat4* GetRawGlobalTransforms() const;
+		// Render object life cycle
+		virtual RenderObject CreateRenderObject(RenderObject parent) = 0;
+		virtual void DestroyRenderObject(RenderObject object) = 0;
+		virtual bool IsValid(RenderObject object) const = 0;
+		virtual uint32_t GetRenderObjectCount() const = 0;
 
-		const Model* GetModelArray() const;
-		uint32_t GetModelCount() const;
-
-	private:
-		static constexpr uint32_t MaxNodeLevel = 16;
-		std::vector<glm::mat4> m_localTransforms;
-		std::vector<glm::mat4> m_globalTransforms;
-		std::vector<Hierarchy> m_hierarchy;
-		std::unordered_map<uint32_t, uint32_t> m_modelMap;
-		std::vector<Model> m_modelArray;
-		std::vector<std::string> m_names;
-		std::vector<std::string> m_materialNames;
-
-		std::vector<int32_t> m_dirtyNodes[MaxNodeLevel];
+		virtual RenderObject GetRoot() const = 0;
+		virtual const char* GetRenderObjectName(RenderObject object) const = 0;
+		virtual void SetRenderObjectName(RenderObject object, const char* name) = 0;
+		// Render object components
+		virtual const Model* GetModel(RenderObject object) const = 0;
+		virtual void SetModel(RenderObject object, const Model& model) = 0;
+		virtual const glm::mat4& GetTransform(RenderObject object) const = 0;
+		virtual void SetTransform(RenderObject object, const glm::mat4& transform) = 0;
 	};
 }

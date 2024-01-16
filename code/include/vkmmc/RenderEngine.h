@@ -6,7 +6,7 @@
 
 namespace vkmmc
 {
-	class Scene;
+	class IScene;
 	class Mesh;
 	class Material;
 	struct RenderObject;
@@ -42,8 +42,11 @@ namespace vkmmc
 
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) = 0;
 
-		virtual Scene& GetScene() = 0;
-		virtual const Scene& GetScene() const = 0;
+		/** Scene to draw. Engine does NOT own the scene. Delete of the scene is on the side of the app. */
+		virtual IScene* GetScene() = 0;
+		virtual const IScene* GetScene() const = 0;
+		virtual void SetScene(IScene* scene) = 0; 
+		
 		virtual void UploadMesh(Mesh& mesh) = 0;
 		virtual void UploadMaterial(Material& material) = 0;
 		virtual RenderHandle LoadTexture(const char* filepath) = 0;
