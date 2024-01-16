@@ -11,6 +11,8 @@ namespace vkmmc
 {
 	struct RenderContext;
 
+
+
 	struct ShaderResource
 	{
 		VkDescriptorType Type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
@@ -57,31 +59,39 @@ namespace vkmmc
 
 	class ShaderCompiler
 	{
+		struct CachedBinaryData
+		{
+			VkShaderStageFlagBits ShaderStage;
+			std::vector<uint32_t> BinarySource;
+			std::vector<VkDescriptorSetLayout> SetLayouts;
+			VkShaderModule CompiledModule;
+		};
 	public:
-		ShaderCompiler(const ShaderModuleLoadDescription* shadersDescription, uint32_t count);
+		ShaderCompiler(const RenderContext& renderContext);
 		~ShaderCompiler();
+
+		void ClearCachedData();
+		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage);
+		VkShaderModule GetCompiledModule(VkShaderStageFlagBits shaderStage) const;
+		VkDescriptorSetLayout GetDescriptorSetLayout(VkShaderStageFlagBits shaderStage, uint32_t setIndex) const;
+		uint32_t GetDescriptorSetLayoutCount(VkShaderStageFlagBits shaderStage) const;
 
 		/**
 		 * Create VkShaderModule from a cached source file.
 		 * This will compile the shader code in the file.
 		 * @return VkShaderModule valid if the compilation terminated successfully. VK_NULL_HANDLE otherwise.
 		 */
-		VkShaderModule Compile(const RenderContext& renderContext, VkShaderStageFlagBits flag);
-		void Compile(const RenderContext& renderContext, std::vector<VkShaderModule>& outModules);
-		/**
-		 * Fill reflection properties with cached source file.
-		 * @return true if processed successfully. false otherwise.
-		 */
-		bool ProcessReflectionProperties();
-		const ShaderReflectionProperties& GetReflectionProperties() const { return m_reflectionProperties; }
+		VkShaderModule Compile(const std::vector<uint32_t>& binarySource, VkShaderStageFlagBits flag) const;
 
 		static bool CacheSourceFromFile(const char* file, std::vector<uint32_t>& outCachedData);
+		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlagBits shaderStage);
 	protected:
-		void ProcessCachedSource(VkShaderStageFlagBits flag);
+		void ProcessCachedSource(CachedBinaryData& cachedData);
 		ShaderDescriptorSet& GetDescriptorSet(uint32_t setIndex);
 
 	private:
-		std::unordered_map<VkShaderStageFlagBits, std::vector<uint32_t>> m_cachedBinarySources;
+		const RenderContext& m_renderContext;
+		std::unordered_map<VkShaderStageFlagBits, CachedBinaryData> m_cachedBinarySources;
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 

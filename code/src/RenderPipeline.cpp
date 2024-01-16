@@ -117,28 +117,22 @@ namespace vkmmc
 		RenderPipelineBuilder builder(renderContext);
 		// Input configuration
 		builder.InputDescription = inputDescription;
-		// Shader stages
-		std::vector<VkShaderModule> modules(shaderStageCount);
-		ShaderCompiler compiler(shaderStages, (uint32_t)shaderStageCount);
-		compiler.ProcessReflectionProperties();
-		compiler.Compile(renderContext, modules);
-		for (size_t i = 0; i < shaderStageCount; ++i)
-		{
-			check(modules[i] != VK_NULL_HANDLE);
-			builder.ShaderStages.push_back(
-				vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
-		}
 		// Pass layout info
 		builder.LayoutInfo = layoutInfo;
 		builder.SubpassIndex = subpassIndex;
-
+		// Shader stages
+		ShaderCompiler compiler(renderContext);
+		for (uint32_t i = 0; i < shaderStageCount; ++i)
+		{
+			compiler.ProcessShaderFile(shaderStages[i].ShaderFilePath.c_str(), shaderStages[i].Flags);
+			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Flags);
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, compiled));
+		}
 		// Build the new pipeline
 		RenderPipeline renderPipeline = builder.Build(renderPass);
 
-		// Vulkan modules destruction
-		for (size_t i = 0; i < shaderStageCount; ++i)
-			vkDestroyShaderModule(renderContext.Device, modules[i], nullptr);
-		modules.clear();
+		// Free shader compiler cached data
+		compiler.ClearCachedData();
 
 		return renderPipeline;
 	}

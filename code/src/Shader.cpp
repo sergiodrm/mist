@@ -25,59 +25,61 @@ namespace vkutils
 
 namespace vkmmc
 {
+	ShaderCompiler::ShaderCompiler(const RenderContext& renderContext) : m_renderContext(renderContext)
+	{}
 
 	ShaderCompiler::~ShaderCompiler()
 	{
+		ClearCachedData();
+	}
+
+	void ShaderCompiler::ClearCachedData()
+	{
+		for (auto it : m_cachedBinarySources)
+		{
+			vkDestroyShaderModule(m_renderContext.Device, it.second.CompiledModule, nullptr);
+		}
 		m_cachedBinarySources.clear();
 	}
 
-	ShaderCompiler::ShaderCompiler(const ShaderModuleLoadDescription* shaders, uint32_t count)
+	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage)
 	{
-		for (uint32_t i = 0; i < count; ++i)
-		{
-			if (CacheSourceFromFile(shaders[i].ShaderFilePath.c_str(), m_cachedBinarySources[shaders[i].Flags]))
-				Logf(LogLevel::Ok, "Shader loaded successfully [%s;%zd bytes].\n", 
-					shaders[i].ShaderFilePath.c_str(), m_cachedBinarySources[shaders[i].Flags].size() * sizeof(uint32_t));
-			else
-				Logf(LogLevel::Error, "Failed to load shader [%s].\n", shaders[i].ShaderFilePath.c_str());
-		}
-	}
-
-	VkShaderModule ShaderCompiler::Compile(const RenderContext& renderContext, VkShaderStageFlagBits flag)
-	{
-		std::vector<uint32_t>& cachedSource = m_cachedBinarySources[flag];
-		check(!cachedSource.empty() && "Invalid cached data.");
-		Logf(LogLevel::Debug, "Compiling cached shader...\n");
-		// Create shader
-		VkShaderModuleCreateInfo createInfo = {};
-		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-		createInfo.pNext = nullptr;
-		createInfo.codeSize = cachedSource.size() * sizeof(uint32_t);
-		createInfo.pCode = cachedSource.data();
-
-		// If fail, shader compilation failed...
-		VkShaderModule shaderModule;
-		vkcheck(vkCreateShaderModule(renderContext.Device, &createInfo, nullptr, &shaderModule));
-		Logf(LogLevel::Ok, "Shader compilation completed.\n");
-		return shaderModule;
-	}
-
-	void ShaderCompiler::Compile(const RenderContext& renderContext, std::vector<VkShaderModule>& outModules)
-	{
-		outModules.clear();
-		outModules.resize(m_cachedBinarySources.size());
-		uint32_t counter = 0;
-		for (const std::pair<VkShaderStageFlagBits, std::vector<uint32_t>>& it : m_cachedBinarySources)
-			outModules[counter++] = Compile(renderContext, it.first);
-	}
-
-	bool ShaderCompiler::ProcessReflectionProperties()
-	{
-		for (const std::pair<VkShaderStageFlagBits, std::vector<uint32_t>>& it : m_cachedBinarySources)
-		{
-			ProcessCachedSource(it.first);
-		}
+		check(!m_cachedBinarySources.contains(shaderStage));
+		CachedBinaryData data;
+		data.ShaderStage = shaderStage;
+		check(CheckShaderFileExtension(filepath, shaderStage));
+		check(CacheSourceFromFile(filepath, data.BinarySource));
+		ProcessCachedSource(data);
+		data.CompiledModule = Compile(data.BinarySource, data.ShaderStage);
+		m_cachedBinarySources[shaderStage] = data;
+		Logf(LogLevel::Ok, "Shader compiled and cached successfully: [%s]", filepath);
 		return true;
+	}
+
+	VkShaderModule ShaderCompiler::GetCompiledModule(VkShaderStageFlagBits shaderStage) const
+	{
+		return m_cachedBinarySources.contains(shaderStage) ? m_cachedBinarySources.at(shaderStage).CompiledModule : VK_NULL_HANDLE;
+	}
+
+	VkDescriptorSetLayout ShaderCompiler::GetDescriptorSetLayout(VkShaderStageFlagBits shaderStage, uint32_t setIndex) const
+	{
+		return m_cachedBinarySources.contains(shaderStage) ? m_cachedBinarySources.at(shaderStage).SetLayouts[setIndex] : VK_NULL_HANDLE;
+	}
+
+	uint32_t ShaderCompiler::GetDescriptorSetLayoutCount(VkShaderStageFlagBits shaderStage) const
+	{
+		return m_cachedBinarySources.contains(shaderStage) ? (uint32_t)m_cachedBinarySources.at(shaderStage).SetLayouts.size() : 0;
+	}
+
+	VkShaderModule ShaderCompiler::Compile(const std::vector<uint32_t>& binarySource, VkShaderStageFlagBits flag) const
+	{
+		check(!binarySource.empty());
+		VkShaderModuleCreateInfo info{ .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .pNext = nullptr };
+		info.codeSize = binarySource.size() * sizeof(uint32_t);
+		info.pCode = binarySource.data();
+		VkShaderModule shaderModule{ VK_NULL_HANDLE };
+		vkcheck(vkCreateShaderModule(m_renderContext.Device, &info, nullptr, &shaderModule));
+		return shaderModule;
 	}
 
 	bool ShaderCompiler::CacheSourceFromFile(const char* file, std::vector<uint32_t>& outCachedData)
@@ -86,9 +88,9 @@ namespace vkmmc
 		return vkmmc_utils::ReadFile(file, outCachedData);
 	}
 
-	void ShaderCompiler::ProcessCachedSource(VkShaderStageFlagBits flag)
+	void ShaderCompiler::ProcessCachedSource(CachedBinaryData& cachedData)
 	{
-		const std::vector<uint32_t>& cachedSource = m_cachedBinarySources[flag];
+		const std::vector<uint32_t>& cachedSource = cachedData.BinarySource;
 		check(!cachedSource.empty() && "Invalid cached source.");
 		spirv_cross::CompilerGLSL compiler(cachedSource);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
@@ -102,7 +104,7 @@ namespace vkmmc
 			bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 			bufferInfo.Name = resource.name.c_str();
 			bufferInfo.Size = (uint32_t)compiler.get_declared_struct_size(bufferType);
-			bufferInfo.Stage = flag;
+			bufferInfo.Stage = cachedData.ShaderStage;
 			Logf(LogLevel::Debug, "> Uniform buffer [Set: %u; Binding: %u; Size: %u; Name:%s]\n",
 				bufferInfo.DescriptorSet, bufferInfo.Binding, bufferInfo.Size, bufferInfo.Name.c_str());
 
@@ -121,7 +123,7 @@ namespace vkmmc
 			bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 			bufferInfo.Name = resource.name.c_str();
 			bufferInfo.Size = (uint32_t)compiler.get_declared_struct_size(bufferType);
-			bufferInfo.Stage = flag;
+			bufferInfo.Stage = cachedData.ShaderStage;
 			Logf(LogLevel::Debug, "> Storage buffer [Set: %u; Binding: %u; Size: %u; Name:%s]\n",
 				bufferInfo.DescriptorSet, bufferInfo.Binding, bufferInfo.Size, bufferInfo.Name.c_str());
 
@@ -139,7 +141,7 @@ namespace vkmmc
 			sampler.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 			sampler.Size = compiler.get_decoration(resource.id, spv::DecorationArrayStride);
 			sampler.Name = resource.name.c_str();
-			sampler.Stage = flag;
+			sampler.Stage = cachedData.ShaderStage;
 			Logf(LogLevel::Debug, "> Sampler image [Set: %zd; Binding: %zd; Name:%s]\n",
 				sampler.DescriptorSet, sampler.Binding, sampler.Name.c_str());
 
@@ -156,6 +158,30 @@ namespace vkmmc
 		if (m_reflectionProperties.DescriptorSetArray.size() < setIndex + 1)
 			m_reflectionProperties.DescriptorSetArray.resize(setIndex + 1);
 		return m_reflectionProperties.DescriptorSetArray[setIndex];
+	}
+
+	bool ShaderCompiler::CheckShaderFileExtension(const char* filepath, VkShaderStageFlagBits shaderStage)
+	{
+		bool res = false;
+		if (filepath && *filepath)
+		{
+			const char* desiredExt;
+			switch (shaderStage)
+			{
+			case VK_SHADER_STAGE_FRAGMENT_BIT: desiredExt = ".frag.spv"; break;
+			case VK_SHADER_STAGE_VERTEX_BIT: desiredExt = ".vert.spv"; break;
+			default:
+				return res;
+			}
+			size_t filepathLen = strlen(filepath);
+			size_t desiredExtLen = strlen(desiredExt);
+			if (filepathLen > desiredExtLen)
+			{
+				size_t ext = filepathLen - desiredExtLen;
+				res = !strcmp(&filepath[ext], desiredExt);
+			}
+		}
+		return res;
 	}
 
 	void ShaderBuffer::Init(const ShaderBufferCreateInfo& info)

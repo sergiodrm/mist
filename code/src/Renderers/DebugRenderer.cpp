@@ -33,21 +33,17 @@ namespace vkmmc
 			{.ShaderFilePath = globals::LineVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
 			{.ShaderFilePath = globals::LineFragmentShader, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
-        std::vector<VkShaderModule> modules;
-        ShaderCompiler compiler(shaderStageDescs, 2);
-        compiler.ProcessReflectionProperties();
-        compiler.Compile(info.RContext, modules);
+        ShaderCompiler compiler(info.RContext);
+        compiler.ProcessShaderFile(globals::LineVertexShader, VK_SHADER_STAGE_VERTEX_BIT);
+        compiler.ProcessShaderFile(globals::LineFragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT);
 
         RenderPipelineBuilder builder(info.RContext);
         builder.InputDescription = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3 });
-        builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, modules[0]));
-        builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, modules[1]));
+        builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, compiler.GetCompiledModule(VK_SHADER_STAGE_VERTEX_BIT)));
+        builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, compiler.GetCompiledModule(VK_SHADER_STAGE_FRAGMENT_BIT)));
         builder.LayoutInfo = pipelineLayoutCreateInfo;
         builder.Topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
         m_renderPipeline = builder.Build(info.RenderPass);
-        for (VkShaderModule it : modules)
-            vkDestroyShaderModule(info.RContext.Device, it, nullptr);
-        modules.clear();
 
 		// Uniform descriptor
         glm::vec4 color = { 1.f, 0.f, 0.f, 1.f };
