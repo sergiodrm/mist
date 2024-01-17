@@ -3,44 +3,47 @@
 #include "InitVulkanTypes.h"
 #include "GenericUtils.h"
 #include "Logger.h"
+#include "Debug.h"
+#include "Shader.h"
 
 namespace vkmmc
 {
-	VkShaderModule LoadShaderModule(VkDevice device, const char* filename)
+	RenderPipelineBuilder::RenderPipelineBuilder(const RenderContext& renderContext)
+		: RContext(renderContext)
 	{
-		VkShaderModule shaderModule = VK_NULL_HANDLE;
-		// Read file
-		std::vector<uint32_t> spirvBuffer;
-		if (vkmmc_utils::ReadFile(filename, spirvBuffer))
-		{
-			// Create shader
-			VkShaderModuleCreateInfo createInfo = {};
-			createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-			createInfo.pNext = nullptr;
-			createInfo.codeSize = spirvBuffer.size() * sizeof(uint32_t);
-			createInfo.pCode = spirvBuffer.data();
-
-			// If fail, shader compilation failed...
-			vkmmc_vkcheck(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
-		}
-		return shaderModule;
+		// Configure viewport settings.
+		Viewport.x = 0.f;
+		Viewport.y = 0.f;
+		Viewport.width = (float)renderContext.Width;
+		Viewport.height = (float)renderContext.Height;
+		Viewport.minDepth = 0.f;
+		Viewport.maxDepth = 1.f;
+		Scissor.offset = { 0, 0 };
+		Scissor.extent = { .width = renderContext.Width, .height = renderContext.Height };
+		// Depth testing
+		DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		// Rasterization: draw filled triangles
+		Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		// Single blenc attachment without blending and writing RGBA
+		ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
+		// Disable multisampling by default
+		Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
 	}
 
-	RenderPipeline RenderPipelineBuilder::Build(VkDevice device, VkRenderPass renderPass)
+	RenderPipeline RenderPipelineBuilder::Build(VkRenderPass renderPass)
 	{
 		// Create VkPipelineLayout from LayoutInfo member
 		VkPipelineLayout pipelineLayout;
-		vkmmc_vkcheck(vkCreatePipelineLayout(device, &LayoutInfo, nullptr, &pipelineLayout));
+		vkcheck(vkCreatePipelineLayout(RContext.Device, &LayoutInfo, nullptr, &pipelineLayout));
 
 		// Create vertex input vulkan structures
-		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = PipelineInputAssemblyCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-		VkPipelineVertexInputStateCreateInfo inputInfo = PipelineVertexInputStageCreateInfo();
-		vkmmc_check(InputDescription.Attributes.size() > 0);
-		vkmmc_check(InputDescription.Bindings.size() > 0);
+		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(Topology);
+		VkPipelineVertexInputStateCreateInfo inputInfo = vkinit::PipelineVertexInputStageCreateInfo();
+		check(InputDescription.Attributes.size() > 0);
 		inputInfo.pVertexAttributeDescriptions = InputDescription.Attributes.data();
 		inputInfo.vertexAttributeDescriptionCount = (uint32_t)InputDescription.Attributes.size();
-		inputInfo.pVertexBindingDescriptions = InputDescription.Bindings.data();
-		inputInfo.vertexBindingDescriptionCount = (uint32_t)InputDescription.Bindings.size();
+		inputInfo.pVertexBindingDescriptions = &InputDescription.Binding;
+		inputInfo.vertexBindingDescriptionCount = 1;
 
 		// Make viewport state from our stored viewport and scissor.
 		// At the moment we won't support multiple viewport and scissor.
@@ -75,7 +78,7 @@ namespace vkmmc
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.layout = pipelineLayout;
 		pipelineInfo.renderPass = renderPass;
-		pipelineInfo.subpass = 0;
+		pipelineInfo.subpass = SubpassIndex;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 		// Build depth buffer
@@ -83,7 +86,7 @@ namespace vkmmc
 
 		// Create pipeline and check it's all set up correctly
 		VkPipeline newPipeline;
-		if (vkCreateGraphicsPipelines(device,
+		if (vkCreateGraphicsPipelines(RContext.Device,
 			VK_NULL_HANDLE,
 			1, &pipelineInfo,
 			nullptr,
@@ -102,9 +105,41 @@ namespace vkmmc
 		return pipelineObject;
 	}
 
+	RenderPipeline RenderPipeline::Create(RenderContext renderContext, 
+		const VkRenderPass& renderPass,
+		uint32_t subpassIndex,
+		const ShaderModuleLoadDescription* shaderStages, 
+		uint32_t shaderStageCount, 
+		const VkPipelineLayoutCreateInfo& layoutInfo, 
+		const VertexInputLayout& inputDescription)
+	{
+		check(shaderStages && shaderStageCount > 0);
+		RenderPipelineBuilder builder(renderContext);
+		// Input configuration
+		builder.InputDescription = inputDescription;
+		// Pass layout info
+		builder.LayoutInfo = layoutInfo;
+		builder.SubpassIndex = subpassIndex;
+		// Shader stages
+		ShaderCompiler compiler(renderContext);
+		for (uint32_t i = 0; i < shaderStageCount; ++i)
+		{
+			compiler.ProcessShaderFile(shaderStages[i].ShaderFilePath.c_str(), shaderStages[i].Flags);
+			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Flags);
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, compiled));
+		}
+		// Build the new pipeline
+		RenderPipeline renderPipeline = builder.Build(renderPass);
+
+		// Free shader compiler cached data
+		compiler.ClearCachedData();
+
+		return renderPipeline;
+	}
+
 	bool RenderPipeline::SetupPipeline(VkPipeline pipeline, VkPipelineLayout layout)
 	{
-		vkmmc_check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
+		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
 		m_pipeline = pipeline;
 		m_pipelineLayout = layout;
 		Log(LogLevel::Info, "Render pipeline setup success.\n");

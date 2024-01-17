@@ -11,7 +11,6 @@
 
 #include <vkbootstrap/VkBootstrap.h>
 #include "InitVulkanTypes.h"
-#include "VertexInputDescription.h"
 #include "Mesh.h"
 #include "RenderDescriptor.h"
 #include "Camera.h"
@@ -20,130 +19,71 @@
 #include <imgui/imgui_impl_vulkan.h>
 #include <imgui/imgui_impl_sdl2.h>
 #include "Logger.h"
+#include "Debug.h"
+#include "Shader.h"
+#include "Globals.h"
+#include "Renderers/ModelRenderer.h"
+#include "Renderers/DebugRenderer.h"
+#include "Renderers/UIRenderer.h"
+#include "SceneImpl.h"
 
-#define ASSET_ROOT_PATH "../../assets/"
-#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
-
-namespace vkmmc_globals
+namespace vkmmc_debug
 {
-	// Assets reference
-	const char* BasicVertexShaders = SHADER_ROOT_PATH "basic.vert.spv";
-	const char* BasicFragmentShaders = SHADER_ROOT_PATH "basic.frag.spv";
+	bool GTerminatedWithErrors = false;
 
-	struct CameraController
+	class GUILogger
 	{
-		vkmmc::Camera Camera{};
-		glm::vec3 Direction{ 0.f };
-		float MaxSpeed = 1.f; // eu/s
-		float MaxRotSpeed = 1.f; // rad/s
-
-		bool IsMotionControlActive = false;
-		glm::vec2 MotionRotation{ 0.f };
-
-		void ProcessInputKeyButton(const SDL_KeyboardEvent& e)
+		struct MessageItem
 		{
-			switch (e.keysym.sym)
-			{
-			case SDLK_w:
-				Direction += glm::vec3{ 0.f, 0.f, 1.f };
-				break;
-			case SDLK_a:
-				Direction += glm::vec3{ 1.f, 0.f, 0.f };
-				break;
-			case SDLK_s:
-				Direction += glm::vec3{ 0.f, 0.f, -1.f };
-				break;
-			case SDLK_d:
-				Direction += glm::vec3{ -1.f, 0.f, 0.f };
-				break;
-			case SDLK_e:
-				Direction += glm::vec3{ 0.f, 1.f, 0.f };
-				break;
-			case SDLK_q:
-				Direction += glm::vec3{ 0.f, -1.f, 0.f };
-				break;
-			}
-		}
+			uint32_t Counter = 0;
+			std::string Severity;
+			std::string Message;
+		};
+	public:
 
-		void ProcessInputMouseButton(const SDL_MouseButtonEvent& e)
+		void Add(int32_t msgId, const char* severity, const char* msg)
 		{
-			switch (e.button)
+			if (m_messages.contains(msgId))
 			{
-			case SDL_BUTTON_RIGHT:
-				IsMotionControlActive = e.state == SDL_PRESSED;
-				SDL_SetRelativeMouseMode(IsMotionControlActive ? SDL_TRUE : SDL_FALSE);
-				break;
+				MessageItem& it = m_messages[msgId];
+				++it.Counter;
 			}
-		}
-
-		void ProcessInputMouseMotion(const SDL_MouseMotionEvent& e)
-		{
-			if (IsMotionControlActive)
+			else
 			{
-				static constexpr float swidth = 1920.f;
-				static constexpr float sheight = 1080.f;
-				float yawdiff = (float)(e.xrel) / swidth;
-				float pitchdiff = (float)(e.yrel) / sheight;
-				MotionRotation += glm::vec2{ -pitchdiff, yawdiff };
-			}
-		}
-
-		void ProcessInput(const SDL_Event& e)
-		{
-			switch (e.type)
-			{
-			case SDL_KEYDOWN:
-				ProcessInputKeyButton(e.key);
-				break;
-			case SDL_MOUSEBUTTONDOWN:
-			case SDL_MOUSEBUTTONUP:
-				ProcessInputMouseButton(e.button);
-				break;
-			case SDL_MOUSEMOTION:
-				ProcessInputMouseMotion(e.motion);
-				break;
-			default:
-				break;
-			}
-		}
-
-		void Tick(float elapsedSeconds)
-		{
-			if (Direction != glm::vec3{0.f})
-			{
-				Direction = glm::normalize(Direction);
-				glm::vec3 speed = Direction * MaxSpeed;
-				Camera.SetPosition(Camera.GetPosition() + speed * elapsedSeconds);
-				Direction = glm::vec3{ 0.f };
-			}
-			if (MotionRotation != glm::vec2{ 0.f })
-			{
-				Camera.SetRotation(Camera.GetRotation() + MaxRotSpeed * glm::vec3{ MotionRotation.x, MotionRotation.y, 0.f });
-				MotionRotation = glm::vec2{ 0.f };
+				m_messages[msgId] = {1, severity, msg};
 			}
 		}
 
 		void ImGuiDraw()
 		{
-			ImGui::Begin("Camera");
-			if (ImGui::Button("Reset position"))
-				Camera.SetPosition({ 0.f, 0.f, 0.f });
-			glm::vec3 pos = Camera.GetPosition();
-			if (ImGui::DragFloat3("Position", &pos[0], 0.5f))
-				Camera.SetPosition(pos);
-			glm::vec3 rot = Camera.GetRotation();
-			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
-				Camera.SetRotation(rot);
-			ImGui::DragFloat("MaxSpeed", &MaxSpeed, 0.2f);
-			ImGui::DragFloat("MaxRotSpeed", &MaxRotSpeed, 0.2f);
+			ImGui::Begin("Vulkan validation layer");
+			ImGui::Checkbox("Print to console", &m_shouldPrintToLog);
+			ImGui::Columns(3);
+			ImGui::Text("Severity");
+			ImGui::NextColumn();
+			ImGui::Text("Count");
+			ImGui::NextColumn();
+			ImGui::Text("Message");
+			ImGui::NextColumn();
+			ImGui::Separator();
+			for (const auto& it : m_messages)
+			{
+				ImGui::Text("%s", it.second.Severity.c_str());
+				ImGui::NextColumn();
+				ImGui::Text("%ld", it.second.Counter);
+				ImGui::NextColumn();
+				ImGui::Text("%s", it.second.Message.c_str());
+				ImGui::NextColumn();
+			}
+			ImGui::Columns();
 			ImGui::End();
 		}
-	} GCameraController{};
-}
 
-namespace vkmmc_debug
-{
-	bool GTerminatedWithErrors = false;
+		bool m_shouldPrintToLog = true;
+	private:
+		std::unordered_map<int32_t, MessageItem> m_messages;
+	} GGuiLogger;
+
 	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 		VkDebugUtilsMessageTypeFlagsEXT type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
@@ -156,7 +96,15 @@ namespace vkmmc_debug
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = vkmmc::LogLevel::Debug; break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
-		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
+		GGuiLogger.Add(callbackData->messageIdNumber, LogLevelToStr(level), callbackData->pMessage);
+		if (GGuiLogger.m_shouldPrintToLog)
+			Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
+#if defined(_DEBUG)
+		if (level == vkmmc::LogLevel::Error)
+		{
+			PrintCallstack();
+		}
+#endif
 		return VK_FALSE;
 	}
 
@@ -213,12 +161,27 @@ namespace vkmmc_debug
 		size_t m_drawCalls{ 0 };
 	} GRenderStats;
 
+	struct DebugShaderConstants
+	{
+		enum EDrawDebug : int32_t
+		{
+			Disabled, Normals, TexCoords, InColor, Count
+		};
+
+		int32_t ForcedIndexTexture{ -1 };
+		int32_t DrawDebug{Disabled};
+	} GDebugShaderConstants;
+
 	void ImGuiDraw()
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
 			| ImGuiWindowFlags_NoDecoration
 			| ImGuiWindowFlags_AlwaysAutoResize
-			| ImGuiWindowFlags_NoResize;
+			| ImGuiWindowFlags_NoResize
+			| ImGuiWindowFlags_NoInputs;
+		ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 1.f });
+		ImGui::SetNextWindowBgAlpha(0.5f);
+		ImGui::SetNextWindowPos({ 0.f, 0.f });
 		ImGui::Begin("Render stats", nullptr, flags);
 		for (auto item : GRenderStats.m_profiler.m_items)
 		{
@@ -228,6 +191,14 @@ namespace vkmmc_debug
 		ImGui::Text("Draw calls: %zd", GRenderStats.m_drawCalls);
 		ImGui::Text("Triangles:  %zd", GRenderStats.m_trianglesCount);
 		ImGui::End();
+		ImGui::PopStyleColor();
+
+		ImGui::Begin("Debug shader constants");
+		ImGui::SliderInt("Forced texture index", &GDebugShaderConstants.ForcedIndexTexture, -1, 3);
+		ImGui::SliderInt("Draw debug mode", &GDebugShaderConstants.DrawDebug, 0, DebugShaderConstants::Count);
+		ImGui::End();
+
+		GGuiLogger.ImGuiDraw();
 	}
 }
 
@@ -237,7 +208,7 @@ namespace vkmmc
 {
 	RenderHandle GenerateRenderHandle()
 	{
-		static RenderHandle h{ InvalidRenderHandle };
+		static RenderHandle h;
 		++h.Handle;
 		return h;
 	}
@@ -259,15 +230,19 @@ namespace vkmmc
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		PROFILE_SCOPE(Init);
+		InitLog("../../log.html");
 		Log(LogLevel::Info, "Initialize render engine.\n");
 		SDL_Init(SDL_INIT_VIDEO);
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
+		m_renderContext.Width = spec.WindowWidth;
+		m_renderContext.Height = spec.WindowHeight;
+		m_renderContext.Window = m_window.WindowInstance;
 
 		// Init vulkan context
-		vkmmc_check(InitVulkan());
+		check(InitVulkan());
 
 		// Swapchain
-		vkmmc_check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
+		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
 		m_shutdownStack.Add(
 			[this]() 
 			{
@@ -276,62 +251,76 @@ namespace vkmmc
 		);
 
 		// Commands
-		vkmmc_check(InitCommands());
+		check(InitCommands());
 
 		// RenderPass
-		vkmmc_check(m_renderPass.Init(m_renderContext, { m_swapchain.GetImageFormat(), m_swapchain.GetDepthFormat() }));
+		VkSubpassDependency dependencies[2];
+		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependencies[0].dstSubpass = 0;
+		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[0].srcAccessMask = 0;
+		dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependencies[0].dependencyFlags = 0;
+
+		dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependencies[1].dstSubpass = 0;
+		dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+			| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		dependencies[1].srcAccessMask = 0;
+		dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+			| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+		dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		dependencies[1].dependencyFlags = 0;
+
+		m_renderPass = RenderPassBuilder::Create()
+			.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
+			.AddDepthAttachmentDescription(FORMAT_D32)
+			.AddSubpass(
+				{ 0 }, // Color attachments
+				1, // Depth attachment
+				{} // Input attachment
+			)
+			.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
+			.Build(m_renderContext);
 		m_shutdownStack.Add([this]() 
 			{
-				m_renderPass.Destroy(m_renderContext);
+				vkDestroyRenderPass(m_renderContext.Device, m_renderPass, nullptr);
 			}
 		);
+		check(m_renderPass != VK_NULL_HANDLE);
 
 		// Framebuffers
-		vkmmc_check(InitFramebuffers());
+		check(InitFramebuffers());
 		// Pipelines
-		vkmmc_check(InitPipeline());
+		check(InitPipeline());
 
 		// Init sync vars
-		vkmmc_check(InitSync());
+		check(InitSync());
 
-		// ImGui
-		InitImGui();
+		RendererCreateInfo rendererCreateInfo;
+		rendererCreateInfo.RContext = m_renderContext;
+		rendererCreateInfo.RenderPass = m_renderPass;
+		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
+		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
+		rendererCreateInfo.GlobalDescriptorSetLayout = m_globalDescriptorLayout;
+		VkPushConstantRange pcr;
+		pcr.offset = 0;
+		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
+		pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		rendererCreateInfo.ConstantRange = &pcr;
+		rendererCreateInfo.ConstantRangeCount = 1;
+
+		m_renderers.push_back(new ModelRenderer());
+		m_renderers.push_back(new DebugRenderer());
+		m_renderers.push_back(new UIRenderer());
+		for (IRendererBase* renderer : m_renderers)
+			renderer->Init(rendererCreateInfo);
+
+		AddImGuiCallback(&vkmmc_debug::ImGuiDraw);
 
 		Log(LogLevel::Ok, "Window created successfully!\n");
 		return true;
-	}
-
-	void VulkanRenderEngine::RenderLoop()
-	{
-		Log(LogLevel::Info, "Begin render loop.\n");
-
-		SDL_Event e;
-		bool shouldExit = false;
-		while (!shouldExit)
-		{
-			PROFILE_SCOPE(Loop);
-			while (SDL_PollEvent(&e))
-			{
-				ImGuiProcessEvent(e);
-				switch (e.type)
-				{
-				case SDL_QUIT: shouldExit = true; break;
-				default:
-					vkmmc_globals::GCameraController.ProcessInput(e);
-					break;
-				}
-			}
-			ImGuiNewFrame();
-			vkmmc_globals::GCameraController.Tick(0.033f);
-			vkmmc_globals::GCameraController.ImGuiDraw();
-			vkmmc_debug::ImGuiDraw();
-			vkmmc_debug::GRenderStats.m_trianglesCount = 0;
-			vkmmc_debug::GRenderStats.m_drawCalls = 0;
-
-			ImGui::Render();
-			Draw();
-		}
-		Log(LogLevel::Info, "End render loop.\n");
 	}
 
 	bool VulkanRenderEngine::RenderProcess()
@@ -341,25 +330,21 @@ namespace vkmmc
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
 		{
-			ImGuiProcessEvent(e);
+			ImGui_ImplSDL2_ProcessEvent(&e); 
 			switch (e.type)
 			{
 			case SDL_QUIT: res = false; break;
-			default:
-				vkmmc_globals::GCameraController.ProcessInput(e);
-				break;
 			}
 		}
-		ImGuiNewFrame();
-		vkmmc_globals::GCameraController.Tick(0.033f);
-		vkmmc_globals::GCameraController.ImGuiDraw();
-		vkmmc_debug::ImGuiDraw();
+		for (IRendererBase* it : m_renderers)
+			it->BeginFrame(m_renderContext);
+
+		for (auto& fn : m_imguiCallbackArray)
+			fn();
+
+		// Reset stats
 		vkmmc_debug::GRenderStats.m_trianglesCount = 0;
 		vkmmc_debug::GRenderStats.m_drawCalls = 0;
-		if (m_imguiCallback)
-			m_imguiCallback();
-
-		ImGui::Render();
 		Draw();
 		return res;
 	}
@@ -370,6 +355,12 @@ namespace vkmmc
 
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
+
+		for (IRendererBase* it : m_renderers)
+		{
+			it->Destroy(m_renderContext);
+			delete it;
+		}
 
 		m_shutdownStack.Flush();
 		vkDestroyDevice(m_renderContext.Device, nullptr);
@@ -382,65 +373,154 @@ namespace vkmmc
 		Log(LogLevel::Ok, "Render engine terminated.\n");
 		if (vkmmc_debug::GTerminatedWithErrors)
 			Log(LogLevel::Error, "Render engine was terminated with vulkan validation layer errors registered.\n");
+		TerminateLog();
+	}
+
+	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
+	{
+		m_cachedCameraData.View = glm::inverse(view);
+		m_cachedCameraData.Projection = projection;
+		m_cachedCameraData.ViewProjection = 
+			m_cachedCameraData.Projection * m_cachedCameraData.View;
+		m_dirtyCachedCamera = true;
 	}
 
 	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
 	{
+		check(mesh.GetVertexCount() > 0 && mesh.GetIndexCount() > 0);
 		// Prepare buffer creation
-		const size_t bufferSize = mesh.GetVertexCount() * sizeof(Vertex);
-		// Create allocated buffer
-		AllocatedBuffer buffer = CreateBuffer(m_renderContext.Allocator, bufferSize,
-			VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		const uint32_t vertexBufferSize = (uint32_t)mesh.GetVertexCount() * sizeof(Vertex);
+
+		MeshRenderData mrd{};
+		// Create vertex buffer
+		mrd.VertexBuffer.Init({
+			.RContext = m_renderContext,
+			.Size = vertexBufferSize
+			});
+		GPUBuffer::SubmitBufferToGpu(mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
 		
-		// Fill buffer
-		MemCopyDataToBuffer(m_renderContext.Allocator, buffer.Alloc, mesh.GetVertices(), bufferSize);
-		
+		uint32_t indexBufferSize = (uint32_t)(mesh.GetIndexCount() * sizeof(uint32_t));
+		mrd.IndexBuffer.Init({
+			.RContext = m_renderContext,
+			.Size = indexBufferSize
+			});
+		GPUBuffer::SubmitBufferToGpu(mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
+
 		// Register new buffer
 		RenderHandle handle = GenerateRenderHandle();
 		mesh.SetHandle(handle);
-		m_buffers[handle] = buffer;
+		m_meshRenderData[handle] = mrd;
+
+		mesh.SetInternalData(&m_meshRenderData[handle]);
 
 		// Stack buffer destruction
-		m_shutdownStack.Add([this, buffer]() 
+		m_shutdownStack.Add([this, mrd]() mutable
 			{
-				DestroyBuffer(m_renderContext.Allocator, buffer);
+				mrd.VertexBuffer.Destroy(m_renderContext);
+				mrd.IndexBuffer.Destroy(m_renderContext);
 			});
 	}
 
-	RenderObject VulkanRenderEngine::NewRenderObject()
+	void VulkanRenderEngine::UploadMaterial(Material& material)
 	{
-		RenderObject r;
-		r.Id = m_scene.New();
-		return r;
+		check(!material.GetHandle().IsValid());
+
+		RenderHandle h = GenerateRenderHandle();
+		m_materials[h] = MaterialRenderData();
+		InitMaterial(material, m_materials[h]);
+		material.SetInternalData(&m_materials[h]);
+		material.SetHandle(h);
 	}
 
-	RenderObjectTransform* VulkanRenderEngine::GetObjectTransform(RenderObject object)
+	RenderHandle VulkanRenderEngine::LoadTexture(const char* filename)
 	{
-		vkmmc_check(object.Id < m_scene.Count());
-		return &m_scene.Transforms[object.Id];
+		// Load texture from file
+		io::TextureRaw texData;
+		if (!io::LoadTexture(filename, texData))
+		{
+			Logf(LogLevel::Error, "Failed to load texture from %s.\n", filename);
+			return InvalidRenderHandle;
+		}
+
+		// Create gpu buffer with texture specifications
+		RenderTextureCreateInfo createInfo
+		{
+			.RContext = m_renderContext,
+			.Raw = texData,
+			.RecordCommandRutine = [this](auto fn) { ImmediateSubmit(std::move(fn)); }
+		};
+		RenderTexture texture;
+		texture.Init(createInfo);
+		RenderHandle h = GenerateRenderHandle();
+		m_textures[h] = texture;
+		m_shutdownStack.Add([this, texture]() mutable
+			{
+				texture.Destroy(m_renderContext);
+			});
+
+		// Free raw texture data
+		io::FreeTexture(texData.Pixels);
+		return h;
 	}
 
-	RenderObjectMesh* VulkanRenderEngine::GetObjectMesh(RenderObject object)
+	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
 	{
-		vkmmc_check(object.Id < m_scene.Count());
-		return &m_scene.Meshes[object.Id];
+		static RenderHandle texture;
+		if (!texture.IsValid())
+			texture = const_cast<VulkanRenderEngine*>(this)->LoadTexture("../../assets/textures/checkerboard.jpg");
+		return texture;
+	}
+
+	Material VulkanRenderEngine::GetDefaultMaterial() const
+	{
+		static Material material;
+		if (!material.GetHandle().IsValid())
+		{
+			material.SetDiffuseTexture(GetDefaultTexture());
+			const_cast<VulkanRenderEngine*>(this)->UploadMaterial(material);
+		}
+		return material;
 	}
 
 	void VulkanRenderEngine::Draw()
 	{
 		PROFILE_SCOPE(Draw);
-		FrameContext& frameContext = GetFrameContext();
+		RenderFrameContext& frameContext = GetFrameContext();
+		frameContext.Scene = static_cast<Scene*>(m_scene);
 		WaitFence(frameContext.RenderFence);
+
+		{
+			PROFILE_SCOPE(UpdateBuffers);
+			// Update descriptor set buffer
+			if (m_dirtyCachedCamera)
+			{
+				Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
+					GetFrameContext().CameraDescriptorSetBuffer.Alloc,
+					&m_cachedCameraData,
+					sizeof(GPUCamera));
+				m_dirtyCachedCamera = false;
+			}
+
+			const void* transformsData = frameContext.Scene->GetRawGlobalTransforms();
+			Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
+				GetFrameContext().ObjectDescriptorSetBuffer.Alloc,
+				transformsData,
+				sizeof(glm::mat4) * frameContext.Scene->Count());
+
+			frameContext.PushConstantData = &vkmmc_debug::GDebugShaderConstants;
+			frameContext.PushConstantSize = sizeof(vkmmc_debug::DebugShaderConstants);
+		}
 
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		uint32_t swapchainImageIndex;
 		{
 			PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
-			vkmmc_vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
+			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
+			frameContext.Framebuffer = m_framebufferArray[swapchainImageIndex].GetFramebufferHandle();
 
 			// Reset command buffer
-			vkmmc_vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
+			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
 
 			// Prepare command buffer
 			VkCommandBufferBeginInfo cmdBeginInfo = {};
@@ -449,37 +529,35 @@ namespace vkmmc
 			cmdBeginInfo.pInheritanceInfo = nullptr;
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
-			vkmmc_vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 
-			// Prepare render pass
-			VkRenderPassBeginInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.pNext = nullptr;
-			renderPassInfo.renderPass = m_renderPass.GetRenderPassHandle();
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = { .width = m_window.Width, .height = m_window.Height };
-			renderPassInfo.framebuffer = m_framebuffers[swapchainImageIndex];
-
+			// Begin render pass
 			// Clear values
 			VkClearValue clearValues[2];
 			clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
+			//clearValues[1].color = { 0.2f, 0.2f, 0.f, 1.f };
 			clearValues[1].depthStencil.depth = 1.f;
+			
+			VkRenderPassBeginInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr};
+			renderPassInfo.renderPass = m_renderPass;
+			renderPassInfo.renderArea.offset = { 0, 0 };
+			renderPassInfo.renderArea.extent = { .width = m_framebufferArray[swapchainImageIndex].GetWidth(), .height = m_framebufferArray[swapchainImageIndex].GetHeight()};
+			renderPassInfo.framebuffer = frameContext.Framebuffer;
 			renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
 			renderPassInfo.pClearValues = clearValues;
-			// Begin render pass
 			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		}
 
-		DrawRenderables(cmd, m_scene.Transforms.data(), m_scene.Meshes.data(), m_scene.Count());
+		// Record command buffers from renderers
+		for (IRendererBase* renderer : m_renderers)
+			renderer->RecordCommandBuffer(frameContext);
+		
 
-		// ImGui render
-		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
-
-		// End render pass
+		// Terminate render pass
 		vkCmdEndRenderPass(cmd);
 
 		// Terminate command buffer
-		vkmmc_vkcheck(vkEndCommandBuffer(cmd));
+		vkcheck(vkEndCommandBuffer(cmd));
 
 		{
 			PROFILE_SCOPE(QueueSubmit);
@@ -498,7 +576,7 @@ namespace vkmmc
 			// The command buffer will be procesed
 			submitInfo.commandBufferCount = 1;
 			submitInfo.pCommandBuffers = &cmd;
-			vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
+			vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &submitInfo, frameContext.RenderFence));
 		}
 
 		{
@@ -513,79 +591,17 @@ namespace vkmmc
 			presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
 			presentInfo.waitSemaphoreCount = 1;
 			presentInfo.pImageIndices = &swapchainImageIndex;
-			vkmmc_vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
-		}
-	}
-
-	void VulkanRenderEngine::DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count)
-	{
-		vkmmc_check(count < RenderObjectContainer::MaxRenderObjects);
-		{
-			PROFILE_SCOPE(UpdateBuffers);
-			// Update descriptor set buffer
-			GPUCamera camera;
-			camera.View = vkmmc_globals::GCameraController.Camera.GetView();
-			camera.Projection = vkmmc_globals::GCameraController.Camera.GetProjection();
-			camera.ViewProjection = camera.Projection * camera.View;
-
-			MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().CameraDescriptorSetBuffer.Alloc, &camera, sizeof(GPUCamera));
-			static std::vector<GPUObject> objects(RenderObjectContainer::MaxRenderObjects);
-			for (uint32_t i = 0; i < count; ++i)
-			{
-				objects[i].ModelTransform = CalculateTransform(transforms[i]);
-			}
-			MemCopyDataToBuffer(m_renderContext.Allocator, GetFrameContext().ObjectDescriptorSetBuffer.Alloc, objects.data(), sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects);
-		}
-
-		{
-			PROFILE_SCOPE(DrawScene);
-			RenderPipeline pipeline = m_pipelines[m_handleRenderPipeline];
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				pipeline.GetPipelineLayoutHandle(), 0, 1,
-				&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
-
-			Material lastMaterial;
-			Mesh lastMesh;
-			for (uint32_t i = 0; i < count; ++i)
-			{
-				//if (renderable.m_material != lastMaterial || !lastMaterial.GetHandle().IsValid())
-				{
-					//lastMaterial = renderable.m_material;
-					//RenderPipeline pipeline = renderable.m_material.GetHandle().IsValid()
-					//	? m_pipelines[renderable.m_material.GetHandle()]
-					//	: m_pipelines[m_handleRenderPipeline];
-					//vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.GetPipelineHandle());
-					//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					//	pipeline.GetPipelineLayoutHandle(), 0, 1,
-					//	&GetFrameContext().GlobalDescriptorSet, 0, nullptr);
-					//vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					//	pipeline.GetPipelineLayoutHandle(), 1, 1,
-					//	&GetFrameContext().ObjectDescriptorSet, 0, nullptr);
-				}
-
-
-				if (lastMesh != meshes[i].StaticMesh)
-				{
-					VkDeviceSize offset = 0;
-					AllocatedBuffer buffer = m_buffers[meshes[i].StaticMesh.GetHandle()];
-					vkCmdBindVertexBuffers(cmd, 0, 1, &buffer.Buffer, &offset);
-					lastMesh = meshes[i].StaticMesh;
-				}
-				vkCmdDraw(cmd, (uint32_t)meshes[i].StaticMesh.GetVertexCount(), 1, 0, i);
-				vkmmc_debug::GRenderStats.m_drawCalls++;
-				vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)meshes[i].StaticMesh.GetVertexCount() / 3;
-			}
+			vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
 		}
 	}
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
 	{
-		vkmmc_vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
-		vkmmc_vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
+		vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
+		vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
 	}
 
-	FrameContext& VulkanRenderEngine::GetFrameContext()
+	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
 		return m_frameContextArray[m_frameCounter % MaxOverlappedFrames];
 	}
@@ -593,95 +609,100 @@ namespace vkmmc
 	void VulkanRenderEngine::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn)
 	{
 		// Begin command buffer recording.
-		VkCommandBufferBeginInfo beginInfo = CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		vkmmc_vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
+		VkCommandBufferBeginInfo beginInfo = vkinit::CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
 		// Call to extern code to record commands.
 		fn(m_immediateSubmitContext.CommandBuffer);
 		// Finish recording.
-		vkmmc_vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
+		vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
 
-		VkSubmitInfo info = SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
-		vkmmc_vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
+		VkSubmitInfo info = vkinit::SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
+		vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
 		WaitFence(m_immediateSubmitContext.Fence);
 		vkResetCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, 0);
 	}
 
-	void VulkanRenderEngine::ImGuiNewFrame()
+	VkDescriptorSet VulkanRenderEngine::AllocateDescriptorSet(VkDescriptorSetLayout layout)
 	{
-		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL2_NewFrame(m_window.WindowInstance);
-		ImGui::NewFrame();
+		VkDescriptorSet set;
+		m_descriptorAllocator.Allocate(&set, layout);
+		return set;
 	}
 
-	void VulkanRenderEngine::ImGuiProcessEvent(const SDL_Event& e)
+	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialRenderData& material)
 	{
-		ImGui_ImplSDL2_ProcessEvent(&e);
-	}
-
-	RenderPipeline VulkanRenderEngine::CreatePipeline(const ShaderModuleLoadDescription* shaderStages, size_t shaderStagesCount, const VkPipelineLayoutCreateInfo& layoutInfo, const VertexInputDescription& inputDescription)
-	{
-		vkmmc_check(shaderStages && shaderStagesCount > 0);
-		RenderPipelineBuilder builder;
-		// Input configuration
-		builder.InputDescription = GetDefaultVertexDescription();
-		// Shader stages
-		VkShaderModule* modules = new VkShaderModule[shaderStagesCount];
-		for (size_t i = 0; i < shaderStagesCount; ++i)
-		{
-			modules[i] = LoadShaderModule(m_renderContext.Device, shaderStages[i].ShaderFilePath.c_str());
-			vkmmc_check(modules[i] != VK_NULL_HANDLE);
-			builder.ShaderStages.push_back(PipelineShaderStageCreateInfo(shaderStages[i].Flags, modules[i]));
-		}
-		// Configure viewport settings.
-		builder.Viewport.x = 0.f;
-		builder.Viewport.y = 0.f;
-		builder.Viewport.width = (float)m_window.Width;
-		builder.Viewport.height = (float)m_window.Height;
-		builder.Viewport.minDepth = 0.f;
-		builder.Viewport.maxDepth = 1.f;
-		builder.Scissor.offset = { 0, 0 };
-		builder.Scissor.extent = { .width = m_window.Width, .height = m_window.Height };
-		// Depth testing
-		builder.DepthStencil = PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
-		// Rasterization: draw filled triangles
-		builder.Rasterizer = PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-		// Single blenc attachment without blending and writing RGBA
-		builder.ColorBlendAttachment = PipelineColorBlendAttachmentState();
-		// Disable multisampling by default
-		builder.Multisampler = PipelineMultisampleStateCreateInfo();
-		// Pass layout info
-		builder.LayoutInfo = layoutInfo;
-
-		// Build the new pipeline
-		RenderPipeline renderPipeline = builder.Build(m_renderContext.Device, m_renderPass.GetRenderPassHandle());;
-
-		// Destroy resources
-		struct  
-		{
-			RenderContext context;
-			RenderPipeline pipeline;
-
-			void operator()()
+		check(material.Set == VK_NULL_HANDLE);
+		m_descriptorAllocator.Allocate(&material.Set, m_materialDescriptorLayout);
+		
+		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mtl, MaterialRenderData::ESamplerIndex index)
 			{
-				pipeline.Destroy(context);
-			}
-		} pipelineDestroyer{m_renderContext, renderPipeline};
-		m_shutdownStack.Add(pipelineDestroyer);
+				RenderTexture texture;
+				if (texHandle.IsValid())
+				{
+					texture = m_textures[texHandle];
+				}
+				else
+				{
+					RenderHandle defTex = GetDefaultTexture();
+					texture = m_textures[defTex];
+				}
+				SubmitMaterialTexture(mtl, index, texture.GetImageView());
+			};
+		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialRenderData::SAMPLER_INDEX_DIFFUSE);
+		submitTexture(materialHandle.GetNormalTexture(), material, MaterialRenderData::SAMPLER_INDEX_NORMAL);
+		submitTexture(materialHandle.GetSpecularTexture(), material, MaterialRenderData::SAMPLER_INDEX_SPECULAR);
 
-		// Vulkan modules destruction
-		for (size_t i = 0; i < shaderStagesCount; ++i)
-			vkDestroyShaderModule(m_renderContext.Device, modules[i], nullptr);
-		delete[] modules;
-		modules = nullptr;
+		m_shutdownStack.Add([this, material]() 
+			{
+				Log(LogLevel::Info, "Destroying image samplers.\n");
+				for (uint32_t i = 0; i < MaterialRenderData::SAMPLER_INDEX_COUNT; ++i)
+				{
+					if (material.ImageSamplers[i] != VK_NULL_HANDLE)
+						vkDestroySampler(m_renderContext.Device, material.ImageSamplers[i], nullptr);
+				}
+			});
 
-		return renderPipeline;
+		return true;
 	}
 
-	RenderHandle VulkanRenderEngine::RegisterPipeline(RenderPipeline pipeline)
+	void VulkanRenderEngine::SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView)
 	{
-		RenderHandle h = GenerateRenderHandle();
-		m_pipelines[h] = pipeline;
-		return h;
+		if (material.ImageSamplers[sampler] != VK_NULL_HANDLE)
+		{
+			vkDestroySampler(m_renderContext.Device, material.ImageSamplers[sampler], nullptr);
+			material.ImageSamplers[sampler] = VK_NULL_HANDLE;
+		}
+
+		VkSamplerCreateInfo samplerCreateInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.pNext = nullptr,
+			.magFilter = VK_FILTER_NEAREST,
+			.minFilter = VK_FILTER_NEAREST,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
+		};
+		vkcheck(vkCreateSampler(m_renderContext.Device, &samplerCreateInfo, nullptr, &material.ImageSamplers[sampler]));
+
+		VkDescriptorImageInfo imageInfo
+		{
+			.sampler = material.ImageSamplers[sampler],
+			.imageView = imageView,
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		};
+		VkWriteDescriptorSet writeSet
+		{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = material.Set,
+			.dstBinding = 0, // TODO: work out generic binding texture slot
+			.dstArrayElement = (uint32_t)sampler,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = &imageInfo
+		};
+		vkUpdateDescriptorSets(m_renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
 	bool VulkanRenderEngine::InitVulkan()
@@ -748,13 +769,13 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitCommands()
 	{
-		VkCommandPoolCreateInfo poolInfo = CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+		VkCommandPoolCreateInfo poolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
-			FrameContext& frameContext = m_frameContextArray[i];
-			vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
-			VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
-			vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
+			RenderFrameContext& frameContext = m_frameContextArray[i];
+			vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
+			VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
+			vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
 			m_shutdownStack.Add([this, i]()
 				{
 					vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
@@ -762,9 +783,9 @@ namespace vkmmc
 			);
 		}
 
-		vkmmc_vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
-		VkCommandBufferAllocateInfo allocInfo = CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
-		vkmmc_vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
+		vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
+		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
+		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
 		m_shutdownStack.Add([this]()
 			{
 				vkDestroyCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, nullptr);
@@ -774,38 +795,24 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitFramebuffers()
 	{
-		// Create framebuffer for the swapchain images. This will connect render pass with the images for rendering.
-		VkFramebufferCreateInfo fbInfo = {};
-		fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		fbInfo.pNext = nullptr;
-		fbInfo.renderPass = m_renderPass.GetRenderPassHandle();
-		fbInfo.attachmentCount = 1;
-		fbInfo.width = m_window.Width;
-		fbInfo.height = m_window.Height;
-		fbInfo.layers = 1;
-
 		// Collect image in the swapchain
-		const uint64_t swapchainImageCount = m_swapchain.GetImageCount();
+		const uint32_t swapchainImageCount = m_swapchain.GetImageCount();
 		m_framebuffers = std::vector<VkFramebuffer>(swapchainImageCount);
 
 		// One framebuffer for each of the swapchain image view.
-		for (uint64_t i = 0; i < swapchainImageCount; ++i)
+		m_framebufferArray.resize(swapchainImageCount);
+		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
-			VkImageView attachments[2];
-			attachments[0] = m_swapchain.GetImageViewAt(i);
-			attachments[1] = m_swapchain.GetDepthImageView();
-
-			fbInfo.pAttachments = attachments;
-			fbInfo.attachmentCount = 2;
-			vkmmc_vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &m_framebuffers[i]));
-
-			m_shutdownStack.Add([this, i]
+			m_framebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_window.Width, m_window.Height)
+				.AddAttachment(m_swapchain.GetImageViewAt(i))
+				//.CreateColorAttachment()
+				.CreateDepthStencilAttachment()
+				.Build(m_renderPass);
+			m_shutdownStack.Add([this, i]()
 				{
-					Logf(LogLevel::Info, "Destroy framebuffer and imageview [#%Id].\n", i);
-					vkDestroyFramebuffer(m_renderContext.Device, m_framebuffers[i], nullptr);
+					m_framebufferArray[i].Destroy(m_renderContext);
 				});
 		}
-
 		return true;
 	}
 
@@ -813,15 +820,15 @@ namespace vkmmc
 	{
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
-			FrameContext& frameContext = m_frameContextArray[i];
+			RenderFrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
-			VkFenceCreateInfo fenceInfo = FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-			vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
+			VkFenceCreateInfo fenceInfo = vkinit::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
+			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
 			// Render semaphore
-			VkSemaphoreCreateInfo semaphoreInfo = SemaphoreCreateInfo();
-			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
+			VkSemaphoreCreateInfo semaphoreInfo = vkinit::SemaphoreCreateInfo();
+			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
 			// Present semaphore
-			vkmmc_vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
+			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
 			m_shutdownStack.Add([this, i]()
 				{
 					Logf(LogLevel::Info, "Destroy fences and semaphores [#%Id].\n", i);
@@ -831,8 +838,8 @@ namespace vkmmc
 				});
 		}
 
-		VkFenceCreateInfo info = FenceCreateInfo();
-		vkmmc_vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
+		VkFenceCreateInfo info = vkinit::FenceCreateInfo();
+		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
 		m_shutdownStack.Add([this]()
 			{
 				vkDestroyFence(m_renderContext.Device, m_immediateSubmitContext.Fence, nullptr);
@@ -843,90 +850,49 @@ namespace vkmmc
 	bool VulkanRenderEngine::InitPipeline()
 	{
 		// Pipeline descriptors
-		VkDescriptorPoolSize poolSizes[] =
-		{
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MaxOverlappedFrames * 2 },
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MaxOverlappedFrames * 2 },
-		};
-		vkmmc_check(CreateDescriptorPool(m_renderContext.Device, poolSizes, sizeof(poolSizes) / sizeof(VkDescriptorPoolSize), &m_descriptorPool));
-		m_shutdownStack.Add([this]() 
+		m_descriptorLayoutCache.Init(m_renderContext);
+		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+		m_shutdownStack.Add([this]() mutable
 			{
 				Log(LogLevel::Info, "Destroy descriptor pool.\n");
-				DestroyDescriptorPool(m_renderContext.Device, m_descriptorPool);
+				m_descriptorAllocator.Destroy();
+				m_descriptorLayoutCache.Destroy();
 			});
-		{
-			// Descriptor layout
-			VkDescriptorSetLayoutBinding layoutBindings[] = { {}, {} };
-			const uint32_t layoutBindingCount = sizeof(layoutBindings) / sizeof(VkDescriptorSetLayoutBinding);
-			for (uint32_t i = 0; i < layoutBindingCount; ++i)
-			{
-				layoutBindings[i].binding = i;
-				layoutBindings[i].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-				layoutBindings[i].descriptorCount = 1;
-				layoutBindings[i].pImmutableSamplers = nullptr;
-				layoutBindings[i].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-			}
-			layoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			VkDescriptorSetLayoutCreateInfo createInfo = {};
-			createInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-			createInfo.bindingCount = layoutBindingCount;
-			createInfo.pBindings = layoutBindings;
-			vkmmc_vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_globalDescriptorLayout));
-			m_shutdownStack.Add([this]()
-				{
-					Log(LogLevel::Info, "Destroy descriptor layout.\n");
-					vkDestroyDescriptorSetLayout(m_renderContext.Device, m_globalDescriptorLayout, nullptr);
-				});
-		}
-		//{
-		//	VkDescriptorSetLayoutBinding layoutBinding =
-		//	{
-		//		.binding = 0,
-		//		.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-		//		.descriptorCount = 1,
-		//		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-		//		.pImmutableSamplers = nullptr,
-		//	};
-		//	VkDescriptorSetLayoutCreateInfo createInfo =
-		//	{
-		//		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-		//		.bindingCount = 1,
-		//		.pBindings = &layoutBinding
-		//	};
-		//	vkmmc_vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &m_objectDescriptorLayout));
-		//	m_shutdownStack.Add([this]() 
-		//		{
-		//			Log(LogLevel::Info, "Destroy object descriptor set layout.\n");
-		//			vkDestroyDescriptorSetLayout(m_renderContext.Device, m_objectDescriptorLayout, nullptr);
-		//		});
-		//}
 
-		// There is one descriptor set per overlapped frame.
+		// Init descriptor set layouts
+		// Global
+		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Camera buffer
+			.AddBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Model transform storage buffer
+			.Build(m_renderContext, &m_globalDescriptorLayout);
+
+		// Texture
+		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialRenderData::SAMPLER_INDEX_COUNT)
+			.Build(m_renderContext, &m_materialDescriptorLayout);
+	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			// Create buffers for the descriptors
-			m_frameContextArray[i].CameraDescriptorSetBuffer = CreateBuffer(
+			m_frameContextArray[i].CameraDescriptorSetBuffer = Memory::CreateBuffer(
 				m_renderContext.Allocator,
 				sizeof(GPUCamera),
 				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
-			m_frameContextArray[i].ObjectDescriptorSetBuffer = CreateBuffer(
+			m_frameContextArray[i].ObjectDescriptorSetBuffer = Memory::CreateBuffer(
 				m_renderContext.Allocator,
-				sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects,
+				sizeof(glm::mat4) * MaxRenderObjects,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
 			);
 			m_shutdownStack.Add([this, i]()
 				{
 					Logf(LogLevel::Info, "Destroy buffer for descriptor set [#%Id].\n", i);
-					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
-					DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
+					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
+					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
 				});
 
-			// Allocate descriptor sets on pool
-			AllocateDescriptorSet(m_renderContext.Device, m_descriptorPool, &m_globalDescriptorLayout, 1, &m_frameContextArray[i].GlobalDescriptorSet);
-			//AllocateDescriptorSet(m_renderContext.Device, m_descriptorPool, &m_objectDescriptorLayout, 1, &m_frameContextArray[i].ObjectDescriptorSet);
 
-			// Let vulkan know about these descriptors
+			// Update global descriptors
 			VkDescriptorBufferInfo cameraBufferInfo = {};
 			cameraBufferInfo.buffer = m_frameContextArray[i].CameraDescriptorSetBuffer.Buffer;
 			cameraBufferInfo.offset = 0;
@@ -934,101 +900,12 @@ namespace vkmmc
 			VkDescriptorBufferInfo objectBufferInfo = {};
 			objectBufferInfo.buffer = m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer;
 			objectBufferInfo.offset = 0;
-			objectBufferInfo.range = sizeof(GPUObject) * RenderObjectContainer::MaxRenderObjects;
-
-			VkWriteDescriptorSet cameraWriteDescriptor = {};
-			cameraWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			cameraWriteDescriptor.dstBinding = 0;
-			cameraWriteDescriptor.dstArrayElement = 0;
-			cameraWriteDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			cameraWriteDescriptor.descriptorCount = 1;
-			cameraWriteDescriptor.dstSet = m_frameContextArray[i].GlobalDescriptorSet;
-			cameraWriteDescriptor.pBufferInfo = &cameraBufferInfo;
-			VkWriteDescriptorSet objectWriteDescriptor = {};
-			objectWriteDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			objectWriteDescriptor.dstBinding = 1;
-			objectWriteDescriptor.dstArrayElement = 0;
-			objectWriteDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-			objectWriteDescriptor.descriptorCount = 1;
-			objectWriteDescriptor.dstSet = m_frameContextArray[i].GlobalDescriptorSet;
-			objectWriteDescriptor.pBufferInfo = &objectBufferInfo;
-			VkWriteDescriptorSet writeDescriptors[] = { cameraWriteDescriptor, objectWriteDescriptor };
-			uint32_t writeDescriptorCount = sizeof(writeDescriptors) / sizeof(VkWriteDescriptorSet);
-			vkUpdateDescriptorSets(m_renderContext.Device, writeDescriptorCount, writeDescriptors, 0, nullptr);
+			objectBufferInfo.range = sizeof(glm::mat4) * MaxRenderObjects;
+			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+				.BindBuffer(0, cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(1, objectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, m_globalDescriptorLayout);
 		}
-
-		// Create layout info
-		VkDescriptorSetLayout layouts[] = { m_globalDescriptorLayout, m_objectDescriptorLayout };
-		VkPipelineLayoutCreateInfo layoutInfo = PipelineLayoutCreateInfo();
-		layoutInfo.setLayoutCount = 1;
-		layoutInfo.pSetLayouts = layouts;
-
-		ShaderModuleLoadDescription shaderStageDescs[] =
-		{
-			{.ShaderFilePath = vkmmc_globals::BasicVertexShaders, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = vkmmc_globals::BasicFragmentShaders, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
-		};
-		const size_t shaderCount = sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription);
-		RenderPipeline pipeline = CreatePipeline(shaderStageDescs, shaderCount, layoutInfo, GetDefaultVertexDescription());
-		m_handleRenderPipeline = RegisterPipeline(pipeline);
 		return true;
-	}
-
-	bool VulkanRenderEngine::InitImGui()
-	{
-		// Create descriptor pool for imgui
-		VkDescriptorPoolSize poolSizes[] =
-		{
-			{ VK_DESCRIPTOR_TYPE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000 },
-			{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000 },
-			{ VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000 }
-		};
-		VkDescriptorPoolCreateInfo poolInfo = {};
-		poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		poolInfo.pNext = nullptr;
-		poolInfo.maxSets = 1000;
-		poolInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
-		poolInfo.pPoolSizes = poolSizes;
-
-		VkDescriptorPool imguiPool;
-		vkmmc_vkcheck(vkCreateDescriptorPool(m_renderContext.Device, &poolInfo, nullptr, &imguiPool));
-
-		// Init imgui lib
-		ImGui::CreateContext();
-		ImGui_ImplSDL2_InitForVulkan(m_window.WindowInstance);
-		ImGui_ImplVulkan_InitInfo initInfo
-		{
-			.Instance = m_renderContext.Instance,
-			.PhysicalDevice = m_renderContext.GPUDevice,
-			.Device = m_renderContext.Device,
-			.Queue = m_renderContext.GraphicsQueue,
-			.DescriptorPool = imguiPool,
-			.MinImageCount = 3,
-			.ImageCount = 3,
-			.MSAASamples = VK_SAMPLE_COUNT_1_BIT
-		};
-		ImGui_ImplVulkan_Init(&initInfo, m_renderPass.GetRenderPassHandle());
-
-		// Execute gpu command to upload imgui font textures
-		ImmediateSubmit([&](VkCommandBuffer cmd)
-			{
-				ImGui_ImplVulkan_CreateFontsTexture(cmd);
-			});
-		ImGui_ImplVulkan_DestroyFontUploadObjects();
-		m_shutdownStack.Add([this, imguiPool]()
-			{
-				vkDestroyDescriptorPool(m_renderContext.Device, imguiPool, nullptr);
-				ImGui_ImplVulkan_Shutdown();
-			});
-		return false;
-	}
-	
+	}	
 }

@@ -13,15 +13,32 @@ namespace vkmmc
 		inline RenderHandle GetHandle() const { return m_handle; }
 		inline bool operator==(const RenderResource& r) const { return m_handle == r.GetHandle(); }
 		inline bool operator!=(const RenderResource& r) const { return !(*this == r); }
+		const void* GetInternalData() const { return m_internalData; }
+		void SetInternalData(void* internalData) { m_internalData = internalData; }
+		void FreeInternalData();
 	private:
 		RenderHandle m_handle;
+	protected:
+		void* m_internalData{ nullptr };
 	};
 
 	class Material : public RenderResource
 	{
 	public:
 
+		inline RenderHandle GetDiffuseTexture() const { return m_diffuseTextureHandle; }
+		inline RenderHandle GetNormalTexture() const { return m_normalTextureHandle; }
+		inline RenderHandle GetSpecularTexture() const { return m_specularTextureHandle; }
+		inline void SetDiffuseTexture(RenderHandle texHandle) { m_diffuseTextureHandle = texHandle, m_dirty = true; }
+		inline void SetNormalTexture(RenderHandle texHandle) { m_normalTextureHandle = texHandle; m_dirty = true; }
+		inline void SetSpecularTexture(RenderHandle texHandle) { m_specularTextureHandle = texHandle; m_dirty = true; }
+		inline bool IsDirty() const { return m_dirty; }
+
 	private:
+		bool m_dirty{ true };
+		RenderHandle m_diffuseTextureHandle;
+		RenderHandle m_normalTextureHandle;
+		RenderHandle m_specularTextureHandle;
 	};
 
 
@@ -31,8 +48,19 @@ namespace vkmmc
 		const Vertex* GetVertices() const { return m_vertices.data(); }
 		inline size_t GetVertexCount() const { return m_vertices.size(); }
 		void SetVertices(const Vertex* data, size_t count);
+		const uint32_t* GetIndices() const { return m_indices.data(); }
+		inline size_t GetIndexCount() const { return m_indices.size(); }
+		void SetIndices(const uint32_t* data, size_t count);
 	private:
 		std::vector<Vertex> m_vertices;
+		std::vector<uint32_t> m_indices;
+	};
+
+	class Model
+	{
+	public:
+		std::vector<Mesh> m_meshArray;
+		std::vector<Material> m_materialArray;
 	};
 	
 }

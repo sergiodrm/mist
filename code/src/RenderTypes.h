@@ -1,65 +1,44 @@
 #pragma once
-
-#include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
+#include "Memory.h"
+#include "RenderHandle.h"
 #include <cassert>
 #include <vector>
 #include <functional>
-#include "Logger.h"
 
-#define expand(x) (x)
-#define vkmmc_check(expr) \
-do \
-{\
-	if (!expand(expr)) \
-	{ \
-		Logf(LogLevel::Error, "Check failed: %s", #expr);	\
-		__debugbreak();\
-		assert(false && #expr);\
-	}\
-} while(0)
-
-#define vkmmc_vkcheck(expr) vkmmc_check((VkResult)expand(expr) == VK_SUCCESS)
+struct SDL_Window;
 
 namespace vkmmc
 {
-	struct RenderContext;
 
-	struct Allocation
+	template <typename RenderResourceType>
+	using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
+
+	struct RenderContext
 	{
-		VmaAllocation Alloc;
+		SDL_Window* Window;
+		VkInstance Instance;
+		VkPhysicalDevice GPUDevice;
+		VkSurfaceKHR Surface;
+		VkDebugUtilsMessengerEXT DebugMessenger;
+		VkPhysicalDeviceProperties GPUProperties;
+		VkDevice Device;
+		VmaAllocator Allocator;
+		VkQueue GraphicsQueue;
+		uint32_t GraphicsQueueFamily;
+		// Viewport size. TODO: Find another way to communicate these data.
+		uint32_t Width;
+		uint32_t Height;
 	};
 
-	struct AllocatedBuffer : public Allocation
-	{
-		VkBuffer Buffer;
-	};
-
-	struct AllocatedImage : public Allocation
-	{
-		VkImage Image;
-	};
-
-	struct VertexInputDescription
-	{
-		std::vector<VkVertexInputBindingDescription> Bindings;
-		std::vector<VkVertexInputAttributeDescription> Attributes;
-		VkPipelineVertexInputStateCreateFlags Flags = 0;
-	};
-
-	struct ImmediateSynchedCommandContext
-	{
-		VkFence SyncFence;
-		VkCommandPool CommandPool;
-		VkCommandBuffer CommandBuffer;
-	};
-
-	struct FrameContext
+	struct RenderFrameContext
 	{
 		// Sync vars
 		VkFence RenderFence{};
 		VkSemaphore RenderSemaphore{};
 		VkSemaphore PresentSemaphore{};
+
+		// Framebuffer with swapchain attachment
+		VkFramebuffer Framebuffer;
 
 		// Commands
 		VkCommandPool GraphicsCommandPool{};
@@ -67,17 +46,43 @@ namespace vkmmc
 
 		// Descriptors
 		VkDescriptorSet GlobalDescriptorSet{};
-		VkDescriptorSet ObjectDescriptorSet{};
 		AllocatedBuffer CameraDescriptorSetBuffer{};
 		AllocatedBuffer ObjectDescriptorSetBuffer{};
+
+		// Push constants
+		const void* PushConstantData{ nullptr };
+		uint32_t PushConstantSize{ 0 };
+
+		// Scene to draw
+		class Scene* Scene;
 	};
 
+	enum EImageLayout
+	{
+		IMAGE_LAYOUT_UNDEFINED,
+		IMAGE_LAYOUT_GENERAL,
+		IMAGE_LAYOUT_COLOR_ATTACHMENT,
+		IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT,
+		IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY,
+		IMAGE_LAYOUT_SHADER_READ_ONLY,
+		IMAGE_LAYOUT_PRESENT_SRC,
+	};
+	enum EFormat
+	{
+		FORMAT_R8G8B8,
+		FORMAT_B8G8R8,
+		FORMAT_R8G8B8A8,
+		FORMAT_B8G8R8A8,
+		FORMAT_D32,
+		FORMAT_INVALID = 0x7fffffff
+	};
+	namespace types
+	{
+		VkImageLayout ImageLayoutType(EImageLayout layout);
+		EImageLayout ImageLayoutType(VkImageLayout layout);
 
-	AllocatedBuffer CreateBuffer(VmaAllocator allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memUsage);
-	void DestroyBuffer(VmaAllocator allocator, AllocatedBuffer buffer);
-	/**
-	 * Copy data from source to specified allocation memory.
-	 */
-	void MemCopyDataToBuffer(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t size);
-	void MemCopyDataToBufferAtIndex(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t elementSize, size_t atIndex);
+		VkFormat FormatType(EFormat format);
+		EFormat FormatType(VkFormat format);
+	}
+
 }

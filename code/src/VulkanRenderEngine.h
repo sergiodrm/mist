@@ -1,35 +1,31 @@
 
 #pragma once
+
 #include "RenderEngine.h"
 #include "RenderPass.h"
 #include "RenderHandle.h"
 #include "RenderPipeline.h"
 #include "RenderObject.h"
+#include "RenderTexture.h"
+#include "VulkanBuffer.h"
+#include "Debug.h"
 #include "Swapchain.h"
 #include "Mesh.h"
 #include "FunctionStack.h"
+#include "Framebuffer.h"
+#include "Scene.h"
 #include <cstdio>
 
 #include <vk_mem_alloc.h>
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <string.h>
-#include <array>
 
 namespace vkmmc
 {
-	struct RenderContext
-	{
-		VkInstance Instance;
-		VkPhysicalDevice GPUDevice;
-		VkSurfaceKHR Surface;
-		VkDebugUtilsMessengerEXT DebugMessenger;
-		VkPhysicalDeviceProperties GPUProperties;
-		VkDevice Device;
-		VmaAllocator Allocator;
-		VkQueue GraphicsQueue;
-		uint32_t GraphicsQueueFamily;
-	};
+	class Framebuffer;
+	class IRendererBase;
+	struct ShaderModuleLoadDescription;
 
 	struct Window
 	{
@@ -60,47 +56,64 @@ namespace vkmmc
 		glm::mat4 ViewProjection;
 	};
 
-	struct GPUObject
+	struct MaterialRenderData
 	{
-		glm::mat4 ModelTransform;
+		enum ESamplerIndex
+		{
+			SAMPLER_INDEX_DIFFUSE,
+			SAMPLER_INDEX_NORMAL,
+			SAMPLER_INDEX_SPECULAR,
+
+			SAMPLER_INDEX_COUNT
+		};
+
+		VkDescriptorSet Set;
+		VkSampler ImageSamplers[SAMPLER_INDEX_COUNT];
+
+		MaterialRenderData() : Set(VK_NULL_HANDLE) { for (uint32_t i = 0; i < SAMPLER_INDEX_COUNT; ++i) ImageSamplers[i] = VK_NULL_HANDLE; }
 	};
 
-	struct RenderObjectContainer
+	struct MeshRenderData
 	{
-		static constexpr size_t MaxRenderObjects = 50000;
-		std::array<RenderObjectTransform, MaxRenderObjects> Transforms;
-		std::array<RenderObjectMesh, MaxRenderObjects> Meshes;
-		uint32_t Counter = 0;
-
-		uint32_t New() { vkmmc_check(Counter < MaxRenderObjects); return Counter++; }
-		uint32_t Count() const { return Counter; }
+		VertexBuffer VertexBuffer;
+		IndexBuffer IndexBuffer;
 	};
 
 	class VulkanRenderEngine : public IRenderEngine
 	{
 		static constexpr size_t MaxOverlappedFrames = 2;
+		static constexpr size_t MaxRenderObjects = 1000;
 	public:
+		/**
+		 * IRenderEngine interface
+		 */
 		virtual bool Init(const InitializationSpecs& initSpec) override;
-		virtual void RenderLoop() override;
 		virtual bool RenderProcess() override;
 		virtual void Shutdown() override;
 
+		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) override;
+
 		virtual void UploadMesh(Mesh& mesh) override;
+		virtual void UploadMaterial(Material& material) override;
+		virtual RenderHandle LoadTexture(const char* filename) override;
 
-		virtual RenderObject NewRenderObject() override;
-		virtual RenderObjectTransform* GetObjectTransform(RenderObject object) override;
-		virtual RenderObjectMesh* GetObjectMesh(RenderObject object) override;
-		virtual uint32_t GetObjectCount() const { return m_scene.Count(); }
-		virtual void SetImGuiCallback(std::function<void()>&& fn) { m_imguiCallback = fn; }
+		virtual IScene* GetScene() override { return m_scene; }
+		virtual const IScene* GetScene() const override { return m_scene; }
+		virtual void SetScene(IScene* scene) { m_scene = scene; }
+		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 
+		virtual RenderHandle GetDefaultTexture() const;
+		virtual Material GetDefaultMaterial() const;
+
+		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
+		const RenderContext& GetContext() const { return m_renderContext; }
+		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
+		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
+		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
 	protected:
 		void Draw();
-		void DrawRenderables(VkCommandBuffer cmd, const RenderObjectTransform* transforms, const RenderObjectMesh* meshes, size_t count);
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
-		FrameContext& GetFrameContext();
-		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
-		void ImGuiNewFrame();
-		void ImGuiProcessEvent(const SDL_Event& e);
+		RenderFrameContext& GetFrameContext();
 
 		// Initializations
 		bool InitVulkan();
@@ -108,16 +121,9 @@ namespace vkmmc
 		bool InitFramebuffers();
 		bool InitSync();
 		bool InitPipeline();
-		bool InitImGui();
 
-		// Builder utils
-		RenderPipeline CreatePipeline(
-			const ShaderModuleLoadDescription* shaderStagesDescriptions,
-			size_t shaderStagesCount,
-			const VkPipelineLayoutCreateInfo& layoutInfo,
-			const VertexInputDescription& inputDescription
-		);
-		RenderHandle RegisterPipeline(RenderPipeline pipeline);
+		bool InitMaterial(const Material& materialHandle, MaterialRenderData& material);
+		void SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView);
 
 	private:
 
@@ -126,25 +132,36 @@ namespace vkmmc
 		RenderContext m_renderContext;
 		
 		Swapchain m_swapchain;
-		RenderPass m_renderPass;
-		RenderHandle m_handleRenderPipeline;
-		std::vector<VkFramebuffer> m_framebuffers;
+		VkRenderPass m_renderPass;
 
-		FrameContext m_frameContextArray[MaxOverlappedFrames];
+		std::vector<VkFramebuffer> m_framebuffers;
+		std::vector<Framebuffer> m_framebufferArray;
+
+		RenderFrameContext m_frameContextArray[MaxOverlappedFrames];
 		size_t m_frameCounter;
 
-		VkDescriptorPool m_descriptorPool;
+		DescriptorAllocator m_descriptorAllocator;
+		DescriptorLayoutCache m_descriptorLayoutCache;
+
 		VkDescriptorSetLayout m_globalDescriptorLayout;
-		VkDescriptorSetLayout m_objectDescriptorLayout;
+		VkDescriptorSetLayout m_materialDescriptorLayout;
 
-		std::unordered_map<uint32_t, AllocatedBuffer> m_buffers;
-		std::unordered_map<uint32_t, RenderPipeline> m_pipelines;
+		template <typename RenderResourceType>
+		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
+		ResourceMap<RenderTexture> m_textures;
+		ResourceMap<MeshRenderData> m_meshRenderData;
+		ResourceMap<MaterialRenderData> m_materials;
 
-		RenderObjectContainer m_scene;
+		std::vector<IRendererBase*> m_renderers;
+
+		IScene* m_scene;
+		bool m_dirtyCachedCamera;
+		GPUCamera m_cachedCameraData;
 
 		UploadContext m_immediateSubmitContext;
 
 		FunctionStack m_shutdownStack;
-		std::function<void()> m_imguiCallback;
+		typedef std::function<void()> ImGuiCallback;
+		std::vector<ImGuiCallback> m_imguiCallbackArray;
 	};
 }

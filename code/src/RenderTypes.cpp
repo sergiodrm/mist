@@ -2,6 +2,7 @@
 #include "RenderHandle.h"
 #include "InitVulkanTypes.h"
 #include "VulkanRenderEngine.h"
+#include "Debug.h"
 
 template <>
 struct std::hash<vkmmc::RenderHandle>
@@ -14,48 +15,71 @@ struct std::hash<vkmmc::RenderHandle>
 
 namespace vkmmc
 {
-	AllocatedBuffer CreateBuffer(VmaAllocator allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, VmaMemoryUsage memUsage)
+	namespace types
 	{
-		VkBufferCreateInfo bufferInfo
+		VkImageLayout ImageLayoutType(EImageLayout layout)
 		{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-			.pNext = nullptr,
-			.size = bufferSize,
-			.usage = usageFlags
-		};
-		VmaAllocationCreateInfo allocInfo
+			switch (layout)
+			{
+			case IMAGE_LAYOUT_UNDEFINED: return VK_IMAGE_LAYOUT_UNDEFINED;
+			case IMAGE_LAYOUT_GENERAL: return VK_IMAGE_LAYOUT_GENERAL;
+			case IMAGE_LAYOUT_COLOR_ATTACHMENT: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			case IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT: return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+			case IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY: return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+			case IMAGE_LAYOUT_SHADER_READ_ONLY: return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			case IMAGE_LAYOUT_PRESENT_SRC: return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			}
+			Logf(LogLevel::Error, "Invalid layout type: %d\n", layout);
+			return VK_IMAGE_LAYOUT_MAX_ENUM;
+		}
+
+		EImageLayout ImageLayoutType(VkImageLayout layout)
 		{
-			.usage = memUsage
-		};
-		AllocatedBuffer newBuffer;
-		vkmmc_vkcheck(vmaCreateBuffer(allocator, &bufferInfo, &allocInfo,
-			&newBuffer.Buffer, &newBuffer.Alloc, nullptr));
-		return newBuffer;
-	}
+			switch (layout)
+			{
+			case VK_IMAGE_LAYOUT_UNDEFINED: return IMAGE_LAYOUT_UNDEFINED;
+			case VK_IMAGE_LAYOUT_GENERAL: return IMAGE_LAYOUT_GENERAL;
+			case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: return IMAGE_LAYOUT_COLOR_ATTACHMENT;
+			case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL: return IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT;
+			case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL: return IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY;
+			case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL: return IMAGE_LAYOUT_SHADER_READ_ONLY;
+			case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: return IMAGE_LAYOUT_PRESENT_SRC;
+			}
+			Logf(LogLevel::Error, "Invalid layout type: %d\n", layout);
+			check(false && "Invalid layout type.");
+			return IMAGE_LAYOUT_UNDEFINED;
+		}
 
-	void DestroyBuffer(VmaAllocator allocator, AllocatedBuffer buffer)
-	{
-		vmaDestroyBuffer(allocator, buffer.Buffer, buffer.Alloc);
-	}
+		VkFormat FormatType(EFormat format)
+		{
+			switch (format)
+			{
+			case FORMAT_INVALID: return VK_FORMAT_UNDEFINED;
+			case FORMAT_R8G8B8: return VK_FORMAT_R8G8B8_SRGB;
+			case FORMAT_B8G8R8: return VK_FORMAT_B8G8R8_SRGB;
+			case FORMAT_R8G8B8A8: return VK_FORMAT_R8G8B8A8_SRGB;
+			case FORMAT_B8G8R8A8: return VK_FORMAT_B8G8R8A8_SRGB;
+			case FORMAT_D32: return VK_FORMAT_D32_SFLOAT;
+			}
+			Logf(LogLevel::Error, "Invalid format type: %d\n", format);
+			check(false && "Invalid format type.");
+			return VK_FORMAT_UNDEFINED;
+		}
 
-	void MemCopyDataToBuffer(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t size)
-	{
-		vkmmc_check(source && size > 0);
-		void* data;
-		vkmmc_vkcheck(vmaMapMemory(allocator, allocation, &data));
-		memcpy_s(data, size, source, size);
-		vmaUnmapMemory(allocator, allocation);
+		EFormat FormatType(VkFormat format)
+		{
+			switch (format)
+			{
+			case VK_FORMAT_UNDEFINED: return FORMAT_INVALID;
+			case VK_FORMAT_R8G8B8_SRGB: return FORMAT_R8G8B8;
+			case VK_FORMAT_R8G8B8A8_SRGB: return FORMAT_R8G8B8A8;
+			case VK_FORMAT_B8G8R8_SRGB: return FORMAT_B8G8R8;
+			case VK_FORMAT_B8G8R8A8_SRGB: return FORMAT_B8G8R8A8;
+			case VK_FORMAT_D32_SFLOAT: return FORMAT_D32;
+			}
+			Logf(LogLevel::Error, "Invalid format type: %d\n", format);
+			check(false && "Invalid format type.");
+			return FORMAT_INVALID;
+		}
 	}
-
-	void MemCopyDataToBufferAtIndex(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t elementSize, size_t atIndex)
-	{
-		vkmmc_check(source && elementSize > 0);
-		void* data;
-		vkmmc_vkcheck(vmaMapMemory(allocator, allocation, &data));
-		uint8_t* byteData = reinterpret_cast<uint8_t*>(data);
-		uint8_t* element = byteData + elementSize * atIndex;
-		memcpy_s(element, elementSize, source, elementSize);
-		vmaUnmapMemory(allocator, allocation);
-	}
-	
 }

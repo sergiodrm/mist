@@ -1,12 +1,14 @@
 cmake_minimum_required (VERSION 3.8)
 
 project ("vkmmc")
+include(CommonMacros.txt)
 
 
 find_package(Vulkan REQUIRED)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 set (VKMMC_SHADERS_DIRECTORY "${PROJECT_SOURCE_DIR}/assets/shaders")
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_subdirectory(thirdparty)
 add_subdirectory(code)
@@ -42,3 +44,4 @@ add_custom_target(
     Shaders 
     DEPENDS ${SPIRV_BINARY_FILES}
     )
+set_property(TARGET Shaders PROPERTY FOLDER "Assets")

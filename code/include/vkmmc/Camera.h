@@ -7,31 +7,69 @@ namespace vkmmc
 	class Camera
 	{
 	public:
-		Camera() = default;
+		Camera();
 
 		glm::mat4 GetView() const;
+		glm::mat4 GetRotationMatrix() const;
 		glm::mat4 GetProjection() const;
 
-		const glm::vec3& GetPosition() const { return m_position; }
-		const glm::vec3& GetRotation() const { return m_rotation; }
-		void SetPosition(const glm::vec3& pos) { m_position = pos; }
-		void SetRotation(const glm::vec3& rot) { m_rotation = rot; }
+		const glm::vec3& GetPosition() const;
+		const glm::vec3& GetRotation() const;
+		void SetPosition(const glm::vec3& pos);
+		void SetRotation(const glm::vec3& rot);
 
-		void SetFOV(float fov) { m_fov = fov; }
-		void SetAspectRatio(float aspectRatio) { m_aspectRatio = aspectRatio; }
-		void SetNearClip(float clip) { m_nearClip = clip; }
-		void SetFarClip(float clip) { m_farClip = clip; }
+		void SetFOV(float fov);
+		void SetAspectRatio(float aspectRatio);
+		void SetNearClip(float clip);
+		void SetFarClip(float clip);
+		void SetProjection(float fov, float aspectRatio, float nearClip, float farClip);
+
+	protected:
+		void RecalculateView();
+		void RecalculateProjection();
 
 	private:
 		// View
-		glm::vec3 m_position{ 0.f, 0.f, -3.f };
-		glm::vec3 m_rotation{ 0.f }; // Roll pitch yaw
+		glm::vec3 m_position;
+		glm::vec3 m_rotation; // Roll pitch yaw
 
 		// Projection
-		float m_fov = 45.f; // degrees
-		float m_aspectRatio = 16.f / 9.f;
-		float m_nearClip = 0.1f;
-		float m_farClip = 1000.f;
+		float m_fov; // degrees
+		float m_aspectRatio;
+		float m_nearClip;
+		float m_farClip;
+
+		// Cached data
+		glm::mat4 m_projection;
+		glm::mat4 m_view;
 	};
 	
+
+	class CameraController
+	{
+	public:
+		glm::vec3 GetForward() const { return Rotate(glm::vec3{ 0.f, 0.f, -1.f }); }
+		glm::vec3 GetUp() const { return Rotate(glm::vec3{ 0.f, 1.f, 0.f }); }
+		glm::vec3 GetRight() const { return Rotate(glm::vec3{ 1.f, 0.f, 0.f }); }
+		glm::vec3 Rotate(const glm::vec3& vec) const;
+
+		void Tick(float elapsedSeconds);
+		const Camera& GetCamera() const { return m_camera; }
+
+		void ImGuiDraw();
+	protected:
+		void ReadKeyboardState();
+		void ReadMouseState();
+		void ProcessInputMovement(float elapsedSeconds);
+	private:
+		Camera m_camera{};
+		glm::vec3 m_direction{ 0.f };
+		float m_speed = 0.f;
+		float m_maxSpeed = 500.f; // eu/s
+		float m_maxRotSpeed = 1.f; // rad/s
+		float m_acceleration = 1000.f;
+
+		bool m_isMotionControlActive = false;
+		glm::vec2 m_motionRotation{ 0.f };
+	};
 }

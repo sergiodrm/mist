@@ -3,30 +3,23 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <string>
-#include "RenderTypes.h"
+#include "VulkanBuffer.h"
 
 namespace vkmmc
 {
 	// Forward declarations
 	struct RenderContext;
 	class RenderPipeline;
-
-	struct ShaderModuleLoadDescription
-	{
-		std::string ShaderFilePath;
-		VkShaderStageFlagBits Flags;
-	};
-
-	/**
-	 * Create VkShaderModule from a file.
-	 * This will compile the shader code in the file.
-	 * @return VkShaderModule valid if the compilation terminated successfully. VK_NULL_HANDLE otherwise.
-	 */
-	VkShaderModule LoadShaderModule(VkDevice device, const char* filename);
+	class RenderPass;
+	struct ShaderModuleLoadDescription;
 
 	class RenderPipelineBuilder
 	{
 	public:
+		RenderPipelineBuilder(const RenderContext& renderContext);
+
+		const RenderContext& RContext;
+
 		// Layout configuration
 		VkPipelineLayoutCreateInfo LayoutInfo;
 
@@ -44,14 +37,27 @@ namespace vkmmc
 		VkPipelineColorBlendAttachmentState ColorBlendAttachment;
 
 		// Vertex input. How the vertices are arranged in memory and how to bind them.
-		VertexInputDescription InputDescription;
+		VertexInputLayout InputDescription;
+		// Input assembly type
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		// Subpass of renderpass
+		uint32_t SubpassIndex = 0;
 
-		RenderPipeline Build(VkDevice device, VkRenderPass renderPass);
+		RenderPipeline Build(VkRenderPass renderPass);
 	};
 
 	class RenderPipeline
 	{
 	public:
+
+		static RenderPipeline Create(
+			RenderContext renderContext,
+			const VkRenderPass& renderPass,
+			uint32_t subpassIndex,
+			const ShaderModuleLoadDescription* shaderStages,
+			uint32_t shaderStageCount,
+			const VkPipelineLayoutCreateInfo& layoutInfo,
+			const VertexInputLayout& inputDescription);
 
 		bool SetupPipeline(VkPipeline pipeline, VkPipelineLayout pipelineLayout);
 		void Destroy(const RenderContext& renderContext);

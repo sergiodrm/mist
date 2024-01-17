@@ -3,14 +3,13 @@
 #include <vk_mem_alloc.h>
 #include <InitVulkanTypes.h>
 #include <VulkanRenderEngine.h>
-#include "Logger.h"
 
 namespace vkmmc
 {
 	bool Swapchain::Init(const RenderContext& renderContext, const SwapchainInitializationSpec& spec)
 	{
-		vkmmc_check(spec.ImageWidth > 0 && spec.ImageHeight > 0);
-		vkmmc_check(renderContext.Device != VK_NULL_HANDLE);
+		check(spec.ImageWidth > 0 && spec.ImageHeight > 0);
+		check(renderContext.Device != VK_NULL_HANDLE);
 		vkb::SwapchainBuilder swapchainBuilder
 		{ 
 			renderContext.GPUDevice, 
@@ -24,23 +23,18 @@ namespace vkmmc
 		m_swapchain = swapchain.swapchain;
 		m_images = swapchain.get_images().value();
 		m_imageViews = swapchain.get_image_views().value();
-		m_imageFormat = swapchain.image_format;
+		m_imageFormat = types::FormatType(swapchain.image_format);
 
 		// Create depth buffer
 		VkExtent3D depthExtent = { spec.ImageWidth, spec.ImageHeight, 1 };
-		m_depthFormat = VK_FORMAT_D32_SFLOAT;
-		VkImageCreateInfo imageInfo = ImageCreateInfo(m_depthFormat,
-			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthExtent);
-		// Image allocation
-		VmaAllocationCreateInfo imageAllocInfo = {};
-		imageAllocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-		imageAllocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-		vmaCreateImage(renderContext.Allocator, &imageInfo, &imageAllocInfo,
-			&m_depthImage.Image, &m_depthImage.Alloc, nullptr);
+		m_depthFormat = types::FormatType(VK_FORMAT_D32_SFLOAT);
+		m_depthImage = Memory::CreateImage(renderContext.Allocator,
+			types::FormatType(m_depthFormat), depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		// Image view
-		VkImageViewCreateInfo viewInfo = ImageViewCreateInfo(m_depthFormat, m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
-		vkmmc_vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_depthImageView));
+		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(types::FormatType(m_depthFormat), m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
+		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_depthImageView));
 		return true;
 	}
 
@@ -52,7 +46,7 @@ namespace vkmmc
 			vkDestroyImageView(renderContext.Device, m_imageViews[i], nullptr);
 
 		vkDestroyImageView(renderContext.Device, m_depthImageView, nullptr);
-		vmaDestroyImage(renderContext.Allocator, m_depthImage.Image, m_depthImage.Alloc);
+		Memory::DestroyImage(renderContext.Allocator, m_depthImage);
 		vkDestroySwapchainKHR(renderContext.Device, m_swapchain, nullptr);
 	}
 }

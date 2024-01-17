@@ -6,7 +6,14 @@ namespace vkmmc
 {
 	struct RenderObject
 	{
-		uint32_t Id{ UINT32_MAX };
+		enum : uint32_t { InvalidId = UINT32_MAX };
+		uint32_t Id{ InvalidId };
+
+		RenderObject() = default;
+		RenderObject(uint32_t id) : Id(id) {}
+		inline bool IsValid() const { return Id != InvalidId; }
+		inline void Invalidate() { Id = InvalidId; }
+		operator uint32_t() const { return Id; }
 	};
 
 	struct RenderObjectTransform
