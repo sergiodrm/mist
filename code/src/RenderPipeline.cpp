@@ -108,7 +108,7 @@ namespace vkmmc
 	RenderPipeline RenderPipeline::Create(RenderContext renderContext, 
 		const VkRenderPass& renderPass,
 		uint32_t subpassIndex,
-		const ShaderModuleLoadDescription* shaderStages, 
+		const ShaderDescription* shaderStages,
 		uint32_t shaderStageCount, 
 		const VkPipelineLayoutCreateInfo& layoutInfo, 
 		const VertexInputLayout& inputDescription)
@@ -124,9 +124,9 @@ namespace vkmmc
 		ShaderCompiler compiler(renderContext);
 		for (uint32_t i = 0; i < shaderStageCount; ++i)
 		{
-			compiler.ProcessShaderFile(shaderStages[i].ShaderFilePath.c_str(), shaderStages[i].Flags);
-			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Flags);
-			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Flags, compiled));
+			compiler.ProcessShaderFile(shaderStages[i].Filepath.c_str(), shaderStages[i].Stage);
+			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
 		}
 		// Build the new pipeline
 		RenderPipeline renderPipeline = builder.Build(renderPass);

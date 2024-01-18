@@ -11,7 +11,12 @@ namespace vkmmc
 	struct RenderContext;
 	class RenderPipeline;
 	class RenderPass;
-	struct ShaderModuleLoadDescription;
+	
+	struct ShaderDescription
+	{
+		std::string Filepath;
+		VkShaderStageFlagBits Stage;
+	};
 
 	class RenderPipelineBuilder
 	{
@@ -54,7 +59,7 @@ namespace vkmmc
 			RenderContext renderContext,
 			const VkRenderPass& renderPass,
 			uint32_t subpassIndex,
-			const ShaderModuleLoadDescription* shaderStages,
+			const ShaderDescription* shaderStages,
 			uint32_t shaderStageCount,
 			const VkPipelineLayoutCreateInfo& layoutInfo,
 			const VertexInputLayout& inputDescription);

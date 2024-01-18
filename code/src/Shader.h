@@ -13,48 +13,25 @@ namespace vkmmc
 
 
 
-	struct ShaderResource
+	struct ShaderBindingDescriptorInfo
 	{
 		VkDescriptorType Type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-		uint32_t DescriptorSet = 0;
 		uint32_t Size = 0;
 		uint32_t Binding = 0;
+		uint32_t ArrayCount = 0;
 		std::string Name;
+	};
+
+	struct ShaderDescriptorSetInfo
+	{
 		VkShaderStageFlagBits Stage{ VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM };
-	};
-
-	struct ShaderUniformBuffer : public ShaderResource
-	{
-		ShaderUniformBuffer() { Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; }
-	};
-
-	struct ShaderStorageBuffer : public ShaderResource
-	{
-		ShaderStorageBuffer() { Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; }
-	};
-
-	struct ShaderImageSampler : public ShaderResource
-	{
-		ShaderImageSampler() { Type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; }
-	};
-
-	struct ShaderDescriptorSet
-	{
-		// Mapped by binding index
-		std::unordered_map<uint32_t, ShaderUniformBuffer> UniformBuffers;
-		std::unordered_map<uint32_t, ShaderStorageBuffer> StorageBuffers;
-		std::unordered_map<uint32_t, ShaderImageSampler> ImageSamplers;
+		std::vector<ShaderBindingDescriptorInfo> BindingArray;
+		uint32_t SetIndex = 0;
 	};
 
 	struct ShaderReflectionProperties
 	{
-		std::vector<ShaderDescriptorSet> DescriptorSetArray;
-	};
-
-	struct ShaderModuleLoadDescription
-	{
-		std::string ShaderFilePath;
-		VkShaderStageFlagBits Flags;
+		std::unordered_map<VkShaderStageFlagBits, std::vector<ShaderDescriptorSetInfo>> DescriptorSetMap;
 	};
 
 	class ShaderCompiler
@@ -75,6 +52,7 @@ namespace vkmmc
 		VkShaderModule GetCompiledModule(VkShaderStageFlagBits shaderStage) const;
 		VkDescriptorSetLayout GetDescriptorSetLayout(VkShaderStageFlagBits shaderStage, uint32_t setIndex) const;
 		uint32_t GetDescriptorSetLayoutCount(VkShaderStageFlagBits shaderStage) const;
+		VkDescriptorSetLayout GenerateDescriptorSetLayout(uint32_t setIndex, VkShaderStageFlagBits shaderStage);
 
 		/**
 		 * Create VkShaderModule from a cached source file.
@@ -87,18 +65,20 @@ namespace vkmmc
 		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlagBits shaderStage);
 	protected:
 		void ProcessCachedSource(CachedBinaryData& cachedData);
-		ShaderDescriptorSet& GetDescriptorSet(uint32_t setIndex);
+		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage);
+		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage) const;
 
 	private:
 		const RenderContext& m_renderContext;
 		std::unordered_map<VkShaderStageFlagBits, CachedBinaryData> m_cachedBinarySources;
+		std::unordered_map<VkShaderStageFlagBits, std::vector<VkDescriptorSetLayout>> m_cachedLayouts;
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 
 	struct ShaderBufferCreateInfo
 	{
 		RenderContext RContext;
-		ShaderResource Resource;
+		ShaderBindingDescriptorInfo Resource;
 		uint32_t StorageSize = 0;
 		VkDescriptorSet DescriptorSet;
 	};
@@ -112,7 +92,7 @@ namespace vkmmc
 		void SetBoundDescriptorSet(const RenderContext& renderContext, VkDescriptorSet newDescriptorSet);
 		void CopyData(const RenderContext& renderContext, const void* source, uint32_t size);
 	private:
-		ShaderResource m_resource;
+		ShaderBindingDescriptorInfo m_resource;
 		AllocatedBuffer m_buffer;
 	};
 }

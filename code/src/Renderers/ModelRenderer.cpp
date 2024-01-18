@@ -24,10 +24,10 @@ namespace vkmmc
 		/**********************************/
 		/** Pipeline layout and pipeline **/
 		/**********************************/
-		ShaderModuleLoadDescription shaderStageDescs[] =
+		ShaderDescription shaderStageDescs[] =
 		{
-			{.ShaderFilePath = globals::BasicVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = globals::BasicFragmentShader, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
+			{.Filepath = globals::BasicVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+			{.Filepath = globals::BasicFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::PipelineLayoutCreateInfo();
@@ -40,7 +40,7 @@ namespace vkmmc
             info.RenderPass,
             0,
             shaderStageDescs,
-            sizeof(shaderStageDescs) / sizeof(ShaderModuleLoadDescription),
+            sizeof(shaderStageDescs) / sizeof(ShaderDescription),
             pipelineLayoutCreateInfo,
             VertexInputLayout::GetStaticMeshVertexLayout()
         );
