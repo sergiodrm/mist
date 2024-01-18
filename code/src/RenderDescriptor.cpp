@@ -7,55 +7,6 @@
 
 namespace vkmmc
 {
-	
-
-	VkDescriptorSetLayout BuildDescriptorSetLayout(const RenderContext& renderContext, const ShaderDescriptorSet& descriptorSetInfo)
-	{
-		std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-		auto layoutBuildFunction = [](VkDescriptorType type, uint32_t binding, VkShaderStageFlags stage)
-			{
-				return VkDescriptorSetLayoutBinding
-				{
-					.binding = binding,
-					.descriptorType = type,
-					.descriptorCount = 1,
-					.stageFlags = stage,
-					.pImmutableSamplers = nullptr
-				};
-			};
-		for (const auto& it : descriptorSetInfo.UniformBuffers)
-		{
-			uint32_t binding = it.first;
-			const ShaderUniformBuffer& ubInfo = it.second;
-			bindings.push_back(layoutBuildFunction(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, binding, ubInfo.Stage));
-		}
-		for (const auto& it : descriptorSetInfo.StorageBuffers)
-		{
-			uint32_t binding = it.first;
-			const ShaderStorageBuffer& sbInfo = it.second;
-			bindings.push_back(layoutBuildFunction(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, binding, sbInfo.Stage));
-		}
-		for (const auto& it : descriptorSetInfo.ImageSamplers)
-		{
-			uint32_t binding = it.first;
-			const ShaderImageSampler& sampler = it.second;
-			bindings.push_back(layoutBuildFunction(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, binding, sampler.Stage));
-		}
-
-		VkDescriptorSetLayoutCreateInfo createInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext = nullptr,
-			.bindingCount = (uint32_t)bindings.size(),
-			.pBindings = bindings.data()
-		};
-		VkDescriptorSetLayout layout;
-		vkcheck(vkCreateDescriptorSetLayout(renderContext.Device, &createInfo, nullptr, &layout));
-		return layout;
-	}
-
-
 	const DescriptorPoolSizes& DescriptorPoolSizes::GetDefault()
 	{
 		static const DescriptorPoolSizes sizes({
