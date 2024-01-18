@@ -28,11 +28,7 @@ namespace vkmmc
         pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
         pipelineLayoutCreateInfo.pushConstantRangeCount = info.ConstantRangeCount;
         pipelineLayoutCreateInfo.pPushConstantRanges = info.ConstantRange;
-		ShaderModuleLoadDescription shaderStageDescs[] =
-		{
-			{.ShaderFilePath = globals::LineVertexShader, .Flags = VK_SHADER_STAGE_VERTEX_BIT},
-			{.ShaderFilePath = globals::LineFragmentShader, .Flags = VK_SHADER_STAGE_FRAGMENT_BIT}
-		};
+
         ShaderCompiler compiler(info.RContext);
         compiler.ProcessShaderFile(globals::LineVertexShader, VK_SHADER_STAGE_VERTEX_BIT);
         compiler.ProcessShaderFile(globals::LineFragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT);
