@@ -128,6 +128,7 @@ namespace vkmmc
 			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
 			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
 		}
+		
 		// Build the new pipeline
 		RenderPipeline renderPipeline = builder.Build(renderPass);
 

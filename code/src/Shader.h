@@ -29,9 +29,18 @@ namespace vkmmc
 		uint32_t SetIndex = 0;
 	};
 
+	struct ShaderPushConstantBufferInfo
+	{
+		std::string Name;
+		uint32_t Offset = 0;
+		uint32_t Size = 0;
+		VkShaderStageFlagBits ShaderStage;
+	};
+
 	struct ShaderReflectionProperties
 	{
 		std::unordered_map<VkShaderStageFlagBits, std::vector<ShaderDescriptorSetInfo>> DescriptorSetMap;
+		std::unordered_map<VkShaderStageFlagBits, ShaderPushConstantBufferInfo> PushConstantMap;
 	};
 
 	class ShaderCompiler
@@ -40,7 +49,6 @@ namespace vkmmc
 		{
 			VkShaderStageFlagBits ShaderStage;
 			std::vector<uint32_t> BinarySource;
-			std::vector<VkDescriptorSetLayout> SetLayouts;
 			VkShaderModule CompiledModule;
 		};
 	public:
@@ -50,9 +58,7 @@ namespace vkmmc
 		void ClearCachedData();
 		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage);
 		VkShaderModule GetCompiledModule(VkShaderStageFlagBits shaderStage) const;
-		VkDescriptorSetLayout GetDescriptorSetLayout(VkShaderStageFlagBits shaderStage, uint32_t setIndex) const;
-		uint32_t GetDescriptorSetLayoutCount(VkShaderStageFlagBits shaderStage) const;
-		VkDescriptorSetLayout GenerateDescriptorSetLayout(uint32_t setIndex, VkShaderStageFlagBits shaderStage);
+		VkPipelineLayoutCreateInfo GeneratePipelineLayoutCreateInfo();
 
 		/**
 		 * Create VkShaderModule from a cached source file.
@@ -67,11 +73,15 @@ namespace vkmmc
 		void ProcessCachedSource(CachedBinaryData& cachedData);
 		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage);
 		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage) const;
+		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo) const;
+		VkPushConstantRange GeneratePushConstantInfo(const ShaderPushConstantBufferInfo& pushConstantInfo) const;
 
 	private:
 		const RenderContext& m_renderContext;
 		std::unordered_map<VkShaderStageFlagBits, CachedBinaryData> m_cachedBinarySources;
-		std::unordered_map<VkShaderStageFlagBits, std::vector<VkDescriptorSetLayout>> m_cachedLayouts;
+		// Keep generated layouts in memory, we need to release them at any moment. 
+		std::vector<VkDescriptorSetLayout> m_cachedLayoutArray;
+		std::vector<VkPushConstantRange> m_cachedPushConstantArray;
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 

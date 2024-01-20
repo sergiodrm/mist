@@ -81,15 +81,9 @@ namespace vkmmc
 		m_cachedBinarySources.clear();
 
 		// TODO: descriptor layout destruction. The ownership of the layouts will be moved to ShaderProgram when be ready.
-		for (auto& it : m_cachedLayouts)
-		{
-			for (uint32_t i = 0; i < it.second.size(); ++i)
-			{
-				vkDestroyDescriptorSetLayout(m_renderContext.Device, it.second[i], nullptr);
-			}
-			it.second.clear();
-		}
-		m_cachedLayouts.clear();
+		for (VkDescriptorSetLayout it : m_cachedLayoutArray)
+			vkDestroyDescriptorSetLayout(m_renderContext.Device, it, nullptr);
+		m_cachedLayoutArray.clear();
 	}
 
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage)
@@ -112,45 +106,31 @@ namespace vkmmc
 		return m_cachedBinarySources.contains(shaderStage) ? m_cachedBinarySources.at(shaderStage).CompiledModule : VK_NULL_HANDLE;
 	}
 
-	VkDescriptorSetLayout ShaderCompiler::GetDescriptorSetLayout(VkShaderStageFlagBits shaderStage, uint32_t setIndex) const
+	VkPipelineLayoutCreateInfo ShaderCompiler::GeneratePipelineLayoutCreateInfo()
 	{
-		return m_cachedBinarySources.contains(shaderStage) ? m_cachedBinarySources.at(shaderStage).SetLayouts[setIndex] : VK_NULL_HANDLE;
-	}
-
-	uint32_t ShaderCompiler::GetDescriptorSetLayoutCount(VkShaderStageFlagBits shaderStage) const
-	{
-		return m_cachedBinarySources.contains(shaderStage) ? (uint32_t)m_cachedBinarySources.at(shaderStage).SetLayouts.size() : 0;
-	}
-
-	VkDescriptorSetLayout ShaderCompiler::GenerateDescriptorSetLayout(uint32_t setIndex, VkShaderStageFlagBits shaderStage)
-	{
-		VkDescriptorSetLayout setLayout{VK_NULL_HANDLE};
-		if (m_cachedLayouts.contains(shaderStage) && setIndex < m_cachedLayouts[shaderStage].size() && m_cachedLayouts[shaderStage][setIndex] != VK_NULL_HANDLE)
+		if (m_cachedLayoutArray.empty())
 		{
-			setLayout = m_cachedLayouts[shaderStage][setIndex];
-		}
-		else
-		{
-			const ShaderDescriptorSetInfo& setInfo = GetDescriptorSet(setIndex, shaderStage);
-			std::vector<VkDescriptorSetLayoutBinding> bindingArray(setInfo.BindingArray.size());
-			for (uint32_t i = 0; i < setInfo.BindingArray.size(); ++i)
+			for (const auto& it : m_reflectionProperties.DescriptorSetMap)
 			{
-				bindingArray[i].binding = i;
-				bindingArray[i].descriptorCount = setInfo.BindingArray[i].ArrayCount;
-				bindingArray[i].descriptorType = setInfo.BindingArray[i].Type;
-				bindingArray[i].pImmutableSamplers = nullptr;
-				bindingArray[i].stageFlags = shaderStage;
+				for (uint32_t i = 0; i < (uint32_t)it.second.size(); ++i)
+				{
+					m_cachedLayoutArray.push_back(GenerateDescriptorSetLayout(it.second[i]));
+				}
 			}
-			VkDescriptorSetLayoutCreateInfo createInfo = vkinit::DescriptorSetLayoutCreateInfo(bindingArray.data(), (uint32_t)bindingArray.size());
-			vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &setLayout));
-			if (!m_cachedLayouts.contains(shaderStage))
-				m_cachedLayouts[shaderStage] = {};
-			if (m_cachedLayouts[shaderStage].size() < setIndex + 1)
-				m_cachedLayouts[shaderStage].resize(setIndex + 1, VK_NULL_HANDLE);
-			check(m_cachedLayouts[shaderStage][setIndex] == VK_NULL_HANDLE);
-			m_cachedLayouts[shaderStage][setIndex] = setLayout;
 		}
-		return setLayout;
+
+		if (m_cachedPushConstantArray.empty())
+		{
+			for (const auto& it : m_reflectionProperties.PushConstantMap)
+				m_cachedPushConstantArray.push_back(GeneratePushConstantInfo(it.second));
+		}
+
+		VkPipelineLayoutCreateInfo info = vkinit::PipelineLayoutCreateInfo();
+		info.pushConstantRangeCount = (uint32_t)m_cachedPushConstantArray.size();
+		info.pPushConstantRanges = m_cachedPushConstantArray.data();
+		info.setLayoutCount = (uint32_t)m_cachedLayoutArray.size();
+		info.pSetLayouts = m_cachedLayoutArray.data();
+		return info;
 	}
 
 	VkShaderModule ShaderCompiler::Compile(const std::vector<uint32_t>& binarySource, VkShaderStageFlagBits flag) const
@@ -172,7 +152,6 @@ namespace vkmmc
 
 	void ShaderCompiler::ProcessCachedSource(CachedBinaryData& cachedData)
 	{
-		std::set<uint32_t> setIndexProcessed;;
 		auto processSpirvResource = [this](const spirv_cross::CompilerGLSL& compiler, const spirv_cross::Resource& resource, VkShaderStageFlagBits shaderStage, VkDescriptorType descriptorType)
 			{
 				ShaderBindingDescriptorInfo bufferInfo;
@@ -210,32 +189,56 @@ namespace vkmmc
 
 		Log(LogLevel::Debug, "Processing shader reflection...\n");
 		
-		for (const auto& resource : resources.uniform_buffers)
-			setIndexProcessed.insert(processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER));
+		for (const spirv_cross::Resource& resource : resources.uniform_buffers)
+			processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-		for (const auto& resource : resources.storage_buffers)
-			setIndexProcessed.insert(processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER));
+		for (const spirv_cross::Resource& resource : resources.storage_buffers)
+			processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
-		for (const auto& resource : resources.sampled_images)
-			setIndexProcessed.insert(processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER));
-		Log(LogLevel::Debug, "End shader reflection.\n");
+		for (const spirv_cross::Resource& resource : resources.sampled_images)
+			processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
-		for (uint32_t setIndex : setIndexProcessed)
+		for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
 		{
-			GenerateDescriptorSetLayout(setIndex, cachedData.ShaderStage);
+			check(!m_reflectionProperties.PushConstantMap.contains(cachedData.ShaderStage));
+			ShaderPushConstantBufferInfo info;
+			info.Name = resource.name.c_str();
+			info.Offset = compiler.get_decoration(resource.id, spv::DecorationOffset);
+			const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
+			info.Size = (uint32_t)compiler.get_declared_struct_size(type);
+			info.ShaderStage = cachedData.ShaderStage;
+			m_reflectionProperties.PushConstantMap[cachedData.ShaderStage] = info;
+			Logf(LogLevel::Debug, "> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
+				vkutils::GetVulkanShaderStageName(cachedData.ShaderStage), info.Name.c_str(), info.Offset, info.Size);
 		}
+
+		Log(LogLevel::Debug, "End shader reflection.\n");
 	}
 
 	ShaderDescriptorSetInfo& ShaderCompiler::FindOrCreateDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage)
 	{
 		if (!m_reflectionProperties.DescriptorSetMap.contains(shaderStage))
 			m_reflectionProperties.DescriptorSetMap[shaderStage] = {};
+
+		uint32_t index = UINT32_MAX;
 		std::vector<ShaderDescriptorSetInfo>& descriptorSetArray = m_reflectionProperties.DescriptorSetMap[shaderStage];
-		if (descriptorSetArray.size() < setIndex + 1)
-			descriptorSetArray.resize(setIndex + 1);
-		descriptorSetArray[setIndex].SetIndex = setIndex;
-		descriptorSetArray[setIndex].Stage = shaderStage;
-		return descriptorSetArray[setIndex];
+		for (uint32_t i = 0; i < (uint32_t)descriptorSetArray.size(); ++i)
+		{
+			if (descriptorSetArray[i].SetIndex == setIndex)
+			{
+				index = i;
+				break;
+			}
+		}
+		if (index == UINT32_MAX)
+		{
+			index = (uint32_t)descriptorSetArray.size();
+			ShaderDescriptorSetInfo info;
+			info.SetIndex = setIndex;
+			info.Stage = shaderStage;
+			descriptorSetArray.push_back(info);
+		}
+		return descriptorSetArray[index];
 	}
 
 	const ShaderDescriptorSetInfo& ShaderCompiler::GetDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage) const
@@ -243,6 +246,32 @@ namespace vkmmc
 		check(m_reflectionProperties.DescriptorSetMap.contains(shaderStage));
 		check(setIndex < (uint32_t)m_reflectionProperties.DescriptorSetMap.at(shaderStage).size());
 		return m_reflectionProperties.DescriptorSetMap.at(shaderStage)[setIndex];
+	}
+
+	VkDescriptorSetLayout ShaderCompiler::GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo) const
+	{
+		VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
+		std::vector<VkDescriptorSetLayoutBinding> bindingArray(setInfo.BindingArray.size());
+		for (uint32_t i = 0; i < setInfo.BindingArray.size(); ++i)
+		{
+			bindingArray[i].binding = i;
+			bindingArray[i].descriptorCount = setInfo.BindingArray[i].ArrayCount;
+			bindingArray[i].descriptorType = setInfo.BindingArray[i].Type;
+			bindingArray[i].pImmutableSamplers = nullptr;
+			bindingArray[i].stageFlags = setInfo.Stage;
+		}
+		VkDescriptorSetLayoutCreateInfo createInfo = vkinit::DescriptorSetLayoutCreateInfo(bindingArray.data(), (uint32_t)bindingArray.size());
+		vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &setLayout));
+		return setLayout;
+	}
+
+	VkPushConstantRange ShaderCompiler::GeneratePushConstantInfo(const ShaderPushConstantBufferInfo& pushConstantInfo) const
+	{
+		VkPushConstantRange range;
+		range.offset = pushConstantInfo.Offset;
+		range.size = pushConstantInfo.Size;
+		range.stageFlags = pushConstantInfo.ShaderStage;
+		return range;
 	}
 
 	bool ShaderCompiler::CheckShaderFileExtension(const char* filepath, VkShaderStageFlagBits shaderStage)
