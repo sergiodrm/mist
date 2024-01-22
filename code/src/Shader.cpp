@@ -111,7 +111,6 @@ namespace vkmmc
 			for (uint32_t i = 0; i < (uint32_t)it.second.size(); ++i)
 			{
 				VkDescriptorSetLayout layout = GenerateDescriptorSetLayout(it.second[i], layoutCache);
-				it.second[i].LayoutIndex = (uint32_t)m_cachedLayoutArray.size();
 				m_cachedLayoutArray.push_back(layout);
 			}
 		}

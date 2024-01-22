@@ -10,8 +10,7 @@
 namespace vkmmc
 {
 	struct RenderContext;
-
-
+	class DescriptorLayoutCache;
 
 	struct ShaderBindingDescriptorInfo
 	{
@@ -82,13 +81,12 @@ namespace vkmmc
 		void ProcessCachedSource(CachedBinaryData& cachedData);
 		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage);
 		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage) const;
-		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo) const;
+		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const;
 		VkPushConstantRange GeneratePushConstantInfo(const ShaderPushConstantBufferInfo& pushConstantInfo) const;
 
 	private:
 		const RenderContext& m_renderContext;
 		std::unordered_map<VkShaderStageFlagBits, CachedBinaryData> m_cachedBinarySources;
-		// Keep generated layouts in memory, we need to release them at any moment. 
 		std::vector<VkDescriptorSetLayout> m_cachedLayoutArray;
 		std::vector<VkPushConstantRange> m_cachedPushConstantArray;
 		ShaderReflectionProperties m_reflectionProperties;
