@@ -61,8 +61,8 @@ namespace vkmmc
 			uint32_t subpassIndex,
 			const ShaderDescription* shaderStages,
 			uint32_t shaderStageCount,
-			const VkPipelineLayoutCreateInfo& layoutInfo,
-			const VertexInputLayout& inputDescription);
+			const VertexInputLayout& inputDescription,
+			VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
 		bool SetupPipeline(VkPipeline pipeline, VkPipelineLayout pipelineLayout);
 		void Destroy(const RenderContext& renderContext);

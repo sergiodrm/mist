@@ -11,35 +11,19 @@ namespace vkmmc
 {
     void DebugRenderer::Init(const RendererCreateInfo& info)
     {
-		/***************************/
-		/** Descriptor set layout **/
-		/***************************/
-		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-			.Build(info.RContext, &m_descriptorSetLayout);
-        VkDescriptorSetLayout setLayouts[] = { info.GlobalDescriptorSetLayout, m_descriptorSetLayout };
-        const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(VkDescriptorSetLayout);
-
 		/**********************************/
 		/** Pipeline layout and pipeline **/
 		/**********************************/
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::PipelineLayoutCreateInfo();
-        pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
-        pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
-        pipelineLayoutCreateInfo.pushConstantRangeCount = info.ConstantRangeCount;
-        pipelineLayoutCreateInfo.pPushConstantRanges = info.ConstantRange;
+        ShaderDescription descriptions[] =
+        {
+            {.Filepath = globals::LineVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+            {.Filepath = globals::LineFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
+        };
+        uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
 
-        ShaderCompiler compiler(info.RContext);
-        compiler.ProcessShaderFile(globals::LineVertexShader, VK_SHADER_STAGE_VERTEX_BIT);
-        compiler.ProcessShaderFile(globals::LineFragmentShader, VK_SHADER_STAGE_FRAGMENT_BIT);
-
-        RenderPipelineBuilder builder(info.RContext);
-        builder.InputDescription = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3 });
-        builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, compiler.GetCompiledModule(VK_SHADER_STAGE_VERTEX_BIT)));
-        builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, compiler.GetCompiledModule(VK_SHADER_STAGE_FRAGMENT_BIT)));
-        builder.LayoutInfo = pipelineLayoutCreateInfo;
-        builder.Topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-        m_renderPipeline = builder.Build(info.RenderPass);
+        VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3 });
+        m_renderPipeline = RenderPipeline::Create(info.RContext, info.RenderPass, 0,
+            descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
 		// Uniform descriptor
         glm::vec4 color = { 1.f, 0.f, 0.f, 1.f };

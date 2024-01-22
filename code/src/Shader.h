@@ -57,8 +57,17 @@ namespace vkmmc
 
 		void ClearCachedData();
 		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage);
+		bool GenerateResources(DescriptorLayoutCache& layoutCache);
 		VkShaderModule GetCompiledModule(VkShaderStageFlagBits shaderStage) const;
-		VkPipelineLayoutCreateInfo GeneratePipelineLayoutCreateInfo();
+		
+		// Obtain generated resources. These functions will return nullptr/0 until call GenerateResources().
+		const VkDescriptorSetLayout* GetDescriptorSetLayoutArray() const { return m_cachedLayoutArray.data(); };
+		uint32_t GetDescriptorSetLayoutCount() const { return (uint32_t)m_cachedLayoutArray.size(); }
+		const VkPushConstantRange* GetPushConstantArray() const { return m_cachedPushConstantArray.data(); };
+		uint32_t GetPushConstantCount() const { return (uint32_t)m_cachedPushConstantArray.size(); }
+
+		const ShaderReflectionProperties& GetReflectionProperties() const { return m_reflectionProperties; }
+
 
 		/**
 		 * Create VkShaderModule from a cached source file.

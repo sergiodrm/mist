@@ -8,7 +8,7 @@
 #include "GenericUtils.h"
 #include "Debug.h"
 #include "InitVulkanTypes.h"
-#include <set>
+#include "RenderDescriptor.h"
 
 namespace vkutils
 {
@@ -79,11 +79,8 @@ namespace vkmmc
 			vkDestroyShaderModule(m_renderContext.Device, it.second.CompiledModule, nullptr);
 		}
 		m_cachedBinarySources.clear();
-
-		// TODO: descriptor layout destruction. The ownership of the layouts will be moved to ShaderProgram when be ready.
-		for (VkDescriptorSetLayout it : m_cachedLayoutArray)
-			vkDestroyDescriptorSetLayout(m_renderContext.Device, it, nullptr);
 		m_cachedLayoutArray.clear();
+		m_cachedPushConstantArray.clear();
 	}
 
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage)
@@ -106,31 +103,22 @@ namespace vkmmc
 		return m_cachedBinarySources.contains(shaderStage) ? m_cachedBinarySources.at(shaderStage).CompiledModule : VK_NULL_HANDLE;
 	}
 
-	VkPipelineLayoutCreateInfo ShaderCompiler::GeneratePipelineLayoutCreateInfo()
+	bool ShaderCompiler::GenerateResources(DescriptorLayoutCache& layoutCache)
 	{
-		if (m_cachedLayoutArray.empty())
+		check(m_cachedLayoutArray.empty() && m_cachedPushConstantArray.empty() && "Compiler already has cached data. Compile all shaders before generate resources.");
+		for (auto& it : m_reflectionProperties.DescriptorSetMap)
 		{
-			for (const auto& it : m_reflectionProperties.DescriptorSetMap)
+			for (uint32_t i = 0; i < (uint32_t)it.second.size(); ++i)
 			{
-				for (uint32_t i = 0; i < (uint32_t)it.second.size(); ++i)
-				{
-					m_cachedLayoutArray.push_back(GenerateDescriptorSetLayout(it.second[i]));
-				}
+				VkDescriptorSetLayout layout = GenerateDescriptorSetLayout(it.second[i], layoutCache);
+				it.second[i].LayoutIndex = (uint32_t)m_cachedLayoutArray.size();
+				m_cachedLayoutArray.push_back(layout);
 			}
 		}
+		for (const auto& it : m_reflectionProperties.PushConstantMap)
+			m_cachedPushConstantArray.push_back(GeneratePushConstantInfo(it.second));
 
-		if (m_cachedPushConstantArray.empty())
-		{
-			for (const auto& it : m_reflectionProperties.PushConstantMap)
-				m_cachedPushConstantArray.push_back(GeneratePushConstantInfo(it.second));
-		}
-
-		VkPipelineLayoutCreateInfo info = vkinit::PipelineLayoutCreateInfo();
-		info.pushConstantRangeCount = (uint32_t)m_cachedPushConstantArray.size();
-		info.pPushConstantRanges = m_cachedPushConstantArray.data();
-		info.setLayoutCount = (uint32_t)m_cachedLayoutArray.size();
-		info.pSetLayouts = m_cachedLayoutArray.data();
-		return info;
+		return true;
 	}
 
 	VkShaderModule ShaderCompiler::Compile(const std::vector<uint32_t>& binarySource, VkShaderStageFlagBits flag) const
@@ -248,7 +236,7 @@ namespace vkmmc
 		return m_reflectionProperties.DescriptorSetMap.at(shaderStage)[setIndex];
 	}
 
-	VkDescriptorSetLayout ShaderCompiler::GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo) const
+	VkDescriptorSetLayout ShaderCompiler::GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const
 	{
 		VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
 		std::vector<VkDescriptorSetLayoutBinding> bindingArray(setInfo.BindingArray.size());
@@ -261,7 +249,7 @@ namespace vkmmc
 			bindingArray[i].stageFlags = setInfo.Stage;
 		}
 		VkDescriptorSetLayoutCreateInfo createInfo = vkinit::DescriptorSetLayoutCreateInfo(bindingArray.data(), (uint32_t)bindingArray.size());
-		vkcheck(vkCreateDescriptorSetLayout(m_renderContext.Device, &createInfo, nullptr, &setLayout));
+		setLayout = layoutCache.CreateLayout(createInfo);
 		return setLayout;
 	}
 

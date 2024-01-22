@@ -12,15 +12,6 @@ namespace vkmmc
 {
     void ModelRenderer::Init(const RendererCreateInfo& info)
     {
-		/***************************/
-		/** Descriptor set layout **/
-		/***************************/
-        DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
-            .AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3)
-            .Build(info.RContext, &m_descriptorSetLayout);
-        VkDescriptorSetLayout setLayouts[] = { info.GlobalDescriptorSetLayout, m_descriptorSetLayout };
-        const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(VkDescriptorSetLayout);
-
 		/**********************************/
 		/** Pipeline layout and pipeline **/
 		/**********************************/
@@ -29,19 +20,12 @@ namespace vkmmc
 			{.Filepath = globals::BasicVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
 			{.Filepath = globals::BasicFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
-
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vkinit::PipelineLayoutCreateInfo();
-        pipelineLayoutCreateInfo.setLayoutCount = setLayoutCount;
-        pipelineLayoutCreateInfo.pSetLayouts = setLayouts;
-        pipelineLayoutCreateInfo.pushConstantRangeCount = info.ConstantRangeCount;
-        pipelineLayoutCreateInfo.pPushConstantRanges = info.ConstantRange;
         m_renderPipeline = RenderPipeline::Create(
             info.RContext,
             info.RenderPass,
             0,
             shaderStageDescs,
             sizeof(shaderStageDescs) / sizeof(ShaderDescription),
-            pipelineLayoutCreateInfo,
             VertexInputLayout::GetStaticMeshVertexLayout()
         );
     }

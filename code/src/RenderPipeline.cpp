@@ -109,17 +109,16 @@ namespace vkmmc
 		const VkRenderPass& renderPass,
 		uint32_t subpassIndex,
 		const ShaderDescription* shaderStages,
-		uint32_t shaderStageCount, 
-		const VkPipelineLayoutCreateInfo& layoutInfo, 
-		const VertexInputLayout& inputDescription)
+		uint32_t shaderStageCount,
+		const VertexInputLayout& inputDescription,
+		VkPrimitiveTopology topology)
 	{
 		check(shaderStages && shaderStageCount > 0);
 		RenderPipelineBuilder builder(renderContext);
 		// Input configuration
 		builder.InputDescription = inputDescription;
-		// Pass layout info
-		builder.LayoutInfo = layoutInfo;
 		builder.SubpassIndex = subpassIndex;
+		builder.Topology = topology;
 		// Shader stages
 		ShaderCompiler compiler(renderContext);
 		for (uint32_t i = 0; i < shaderStageCount; ++i)
@@ -128,6 +127,14 @@ namespace vkmmc
 			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
 			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
 		}
+		// TODO: remove singleton dependency
+		compiler.GenerateResources(IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetDescriptorSetLayoutCache());
+		// Pass layout info
+		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
+		builder.LayoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
+		builder.LayoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
+		builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
+		builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
 		
 		// Build the new pipeline
 		RenderPipeline renderPipeline = builder.Build(renderPass);
