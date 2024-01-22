@@ -449,7 +449,7 @@ namespace vkmmc
 			.Raw = texData,
 			.RecordCommandRutine = [this](auto fn) { ImmediateSubmit(std::move(fn)); }
 		};
-		RenderTexture texture;
+		Texture texture;
 		texture.Init(createInfo);
 		RenderHandle h = GenerateRenderHandle();
 		m_textures[h] = texture;
@@ -636,7 +636,7 @@ namespace vkmmc
 		
 		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mtl, MaterialRenderData::ESamplerIndex index)
 			{
-				RenderTexture texture;
+				Texture texture;
 				if (texHandle.IsValid())
 				{
 					texture = m_textures[texHandle];

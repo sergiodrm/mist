@@ -27,7 +27,7 @@ namespace vkmmc
 		std::function<void(std::function<void(VkCommandBuffer)>)> RecordCommandRutine;
 	};
 
-	class RenderTexture
+	class Texture
 	{
 	public:
 		void Init(const RenderTextureCreateInfo& info);

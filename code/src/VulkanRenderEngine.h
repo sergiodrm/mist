@@ -6,7 +6,7 @@
 #include "RenderHandle.h"
 #include "RenderPipeline.h"
 #include "RenderObject.h"
-#include "RenderTexture.h"
+#include "Texture.h"
 #include "VulkanBuffer.h"
 #include "Debug.h"
 #include "Swapchain.h"
@@ -148,7 +148,7 @@ namespace vkmmc
 
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
-		ResourceMap<RenderTexture> m_textures;
+		ResourceMap<Texture> m_textures;
 		ResourceMap<MeshRenderData> m_meshRenderData;
 		ResourceMap<MaterialRenderData> m_materials;
 

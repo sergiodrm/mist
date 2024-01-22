@@ -1,7 +1,8 @@
 // src file for vkmmc project 
-#include "RenderTexture.h"
+#include "Texture.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+#undef STB_IMAGE_IMPLEMENTATION
 #include "RenderPipeline.h"
 #include "Debug.h"
 #include "RenderTypes.h"
@@ -53,7 +54,7 @@ namespace vkmmc
 		stbi_image_free(data);
 	}
 
-	void RenderTexture::Init(const RenderTextureCreateInfo& info)
+	void Texture::Init(const RenderTextureCreateInfo& info)
 	{
 		check(!m_image.IsAllocated());
 		check(info.Raw.Pixels && info.Raw.Width && info.Raw.Height);
@@ -145,7 +146,7 @@ namespace vkmmc
 		vkcheck(vkCreateImageView(info.RContext.Device, &viewInfo, nullptr, &m_imageView));
 	}
 
-	void RenderTexture::Destroy(const RenderContext& renderContext)
+	void Texture::Destroy(const RenderContext& renderContext)
 	{
 		Memory::DestroyImage(renderContext.Allocator, m_image);
 		vkDestroyImageView(renderContext.Device, m_imageView, nullptr);
