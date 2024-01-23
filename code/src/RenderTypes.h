@@ -13,6 +13,13 @@ namespace vkmmc
 	template <typename RenderResourceType>
 	using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
 
+	struct TransferContext
+	{
+		VkFence Fence;
+		VkCommandPool CommandPool;
+		VkCommandBuffer CommandBuffer;
+	};
+
 	struct RenderContext
 	{
 		SDL_Window* Window;
@@ -28,6 +35,8 @@ namespace vkmmc
 		// Viewport size. TODO: Find another way to communicate these data.
 		uint32_t Width;
 		uint32_t Height;
+
+		TransferContext TransferContext;
 	};
 
 	struct RenderFrameContext
@@ -85,4 +94,8 @@ namespace vkmmc
 		EFormat FormatType(VkFormat format);
 	}
 
+	namespace utils
+	{
+		void CmdSubmitTransfer(const RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback);
+	}
 }

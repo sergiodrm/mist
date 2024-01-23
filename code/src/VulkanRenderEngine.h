@@ -104,8 +104,6 @@ namespace vkmmc
 
 		virtual RenderHandle GetDefaultTexture() const;
 		virtual Material GetDefaultMaterial() const;
-
-		void ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn);
 		const RenderContext& GetContext() const { return m_renderContext; }
 		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
 		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
@@ -158,7 +156,7 @@ namespace vkmmc
 		bool m_dirtyCachedCamera;
 		GPUCamera m_cachedCameraData;
 
-		UploadContext m_immediateSubmitContext;
+		TransferContext m_transferContext;
 
 		FunctionStack m_shutdownStack;
 		typedef std::function<void()> ImGuiCallback;

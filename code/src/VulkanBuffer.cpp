@@ -144,7 +144,7 @@ namespace vkmmc
 		const RenderContext& context = engine->GetContext();
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 		Memory::MemCopyDataToBuffer(context.Allocator, stageBuffer.Alloc, cpuData, size);
-		engine->ImmediateSubmit([&](VkCommandBuffer cmd) 
+		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd) 
 			{
 				gpuBuffer.UpdateData(cmd, stageBuffer.Buffer, size, 0);
 			});

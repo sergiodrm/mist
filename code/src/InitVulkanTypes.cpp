@@ -47,7 +47,7 @@ namespace vkmmc
 			return info;
 		}
 
-		VkSubmitInfo SubmitInfo(VkCommandBuffer* command)
+		VkSubmitInfo SubmitInfo(const VkCommandBuffer* command)
 		{
 			VkSubmitInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

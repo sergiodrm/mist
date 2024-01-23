@@ -78,7 +78,8 @@ namespace vkmmc
 			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		info.RecordCommandRutine([=](VkCommandBuffer cmd) 
+		utils::CmdSubmitTransfer(info.RContext, 
+			[=](VkCommandBuffer cmd) 
 			{
 				VkImageSubresourceRange range{};
 				range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

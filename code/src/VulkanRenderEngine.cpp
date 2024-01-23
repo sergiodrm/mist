@@ -446,8 +446,7 @@ namespace vkmmc
 		RenderTextureCreateInfo createInfo
 		{
 			.RContext = m_renderContext,
-			.Raw = texData,
-			.RecordCommandRutine = [this](auto fn) { ImmediateSubmit(std::move(fn)); }
+			.Raw = texData
 		};
 		Texture texture;
 		texture.Init(createInfo);
@@ -606,22 +605,6 @@ namespace vkmmc
 		return m_frameContextArray[m_frameCounter % MaxOverlappedFrames];
 	}
 
-	void VulkanRenderEngine::ImmediateSubmit(std::function<void(VkCommandBuffer)>&& fn)
-	{
-		// Begin command buffer recording.
-		VkCommandBufferBeginInfo beginInfo = vkinit::CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		vkcheck(vkBeginCommandBuffer(m_immediateSubmitContext.CommandBuffer, &beginInfo));
-		// Call to extern code to record commands.
-		fn(m_immediateSubmitContext.CommandBuffer);
-		// Finish recording.
-		vkcheck(vkEndCommandBuffer(m_immediateSubmitContext.CommandBuffer));
-
-		VkSubmitInfo info = vkinit::SubmitInfo(&m_immediateSubmitContext.CommandBuffer);
-		vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &info, m_immediateSubmitContext.Fence));
-		WaitFence(m_immediateSubmitContext.Fence);
-		vkResetCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, 0);
-	}
-
 	VkDescriptorSet VulkanRenderEngine::AllocateDescriptorSet(VkDescriptorSetLayout layout)
 	{
 		VkDescriptorSet set;
@@ -654,7 +637,6 @@ namespace vkmmc
 
 		m_shutdownStack.Add([this, material]() 
 			{
-				Log(LogLevel::Info, "Destroying image samplers.\n");
 				for (uint32_t i = 0; i < MaterialRenderData::SAMPLER_INDEX_COUNT; ++i)
 				{
 					if (material.ImageSamplers[i] != VK_NULL_HANDLE)
@@ -756,7 +738,6 @@ namespace vkmmc
 		vmaCreateAllocator(&allocatorInfo, &m_renderContext.Allocator);
 		m_shutdownStack.Add([this]() 
 			{
-				Log(LogLevel::Info, "Delete Allocator.\n");
 				vmaDestroyAllocator(m_renderContext.Allocator);
 			});
 		m_renderContext.GPUProperties = device.physical_device.properties;
@@ -783,12 +764,12 @@ namespace vkmmc
 			);
 		}
 
-		vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_immediateSubmitContext.CommandPool));
-		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_immediateSubmitContext.CommandPool, 1);
-		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_immediateSubmitContext.CommandBuffer));
+		vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_renderContext.TransferContext.CommandPool));
+		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_renderContext.TransferContext.CommandPool, 1);
+		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_renderContext.TransferContext.CommandBuffer));
 		m_shutdownStack.Add([this]()
 			{
-				vkDestroyCommandPool(m_renderContext.Device, m_immediateSubmitContext.CommandPool, nullptr);
+				vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
 			});
 		return true;
 	}
@@ -831,7 +812,6 @@ namespace vkmmc
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
 			m_shutdownStack.Add([this, i]()
 				{
-					Logf(LogLevel::Info, "Destroy fences and semaphores [#%Id].\n", i);
 					vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
 					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
 					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
@@ -839,10 +819,10 @@ namespace vkmmc
 		}
 
 		VkFenceCreateInfo info = vkinit::FenceCreateInfo();
-		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_immediateSubmitContext.Fence));
+		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_renderContext.TransferContext.Fence));
 		m_shutdownStack.Add([this]()
 			{
-				vkDestroyFence(m_renderContext.Device, m_immediateSubmitContext.Fence, nullptr);
+				vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
 			});
 		return true;
 	}
@@ -854,7 +834,6 @@ namespace vkmmc
 		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
 		m_shutdownStack.Add([this]() mutable
 			{
-				Log(LogLevel::Info, "Destroy descriptor pool.\n");
 				m_descriptorAllocator.Destroy();
 				m_descriptorLayoutCache.Destroy();
 			});
@@ -886,7 +865,6 @@ namespace vkmmc
 			);
 			m_shutdownStack.Add([this, i]()
 				{
-					Logf(LogLevel::Info, "Destroy buffer for descriptor set [#%Id].\n", i);
 					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
 					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
 				});

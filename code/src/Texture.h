@@ -24,7 +24,6 @@ namespace vkmmc
 	{
 		RenderContext RContext;
 		io::TextureRaw Raw;
-		std::function<void(std::function<void(VkCommandBuffer)>)> RecordCommandRutine;
 	};
 
 	class Texture

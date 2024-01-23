@@ -16,7 +16,7 @@ namespace vkmmc
 		 * Command utils
 		 */
 		VkCommandBufferBeginInfo CommandBufferBeginInfo(VkCommandBufferUsageFlags flags = 0);
-		VkSubmitInfo SubmitInfo(VkCommandBuffer* command);
+		VkSubmitInfo SubmitInfo(const VkCommandBuffer* command);
 
 		/**
 		 * Sync vulkan types builders

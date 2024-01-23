@@ -56,7 +56,8 @@ namespace vkmmc
 		ImGui_ImplVulkan_Init(&initInfo, info.RenderPass);
 
 		// Execute gpu command to upload imgui font textures
-		IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->ImmediateSubmit([&](VkCommandBuffer cmd)
+		utils::CmdSubmitTransfer(info.RContext, 
+			[&](VkCommandBuffer cmd)
 			{
 				ImGui_ImplVulkan_CreateFontsTexture(cmd);
 			});
