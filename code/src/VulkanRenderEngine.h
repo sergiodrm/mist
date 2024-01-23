@@ -42,34 +42,12 @@ namespace vkmmc
 		static Window Create(uint32_t width, uint32_t height, const char* title);
 	};
 
-	struct UploadContext
-	{
-		VkFence Fence;
-		VkCommandPool CommandPool;
-		VkCommandBuffer CommandBuffer;
-	};
 
 	struct GPUCamera
 	{
 		glm::mat4 View;
 		glm::mat4 Projection;
 		glm::mat4 ViewProjection;
-	};
-
-	struct MaterialRenderData
-	{
-		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
-		VkDescriptorSet Set{ VK_NULL_HANDLE };
-		VkSampler Sampler{ VK_NULL_HANDLE };
-
-		void Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache);
-		void Destroy(const RenderContext& renderContext);
-	};
-
-	struct MeshRenderData
-	{
-		VertexBuffer VertexBuffer;
-		IndexBuffer IndexBuffer;
 	};
 
 	class VulkanRenderEngine : public IRenderEngine

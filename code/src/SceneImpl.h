@@ -8,6 +8,22 @@ namespace vkmmc
 {
 	struct RenderContext;
 
+	struct MaterialRenderData
+	{
+		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
+		VkDescriptorSet Set{ VK_NULL_HANDLE };
+		VkSampler Sampler{ VK_NULL_HANDLE };
+
+		void Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache);
+		void Destroy(const RenderContext& renderContext);
+	};
+
+	struct MeshRenderData
+	{
+		VertexBuffer VertexBuffer;
+		IndexBuffer IndexBuffer;
+	};
+
 	struct RenderDataContainer
 	{
 		template <typename RenderResourceType>
