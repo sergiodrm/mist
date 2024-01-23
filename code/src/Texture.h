@@ -33,6 +33,7 @@ namespace vkmmc
 		void Destroy(const RenderContext& renderContext);
 
 		VkImageView GetImageView() const { return m_imageView; }
+		void Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex = 0) const;
 	private:
 		AllocatedImage m_image;
 		VkImageView m_imageView;

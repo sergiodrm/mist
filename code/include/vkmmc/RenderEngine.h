@@ -45,11 +45,7 @@ namespace vkmmc
 		/** Scene to draw. Engine does NOT own the scene. Delete of the scene is on the side of the app. */
 		virtual IScene* GetScene() = 0;
 		virtual const IScene* GetScene() const = 0;
-		virtual void SetScene(IScene* scene) = 0; 
-		
-		virtual void UploadMesh(Mesh& mesh) = 0;
-		virtual void UploadMaterial(Material& material) = 0;
-		virtual RenderHandle LoadTexture(const char* filepath) = 0;
+		virtual void SetScene(IScene* scene) = 0;
 		virtual void AddImGuiCallback(std::function<void()>&& fn) = 0;
 		virtual RenderHandle GetDefaultTexture() const = 0;
 		virtual Material GetDefaultMaterial() const = 0;

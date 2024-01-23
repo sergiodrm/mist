@@ -2,12 +2,35 @@
 // Header file
 
 #include "Scene.h"
+#include "VulkanRenderEngine.h"
 
 namespace vkmmc
 {
+	struct RenderContext;
+
+	struct RenderDataContainer
+	{
+		template <typename RenderResourceType>
+		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
+		ResourceMap<Texture> Textures;
+		ResourceMap<MeshRenderData> Meshes;
+		ResourceMap<MaterialRenderData> Materials;
+	};
+
 	class Scene : public IScene
 	{
+	protected:
+		Scene(const Scene&) = delete;
+		Scene(Scene&&) = delete;
+		void operator=(const Scene&) = delete;
+		void operator=(Scene&&) = delete;
 	public:
+		Scene(IRenderEngine* engine);
+		~Scene();
+
+		virtual void Init() override;
+		virtual void Destroy() override;
+
 		virtual RenderObject CreateRenderObject(RenderObject parent) override;
 		virtual void DestroyRenderObject(RenderObject object) override;
 		virtual bool IsValid(RenderObject object) const override;
@@ -20,6 +43,9 @@ namespace vkmmc
 		virtual void SetRenderObjectName(RenderObject renderObject, const char* name) override;
 		virtual const glm::mat4& GetTransform(RenderObject renderObject) const override;
 		virtual void SetTransform(RenderObject renderObject, const glm::mat4& transform) override;
+		virtual void SubmitMesh(Mesh& mesh) override;
+		virtual void SubmitMaterial(Material& material) override;
+		virtual RenderHandle LoadTexture(const char* texturePath) override;
 
 		void MarkAsDirty(RenderObject renderObject);
 		void RecalculateTransforms();
@@ -30,7 +56,12 @@ namespace vkmmc
 		const Model* GetModelArray() const;
 		uint32_t GetModelCount() const;
 
+		MeshRenderData GetMeshRenderData(RenderHandle handle) const;
+		MaterialRenderData GetMaterialRenderData(RenderHandle handle) const;
+
+
 	private:
+		VulkanRenderEngine* m_engine{nullptr};
 		static constexpr uint32_t MaxNodeLevel = 16;
 		std::vector<glm::mat4> m_localTransforms;
 		std::vector<glm::mat4> m_globalTransforms;
@@ -41,5 +72,7 @@ namespace vkmmc
 		std::vector<std::string> m_materialNames;
 
 		std::vector<int32_t> m_dirtyNodes[MaxNodeLevel];
+
+		RenderDataContainer m_renderData;
 	};
 }

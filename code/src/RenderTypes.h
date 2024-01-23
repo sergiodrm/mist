@@ -9,10 +9,6 @@ struct SDL_Window;
 
 namespace vkmmc
 {
-
-	template <typename RenderResourceType>
-	using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
-
 	struct TransferContext
 	{
 		VkFence Fence;

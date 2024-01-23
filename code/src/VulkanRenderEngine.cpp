@@ -227,6 +227,39 @@ namespace vkmmc
 		return newWindow;
 	}
 
+	void MaterialRenderData::Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache)
+	{
+		if (Layout == VK_NULL_HANDLE)
+		{
+			DescriptorSetLayoutBuilder::Create(layoutCache)
+				.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3)
+				.Build(renderContext, &Layout);
+		}
+		if (Set == VK_NULL_HANDLE)
+		{
+			descAllocator.Allocate(&Set, Layout);
+		}
+		if (Sampler == VK_NULL_HANDLE)
+		{
+			VkSamplerCreateInfo samplerCreateInfo
+			{
+				.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+				.pNext = nullptr,
+				.magFilter = VK_FILTER_NEAREST,
+				.minFilter = VK_FILTER_NEAREST,
+				.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+				.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+				.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
+			};
+			vkcheck(vkCreateSampler(renderContext.Device, &samplerCreateInfo, nullptr, &Sampler));
+		}
+	}
+
+	void MaterialRenderData::Destroy(const RenderContext& renderContext)
+	{
+		vkDestroySampler(renderContext.Device, Sampler, nullptr);
+	}
+
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		PROFILE_SCOPE(Init);
@@ -356,6 +389,9 @@ namespace vkmmc
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
 
+		if (m_scene)
+			IScene::DestroyScene(m_scene);
+
 		for (IRendererBase* it : m_renderers)
 		{
 			it->Destroy(m_renderContext);
@@ -385,88 +421,11 @@ namespace vkmmc
 		m_dirtyCachedCamera = true;
 	}
 
-	void VulkanRenderEngine::UploadMesh(Mesh& mesh)
-	{
-		check(mesh.GetVertexCount() > 0 && mesh.GetIndexCount() > 0);
-		// Prepare buffer creation
-		const uint32_t vertexBufferSize = (uint32_t)mesh.GetVertexCount() * sizeof(Vertex);
-
-		MeshRenderData mrd{};
-		// Create vertex buffer
-		mrd.VertexBuffer.Init({
-			.RContext = m_renderContext,
-			.Size = vertexBufferSize
-			});
-		GPUBuffer::SubmitBufferToGpu(mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
-		
-		uint32_t indexBufferSize = (uint32_t)(mesh.GetIndexCount() * sizeof(uint32_t));
-		mrd.IndexBuffer.Init({
-			.RContext = m_renderContext,
-			.Size = indexBufferSize
-			});
-		GPUBuffer::SubmitBufferToGpu(mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
-
-		// Register new buffer
-		RenderHandle handle = GenerateRenderHandle();
-		mesh.SetHandle(handle);
-		m_meshRenderData[handle] = mrd;
-
-		mesh.SetInternalData(&m_meshRenderData[handle]);
-
-		// Stack buffer destruction
-		m_shutdownStack.Add([this, mrd]() mutable
-			{
-				mrd.VertexBuffer.Destroy(m_renderContext);
-				mrd.IndexBuffer.Destroy(m_renderContext);
-			});
-	}
-
-	void VulkanRenderEngine::UploadMaterial(Material& material)
-	{
-		check(!material.GetHandle().IsValid());
-
-		RenderHandle h = GenerateRenderHandle();
-		m_materials[h] = MaterialRenderData();
-		InitMaterial(material, m_materials[h]);
-		material.SetInternalData(&m_materials[h]);
-		material.SetHandle(h);
-	}
-
-	RenderHandle VulkanRenderEngine::LoadTexture(const char* filename)
-	{
-		// Load texture from file
-		io::TextureRaw texData;
-		if (!io::LoadTexture(filename, texData))
-		{
-			Logf(LogLevel::Error, "Failed to load texture from %s.\n", filename);
-			return InvalidRenderHandle;
-		}
-
-		// Create gpu buffer with texture specifications
-		RenderTextureCreateInfo createInfo
-		{
-			.RContext = m_renderContext,
-			.Raw = texData
-		};
-		Texture texture;
-		texture.Init(createInfo);
-		RenderHandle h = GenerateRenderHandle();
-		m_textures[h] = texture;
-		m_shutdownStack.Add([this, texture]() mutable
-			{
-				texture.Destroy(m_renderContext);
-			});
-
-		// Free raw texture data
-		io::FreeTexture(texData.Pixels);
-		return h;
-	}
-
 	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
 	{
 		static RenderHandle texture;
 		if (!texture.IsValid())
-			texture = const_cast<VulkanRenderEngine*>(this)->LoadTexture("../../assets/textures/checkerboard.jpg");
+			texture = m_scene->LoadTexture("../../assets/textures/checkerboard.jpg");
 		return texture;
 	}
 
@@ -475,8 +434,7 @@ namespace vkmmc
 		static Material material;
 		if (!material.GetHandle().IsValid())
 		{
-			material.SetDiffuseTexture(GetDefaultTexture());
-			const_cast<VulkanRenderEngine*>(this)->UploadMaterial(material);
+			m_scene->SubmitMaterial(material);
 		}
 		return material;
 	}
@@ -610,81 +568,6 @@ namespace vkmmc
 		VkDescriptorSet set;
 		m_descriptorAllocator.Allocate(&set, layout);
 		return set;
-	}
-
-	bool VulkanRenderEngine::InitMaterial(const Material& materialHandle, MaterialRenderData& material)
-	{
-		check(material.Set == VK_NULL_HANDLE);
-		m_descriptorAllocator.Allocate(&material.Set, m_materialDescriptorLayout);
-		
-		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mtl, MaterialRenderData::ESamplerIndex index)
-			{
-				Texture texture;
-				if (texHandle.IsValid())
-				{
-					texture = m_textures[texHandle];
-				}
-				else
-				{
-					RenderHandle defTex = GetDefaultTexture();
-					texture = m_textures[defTex];
-				}
-				SubmitMaterialTexture(mtl, index, texture.GetImageView());
-			};
-		submitTexture(materialHandle.GetDiffuseTexture(), material, MaterialRenderData::SAMPLER_INDEX_DIFFUSE);
-		submitTexture(materialHandle.GetNormalTexture(), material, MaterialRenderData::SAMPLER_INDEX_NORMAL);
-		submitTexture(materialHandle.GetSpecularTexture(), material, MaterialRenderData::SAMPLER_INDEX_SPECULAR);
-
-		m_shutdownStack.Add([this, material]() 
-			{
-				for (uint32_t i = 0; i < MaterialRenderData::SAMPLER_INDEX_COUNT; ++i)
-				{
-					if (material.ImageSamplers[i] != VK_NULL_HANDLE)
-						vkDestroySampler(m_renderContext.Device, material.ImageSamplers[i], nullptr);
-				}
-			});
-
-		return true;
-	}
-
-	void VulkanRenderEngine::SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView)
-	{
-		if (material.ImageSamplers[sampler] != VK_NULL_HANDLE)
-		{
-			vkDestroySampler(m_renderContext.Device, material.ImageSamplers[sampler], nullptr);
-			material.ImageSamplers[sampler] = VK_NULL_HANDLE;
-		}
-
-		VkSamplerCreateInfo samplerCreateInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.pNext = nullptr,
-			.magFilter = VK_FILTER_NEAREST,
-			.minFilter = VK_FILTER_NEAREST,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
-		};
-		vkcheck(vkCreateSampler(m_renderContext.Device, &samplerCreateInfo, nullptr, &material.ImageSamplers[sampler]));
-
-		VkDescriptorImageInfo imageInfo
-		{
-			.sampler = material.ImageSamplers[sampler],
-			.imageView = imageView,
-			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		};
-		VkWriteDescriptorSet writeSet
-		{
-			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.pNext = nullptr,
-			.dstSet = material.Set,
-			.dstBinding = 0, // TODO: work out generic binding texture slot
-			.dstArrayElement = (uint32_t)sampler,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.pImageInfo = &imageInfo
-		};
-		vkUpdateDescriptorSets(m_renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
 	bool VulkanRenderEngine::InitVulkan()
@@ -844,11 +727,6 @@ namespace vkmmc
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Camera buffer
 			.AddBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Model transform storage buffer
 			.Build(m_renderContext, &m_globalDescriptorLayout);
-
-		// Texture
-		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, MaterialRenderData::SAMPLER_INDEX_COUNT)
-			.Build(m_renderContext, &m_materialDescriptorLayout);
 	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
@@ -886,4 +764,5 @@ namespace vkmmc
 		}
 		return true;
 	}	
+	
 }

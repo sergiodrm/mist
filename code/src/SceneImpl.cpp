@@ -197,22 +197,22 @@ namespace gltf_api
 		}
 	}
 
-	vkmmc::RenderHandle LoadTexture(vkmmc::IRenderEngine* engine, const char* rootAssetPath, const cgltf_texture_view& texView)
+	vkmmc::RenderHandle LoadTexture(vkmmc::Scene* scene, const char* rootAssetPath, const cgltf_texture_view& texView)
 	{
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
-		vkmmc::RenderHandle handle = engine->LoadTexture(texturePath);
+		vkmmc::RenderHandle handle = scene->LoadTexture(texturePath);
 		return handle;
 	}
 
-	void LoadMaterial(vkmmc::IRenderEngine* engine, const char* rootAssetPath, vkmmc::Material& material, const cgltf_primitive& primitive)
+	void LoadMaterial(vkmmc::Scene* scene, const char* rootAssetPath, vkmmc::Material& material, const cgltf_primitive& primitive)
 	{
 		if (primitive.material)
 		{
 			const cgltf_material& mtl = *primitive.material;
 			if (mtl.has_pbr_metallic_roughness)
 			{
-				vkmmc::RenderHandle diffHandle = LoadTexture(engine,
+				vkmmc::RenderHandle diffHandle = LoadTexture(scene,
 					rootAssetPath,
 					mtl.pbr_metallic_roughness.base_color_texture);
 				material.SetDiffuseTexture(diffHandle);
@@ -224,7 +224,7 @@ namespace gltf_api
 
 			if (mtl.has_pbr_specular_glossiness)
 			{
-				vkmmc::RenderHandle handle = LoadTexture(engine,
+				vkmmc::RenderHandle handle = LoadTexture(scene,
 					rootAssetPath,
 					mtl.pbr_specular_glossiness.diffuse_texture);
 				material.SetSpecularTexture(handle);
@@ -236,7 +236,7 @@ namespace gltf_api
 
 			if (mtl.normal_texture.texture)
 			{
-				vkmmc::RenderHandle handle = LoadTexture(engine,
+				vkmmc::RenderHandle handle = LoadTexture(scene,
 					rootAssetPath,
 					mtl.normal_texture);
 				material.SetNormalTexture(handle);
@@ -247,21 +247,22 @@ namespace gltf_api
 #endif // VKMMC_ENABLE_LOADER_LOG
 
 		}
-		else
-			material = engine->GetDefaultMaterial();
 	}
 }
 
 namespace vkmmc
 {
-	IScene* IScene::CreateScene()
+	IScene* IScene::CreateScene(IRenderEngine* engine)
 	{
-		return new Scene();
+		check(!engine->GetScene());
+		Scene* scene = new Scene(engine);
+		engine->SetScene(scene);
+		return scene;
 	}
 
 	IScene* IScene::LoadScene(IRenderEngine* engine, const char* sceneFilepath)
 	{
-		IScene* scene = CreateScene();
+		Scene* scene = static_cast<Scene*>(CreateScene(engine));
 		cgltf_data* data = gltf_api::ParseFile(sceneFilepath);
 		char rootAssetPath[512];
 		vkmmc_utils::GetRootDir(sceneFilepath, rootAssetPath, 512);
@@ -306,11 +307,11 @@ namespace vkmmc
 					mesh.SetIndices(indices.data(), indices.size());
 					// Load material data
 					Material mtl;
-					gltf_api::LoadMaterial(engine, rootAssetPath, mtl, primitive);
+					gltf_api::LoadMaterial(scene, rootAssetPath, mtl, primitive);
 
 					// Submit data
-					engine->UploadMesh(mesh);
-					engine->UploadMaterial(mtl);
+					scene->SubmitMesh(mesh);
+					scene->SubmitMaterial(mtl);
 					model.m_meshArray.push_back(mesh);
 					model.m_materialArray.push_back(mtl);
 				}
@@ -323,10 +324,47 @@ namespace vkmmc
 
 	void IScene::DestroyScene(IScene* scene)
 	{
+		scene->Destroy();
 		delete scene;
 	}
 
-    RenderObject Scene::CreateRenderObject(RenderObject parent)
+	Scene::Scene(IRenderEngine* engine) : IScene(), m_engine(static_cast<VulkanRenderEngine*>(engine))
+	{}
+
+	Scene::~Scene()
+	{}
+
+	void Scene::Init()
+	{}
+
+	void Scene::Destroy()
+	{
+		m_localTransforms.clear();
+		m_globalTransforms.clear();
+		m_hierarchy.clear();
+		m_modelArray.clear();
+		m_modelMap.clear();
+		m_names.clear();
+		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
+			m_dirtyNodes[i].clear();
+
+		const RenderContext& renderContext = m_engine->GetContext();
+		for (auto& it : m_renderData.Meshes)
+		{
+			it.second.VertexBuffer.Destroy(renderContext);
+			it.second.IndexBuffer.Destroy(renderContext);
+		}
+		for (auto& it : m_renderData.Materials)
+		{
+			it.second.Destroy(m_engine->GetContext());
+		}
+		for (auto& it : m_renderData.Textures)
+		{
+			it.second.Destroy(m_engine->GetContext());
+		}
+	}
+
+	RenderObject Scene::CreateRenderObject(RenderObject parent)
     {
         // Generate new node in all basics structures
         RenderObject node = (uint32_t)m_hierarchy.size();
@@ -430,6 +468,90 @@ namespace vkmmc
         MarkAsDirty(renderObject);
     }
 
+	void Scene::SubmitMesh(Mesh& mesh)
+	{
+		check(!mesh.GetHandle().IsValid());
+		check(mesh.GetVertexCount() > 0 && mesh.GetIndexCount() > 0);
+		// Prepare buffer creation
+		const uint32_t vertexBufferSize = (uint32_t)mesh.GetVertexCount() * sizeof(Vertex);
+
+		MeshRenderData mrd{};
+		// Create vertex buffer
+		mrd.VertexBuffer.Init({
+			.RContext = m_engine->GetContext(),
+			.Size = vertexBufferSize
+			});
+		GPUBuffer::SubmitBufferToGpu(mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
+
+		uint32_t indexBufferSize = (uint32_t)(mesh.GetIndexCount() * sizeof(uint32_t));
+		mrd.IndexBuffer.Init({
+			.RContext = m_engine->GetContext(),
+			.Size = indexBufferSize
+			});
+		GPUBuffer::SubmitBufferToGpu(mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
+
+		// Register new buffer
+		RenderHandle handle = GenerateRenderHandle();
+		mesh.SetHandle(handle);
+		m_renderData.Meshes[handle] = mrd;
+	}
+
+	void Scene::SubmitMaterial(Material& material)
+	{
+		check(!material.GetHandle().IsValid());
+
+		RenderHandle h = GenerateRenderHandle();
+		MaterialRenderData mrd;
+		mrd.Init(m_engine->GetContext(), m_engine->GetDescriptorAllocator(), m_engine->GetDescriptorSetLayoutCache());
+
+		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mrd, uint32_t binding, uint32_t arrayIndex)
+			{
+				Texture texture;
+				if (texHandle.IsValid())
+				{
+					texture = m_renderData.Textures[texHandle];
+				}
+				else
+				{
+					RenderHandle defTex = m_engine->GetDefaultTexture();
+					texture = m_renderData.Textures[defTex];
+				}
+				texture.Bind(m_engine->GetContext(), mrd.Set, mrd.Sampler, binding, arrayIndex);
+			};
+		submitTexture(material.GetDiffuseTexture(), mrd, 0, 0);
+		submitTexture(material.GetNormalTexture(), mrd, 0, 1);
+		submitTexture(material.GetSpecularTexture(), mrd, 0, 2);
+
+		material.SetHandle(h);
+		m_renderData.Materials[h] = mrd;
+	}
+
+	RenderHandle Scene::LoadTexture(const char* texturePath)
+	{
+		// Load texture from file
+		io::TextureRaw texData;
+		if (!io::LoadTexture(texturePath, texData))
+		{
+			Logf(LogLevel::Error, "Failed to load texture from %s.\n", texturePath);
+			return InvalidRenderHandle;
+		}
+
+		// Create gpu buffer with texture specifications
+		RenderTextureCreateInfo createInfo
+		{
+			.RContext = m_engine->GetContext(),
+			.Raw = texData
+		};
+		Texture texture;
+		texture.Init(createInfo);
+		RenderHandle h = GenerateRenderHandle();
+		m_renderData.Textures[h] = texture;
+
+		// Free raw texture data
+		io::FreeTexture(texData.Pixels);
+		return h;
+	}
+
     void Scene::MarkAsDirty(RenderObject renderObject)
     {
 		check(IsValid(renderObject));
@@ -470,6 +592,16 @@ namespace vkmmc
     {
         return (uint32_t)m_modelArray.size();
     }
+
+	MeshRenderData Scene::GetMeshRenderData(RenderHandle handle) const
+	{
+		return m_renderData.Meshes.at(handle);
+	}
+
+	MaterialRenderData Scene::GetMaterialRenderData(RenderHandle handle) const
+	{
+		return m_renderData.Materials.at(handle);
+	}
 
     const glm::mat4* Scene::GetRawGlobalTransforms() const
     {

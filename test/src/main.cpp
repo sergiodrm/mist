@@ -153,7 +153,6 @@ int main(int32_t argc, char** argv)
 		engine->UpdateSceneView(cameraController.GetCamera().GetView(), cameraController.GetCamera().GetProjection());
 		terminate = !engine->RenderProcess();
 	}
-	delete engine->GetScene();
 	engine->Shutdown();
 	vkmmc::IRenderEngine::FreeRenderEngine();
 	return 0;

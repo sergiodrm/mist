@@ -71,8 +71,7 @@ namespace vkmmc
 						RenderHandle mtlHandle = material.GetHandle();
 						if (mtlHandle.IsValid())
 						{
-                            const void* internalData = material.GetInternalData();
-							const MaterialRenderData& texData = *static_cast<const MaterialRenderData*>(internalData);
+							const MaterialRenderData& texData = scene->GetMaterialRenderData(mtlHandle);;
 							vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 								m_renderPipeline.GetPipelineLayoutHandle(), 1, 1, &texData.Set,
 								0, nullptr);
@@ -82,15 +81,12 @@ namespace vkmmc
 					if (lastMesh != mesh)
 					{
 						check(mesh.GetHandle().IsValid());
-                        const void* internalData = mesh.GetInternalData();
-						const MeshRenderData& meshRenderData = *static_cast<const MeshRenderData*>(internalData);
+						const MeshRenderData& meshRenderData = scene->GetMeshRenderData(mesh.GetHandle());
 						meshRenderData.VertexBuffer.Bind(cmd);
 						meshRenderData.IndexBuffer.Bind(cmd);
 						lastMesh = mesh;
 					}
 					vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
-					//vkmmc_debug::GRenderStats.m_drawCalls++;
-					//vkmmc_debug::GRenderStats.m_trianglesCount += (uint32_t)mesh.GetVertexCount() / 3;
 				}
 			}
 		}

@@ -152,4 +152,27 @@ namespace vkmmc
 		Memory::DestroyImage(renderContext.Allocator, m_image);
 		vkDestroyImageView(renderContext.Device, m_imageView, nullptr);
 	}
+
+	void Texture::Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex) const
+	{
+		check(set != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
+		VkDescriptorImageInfo imageInfo
+		{
+			.sampler = sampler,
+			.imageView = m_imageView,
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		};
+		VkWriteDescriptorSet writeSet
+		{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = set,
+			.dstBinding = binding,
+			.dstArrayElement = arrayIndex,
+			.descriptorCount = 1,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = &imageInfo
+		};
+		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
+	}
 }

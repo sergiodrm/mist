@@ -58,19 +58,12 @@ namespace vkmmc
 
 	struct MaterialRenderData
 	{
-		enum ESamplerIndex
-		{
-			SAMPLER_INDEX_DIFFUSE,
-			SAMPLER_INDEX_NORMAL,
-			SAMPLER_INDEX_SPECULAR,
+		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
+		VkDescriptorSet Set{ VK_NULL_HANDLE };
+		VkSampler Sampler{ VK_NULL_HANDLE };
 
-			SAMPLER_INDEX_COUNT
-		};
-
-		VkDescriptorSet Set;
-		VkSampler ImageSamplers[SAMPLER_INDEX_COUNT];
-
-		MaterialRenderData() : Set(VK_NULL_HANDLE) { for (uint32_t i = 0; i < SAMPLER_INDEX_COUNT; ++i) ImageSamplers[i] = VK_NULL_HANDLE; }
+		void Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache);
+		void Destroy(const RenderContext& renderContext);
 	};
 
 	struct MeshRenderData
@@ -92,10 +85,6 @@ namespace vkmmc
 		virtual void Shutdown() override;
 
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) override;
-
-		virtual void UploadMesh(Mesh& mesh) override;
-		virtual void UploadMaterial(Material& material) override;
-		virtual RenderHandle LoadTexture(const char* filename) override;
 
 		virtual IScene* GetScene() override { return m_scene; }
 		virtual const IScene* GetScene() const override { return m_scene; }
@@ -120,9 +109,6 @@ namespace vkmmc
 		bool InitSync();
 		bool InitPipeline();
 
-		bool InitMaterial(const Material& materialHandle, MaterialRenderData& material);
-		void SubmitMaterialTexture(MaterialRenderData& material, MaterialRenderData::ESamplerIndex sampler, const VkImageView& imageView);
-
 	private:
 
 		Window m_window;
@@ -142,7 +128,6 @@ namespace vkmmc
 		DescriptorLayoutCache m_descriptorLayoutCache;
 
 		VkDescriptorSetLayout m_globalDescriptorLayout;
-		VkDescriptorSetLayout m_materialDescriptorLayout;
 
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
@@ -156,10 +141,10 @@ namespace vkmmc
 		bool m_dirtyCachedCamera;
 		GPUCamera m_cachedCameraData;
 
-		TransferContext m_transferContext;
-
 		FunctionStack m_shutdownStack;
 		typedef std::function<void()> ImGuiCallback;
 		std::vector<ImGuiCallback> m_imguiCallbackArray;
 	};
+
+	extern RenderHandle GenerateRenderHandle();
 }

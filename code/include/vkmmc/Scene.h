@@ -24,13 +24,19 @@ namespace vkmmc
 
 	class IScene
 	{
+	protected:
+		IScene() = default;
+		virtual ~IScene() = default;
 	public:
 		// Scene factory
-		static IScene* CreateScene();
+		static IScene* CreateScene(IRenderEngine* engine);
 		static IScene* LoadScene(IRenderEngine* engine, const char* sceneFilepath);
 		static void DestroyScene(IScene* scene);
 
-		// Render object life cycle
+		virtual void Init() = 0;
+		virtual void Destroy() = 0;
+
+		// Render object life cycleç
 		virtual RenderObject CreateRenderObject(RenderObject parent) = 0;
 		virtual void DestroyRenderObject(RenderObject object) = 0;
 		virtual bool IsValid(RenderObject object) const = 0;
@@ -44,5 +50,9 @@ namespace vkmmc
 		virtual void SetModel(RenderObject object, const Model& model) = 0;
 		virtual const glm::mat4& GetTransform(RenderObject object) const = 0;
 		virtual void SetTransform(RenderObject object, const glm::mat4& transform) = 0;
+		// Create render data of meshes and materials
+		virtual void SubmitMesh(Mesh& mesh) = 0;
+		virtual void SubmitMaterial(Material& material) = 0;
+		virtual RenderHandle LoadTexture(const char* texturePath) = 0;
 	};
 }
