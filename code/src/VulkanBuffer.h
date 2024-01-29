@@ -38,14 +38,18 @@ namespace vkmmc
 		static VertexInputLayout GetBasicVertexLayout();
 	};
 
-	enum class EBufferUsage
+	enum EBufferUsageBits
 	{
-		UsageInvalid, UsageVertex, UsageIndex
+		BUFFER_USAGE_INVALID = 0x00, 
+		BUFFER_USAGE_VERTEX = 0x01, 
+		BUFFER_USAGE_INDEX = 0x02,
+		BUFFER_USAGE_UNIFORM = 0x04,
+		BUFFER_USAGE_STORAGE = 0x08,
 	};
+	DEFINE_ENUM_BIT_OPERATORS(EBufferUsageBits);
 
 	struct BufferCreateInfo
 	{
-		RenderContext RContext;
 		uint32_t Size;
 		const void* Data; // Can be null
 	};
@@ -56,7 +60,7 @@ namespace vkmmc
 		static void SubmitBufferToGpu(GPUBuffer gpuBuffer, const void* cpuData, uint32_t size);
 
 		GPUBuffer();
-		void Init(const BufferCreateInfo& info);
+		void Init(const RenderContext& renderContext, const BufferCreateInfo& info);
 		void Destroy(const RenderContext& renderContext);
 
 	protected:
@@ -64,22 +68,46 @@ namespace vkmmc
 		void UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t offset = 0);
 
 		uint32_t m_size;
-		EBufferUsage m_usage;
+		EBufferUsageBits m_usage;
 		AllocatedBuffer m_buffer;
 	};
 
 	class VertexBuffer : public GPUBuffer
 	{
 	public:
-		VertexBuffer() : GPUBuffer() { m_usage = EBufferUsage::UsageVertex; }
+		VertexBuffer() : GPUBuffer() { m_usage = EBufferUsageBits::BUFFER_USAGE_VERTEX; }
 		void Bind(VkCommandBuffer cmd) const;
 	};
 
 	class IndexBuffer : public GPUBuffer
 	{
 	public:
-		IndexBuffer() : GPUBuffer() { m_usage = EBufferUsage::UsageIndex; }
+		IndexBuffer() : GPUBuffer() { m_usage = EBufferUsageBits::BUFFER_USAGE_INDEX; }
 		void Bind(VkCommandBuffer cmd) const;
 	};
 
+	class UniformBuffer
+	{
+	public:
+		struct ItemMapInfo
+		{
+			uint32_t Size = 0;
+			uint32_t Offset = 0;
+		};
+
+		void Init(const RenderContext& renderContext, uint32_t bufferSize, EBufferUsageBits usage);
+		void Destroy(const RenderContext& renderContext);
+
+		uint32_t AllocUniform(const RenderContext& renderContext, const char* name, uint32_t size);
+		void DestroyUniform(const char* name);
+		bool SetUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t dstOffset = 0);
+		ItemMapInfo GetLocationInfo(const char* name) const;
+		VkBuffer GetBuffer() const { return m_buffer.Buffer; }
+
+	private:
+		std::unordered_map<std::string, ItemMapInfo> m_infoMap;
+		uint32_t m_freeMemoryOffset;
+		uint32_t m_maxMemoryAllocated;
+		AllocatedBuffer m_buffer;
+	};
 }

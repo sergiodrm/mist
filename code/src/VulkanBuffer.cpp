@@ -3,19 +3,19 @@
 #include "Debug.h"
 #include "InitVulkanTypes.h"
 #include "VulkanRenderEngine.h"
+#include "RenderContext.h"
 
 namespace vkutils
 {
-	VkBufferUsageFlags GetVulkanBufferUsage(vkmmc::EBufferUsage usage)
+	VkBufferUsageFlags GetVulkanBufferUsage(vkmmc::EBufferUsageBits usage)
 	{
-		switch (usage)
-		{
-		case vkmmc::EBufferUsage::UsageVertex: return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		case vkmmc::EBufferUsage::UsageIndex: return VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		default:
-			break;
-		}
-		return 0;
+		VkBufferUsageFlags flags = 0;
+		if (usage == vkmmc::BUFFER_USAGE_INVALID) return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+		if (usage & vkmmc::BUFFER_USAGE_VERTEX) flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		if (usage & vkmmc::BUFFER_USAGE_INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		if (usage & vkmmc::BUFFER_USAGE_UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		if (usage & vkmmc::BUFFER_USAGE_STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		return flags;
 	}
 
 	VkFormat GetAttributeVkFormat(vkmmc::EAttributeType type)
@@ -136,14 +136,14 @@ namespace vkmmc
 	void GPUBuffer::SubmitBufferToGpu(GPUBuffer gpuBuffer, const void* cpuData, uint32_t size)
 	{
 		check(gpuBuffer.m_size == size);
-		check(gpuBuffer.m_usage != EBufferUsage::UsageInvalid);
+		check(gpuBuffer.m_usage != EBufferUsageBits::BUFFER_USAGE_INVALID);
 		check(gpuBuffer.m_buffer.Buffer != VK_NULL_HANDLE);
 		check(cpuData);
 
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		const RenderContext& context = engine->GetContext();
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-		Memory::MemCopyDataToBuffer(context.Allocator, stageBuffer.Alloc, cpuData, size);
+		Memory::MemCopy(context.Allocator, stageBuffer.Alloc, cpuData, size);
 		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd) 
 			{
 				gpuBuffer.UpdateData(cmd, stageBuffer.Buffer, size, 0);
@@ -156,15 +156,14 @@ namespace vkmmc
 	{	
 		m_buffer.Buffer = VK_NULL_HANDLE;
 		m_buffer.Alloc = VK_NULL_HANDLE;
-		m_usage = EBufferUsage::UsageInvalid;
+		m_usage = EBufferUsageBits::BUFFER_USAGE_INVALID;
 	}
 
-	void GPUBuffer::Init(const BufferCreateInfo& info)
+	void GPUBuffer::Init(const RenderContext& renderContext, const BufferCreateInfo& info)
 	{
-		check(info.RContext.Instance != VK_NULL_HANDLE);
 		check(m_buffer.Buffer == VK_NULL_HANDLE);
 		check(m_buffer.Alloc == nullptr);
-		m_buffer = Memory::CreateBuffer(info.RContext.Allocator,
+		m_buffer = Memory::CreateBuffer(renderContext.Allocator,
 			info.Size,
 			vkutils::GetVulkanBufferUsage(m_usage)
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -204,6 +203,68 @@ namespace vkmmc
 	{
 		size_t offsets = 0;
 		vkCmdBindIndexBuffer(cmd, m_buffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
+	}
+
+	void UniformBuffer::Init(const RenderContext& renderContext, uint32_t bufferSize, EBufferUsageBits usage)
+	{
+		check(!m_buffer.IsAllocated());
+
+		// TODO: bufferSize must be power of 2. Override with greater size or check size?
+		VkBufferUsageFlags usageFlags = vkutils::GetVulkanBufferUsage(usage);
+		m_buffer = Memory::CreateBuffer(renderContext.Allocator, bufferSize, usageFlags, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		m_maxMemoryAllocated = bufferSize;
+	}
+
+	void UniformBuffer::Destroy(const RenderContext& renderContext)
+	{
+		check(m_buffer.IsAllocated());
+		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
+		m_infoMap.clear();
+	}
+
+	uint32_t UniformBuffer::AllocUniform(const RenderContext& renderContext, const char* name, uint32_t size)
+	{
+		check(m_buffer.IsAllocated());
+		check(m_maxMemoryAllocated > 0 && size > 0);
+		check(name && *name);
+		check(m_freeMemoryOffset < m_maxMemoryAllocated);
+		if (!m_infoMap.contains(name))
+		{
+			ItemMapInfo info;
+			info.Size = size;
+			info.Offset = m_freeMemoryOffset;
+			m_infoMap[name] = info;
+			m_freeMemoryOffset += Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, size);
+			return info.Offset;
+		}
+		return UINT32_MAX;
+	}
+
+	void UniformBuffer::DestroyUniform(const char* name)
+	{
+		if (m_infoMap.contains(name))
+		{
+			m_infoMap.erase(name);
+		}
+	}
+
+	bool UniformBuffer::SetUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t dstOffset)
+	{
+		if (m_infoMap.contains(name))
+		{
+			const ItemMapInfo& info = m_infoMap[name];
+			check(size <= dstOffset + info.Size);
+			Memory::MemCopy(renderContext.Allocator, m_buffer.Alloc, source, size, dstOffset + info.Offset);
+			return true;
+		}
+		return false;
+	}
+
+	UniformBuffer::ItemMapInfo UniformBuffer::GetLocationInfo(const char* name) const
+	{
+		if (m_infoMap.contains(name))
+			return m_infoMap.at(name);
+		return ItemMapInfo();
 	}
 
 }
