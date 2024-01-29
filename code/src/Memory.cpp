@@ -32,13 +32,24 @@ namespace vkmmc
 		vmaDestroyBuffer(allocator, buffer.Buffer, buffer.Alloc);
 	}
 
-	void Memory::MemCopyDataToBuffer(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t size)
+	void Memory::MemCopy(VmaAllocator allocator, VmaAllocation allocation, const void* source, size_t cpySize, size_t dstOffset, size_t srcOffset)
 	{
-		check(source && size > 0);
+		check(source && cpySize > 0);
+		check(srcOffset < cpySize);
 		void* data;
 		vkcheck(vmaMapMemory(allocator, allocation, &data));
-		memcpy_s(data, size, source, size);
+		char* pData = reinterpret_cast<char*>(data);
+		const char* pSrc = reinterpret_cast<const char*>(source);
+		memcpy_s(pData + dstOffset, cpySize, pSrc + srcOffset, cpySize);
 		vmaUnmapMemory(allocator, allocation);
+	}
+
+	uint32_t Memory::PadOffsetAlignment(uint32_t minOffsetAlignment, uint32_t objectSize)
+	{
+		uint32_t alignment = objectSize;
+		if (minOffsetAlignment > 0)
+			alignment = (objectSize + minOffsetAlignment - 1) & ~(minOffsetAlignment - 1);
+		return alignment;
 	}
 
 	AllocatedImage Memory::CreateImage(VmaAllocator allocator, VkFormat format, VkExtent3D extent, VkImageUsageFlags usageFlags, VmaMemoryUsage memUsage, VkMemoryPropertyFlags memProperties)
