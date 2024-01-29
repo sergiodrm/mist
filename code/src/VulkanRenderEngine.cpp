@@ -453,27 +453,7 @@ namespace vkmmc
 
 		{
 			PROFILE_SCOPE(UpdateBuffers);
-			// Update global buffer
-			// Camera: binding 0
-			//Memory::MemCopy(m_renderContext.Allocator,
-			//	GetFrameContext().GlobalBuffer.Alloc,
-			//	&m_globalData.Camera,
-			//	sizeof(CameraData));
 			frameContext.GlobalBuffer.SetUniform(m_renderContext, "Camera", &m_cameraData, sizeof(CameraData));
-
-			// Enviro: binding 2, calculate offset padding
-			//uint32_t offset = Memory::PadOffsetAlignment((uint32_t)m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(CameraData));
-			//Memory::MemCopy(m_renderContext.Allocator, frameContext.GlobalBuffer.Alloc, &m_globalData.Environment, sizeof(EnvironmentData), offset);
-			//frameContext.GlobalBuffer.SetUniform(m_renderContext, "Environment", &m_globalData.Environment, sizeof(EnvironmentData));
-
-			// Models transforms: binding 1, accumulate previous offsets
-			//offset += Memory::PadOffsetAlignment((uint32_t)m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(EnvironmentData));
-			//const void* transformsData = frameContext.Scene->GetRawGlobalTransforms();
-			//Memory::MemCopy(m_renderContext.Allocator,
-			//	GetFrameContext().GlobalBuffer.Alloc,
-			//	transformsData,
-			//	sizeof(glm::mat4) * frameContext.Scene->Count(), offset);
-			//frameContext.GlobalBuffer.SetUniform(m_renderContext, "Models", transformsData, sizeof(glm::mat4) * frameContext.Scene->Count());
 
 			frameContext.PushConstantData = &vkmmc_debug::GDebugShaderConstants;
 			frameContext.PushConstantSize = sizeof(vkmmc_debug::DebugShaderConstants);
@@ -737,31 +717,9 @@ namespace vkmmc
 				m_descriptorAllocator.Destroy();
 				m_descriptorLayoutCache.Destroy();
 			});
-
-		// Init descriptor set layouts
-		// Global
-		//DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
-		//	.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Camera buffer
-		//	.AddBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Model transform storage buffer
-		//	.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1) // Light info for fragment shader
-		//	.Build(m_renderContext, &m_globalDescriptorLayout);
-		
 	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
-			// Create buffers for the descriptors
-			// Calculate buffer size with padding
-			//const uint32_t minAlignment = (uint32_t)m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment;
-			//const uint32_t cameraSize = Memory::PadOffsetAlignment(minAlignment, sizeof(CameraData));
-			//const uint32_t enviroSize = Memory::PadOffsetAlignment(minAlignment, sizeof(EnvironmentData));
-			//const uint32_t modelsSize = sizeof(glm::mat4) * MaxRenderObjects;
-			//const uint32_t globalBufferSize = cameraSize + enviroSize + modelsSize;
-			//m_frameContextArray[i].GlobalBuffer = Memory::CreateBuffer(
-			//	m_renderContext.Allocator,
-			//	globalBufferSize,
-			//	VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
-			//);
-
 			// Size for uniform frame buffer
 			uint32_t size = 1024 * 1024; // 1MB
 			m_frameContextArray[i].GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM | BUFFER_USAGE_STORAGE);
@@ -779,20 +737,6 @@ namespace vkmmc
 			bufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
 			bufferInfo.offset = cameraBufferOffset;
 			bufferInfo.range = cameraBufferSize;
-
-			
-			/*VkDescriptorBufferInfo cameraBufferInfo = {};
-			cameraBufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
-			cameraBufferInfo.offset = cameraInfo.Offset;
-			cameraBufferInfo.range = sizeof(CameraData);
-			VkDescriptorBufferInfo envBufferInfo = {};
-			envBufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
-			envBufferInfo.offset = cameraSize;
-			envBufferInfo.range = sizeof(EnvironmentData);
-			VkDescriptorBufferInfo objectBufferInfo = {};
-			objectBufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
-			objectBufferInfo.offset = cameraSize + enviroSize;
-			objectBufferInfo.range = sizeof(glm::mat4) * MaxRenderObjects;*/
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, m_frameContextArray[i].CameraDescriptorSet, m_globalDescriptorLayout);
