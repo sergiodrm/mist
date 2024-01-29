@@ -6,6 +6,8 @@
 #include "RenderHandle.h"
 #include "RenderPipeline.h"
 #include "RenderObject.h"
+#include "RenderContext.h"
+#include "RenderDescriptor.h"
 #include "Texture.h"
 #include "VulkanBuffer.h"
 #include "Debug.h"
@@ -42,8 +44,7 @@ namespace vkmmc
 		static Window Create(uint32_t width, uint32_t height, const char* title);
 	};
 
-
-	struct GPUCamera
+	struct CameraData
 	{
 		glm::mat4 View;
 		glm::mat4 Projection;
@@ -52,9 +53,9 @@ namespace vkmmc
 
 	class VulkanRenderEngine : public IRenderEngine
 	{
+	public:
 		static constexpr size_t MaxOverlappedFrames = 2;
 		static constexpr size_t MaxRenderObjects = 1000;
-	public:
 		/**
 		 * IRenderEngine interface
 		 */
@@ -77,6 +78,7 @@ namespace vkmmc
 		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
 	protected:
 		void Draw();
+		void ImGuiDraw();
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
 		RenderFrameContext& GetFrameContext();
 
@@ -107,17 +109,10 @@ namespace vkmmc
 
 		VkDescriptorSetLayout m_globalDescriptorLayout;
 
-		template <typename RenderResourceType>
-		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
-		ResourceMap<Texture> m_textures;
-		ResourceMap<MeshRenderData> m_meshRenderData;
-		ResourceMap<MaterialRenderData> m_materials;
-
 		std::vector<IRendererBase*> m_renderers;
 
 		IScene* m_scene;
-		bool m_dirtyCachedCamera;
-		GPUCamera m_cachedCameraData;
+		CameraData m_cameraData;
 
 		FunctionStack m_shutdownStack;
 		typedef std::function<void()> ImGuiCallback;

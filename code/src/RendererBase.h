@@ -5,13 +5,14 @@
 #include "RenderTypes.h"
 #include "Framebuffer.h"
 #include "Swapchain.h"
+#include "RenderContext.h"
 
 namespace vkmmc
 {
-	struct RenderFrameContext;
 	class Model;
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
+	struct GlobalShaderData;
 
 	struct RendererCreateInfo
 	{
@@ -20,8 +21,7 @@ namespace vkmmc
 		DescriptorLayoutCache* LayoutCache{nullptr};
 		DescriptorAllocator* DescriptorAllocator{nullptr};
 
-		VkDescriptorSetLayout GlobalDescriptorSetLayout;
-		
+		std::vector<UniformBuffer*> FrameUniformBufferArray;
 
 		VkPushConstantRange* ConstantRange = nullptr;
 		uint32_t ConstantRangeCount = 0;
@@ -37,8 +37,10 @@ namespace vkmmc
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 
 		virtual void BeginFrame(const RenderContext& renderContext) = 0;
-		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) = 0;
+		virtual void RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
 		//virtual void EndFrame(const RenderContext& renderContext) = 0;
 
+		// Debug
+		virtual void ImGuiDraw() {}
 	};
 }

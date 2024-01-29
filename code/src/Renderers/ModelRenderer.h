@@ -3,21 +3,43 @@
 
 #pragma once
 #include "RendererBase.h"
+#include <glm/glm.hpp>
 
 namespace vkmmc
 {
+	struct LightData
+	{
+		glm::vec4 Position;
+		glm::vec4 Color;
+	};
+
+	struct EnvironmentData
+	{
+		glm::vec4 AmbientColor;
+		glm::vec4 ViewPosition;
+		static constexpr uint32_t MaxLights = 8;
+		LightData Lights[MaxLights];
+	};
+
 	class ModelRenderer : public IRendererBase
 	{
+		struct RendererFrameData
+		{
+			// Camera, models and environment
+			VkDescriptorSet GlobalSet;
+		};
 	public:
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void BeginFrame(const RenderContext& renderContext) override {}
-		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) override;
-
+		virtual void RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void ImGuiDraw() override;
 
 	protected:
 		// Render State
-		VkDescriptorSetLayout m_descriptorSetLayout;
 		RenderPipeline m_renderPipeline;
+
+		std::vector<RendererFrameData> m_frameData;
+		EnvironmentData m_environmentData;
 	};
 }

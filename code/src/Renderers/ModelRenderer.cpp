@@ -7,11 +7,12 @@
 #include "Globals.h"
 #include "VulkanRenderEngine.h"
 #include "SceneImpl.h"
+#include "imgui_internal.h"
 
 namespace vkmmc
 {
-    void ModelRenderer::Init(const RendererCreateInfo& info)
-    {
+	void ModelRenderer::Init(const RendererCreateInfo& info)
+	{
 		/**********************************/
 		/** Pipeline layout and pipeline **/
 		/**********************************/
@@ -20,37 +21,72 @@ namespace vkmmc
 			{.Filepath = globals::BasicVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
 			{.Filepath = globals::BasicFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
-        m_renderPipeline = RenderPipeline::Create(
-            info.RContext,
-            info.RenderPass,
-            0,
-            shaderStageDescs,
-            sizeof(shaderStageDescs) / sizeof(ShaderDescription),
-            VertexInputLayout::GetStaticMeshVertexLayout()
-        );
-    }
+		m_renderPipeline = RenderPipeline::Create(
+			info.RContext,
+			info.RenderPass,
+			0,
+			shaderStageDescs,
+			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
+			VertexInputLayout::GetStaticMeshVertexLayout()
+		);
 
-    void ModelRenderer::Destroy(const RenderContext& renderContext)
-    {
-        m_renderPipeline.Destroy(renderContext);
-    }
+		m_frameData.resize(info.FrameUniformBufferArray.size());
+		for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
+		{
+			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
+			uint32_t modelsSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
+			uint32_t modelsOffset = uniformBuffer->AllocUniform(info.RContext, "Models", modelsSize);
+			VkDescriptorBufferInfo modelsDescInfo;
+			modelsDescInfo.buffer = uniformBuffer->GetBuffer();
+			modelsDescInfo.offset = modelsOffset;
+			modelsDescInfo.range = modelsSize;
+			uint32_t enviroSize = sizeof(EnvironmentData);
+			uint32_t enviroOffset = uniformBuffer->AllocUniform(info.RContext, "Environment", enviroSize);
+			VkDescriptorBufferInfo enviroDescInfo;
+			enviroDescInfo.buffer = uniformBuffer->GetBuffer();
+			enviroDescInfo.offset = enviroOffset;
+			enviroDescInfo.range = enviroSize;
 
-    void ModelRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext)
-    {
-        VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(),
-            0, 1, &renderFrameContext.GlobalDescriptorSet, 0, nullptr);
+			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(1, enviroDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(info.RContext, m_frameData[i].GlobalSet);
+		}
 
-        if (renderFrameContext.PushConstantData)
-        {
-            check(renderFrameContext.PushConstantSize);
-            vkCmdPushConstants(cmd, m_renderPipeline.GetPipelineLayoutHandle(),
-                VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-                renderFrameContext.PushConstantSize,
-                renderFrameContext.PushConstantData);
-        }
+		m_environmentData.AmbientColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.f);
+	}
 
+	void ModelRenderer::Destroy(const RenderContext& renderContext)
+	{
+		m_renderPipeline.Destroy(renderContext);
+	}
+
+	void ModelRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	{
+		// Update buffers
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
+
+		// Bind pipeline
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
+
+		// Bind global descriptor sets
+		VkDescriptorSet sets[] = { renderFrameContext.CameraDescriptorSet, m_frameData[renderFrameContext.FrameIndex].GlobalSet };
+		uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
+
+		// Push constants if needed
+		if (renderFrameContext.PushConstantData)
+		{
+			check(renderFrameContext.PushConstantSize);
+			vkCmdPushConstants(cmd, m_renderPipeline.GetPipelineLayoutHandle(),
+				VK_SHADER_STAGE_FRAGMENT_BIT, 0,
+				renderFrameContext.PushConstantSize,
+				renderFrameContext.PushConstantData);
+		}
+
+		// Iterate scene graph to render models.
 		Material lastMaterial;
 		Mesh lastMesh;
 		Scene* scene = renderFrameContext.Scene;
@@ -73,7 +109,7 @@ namespace vkmmc
 						{
 							const MaterialRenderData& texData = scene->GetMaterialRenderData(mtlHandle);;
 							vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-								m_renderPipeline.GetPipelineLayoutHandle(), 1, 1, &texData.Set,
+								m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, &texData.Set,
 								0, nullptr);
 						}
 					}
@@ -90,7 +126,29 @@ namespace vkmmc
 				}
 			}
 		}
+	}
 
-    }
-
+	void ModelRenderer::ImGuiDraw()
+	{
+		ImGui::Begin("Environment");
+		ImGui::ColorEdit3("Ambient color", &m_environmentData.AmbientColor[0]);
+		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
+		{
+			char buff[32];
+			sprintf_s(buff, "Light_%u", i);
+			if (ImGui::CollapsingHeader(buff))
+			{
+				ImGui::Text("Position");
+				ImGui::SameLine();
+				sprintf_s(buff, "##Light_%u_Pos", i);
+				ImGui::DragFloat3(buff, &m_environmentData.Lights[i].Position[0]);
+				ImGui::Text("Color");
+				ImGui::SameLine();
+				sprintf_s(buff, "##Light_%u_Color", i);
+				ImGui::ColorEdit3(buff, &m_environmentData.Lights[i].Color[0]);
+			}
+		}
+		ImGui::Text("ViewPos: %.3f, %.3f, %.3f", m_environmentData.ViewPosition.x, m_environmentData.ViewPosition.y, m_environmentData.ViewPosition.z);
+		ImGui::End();
+	}
 }

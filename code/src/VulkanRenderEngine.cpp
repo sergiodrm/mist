@@ -170,6 +170,7 @@ namespace vkmmc_debug
 
 		int32_t ForcedIndexTexture{ -1 };
 		int32_t DrawDebug{Disabled};
+		int32_t EnableLighting{ 1 };
 	} GDebugShaderConstants;
 
 	void ImGuiDraw()
@@ -196,6 +197,9 @@ namespace vkmmc_debug
 		ImGui::Begin("Debug shader constants");
 		ImGui::SliderInt("Forced texture index", &GDebugShaderConstants.ForcedIndexTexture, -1, 3);
 		ImGui::SliderInt("Draw debug mode", &GDebugShaderConstants.DrawDebug, 0, DebugShaderConstants::Count);
+		bool lightOn = GDebugShaderConstants.EnableLighting;
+		if (ImGui::Checkbox("Enable lighting", &lightOn))
+			GDebugShaderConstants.EnableLighting = lightOn ? 1 : 0;
 		ImGui::End();
 
 		GGuiLogger.ImGuiDraw();
@@ -224,6 +228,7 @@ namespace vkmmc
 			title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			width, height, windowFlags
 		);
+
 		return newWindow;
 	}
 
@@ -270,6 +275,7 @@ namespace vkmmc
 		m_renderContext.Width = spec.WindowWidth;
 		m_renderContext.Height = spec.WindowHeight;
 		m_renderContext.Window = m_window.WindowInstance;
+		Log(LogLevel::Ok, "Window created successfully!\n");
 
 		// Init vulkan context
 		check(InitVulkan());
@@ -336,13 +342,14 @@ namespace vkmmc
 		rendererCreateInfo.RenderPass = m_renderPass;
 		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
-		rendererCreateInfo.GlobalDescriptorSetLayout = m_globalDescriptorLayout;
+		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
+			rendererCreateInfo.FrameUniformBufferArray.push_back(&m_frameContextArray[i].GlobalBuffer);
 		VkPushConstantRange pcr;
 		pcr.offset = 0;
 		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
 		pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 		rendererCreateInfo.ConstantRange = &pcr;
-		rendererCreateInfo.ConstantRangeCount = 1;
+		rendererCreateInfo.ConstantRangeCount = 1; 
 
 		m_renderers.push_back(new ModelRenderer());
 		m_renderers.push_back(new DebugRenderer());
@@ -351,8 +358,8 @@ namespace vkmmc
 			renderer->Init(rendererCreateInfo);
 
 		AddImGuiCallback(&vkmmc_debug::ImGuiDraw);
+		AddImGuiCallback([this]() { ImGuiDraw(); });
 
-		Log(LogLevel::Ok, "Window created successfully!\n");
 		return true;
 	}
 
@@ -414,11 +421,9 @@ namespace vkmmc
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
 	{
-		m_cachedCameraData.View = glm::inverse(view);
-		m_cachedCameraData.Projection = projection;
-		m_cachedCameraData.ViewProjection = 
-			m_cachedCameraData.Projection * m_cachedCameraData.View;
-		m_dirtyCachedCamera = true;
+		m_cameraData.View = glm::inverse(view);
+		m_cameraData.Projection = projection;
+		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.View;
 	}
 
 	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
@@ -448,21 +453,27 @@ namespace vkmmc
 
 		{
 			PROFILE_SCOPE(UpdateBuffers);
-			// Update descriptor set buffer
-			if (m_dirtyCachedCamera)
-			{
-				Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
-					GetFrameContext().CameraDescriptorSetBuffer.Alloc,
-					&m_cachedCameraData,
-					sizeof(GPUCamera));
-				m_dirtyCachedCamera = false;
-			}
+			// Update global buffer
+			// Camera: binding 0
+			//Memory::MemCopy(m_renderContext.Allocator,
+			//	GetFrameContext().GlobalBuffer.Alloc,
+			//	&m_globalData.Camera,
+			//	sizeof(CameraData));
+			frameContext.GlobalBuffer.SetUniform(m_renderContext, "Camera", &m_cameraData, sizeof(CameraData));
 
-			const void* transformsData = frameContext.Scene->GetRawGlobalTransforms();
-			Memory::MemCopyDataToBuffer(m_renderContext.Allocator,
-				GetFrameContext().ObjectDescriptorSetBuffer.Alloc,
-				transformsData,
-				sizeof(glm::mat4) * frameContext.Scene->Count());
+			// Enviro: binding 2, calculate offset padding
+			//uint32_t offset = Memory::PadOffsetAlignment((uint32_t)m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(CameraData));
+			//Memory::MemCopy(m_renderContext.Allocator, frameContext.GlobalBuffer.Alloc, &m_globalData.Environment, sizeof(EnvironmentData), offset);
+			//frameContext.GlobalBuffer.SetUniform(m_renderContext, "Environment", &m_globalData.Environment, sizeof(EnvironmentData));
+
+			// Models transforms: binding 1, accumulate previous offsets
+			//offset += Memory::PadOffsetAlignment((uint32_t)m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(EnvironmentData));
+			//const void* transformsData = frameContext.Scene->GetRawGlobalTransforms();
+			//Memory::MemCopy(m_renderContext.Allocator,
+			//	GetFrameContext().GlobalBuffer.Alloc,
+			//	transformsData,
+			//	sizeof(glm::mat4) * frameContext.Scene->Count(), offset);
+			//frameContext.GlobalBuffer.SetUniform(m_renderContext, "Models", transformsData, sizeof(glm::mat4) * frameContext.Scene->Count());
 
 			frameContext.PushConstantData = &vkmmc_debug::GDebugShaderConstants;
 			frameContext.PushConstantSize = sizeof(vkmmc_debug::DebugShaderConstants);
@@ -507,7 +518,7 @@ namespace vkmmc
 
 		// Record command buffers from renderers
 		for (IRendererBase* renderer : m_renderers)
-			renderer->RecordCommandBuffer(frameContext);
+			renderer->RecordCommandBuffer(m_renderContext, frameContext);
 		
 
 		// Terminate render pass
@@ -550,6 +561,12 @@ namespace vkmmc
 			presentInfo.pImageIndices = &swapchainImageIndex;
 			vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
 		}
+	}
+
+	void VulkanRenderEngine::ImGuiDraw()
+	{
+		for (uint32_t i = 0; i < (uint32_t)m_renderers.size(); ++i)
+			m_renderers[i]->ImGuiDraw();
 	}
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
@@ -723,44 +740,62 @@ namespace vkmmc
 
 		// Init descriptor set layouts
 		// Global
-		DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Camera buffer
-			.AddBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Model transform storage buffer
-			.Build(m_renderContext, &m_globalDescriptorLayout);
+		//DescriptorSetLayoutBuilder::Create(m_descriptorLayoutCache)
+		//	.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Camera buffer
+		//	.AddBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1) // Model transform storage buffer
+		//	.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1) // Light info for fragment shader
+		//	.Build(m_renderContext, &m_globalDescriptorLayout);
+		
 	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			// Create buffers for the descriptors
-			m_frameContextArray[i].CameraDescriptorSetBuffer = Memory::CreateBuffer(
-				m_renderContext.Allocator,
-				sizeof(GPUCamera),
-				VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
-			);
-			m_frameContextArray[i].ObjectDescriptorSetBuffer = Memory::CreateBuffer(
-				m_renderContext.Allocator,
-				sizeof(glm::mat4) * MaxRenderObjects,
-				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
-			);
+			// Calculate buffer size with padding
+			//const uint32_t minAlignment = (uint32_t)m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment;
+			//const uint32_t cameraSize = Memory::PadOffsetAlignment(minAlignment, sizeof(CameraData));
+			//const uint32_t enviroSize = Memory::PadOffsetAlignment(minAlignment, sizeof(EnvironmentData));
+			//const uint32_t modelsSize = sizeof(glm::mat4) * MaxRenderObjects;
+			//const uint32_t globalBufferSize = cameraSize + enviroSize + modelsSize;
+			//m_frameContextArray[i].GlobalBuffer = Memory::CreateBuffer(
+			//	m_renderContext.Allocator,
+			//	globalBufferSize,
+			//	VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU
+			//);
+
+			// Size for uniform frame buffer
+			uint32_t size = 1024 * 1024; // 1MB
+			m_frameContextArray[i].GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM | BUFFER_USAGE_STORAGE);
+
 			m_shutdownStack.Add([this, i]()
 				{
-					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].CameraDescriptorSetBuffer);
-					Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].ObjectDescriptorSetBuffer);
+					//Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].GlobalBuffer);
+					m_frameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
 				});
 
-
 			// Update global descriptors
-			VkDescriptorBufferInfo cameraBufferInfo = {};
-			cameraBufferInfo.buffer = m_frameContextArray[i].CameraDescriptorSetBuffer.Buffer;
-			cameraBufferInfo.offset = 0;
-			cameraBufferInfo.range = sizeof(GPUCamera);
+			uint32_t cameraBufferSize = sizeof(CameraData);
+			uint32_t cameraBufferOffset = m_frameContextArray[i].GlobalBuffer.AllocUniform(m_renderContext, "Camera", cameraBufferSize);
+			VkDescriptorBufferInfo bufferInfo;
+			bufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
+			bufferInfo.offset = cameraBufferOffset;
+			bufferInfo.range = cameraBufferSize;
+
+			
+			/*VkDescriptorBufferInfo cameraBufferInfo = {};
+			cameraBufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
+			cameraBufferInfo.offset = cameraInfo.Offset;
+			cameraBufferInfo.range = sizeof(CameraData);
+			VkDescriptorBufferInfo envBufferInfo = {};
+			envBufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
+			envBufferInfo.offset = cameraSize;
+			envBufferInfo.range = sizeof(EnvironmentData);
 			VkDescriptorBufferInfo objectBufferInfo = {};
-			objectBufferInfo.buffer = m_frameContextArray[i].ObjectDescriptorSetBuffer.Buffer;
-			objectBufferInfo.offset = 0;
-			objectBufferInfo.range = sizeof(glm::mat4) * MaxRenderObjects;
+			objectBufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
+			objectBufferInfo.offset = cameraSize + enviroSize;
+			objectBufferInfo.range = sizeof(glm::mat4) * MaxRenderObjects;*/
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindBuffer(0, cameraBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.BindBuffer(1, objectBufferInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(m_renderContext, m_frameContextArray[i].GlobalDescriptorSet, m_globalDescriptorLayout);
+				.BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(m_renderContext, m_frameContextArray[i].CameraDescriptorSet, m_globalDescriptorLayout);
 		}
 		return true;
 	}	

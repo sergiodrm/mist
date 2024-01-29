@@ -12,7 +12,8 @@ namespace vkmmc
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void BeginFrame(const RenderContext& renderContext) override;
-		virtual void RecordCommandBuffer(const RenderFrameContext& renderFrameContext) override;
+		virtual void RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void ImGuiDraw() override {}
 	private:
 		VkDescriptorPool m_uiPool;
 	};

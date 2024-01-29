@@ -6,6 +6,7 @@
 #include "Shader.h"
 #include "Globals.h"
 #include "VulkanRenderEngine.h"
+#include "RendererBase.h"
 
 namespace vkmmc
 {
@@ -24,12 +25,13 @@ namespace vkmmc
         VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3 });
         m_renderPipeline = RenderPipeline::Create(info.RContext, info.RenderPass, 0,
             descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+        
 
 		// Uniform descriptor
         glm::vec4 color = { 1.f, 0.f, 0.f, 1.f };
 		m_uniformBuffer = Memory::CreateBuffer(info.RContext.Allocator, sizeof(glm::vec4),
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        Memory::MemCopyDataToBuffer(info.RContext.Allocator, m_uniformBuffer.Alloc, &color, sizeof(glm::vec4));
+        Memory::MemCopy(info.RContext.Allocator, m_uniformBuffer.Alloc, &color, sizeof(glm::vec4));
 		VkDescriptorBufferInfo bufferInfo;
 		bufferInfo.buffer = m_uniformBuffer.Buffer;
 		bufferInfo.offset = 0;
@@ -41,10 +43,9 @@ namespace vkmmc
         // VertexBuffer
         glm::vec3 pos[2] = { glm::vec3{0.f}, glm::vec3{10.f} };
         BufferCreateInfo vbInfo;
-        vbInfo.RContext = info.RContext;
         vbInfo.Size = sizeof(glm::vec3) * 2;
         vbInfo.Data = pos;
-        m_lineVertexBuffer.Init(vbInfo);
+        m_lineVertexBuffer.Init(info.RContext, vbInfo);
     }
 
     void DebugRenderer::Destroy(const RenderContext& renderContext)
@@ -54,10 +55,10 @@ namespace vkmmc
         m_renderPipeline.Destroy(renderContext);
     }
 
-    void DebugRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext)
+    void DebugRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
         vkCmdBindPipeline(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
-        VkDescriptorSet sets[] = { renderFrameContext.GlobalDescriptorSet, m_uniformSet };
+        VkDescriptorSet sets[] = { renderFrameContext.CameraDescriptorSet, m_uniformSet };
         uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
         vkCmdBindDescriptorSets(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS,
             m_renderPipeline.GetPipelineLayoutHandle(), 0, 2, sets, 0, nullptr);

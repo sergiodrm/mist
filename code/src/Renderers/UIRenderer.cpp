@@ -77,7 +77,7 @@ namespace vkmmc
 		ImGui::NewFrame();
 	}
 
-    void UIRenderer::RecordCommandBuffer(const RenderFrameContext& renderFrameContext)
+    void UIRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), renderFrameContext.GraphicsCommand);
