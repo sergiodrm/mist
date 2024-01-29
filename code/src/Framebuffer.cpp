@@ -5,8 +5,9 @@
 #include "Memory.h"
 #include "RenderTypes.h"
 #include "InitVulkanTypes.h"
+#include "RenderContext.h"
 
-#define BIT_N(n) (1 << n)
+
 
 namespace vkmmc
 {   
