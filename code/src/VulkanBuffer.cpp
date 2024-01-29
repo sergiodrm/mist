@@ -135,7 +135,7 @@ namespace vkmmc
 
 	void GPUBuffer::SubmitBufferToGpu(GPUBuffer gpuBuffer, const void* cpuData, uint32_t size)
 	{
-		check(gpuBuffer.m_size == size);
+		check(gpuBuffer.m_size >= size);
 		check(gpuBuffer.m_usage != EBufferUsageBits::BUFFER_USAGE_INVALID);
 		check(gpuBuffer.m_buffer.Buffer != VK_NULL_HANDLE);
 		check(cpuData);
