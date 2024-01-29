@@ -13,6 +13,13 @@ namespace vkmmc
 {
 	// Forward declarations
 	class IRenderEngine;
+
+	struct Light
+	{
+		glm::vec3 Color;
+
+		float Radius;
+	};
 	
 	struct Hierarchy
 	{
@@ -36,7 +43,7 @@ namespace vkmmc
 		virtual void Init() = 0;
 		virtual void Destroy() = 0;
 
-		// Render object life cycleç
+		// Render object life cycle
 		virtual RenderObject CreateRenderObject(RenderObject parent) = 0;
 		virtual void DestroyRenderObject(RenderObject object) = 0;
 		virtual bool IsValid(RenderObject object) const = 0;
@@ -50,6 +57,9 @@ namespace vkmmc
 		virtual void SetModel(RenderObject object, const Model& model) = 0;
 		virtual const glm::mat4& GetTransform(RenderObject object) const = 0;
 		virtual void SetTransform(RenderObject object, const glm::mat4& transform) = 0;
+		virtual const Light* GetLight(RenderObject object) const = 0;
+		virtual void SetLight(RenderObject object, const Light& light) = 0;
+
 		// Create render data of meshes and materials
 		virtual void SubmitMesh(Mesh& mesh) = 0;
 		virtual void SubmitMaterial(Material& material) = 0;
