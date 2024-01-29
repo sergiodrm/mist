@@ -6,6 +6,7 @@
 #include "RenderPipeline.h"
 #include "Debug.h"
 #include "RenderTypes.h"
+#include "RenderContext.h"
 
 namespace vkutils
 {
@@ -54,31 +55,31 @@ namespace vkmmc
 		stbi_image_free(data);
 	}
 
-	void Texture::Init(const RenderTextureCreateInfo& info)
+	void Texture::Init(const RenderContext& renderContext, const io::TextureRaw& textureRaw)
 	{
 		check(!m_image.IsAllocated());
-		check(info.Raw.Pixels && info.Raw.Width && info.Raw.Height);
-		check(info.Raw.Channels == 4 || info.Raw.Channels == 3);
+		check(textureRaw.Pixels && textureRaw.Width && textureRaw.Height);
+		check(textureRaw.Channels == 4 || textureRaw.Channels == 3);
 
 		// Create transit buffer
-		VkDeviceSize size = info.Raw.Width * info.Raw.Height * info.Raw.Channels;
-		EFormat imageFormat = vkutils::GetImageFormatFromChannels(info.Raw.Channels);
+		VkDeviceSize size = textureRaw.Width * textureRaw.Height * textureRaw.Channels;
+		EFormat imageFormat = vkutils::GetImageFormatFromChannels(textureRaw.Channels);
 		VkFormat format = types::FormatType(imageFormat);
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(info.RContext.Allocator, size,
+		AllocatedBuffer stageBuffer = Memory::CreateBuffer(renderContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-		Memory::MemCopyDataToBuffer(info.RContext.Allocator, stageBuffer.Alloc, info.Raw.Pixels, size);
+		Memory::MemCopy(renderContext.Allocator, stageBuffer.Alloc, textureRaw.Pixels, size);
 
 		// Prepare image creation
 		VkExtent3D extent;
-		extent.width = info.Raw.Width;
-			extent.height = info.Raw.Height;
+		extent.width = textureRaw.Width;
+			extent.height = textureRaw.Height;
 			extent.depth = 1;
-		m_image = Memory::CreateImage(info.RContext.Allocator,
+		m_image = Memory::CreateImage(renderContext.Allocator,
 			format, extent,
 			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
 			VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-		utils::CmdSubmitTransfer(info.RContext, 
+		utils::CmdSubmitTransfer(renderContext, 
 			[=](VkCommandBuffer cmd) 
 			{
 				VkImageSubresourceRange range{};
@@ -127,7 +128,7 @@ namespace vkmmc
 			});
 
 		// Destroy transfer buffer.
-		Memory::DestroyBuffer(info.RContext.Allocator, stageBuffer);
+		Memory::DestroyBuffer(renderContext.Allocator, stageBuffer);
 
 		// Create Image view
 		VkImageViewCreateInfo viewInfo
@@ -144,7 +145,7 @@ namespace vkmmc
 		viewInfo.subresourceRange.layerCount = 1;
 		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-		vkcheck(vkCreateImageView(info.RContext.Device, &viewInfo, nullptr, &m_imageView));
+		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_imageView));
 	}
 
 	void Texture::Destroy(const RenderContext& renderContext)

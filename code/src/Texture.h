@@ -3,7 +3,6 @@
 #pragma once
 
 #include "RenderTypes.h"
-#include "RenderDescriptor.h"
 
 namespace vkmmc
 {
@@ -18,18 +17,12 @@ namespace vkmmc
 		};
 		bool LoadTexture(const char* path, TextureRaw& out);
 		void FreeTexture(unsigned char* data);
-	}	
-
-	struct RenderTextureCreateInfo
-	{
-		RenderContext RContext;
-		io::TextureRaw Raw;
-	};
+	}
 
 	class Texture
 	{
 	public:
-		void Init(const RenderTextureCreateInfo& info);
+		void Init(const RenderContext& renderContext, const io::TextureRaw& textureRaw);
 		void Destroy(const RenderContext& renderContext);
 
 		VkImageView GetImageView() const { return m_imageView; }
