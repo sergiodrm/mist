@@ -1,6 +1,7 @@
 #include "RenderDescriptor.h"
 #include "Debug.h"
 #include "InitVulkanTypes.h"
+#include "RenderContext.h"
 #include <stdlib.h>
 #include <algorithm>
 #include "Shader.h"
