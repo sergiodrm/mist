@@ -3,6 +3,7 @@
 #include "InitVulkanTypes.h"
 #include "VulkanRenderEngine.h"
 #include "Debug.h"
+#include "RenderContext.h"
 
 template <>
 struct std::hash<vkmmc::RenderHandle>

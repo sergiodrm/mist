@@ -3,64 +3,21 @@
 #include "RenderHandle.h"
 #include <cassert>
 #include <vector>
+#include <string>
 #include <functional>
 
-struct SDL_Window;
+#ifdef _WIN32
+#include <windows.h>
+#include <winnt.h>
+#else
+#error SO not supported.
+#endif
+#define DEFINE_ENUM_BIT_OPERATORS(enumType) DEFINE_ENUM_FLAG_OPERATORS(enumType)
+#define BIT_N(n) (1 << n)
 
 namespace vkmmc
 {
-	struct TransferContext
-	{
-		VkFence Fence;
-		VkCommandPool CommandPool;
-		VkCommandBuffer CommandBuffer;
-	};
-
-	struct RenderContext
-	{
-		SDL_Window* Window;
-		VkInstance Instance;
-		VkPhysicalDevice GPUDevice;
-		VkSurfaceKHR Surface;
-		VkDebugUtilsMessengerEXT DebugMessenger;
-		VkPhysicalDeviceProperties GPUProperties;
-		VkDevice Device;
-		VmaAllocator Allocator;
-		VkQueue GraphicsQueue;
-		uint32_t GraphicsQueueFamily;
-		// Viewport size. TODO: Find another way to communicate these data.
-		uint32_t Width;
-		uint32_t Height;
-
-		TransferContext TransferContext;
-	};
-
-	struct RenderFrameContext
-	{
-		// Sync vars
-		VkFence RenderFence{};
-		VkSemaphore RenderSemaphore{};
-		VkSemaphore PresentSemaphore{};
-
-		// Framebuffer with swapchain attachment
-		VkFramebuffer Framebuffer;
-
-		// Commands
-		VkCommandPool GraphicsCommandPool{};
-		VkCommandBuffer GraphicsCommand{};
-
-		// Descriptors
-		VkDescriptorSet GlobalDescriptorSet{};
-		AllocatedBuffer CameraDescriptorSetBuffer{};
-		AllocatedBuffer ObjectDescriptorSetBuffer{};
-
-		// Push constants
-		const void* PushConstantData{ nullptr };
-		uint32_t PushConstantSize{ 0 };
-
-		// Scene to draw
-		class Scene* Scene;
-	};
+	struct RenderContext;
 
 	enum EImageLayout
 	{
