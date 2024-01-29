@@ -9,6 +9,7 @@
 #include "Debug.h"
 #include "InitVulkanTypes.h"
 #include "RenderDescriptor.h"
+#include "RenderContext.h"
 
 namespace vkutils
 {
@@ -106,13 +107,11 @@ namespace vkmmc
 	bool ShaderCompiler::GenerateResources(DescriptorLayoutCache& layoutCache)
 	{
 		check(m_cachedLayoutArray.empty() && m_cachedPushConstantArray.empty() && "Compiler already has cached data. Compile all shaders before generate resources.");
-		for (auto& it : m_reflectionProperties.DescriptorSetMap)
+		m_cachedLayoutArray.resize(m_reflectionProperties.DescriptorSetInfoArray.size());
+		for (uint32_t i = 0; i < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
 		{
-			for (uint32_t i = 0; i < (uint32_t)it.second.size(); ++i)
-			{
-				VkDescriptorSetLayout layout = GenerateDescriptorSetLayout(it.second[i], layoutCache);
-				m_cachedLayoutArray.push_back(layout);
-			}
+			VkDescriptorSetLayout layout = GenerateDescriptorSetLayout(m_reflectionProperties.DescriptorSetInfoArray[i], layoutCache);
+			m_cachedLayoutArray[i] = layout;
 		}
 		for (const auto& it : m_reflectionProperties.PushConstantMap)
 			m_cachedPushConstantArray.push_back(GeneratePushConstantInfo(it.second));
@@ -157,9 +156,10 @@ namespace vkmmc
 					bufferInfo.ArrayCount = type.array.size() > 0 ? type.array[0] : 1;
 				}
 				bufferInfo.Type = descriptorType;
-				uint32_t setIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+				bufferInfo.Stage = shaderStage;
 
-				ShaderDescriptorSetInfo& descriptorSetInfo = FindOrCreateDescriptorSet(setIndex, shaderStage);
+				uint32_t setIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+				ShaderDescriptorSetInfo& descriptorSetInfo = FindOrCreateDescriptorSet(setIndex);
 				if (descriptorSetInfo.BindingArray.size() < bufferInfo.Binding + 1)
 					descriptorSetInfo.BindingArray.resize(bufferInfo.Binding + 1);
 				descriptorSetInfo.BindingArray[bufferInfo.Binding] = bufferInfo;
@@ -202,37 +202,29 @@ namespace vkmmc
 		Log(LogLevel::Debug, "End shader reflection.\n");
 	}
 
-	ShaderDescriptorSetInfo& ShaderCompiler::FindOrCreateDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage)
+	ShaderDescriptorSetInfo& ShaderCompiler::FindOrCreateDescriptorSet(uint32_t set)
 	{
-		if (!m_reflectionProperties.DescriptorSetMap.contains(shaderStage))
-			m_reflectionProperties.DescriptorSetMap[shaderStage] = {};
+		for (uint32_t i = 0; i < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+		{
+			if (m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex == set)
+				return m_reflectionProperties.DescriptorSetInfoArray[i];
+		}
 
-		uint32_t index = UINT32_MAX;
-		std::vector<ShaderDescriptorSetInfo>& descriptorSetArray = m_reflectionProperties.DescriptorSetMap[shaderStage];
-		for (uint32_t i = 0; i < (uint32_t)descriptorSetArray.size(); ++i)
-		{
-			if (descriptorSetArray[i].SetIndex == setIndex)
-			{
-				index = i;
-				break;
-			}
-		}
-		if (index == UINT32_MAX)
-		{
-			index = (uint32_t)descriptorSetArray.size();
-			ShaderDescriptorSetInfo info;
-			info.SetIndex = setIndex;
-			info.Stage = shaderStage;
-			descriptorSetArray.push_back(info);
-		}
-		return descriptorSetArray[index];
+		ShaderDescriptorSetInfo info;
+		info.SetIndex = set;
+		m_reflectionProperties.DescriptorSetInfoArray.push_back(info);
+		return m_reflectionProperties.DescriptorSetInfoArray.back();
 	}
 
-	const ShaderDescriptorSetInfo& ShaderCompiler::GetDescriptorSet(uint32_t setIndex, VkShaderStageFlagBits shaderStage) const
+	const ShaderDescriptorSetInfo& ShaderCompiler::GetDescriptorSet(uint32_t set) const
 	{
-		check(m_reflectionProperties.DescriptorSetMap.contains(shaderStage));
-		check(setIndex < (uint32_t)m_reflectionProperties.DescriptorSetMap.at(shaderStage).size());
-		return m_reflectionProperties.DescriptorSetMap.at(shaderStage)[setIndex];
+		for (uint32_t i = 0; i < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+		{
+			if (m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex == set)
+				return m_reflectionProperties.DescriptorSetInfoArray[i];
+		}
+		check(false && "ShaderDescriptorSetInfo set index not found.");
+		return m_reflectionProperties.DescriptorSetInfoArray[0];
 	}
 
 	VkDescriptorSetLayout ShaderCompiler::GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const
@@ -245,7 +237,7 @@ namespace vkmmc
 			bindingArray[i].descriptorCount = setInfo.BindingArray[i].ArrayCount;
 			bindingArray[i].descriptorType = setInfo.BindingArray[i].Type;
 			bindingArray[i].pImmutableSamplers = nullptr;
-			bindingArray[i].stageFlags = setInfo.Stage;
+			bindingArray[i].stageFlags = setInfo.BindingArray[i].Stage;
 		}
 		VkDescriptorSetLayoutCreateInfo createInfo = vkinit::DescriptorSetLayoutCreateInfo(bindingArray.data(), (uint32_t)bindingArray.size());
 		setLayout = layoutCache.CreateLayout(createInfo);
@@ -285,45 +277,4 @@ namespace vkmmc
 		return res;
 	}
 
-	void ShaderBuffer::Init(const ShaderBufferCreateInfo& info)
-	{
-		check(info.Resource.Type != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-
-		uint32_t size = info.Resource.Type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ?
-			info.StorageSize : info.Resource.Size;
-		m_buffer = Memory::CreateBuffer(info.RContext.Allocator,
-			size, vkutils::GetVulkanBufferUsage(info.Resource.Type),
-			VMA_MEMORY_USAGE_CPU_TO_GPU);
-		m_resource = info.Resource;
-		m_resource.Size = size;
-	}
-
-	void ShaderBuffer::Destroy(const RenderContext& renderContext)
-	{
-		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
-	}
-
-	void ShaderBuffer::SetBoundDescriptorSet(const RenderContext& renderContext, VkDescriptorSet newDescriptorSet)
-	{
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = m_buffer.Buffer;
-		bufferInfo.offset = 0;
-		bufferInfo.range = m_resource.Size;
-		VkWriteDescriptorSet writeInfo{};
-		writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeInfo.pNext = nullptr;
-		writeInfo.dstBinding = m_resource.Binding;
-		writeInfo.dstArrayElement = 0;
-		writeInfo.descriptorType = m_resource.Type;
-		writeInfo.descriptorCount = 1;
-		writeInfo.dstSet = newDescriptorSet;
-		writeInfo.pBufferInfo = &bufferInfo;
-		vkUpdateDescriptorSets(renderContext.Device, 1, &writeInfo, 0, nullptr);
-	}
-
-	void ShaderBuffer::CopyData(const RenderContext& renderContext, const void* source, uint32_t size)
-	{
-		check(size <= m_resource.Size);
-		Memory::MemCopyDataToBuffer(renderContext.Allocator, m_buffer.Alloc, source, size);
-	}
 }
