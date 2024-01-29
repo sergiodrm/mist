@@ -316,6 +316,8 @@ namespace vkmmc
 					model.m_materialArray.push_back(mtl);
 				}
 				scene->SetModel(renderObject, model);
+				if (node.mesh->name && *node.mesh->name)
+					scene->SetRenderObjectName(renderObject, node.mesh->name);
 			}
 		}
 		gltf_api::FreeData(data);
@@ -343,7 +345,7 @@ namespace vkmmc
 		m_globalTransforms.clear();
 		m_hierarchy.clear();
 		m_modelArray.clear();
-		m_modelMap.clear();
+		m_componentMap.clear();
 		m_names.clear();
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 			m_dirtyNodes[i].clear();
@@ -370,7 +372,9 @@ namespace vkmmc
         RenderObject node = (uint32_t)m_hierarchy.size();
         m_localTransforms.push_back(glm::mat4(1.f));
         m_globalTransforms.push_back(glm::mat4(1.f));
-        m_names.push_back("");
+		char buff[64];
+		sprintf_s(buff, "RenderObject_%u", node.Id);
+        m_names.push_back(buff);
         m_hierarchy.push_back({ .Parent = parent });
 
         // Connect siblings
@@ -406,24 +410,31 @@ namespace vkmmc
     const Model* Scene::GetModel(RenderObject renderObject) const
     {
 		check(IsValid(renderObject));
-        check(m_modelMap.contains(renderObject));
-        uint32_t index = m_modelMap.at(renderObject);
+        check(m_componentMap.contains(renderObject));
+        uint32_t index = m_componentMap.at(renderObject).ModelIndex;
+		check(index < (uint32_t)m_modelArray.size());
         return &m_modelArray.at(renderObject.Id);
     }
 
     void Scene::SetModel(RenderObject renderObject, const Model& model)
     {
 		check(IsValid(renderObject));
-        if (m_modelMap.contains(renderObject))
+        if (m_componentMap.contains(renderObject))
         {
-            uint32_t index = m_modelMap[renderObject];
-            m_modelArray[index] = model;
+			RenderObjectComponents& components = m_componentMap[renderObject];
+			if (components.ModelIndex >= (uint32_t)m_modelArray.size())
+			{
+				components.ModelIndex = (uint32_t)m_modelArray.size();
+				m_modelArray.push_back(model);
+			}
+			else
+				m_modelArray[components.ModelIndex] = model;
         }
         else
         {
             uint32_t index = (uint32_t)m_modelArray.size();
             m_modelArray.push_back(model);
-            m_modelMap[renderObject] = index;
+			m_componentMap[renderObject] = { .ModelIndex = index };
         }
     }
 
@@ -468,6 +479,37 @@ namespace vkmmc
         MarkAsDirty(renderObject);
     }
 
+	const Light* Scene::GetLight(RenderObject renderObject) const
+	{
+		check(IsValid(renderObject));
+		check(m_componentMap.contains(renderObject));
+		uint32_t index = m_componentMap.at(renderObject).LightIndex;
+		check(index < (uint32_t)m_lightArray.size());
+		return &m_lightArray[index];
+	}
+
+	void Scene::SetLight(RenderObject renderObject, const Light& light)
+	{
+		check(IsValid(renderObject));
+		if (m_componentMap.contains(renderObject))
+		{
+			RenderObjectComponents& components = m_componentMap[renderObject];
+			if (components.LightIndex >= (uint32_t)m_lightArray.size())
+			{
+				components.LightIndex = (uint32_t)m_lightArray.size();
+				m_lightArray.push_back(light);
+			}
+			else
+				m_lightArray[components.LightIndex] = light;
+		}
+		else
+		{
+			uint32_t index = (uint32_t)m_lightArray.size();
+			m_componentMap[renderObject] = { .LightIndex = index };
+			m_lightArray.push_back(light);
+		}
+	}
+
 	void Scene::SubmitMesh(Mesh& mesh)
 	{
 		check(!mesh.GetHandle().IsValid());
@@ -477,17 +519,11 @@ namespace vkmmc
 
 		MeshRenderData mrd{};
 		// Create vertex buffer
-		mrd.VertexBuffer.Init({
-			.RContext = m_engine->GetContext(),
-			.Size = vertexBufferSize
-			});
+		mrd.VertexBuffer.Init(m_engine->GetContext(), {.Size = vertexBufferSize });
 		GPUBuffer::SubmitBufferToGpu(mrd.VertexBuffer, mesh.GetVertices(), vertexBufferSize);
 
 		uint32_t indexBufferSize = (uint32_t)(mesh.GetIndexCount() * sizeof(uint32_t));
-		mrd.IndexBuffer.Init({
-			.RContext = m_engine->GetContext(),
-			.Size = indexBufferSize
-			});
+		mrd.IndexBuffer.Init(m_engine->GetContext(), {.Size = indexBufferSize });
 		GPUBuffer::SubmitBufferToGpu(mrd.IndexBuffer, mesh.GetIndices(), indexBufferSize);
 
 		// Register new buffer
@@ -537,13 +573,8 @@ namespace vkmmc
 		}
 
 		// Create gpu buffer with texture specifications
-		RenderTextureCreateInfo createInfo
-		{
-			.RContext = m_engine->GetContext(),
-			.Raw = texData
-		};
 		Texture texture;
-		texture.Init(createInfo);
+		texture.Init(m_engine->GetContext(), texData);
 		RenderHandle h = GenerateRenderHandle();
 		m_renderData.Textures[h] = texture;
 
@@ -592,6 +623,16 @@ namespace vkmmc
     {
         return (uint32_t)m_modelArray.size();
     }
+
+	const Light* Scene::GetLightArray() const
+	{
+		return m_lightArray.data();
+	}
+
+	uint32_t Scene::GetLightCount() const
+	{
+		return (uint32_t)m_lightArray.size();
+	}
 
 	MeshRenderData Scene::GetMeshRenderData(RenderHandle handle) const
 	{

@@ -35,6 +35,11 @@ namespace vkmmc
 
 	class Scene : public IScene
 	{
+		struct RenderObjectComponents
+		{
+			uint32_t ModelIndex = UINT32_MAX;
+			uint32_t LightIndex = UINT32_MAX;
+		};
 	protected:
 		Scene(const Scene&) = delete;
 		Scene(Scene&&) = delete;
@@ -59,6 +64,8 @@ namespace vkmmc
 		virtual void SetRenderObjectName(RenderObject renderObject, const char* name) override;
 		virtual const glm::mat4& GetTransform(RenderObject renderObject) const override;
 		virtual void SetTransform(RenderObject renderObject, const glm::mat4& transform) override;
+		virtual const Light* GetLight(RenderObject renderObject) const override;
+		virtual void SetLight(RenderObject renderObject, const Light& light) override;
 		virtual void SubmitMesh(Mesh& mesh) override;
 		virtual void SubmitMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
@@ -72,6 +79,9 @@ namespace vkmmc
 		const Model* GetModelArray() const;
 		uint32_t GetModelCount() const;
 
+		const Light* GetLightArray() const;
+		uint32_t GetLightCount() const;
+
 		MeshRenderData GetMeshRenderData(RenderHandle handle) const;
 		MaterialRenderData GetMaterialRenderData(RenderHandle handle) const;
 
@@ -82,10 +92,11 @@ namespace vkmmc
 		std::vector<glm::mat4> m_localTransforms;
 		std::vector<glm::mat4> m_globalTransforms;
 		std::vector<Hierarchy> m_hierarchy;
-		std::unordered_map<uint32_t, uint32_t> m_modelMap;
-		std::vector<Model> m_modelArray;
 		std::vector<std::string> m_names;
 		std::vector<std::string> m_materialNames;
+		std::unordered_map<uint32_t, RenderObjectComponents> m_componentMap;
+		std::vector<Model> m_modelArray;
+		std::vector<Light> m_lightArray;
 
 		std::vector<int32_t> m_dirtyNodes[MaxNodeLevel];
 
