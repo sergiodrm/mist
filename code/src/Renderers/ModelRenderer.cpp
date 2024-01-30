@@ -9,6 +9,8 @@
 #include "SceneImpl.h"
 #include "imgui_internal.h"
 
+#include "DebugRenderer.h"
+
 namespace vkmmc
 {
 	void ModelRenderer::Init(const RendererCreateInfo& info)
@@ -146,6 +148,12 @@ namespace vkmmc
 				ImGui::SameLine();
 				sprintf_s(buff, "##Light_%u_Color", i);
 				ImGui::ColorEdit3(buff, &m_environmentData.Lights[i].Color[0]);
+
+				if (m_environmentData.Lights[i].Color.z > 0.f)
+				{
+					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
+					rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, 10.f, { 1.f, 0.f, 0.f });
+				}
 			}
 		}
 		ImGui::Text("ViewPos: %.3f, %.3f, %.3f", m_environmentData.ViewPosition.x, m_environmentData.ViewPosition.y, m_environmentData.ViewPosition.z);

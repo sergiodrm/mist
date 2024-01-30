@@ -7,9 +7,86 @@
 #include "Globals.h"
 #include "VulkanRenderEngine.h"
 #include "RendererBase.h"
+#include "glm/gtx/quaternion.hpp"
+#include "glm/gtx/transform.hpp"
+#include <corecrt_math_defines.h>
+
 
 namespace vkmmc
 {
+    namespace rdbg
+    {
+        struct LineVertex
+        {
+            glm::vec4 Position;
+            glm::vec4 Color;
+        };
+
+        struct LineBatch
+        {
+            static constexpr uint32_t MaxLines = 500;
+            LineVertex LineArray[MaxLines];
+            uint32_t Index = 0;
+        } GLineBatch;
+
+        void PushLineVertex(LineBatch& batch, const glm::vec3& pos, const glm::vec3& color)
+        {
+			if (batch.Index < LineBatch::MaxLines)
+			{
+                batch.LineArray[batch.Index++] = { glm::vec4(pos, 1.f), glm::vec4(color, 1.f) };
+			}
+			else
+				Logf(LogLevel::Error, "DebugRender line overflow. Increase MaxLines (Current: %u)\n", LineBatch::MaxLines);
+        }
+
+        void PushLine(LineBatch& batch, const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
+        {
+            PushLineVertex(batch, init, color);
+            PushLineVertex(batch, end, color);
+        }
+
+        void DeferredDrawLine(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
+        {
+            PushLine(GLineBatch, init, end, color);
+        }
+
+        void DeferredDrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
+        {
+			glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, pos);
+            glm::mat4 rotMat = glm::toMat4(glm::quat(rot));
+            glm::mat4 sclMat = glm::scale(scl);
+            DeferredDrawAxis(tras * rotMat * sclMat);
+        }
+
+        void DeferredDrawAxis(const glm::mat4& transform)
+        {
+            DeferredDrawLine(transform[3], transform[3] + transform[0], glm::vec3(1.f, 0.f, 0.f));
+            DeferredDrawLine(transform[3], transform[3] + transform[1], glm::vec3(1.f, 0.f, 0.f));
+            DeferredDrawLine(transform[3], transform[3] + transform[2], glm::vec3(1.f, 0.f, 0.f));
+        }
+
+        void DeferredDrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices)
+        {
+            const float deltaAngle = 2.f * (float)M_PI / (float)vertices;
+            for (uint32_t i = 0; i < vertices; ++i)
+            {
+                float c0 = radius * cosf(deltaAngle * i);
+                float c1 = radius * cosf(deltaAngle * (i+1));
+                float s0 = radius * sinf(deltaAngle * i);
+                float s1 = radius * sinf(deltaAngle * (i+1));
+                glm::vec3 pos0 = pos + glm::vec3{ c0, 0.f, s0 };
+                glm::vec3 pos1 = pos + glm::vec3{ c1, 0.f, s1 };
+                DeferredDrawLine(pos0, pos1, color);
+                pos0 = pos + glm::vec3{ c0, s0, 0.f };
+                pos1 = pos + glm::vec3{ c1, s1, 0.f };
+                DeferredDrawLine(pos0, pos1, color);
+                pos0 = pos + glm::vec3{ 0.f, c0, s0 };
+                pos1 = pos + glm::vec3{ 0.f, c1, s1 };
+                DeferredDrawLine(pos0, pos1, color);
+            }
+        }
+    }
+
     void DebugRenderer::Init(const RendererCreateInfo& info)
     {
 		/**********************************/
@@ -22,48 +99,40 @@ namespace vkmmc
         };
         uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
 
-        VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3 });
+        VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
         m_renderPipeline = RenderPipeline::Create(info.RContext, info.RenderPass, 0,
             descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
-        
-
-		// Uniform descriptor
-        glm::vec4 color = { 1.f, 0.f, 0.f, 1.f };
-		m_uniformBuffer = Memory::CreateBuffer(info.RContext.Allocator, sizeof(glm::vec4),
-			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-        Memory::MemCopy(info.RContext.Allocator, m_uniformBuffer.Alloc, &color, sizeof(glm::vec4));
-		VkDescriptorBufferInfo bufferInfo;
-		bufferInfo.buffer = m_uniformBuffer.Buffer;
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(glm::vec4);
-		DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-			.BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(info.RContext, m_uniformSet);
 
         // VertexBuffer
-        glm::vec3 pos[2] = { glm::vec3{0.f}, glm::vec3{10.f} };
         BufferCreateInfo vbInfo;
-        vbInfo.Size = sizeof(glm::vec3) * 2;
-        vbInfo.Data = pos;
+        vbInfo.Size = sizeof(rdbg::LineVertex) * rdbg::LineBatch::MaxLines;
+        vbInfo.Data = nullptr;
         m_lineVertexBuffer.Init(info.RContext, vbInfo);
     }
 
     void DebugRenderer::Destroy(const RenderContext& renderContext)
     {
         m_lineVertexBuffer.Destroy(renderContext);
-        Memory::DestroyBuffer(renderContext.Allocator, m_uniformBuffer);
         m_renderPipeline.Destroy(renderContext);
     }
 
     void DebugRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
-        vkCmdBindPipeline(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
-        VkDescriptorSet sets[] = { renderFrameContext.CameraDescriptorSet, m_uniformSet };
-        uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
-        vkCmdBindDescriptorSets(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            m_renderPipeline.GetPipelineLayoutHandle(), 0, 2, sets, 0, nullptr);
-        m_lineVertexBuffer.Bind(renderFrameContext.GraphicsCommand);
-        vkCmdDraw(renderFrameContext.GraphicsCommand, 2, 1, 0, 0);
+        if (rdbg::GLineBatch.Index > 0)
+        {
+            // Flush lines to vertex buffer
+            GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &rdbg::GLineBatch.LineArray, sizeof(rdbg::LineVertex) * rdbg::GLineBatch.Index);
+
+            vkCmdBindPipeline(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
+            VkDescriptorSet sets[] = { renderFrameContext.CameraDescriptorSet };
+            uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
+            vkCmdBindDescriptorSets(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
+            m_lineVertexBuffer.Bind(renderFrameContext.GraphicsCommand);
+            vkCmdDraw(renderFrameContext.GraphicsCommand, rdbg::GLineBatch.Index, 1, 0, 0);
+
+            rdbg::GLineBatch.Index = 0;
+        }
     }
 
 }

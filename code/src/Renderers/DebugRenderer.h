@@ -3,9 +3,18 @@
 
 #pragma once
 #include "RendererBase.h"
+#include <glm/glm.hpp>
 
 namespace vkmmc
 {
+	namespace rdbg
+	{
+		void DeferredDrawLine(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color);
+		void DeferredDrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
+		void DeferredDrawAxis(const glm::mat4& transform);
+		void DeferredDrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
+	}
+
 	class DebugRenderer : public IRendererBase
 	{
 	public:
@@ -15,9 +24,8 @@ namespace vkmmc
 		virtual void RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 	protected:
 		// Render State
-		VkDescriptorSet m_uniformSet;
-		AllocatedBuffer m_uniformBuffer;
 		RenderPipeline m_renderPipeline;
 		VertexBuffer m_lineVertexBuffer;
 	};
+
 }

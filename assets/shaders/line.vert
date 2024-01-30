@@ -1,6 +1,9 @@
 #version 460
 
-layout (location = 0) in vec3 a_Position;
+layout (location = 0) in vec4 a_Position;
+layout (location = 1) in vec4 a_Color;
+
+layout (location = 0) out vec4 vs_Color;
 
 layout (set = 0, binding = 0) uniform CameraBuffer
 {
@@ -11,5 +14,6 @@ layout (set = 0, binding = 0) uniform CameraBuffer
 
 void main()
 {
-    gl_Position = camera.ViewProjection * vec4(a_Position, 1.f);
+    gl_Position = camera.ViewProjection * a_Position;
+    vs_Color = a_Color;
 }

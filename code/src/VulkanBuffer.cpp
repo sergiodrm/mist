@@ -138,7 +138,7 @@ namespace vkmmc
 		check(gpuBuffer.m_size >= size);
 		check(gpuBuffer.m_usage != EBufferUsageBits::BUFFER_USAGE_INVALID);
 		check(gpuBuffer.m_buffer.Buffer != VK_NULL_HANDLE);
-		check(cpuData);
+		check(cpuData && size > 0);
 
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		const RenderContext& context = engine->GetContext();
