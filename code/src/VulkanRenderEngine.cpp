@@ -720,26 +720,28 @@ namespace vkmmc
 	
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
+			RenderFrameContext& frameContext = m_frameContextArray[i];
+			frameContext.CameraData = &m_cameraData;
+
 			// Size for uniform frame buffer
 			uint32_t size = 1024 * 1024; // 1MB
-			m_frameContextArray[i].GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM | BUFFER_USAGE_STORAGE);
+			frameContext.GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM | BUFFER_USAGE_STORAGE);
 
-			m_shutdownStack.Add([this, i]()
+			m_shutdownStack.Add([this, &frameContext]()
 				{
-					//Memory::DestroyBuffer(m_renderContext.Allocator, m_frameContextArray[i].GlobalBuffer);
-					m_frameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
+					frameContext.GlobalBuffer.Destroy(m_renderContext);
 				});
 
 			// Update global descriptors
 			uint32_t cameraBufferSize = sizeof(CameraData);
-			uint32_t cameraBufferOffset = m_frameContextArray[i].GlobalBuffer.AllocUniform(m_renderContext, "Camera", cameraBufferSize);
+			uint32_t cameraBufferOffset = frameContext.GlobalBuffer.AllocUniform(m_renderContext, "Camera", cameraBufferSize);
 			VkDescriptorBufferInfo bufferInfo;
-			bufferInfo.buffer = m_frameContextArray[i].GlobalBuffer.GetBuffer();
+			bufferInfo.buffer = frameContext.GlobalBuffer.GetBuffer();
 			bufferInfo.offset = cameraBufferOffset;
 			bufferInfo.range = cameraBufferSize;
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(m_renderContext, m_frameContextArray[i].CameraDescriptorSet, m_globalDescriptorLayout);
+				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 		}
 		return true;
 	}	

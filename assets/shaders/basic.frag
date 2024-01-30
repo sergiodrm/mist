@@ -8,8 +8,8 @@ layout(location = 3) in vec2 inTexCoords;
 
 struct LightData
 {
-    vec4 Pos;
-    vec4 Color;
+    vec4 Pos; // w: radius
+    vec4 Color; // w: compression
 };
 
 layout (std140, set = 1, binding = 1) uniform Environment
@@ -31,11 +31,27 @@ layout( push_constant ) uniform constants
 
 vec3 ProcessLight(LightData light)
 {
+    // Attenuation
+    float dist = length(light.Pos - inFragPos);
+    float r = light.Pos.a;
+    float c = light.Color.a;
+    float attenuation = pow(smoothstep(r, 0, dist), c);
+    return vec3(attenuation);
+
+    // Diffuse
     vec3 normal = normalize(inNormal);
     vec3 lightDir = -normalize(vec3(inFragPos) - vec3(light.Pos));
     float diff = max(dot(normal, lightDir), 0.f);
     vec4 diffuse = diff * light.Color;
-    return vec3(diffuse);
+
+    float specularStrength = 0.5f;
+    vec3 viewDir = normalize(vec3(u_Env.ViewPos) - vec3(inFragPos));
+    vec3 reflectDir = reflect(-lightDir, normal);
+    // TODO: shininess from material
+    float shininess = 32.f;
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+    vec4 specular = specularStrength * spec * light.Color;
+    return vec3(diffuse + specular) * attenuation;
 }
 
 void main()
@@ -69,6 +85,6 @@ void main()
     {
         outColor = vec4(inColor, 1.f);
     }
-    // if (outColor.a <= 0.1f)
-    //     discard;
+    if (outColor.a <= 0.1f)
+        discard;
 }

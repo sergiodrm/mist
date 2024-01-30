@@ -9,8 +9,10 @@ namespace vkmmc
 {
 	struct LightData
 	{
-		glm::vec4 Position;
-		glm::vec4 Color;
+		glm::vec3 Position;
+		float Radius;
+		glm::vec3 Color;
+		float Compression;
 	};
 
 	struct EnvironmentData

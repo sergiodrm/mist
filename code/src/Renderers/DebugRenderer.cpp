@@ -61,8 +61,8 @@ namespace vkmmc
         void DeferredDrawAxis(const glm::mat4& transform)
         {
             DeferredDrawLine(transform[3], transform[3] + transform[0], glm::vec3(1.f, 0.f, 0.f));
-            DeferredDrawLine(transform[3], transform[3] + transform[1], glm::vec3(1.f, 0.f, 0.f));
-            DeferredDrawLine(transform[3], transform[3] + transform[2], glm::vec3(1.f, 0.f, 0.f));
+            DeferredDrawLine(transform[3], transform[3] + transform[1], glm::vec3(0.f, 1.f, 0.f));
+            DeferredDrawLine(transform[3], transform[3] + transform[2], glm::vec3(0.f, 0.f, 1.f));
         }
 
         void DeferredDrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices)

@@ -55,7 +55,7 @@ namespace vkmmc
 				.Build(info.RContext, m_frameData[i].GlobalSet);
 		}
 
-		m_environmentData.AmbientColor = glm::vec4(0.1f, 0.1f, 0.1f, 1.f);
+		m_environmentData.AmbientColor = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
 	}
 
 	void ModelRenderer::Destroy(const RenderContext& renderContext)
@@ -66,6 +66,8 @@ namespace vkmmc
 	void ModelRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
 		// Update buffers
+		// TODO: Get camera position from scene view.
+		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
 
@@ -134,29 +136,39 @@ namespace vkmmc
 	{
 		ImGui::Begin("Environment");
 		ImGui::ColorEdit3("Ambient color", &m_environmentData.AmbientColor[0]);
+		ImGui::Text("ViewPos: %.3f, %.3f, %.3f", m_environmentData.ViewPosition.x, m_environmentData.ViewPosition.y, m_environmentData.ViewPosition.z);
+
+		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
+			{
+				ImGui::Text(label);
+				ImGui::SameLine();
+				char buff[64];
+				sprintf_s(buff, "##%s%u", label, id);
+				switch (count)
+				{
+				case 1: return ImGui::DragFloat(buff, data, diff, minLimit, maxLimit); 
+				case 2: return ImGui::DragFloat2(buff, data, diff, minLimit, maxLimit); 
+				case 3: return ImGui::DragFloat3(buff, data, diff, minLimit, maxLimit); 
+				case 4: return ImGui::DragFloat4(buff, data, diff, minLimit, maxLimit); 
+				}
+				return false;
+			};
+
 		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
 		{
 			char buff[32];
 			sprintf_s(buff, "Light_%u", i);
 			if (ImGui::CollapsingHeader(buff))
 			{
-				ImGui::Text("Position");
-				ImGui::SameLine();
-				sprintf_s(buff, "##Light_%u_Pos", i);
-				ImGui::DragFloat3(buff, &m_environmentData.Lights[i].Position[0]);
-				ImGui::Text("Color");
-				ImGui::SameLine();
-				sprintf_s(buff, "##Light_%u_Color", i);
-				ImGui::ColorEdit3(buff, &m_environmentData.Lights[i].Color[0]);
+				utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3);
+				utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, 0.02f, 0.f, 1.f);
+				utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, 0.5f, 0.f, FLT_MAX);
+				utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, 0.5f, 0.f, FLT_MAX);
 
-				if (m_environmentData.Lights[i].Color.z > 0.f)
-				{
-					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-					rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, 10.f, { 1.f, 0.f, 0.f });
-				}
+				rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
+				rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, 20.f, { 1.f, 0.f, 0.f });
 			}
 		}
-		ImGui::Text("ViewPos: %.3f, %.3f, %.3f", m_environmentData.ViewPosition.x, m_environmentData.ViewPosition.y, m_environmentData.ViewPosition.z);
 		ImGui::End();
 	}
 }

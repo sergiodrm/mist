@@ -61,6 +61,7 @@ namespace vkmmc
 
 		// Scene to draw
 		class Scene* Scene;
+		struct CameraData* CameraData;
 		// Frame
 		uint32_t FrameIndex;
 	};
