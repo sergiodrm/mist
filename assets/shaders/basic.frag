@@ -32,11 +32,10 @@ layout( push_constant ) uniform constants
 vec3 ProcessLight(LightData light)
 {
     // Attenuation
-    float dist = length(light.Pos - inFragPos);
+    float dist = length(vec3(light.Pos) - vec3(inFragPos));
     float r = light.Pos.a;
     float c = light.Color.a;
     float attenuation = pow(smoothstep(r, 0, dist), c);
-    return vec3(attenuation);
 
     // Diffuse
     vec3 normal = normalize(inNormal);

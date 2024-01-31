@@ -13,6 +13,12 @@
 
 namespace vkmmc
 {
+	ModelRenderer::ModelRenderer() : IRendererBase()
+	{
+		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
+			m_environmentData.Lights[i] = { .Position = {0.f, 0.f, 0.f}, .Radius = 10.f, .Color = {1.f, 1.f, 1.f}, .Compression = 0.5f, };
+	}
+
 	void ModelRenderer::Init(const RendererCreateInfo& info)
 	{
 		/**********************************/
@@ -163,10 +169,10 @@ namespace vkmmc
 				utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3);
 				utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, 0.02f, 0.f, 1.f);
 				utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, 0.5f, 0.f, FLT_MAX);
-				utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, 0.5f, 0.f, FLT_MAX);
+				utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, 0.5f, 0.5f, FLT_MAX);
 
 				rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-				rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, 20.f, { 1.f, 0.f, 0.f });
+				rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
 			}
 		}
 		ImGui::End();

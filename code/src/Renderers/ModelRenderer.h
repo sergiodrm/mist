@@ -31,6 +31,7 @@ namespace vkmmc
 			VkDescriptorSet GlobalSet;
 		};
 	public:
+		ModelRenderer();
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void BeginFrame(const RenderContext& renderContext) override {}
