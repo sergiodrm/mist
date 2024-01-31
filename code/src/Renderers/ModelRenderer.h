@@ -9,7 +9,11 @@ namespace vkmmc
 {
 	struct LightData
 	{
-		glm::vec3 Position;
+		union
+		{
+			glm::vec3 Position;
+			glm::vec3 Direction;
+		};
 		float Radius;
 		glm::vec3 Color;
 		float Compression;
@@ -22,6 +26,7 @@ namespace vkmmc
 		float ActiveLightsCount;
 		static constexpr uint32_t MaxLights = 8;
 		LightData Lights[MaxLights];
+		LightData DirectionalLight;
 	};
 
 	class ModelRenderer : public IRendererBase

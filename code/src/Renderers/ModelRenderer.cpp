@@ -17,6 +17,7 @@ namespace vkmmc
 	{
 		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
 			m_environmentData.Lights[i] = { .Position = {0.f, 0.f, 0.f}, .Radius = 10.f, .Color = {1.f, 1.f, 1.f}, .Compression = 0.5f, };
+		m_environmentData.DirectionalLight = { .Direction = {0.f, -1.f, 0.f}, .Radius = 0.f, .Color = {0.01f, 0.01f, 0.05f}, .Compression = 0.f };
 	}
 
 	void ModelRenderer::Init(const RendererCreateInfo& info)
@@ -142,38 +143,50 @@ namespace vkmmc
 	void ModelRenderer::ImGuiDraw()
 	{
 		ImGui::Begin("Environment");
-		ImGui::ColorEdit3("Ambient color", &m_environmentData.AmbientColor[0]);
-		ImGui::Text("ViewPos: %.3f, %.3f, %.3f", m_environmentData.ViewPosition.x, m_environmentData.ViewPosition.y, m_environmentData.ViewPosition.z);
-
-		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
+		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
 			{
+				ImGui::Columns(2);
 				ImGui::Text(label);
-				ImGui::SameLine();
+				ImGui::NextColumn();
 				char buff[64];
 				sprintf_s(buff, "##%s%u", label, id);
+				bool r = false;
 				switch (count)
 				{
-				case 1: return ImGui::DragFloat(buff, data, diff, minLimit, maxLimit); 
-				case 2: return ImGui::DragFloat2(buff, data, diff, minLimit, maxLimit); 
-				case 3: return ImGui::DragFloat3(buff, data, diff, minLimit, maxLimit); 
-				case 4: return ImGui::DragFloat4(buff, data, diff, minLimit, maxLimit); 
+				case 1: r = ImGui::DragFloat(buff, data, diff, minLimit, maxLimit); break;
+				case 2: r = ImGui::DragFloat2(buff, data, diff, minLimit, maxLimit); break;
+				case 3: r = asColor ? ImGui::ColorEdit3(buff, data) : ImGui::DragFloat3(buff, data, diff, minLimit, maxLimit); break;
+				case 4: r = asColor ? ImGui::ColorEdit4(buff, data) : ImGui::DragFloat4(buff, data, diff, minLimit, maxLimit); break;
 				}
-				return false;
+				ImGui::NextColumn();
+				ImGui::Columns();
+				return r;
 			};
-		ImGui::SliderInt("Active lights", &m_activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
-		for (uint32_t i = 0; i < (uint32_t)m_activeLightsCount; ++i)
-		{
-			char buff[32];
-			sprintf_s(buff, "Light_%u", i);
-			if (ImGui::CollapsingHeader(buff))
-			{
-				utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3);
-				utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, 0.02f, 0.f, 1.f);
-				utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, 0.5f, 0.f, FLT_MAX);
-				utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, 0.5f, 0.5f, FLT_MAX);
+		utilDragFloat("Ambient color", 0, &m_environmentData.AmbientColor[0], 3, true);
 
-				rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-				rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
+		if (ImGui::CollapsingHeader("Directional light"))
+		{
+			utilDragFloat("Direction", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Direction[0], 3, false, 0.02f, -1.f, 1.f);
+			utilDragFloat("Color", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Color[0], 3, true);
+			rdbg::DeferredDrawLine(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
+		}
+		if (ImGui::CollapsingHeader("Point lights"))
+		{
+			ImGui::SliderInt("Active point lights", &m_activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
+			for (uint32_t i = 0; i < (uint32_t)m_activeLightsCount; ++i)
+			{
+				char buff[32];
+				sprintf_s(buff, "PointLight_%u", i);
+				if (ImGui::CollapsingHeader(buff))
+				{
+					utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3, false);
+					utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, true);
+					utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, false, 0.5f, 0.f, FLT_MAX);
+					utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, false, 0.5f, 0.5f, FLT_MAX);
+
+					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
+					rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
+				}
 			}
 		}
 		ImGui::End();

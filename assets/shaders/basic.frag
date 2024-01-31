@@ -17,6 +17,7 @@ layout (std140, set = 1, binding = 1) uniform Environment
     vec4 AmbientColor;
     vec4 ViewPos; // w: num of lights to process
     LightData Lights[8];
+    LightData DirectionalLight;
 } u_Env;
 
 layout(set = 2, binding = 0) uniform sampler2D texArray[3];
@@ -29,7 +30,25 @@ layout( push_constant ) uniform constants
     int EnableLighting;
 } PushConstants;
 
-vec3 ProcessLight(LightData light)
+vec3 CalculateLighting(vec3 lightDir, vec3 lightColor)
+{
+    // Diffuse
+    vec3 normal = normalize(inNormal);
+    float diff = max(dot(normal, lightDir), 0.f);
+    vec3 diffuse = diff * lightColor;
+
+    // Specular
+    float specularStrength = 0.5f;
+    vec3 viewDir = normalize(vec3(u_Env.ViewPos) - vec3(inFragPos));
+    vec3 reflectDir = reflect(-lightDir, normal);
+    // TODO: shininess from material
+    float shininess = 32.f;
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+    vec3 specular = specularStrength * spec * lightColor;
+    return diffuse + specular;
+}
+
+vec3 ProcessPointLight(LightData light)
 {
     // Attenuation
     float dist = length(vec3(light.Pos) - vec3(inFragPos));
@@ -37,20 +56,16 @@ vec3 ProcessLight(LightData light)
     float c = light.Color.a;
     float attenuation = pow(smoothstep(r, 0, dist), c);
 
-    // Diffuse
-    vec3 normal = normalize(inNormal);
-    vec3 lightDir = -normalize(vec3(inFragPos) - vec3(light.Pos));
-    float diff = max(dot(normal, lightDir), 0.f);
-    vec4 diffuse = diff * light.Color;
+    vec3 lightDir = normalize(vec3(light.Pos) - vec3(inFragPos));
+    vec3 lighting = CalculateLighting(lightDir, vec3(light.Color));
+    
+    return lighting * attenuation;
+}
 
-    float specularStrength = 0.5f;
-    vec3 viewDir = normalize(vec3(u_Env.ViewPos) - vec3(inFragPos));
-    vec3 reflectDir = reflect(-lightDir, normal);
-    // TODO: shininess from material
-    float shininess = 32.f;
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
-    vec4 specular = specularStrength * spec * light.Color;
-    return vec3(diffuse + specular) * attenuation;
+vec3 ProcessDirectionalLight(LightData light)
+{
+    vec3 lightDir = normalize(vec3(-light.Pos));
+    return CalculateLighting(lightDir, vec3(light.Color));
 }
 
 void main()
@@ -67,7 +82,8 @@ void main()
         {
             lightColor = vec3(0.f, 0.f, 0.f);
             for (int i = 0; i < int(u_Env.ViewPos.w); ++i)
-                lightColor += ProcessLight(u_Env.Lights[i]);
+                lightColor += ProcessPointLight(u_Env.Lights[i]);
+            lightColor += ProcessDirectionalLight(u_Env.DirectionalLight);
             lightColor = vec3(u_Env.AmbientColor) + lightColor;
         }
         outColor = vec4(lightColor, 1.f) * outColor;
