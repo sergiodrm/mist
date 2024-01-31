@@ -15,7 +15,7 @@ struct LightData
 layout (std140, set = 1, binding = 1) uniform Environment
 {
     vec4 AmbientColor;
-    vec4 ViewPos;
+    vec4 ViewPos; // w: num of lights to process
     LightData Lights[8];
 } u_Env;
 
@@ -66,7 +66,7 @@ void main()
         if (PushConstants.EnableLighting != 0)
         {
             lightColor = vec3(0.f, 0.f, 0.f);
-            for (int i = 0; i < 1; ++i)
+            for (int i = 0; i < int(u_Env.ViewPos.w); ++i)
                 lightColor += ProcessLight(u_Env.Lights[i]);
             lightColor = vec3(u_Env.AmbientColor) + lightColor;
         }

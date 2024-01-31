@@ -18,7 +18,8 @@ namespace vkmmc
 	struct EnvironmentData
 	{
 		glm::vec4 AmbientColor;
-		glm::vec4 ViewPosition;
+		glm::vec3 ViewPosition;
+		float ActiveLightsCount;
 		static constexpr uint32_t MaxLights = 8;
 		LightData Lights[MaxLights];
 	};
@@ -43,6 +44,7 @@ namespace vkmmc
 		RenderPipeline m_renderPipeline;
 
 		std::vector<RendererFrameData> m_frameData;
+		int32_t m_activeLightsCount;
 		EnvironmentData m_environmentData;
 	};
 }

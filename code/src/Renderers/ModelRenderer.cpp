@@ -13,7 +13,7 @@
 
 namespace vkmmc
 {
-	ModelRenderer::ModelRenderer() : IRendererBase()
+	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0)
 	{
 		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
 			m_environmentData.Lights[i] = { .Position = {0.f, 0.f, 0.f}, .Radius = 10.f, .Color = {1.f, 1.f, 1.f}, .Compression = 0.5f, };
@@ -74,6 +74,7 @@ namespace vkmmc
 		// Update buffers
 		// TODO: Get camera position from scene view.
 		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
+		m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
 
@@ -159,8 +160,8 @@ namespace vkmmc
 				}
 				return false;
 			};
-
-		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
+		ImGui::SliderInt("Active lights", &m_activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
+		for (uint32_t i = 0; i < (uint32_t)m_activeLightsCount; ++i)
 		{
 			char buff[32];
 			sprintf_s(buff, "Light_%u", i);
