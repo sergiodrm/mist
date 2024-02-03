@@ -18,10 +18,19 @@ namespace vkmmc
 		void Destroy(const RenderContext& renderContext);
 	};
 
+	struct PrimitiveMeshData
+	{
+		uint32_t FirstIndex;
+		uint32_t Count;
+		uint32_t MaterialIndex;
+		PrimitiveMeshData() : FirstIndex(0), Count(0), MaterialIndex(UINT32_MAX) {}
+	};
+
 	struct MeshRenderData
 	{
 		VertexBuffer VertexBuffer;
 		IndexBuffer IndexBuffer;
+		std::vector<PrimitiveMeshData> PrimitiveArray;
 	};
 
 	struct RenderDataContainer
@@ -37,7 +46,7 @@ namespace vkmmc
 	{
 		struct RenderObjectComponents
 		{
-			uint32_t ModelIndex = UINT32_MAX;
+			uint32_t MeshIndex = UINT32_MAX;
 			uint32_t LightIndex = UINT32_MAX;
 		};
 	protected:
@@ -58,8 +67,8 @@ namespace vkmmc
 		virtual uint32_t GetRenderObjectCount() const override;
 
 		virtual RenderObject GetRoot() const override;
-		virtual const Model* GetModel(RenderObject renderObject) const override;
-		virtual void SetModel(RenderObject renderObject, const Model& model) override;
+		virtual const Mesh* GetMesh(RenderObject renderObject) const override;
+		virtual void SetMesh(RenderObject renderObject, const Mesh& mesh) override;
 		virtual const char* GetRenderObjectName(RenderObject object) const override;
 		virtual void SetRenderObjectName(RenderObject renderObject, const char* name) override;
 		virtual const glm::mat4& GetTransform(RenderObject renderObject) const override;
@@ -76,14 +85,19 @@ namespace vkmmc
 
 		const glm::mat4* GetRawGlobalTransforms() const;
 
-		const Model* GetModelArray() const;
-		uint32_t GetModelCount() const;
+		const Mesh* GetMeshArray() const;
+		uint32_t GetMeshCount() const;
 
 		const Light* GetLightArray() const;
 		uint32_t GetLightCount() const;
 
-		MeshRenderData GetMeshRenderData(RenderHandle handle) const;
-		MaterialRenderData GetMaterialRenderData(RenderHandle handle) const;
+		const Material* GetMaterialArray() const;
+		uint32_t GetMaterialCount() const;
+
+		const MeshRenderData& GetMeshRenderData(RenderHandle handle) const;
+		MeshRenderData& GetMeshRenderData(RenderHandle handle);
+		const MaterialRenderData& GetMaterialRenderData(RenderHandle handle) const;
+		MaterialRenderData& GetMaterialRenderData(RenderHandle handle);
 
 
 	private:
@@ -95,7 +109,8 @@ namespace vkmmc
 		std::vector<std::string> m_names;
 		std::vector<std::string> m_materialNames;
 		std::unordered_map<uint32_t, RenderObjectComponents> m_componentMap;
-		std::vector<Model> m_modelArray;
+		std::vector<Mesh> m_meshArray;
+		std::vector<Material> m_materialArray;
 		std::vector<Light> m_lightArray;
 
 		std::vector<int32_t> m_dirtyNodes[MaxNodeLevel];

@@ -41,7 +41,6 @@ namespace vkmmc
 		RenderHandle m_specularTextureHandle;
 	};
 
-
 	class Mesh : public RenderResource
 	{
 	public:
@@ -51,16 +50,13 @@ namespace vkmmc
 		const uint32_t* GetIndices() const { return m_indices.data(); }
 		inline size_t GetIndexCount() const { return m_indices.size(); }
 		void SetIndices(const uint32_t* data, size_t count);
+
+		void MoveVerticesFrom(std::vector<Vertex>& vertices);
+		void MoveIndicesFrom(std::vector<uint32_t>& indices);
+
 	private:
 		std::vector<Vertex> m_vertices;
 		std::vector<uint32_t> m_indices;
 	};
 
-	class Model
-	{
-	public:
-		std::vector<Mesh> m_meshArray;
-		std::vector<Material> m_materialArray;
-	};
-	
 }

@@ -99,42 +99,40 @@ namespace vkmmc
 		}
 
 		// Iterate scene graph to render models.
-		Material lastMaterial;
-		Mesh lastMesh;
+		const Material* lastMaterial = nullptr;
+		const Mesh* lastMesh = nullptr;
 		Scene* scene = renderFrameContext.Scene;
-		const Model* models = scene->GetModelArray();
-		uint32_t modelCount = scene->GetModelCount();
-		for (uint32_t i = 0; i < modelCount; ++i)
+		uint32_t nodeCount = scene->GetRenderObjectCount();
+		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
-			const Model& model = models[i];
-			for (uint32_t meshIndex = 0; meshIndex < model.m_meshArray.size(); ++meshIndex)
+			RenderObject renderObject = i;
+			const Mesh* mesh = scene->GetMesh(renderObject);
+			if (mesh)
 			{
-				Mesh mesh = model.m_meshArray[meshIndex];
-				Material material = model.m_materialArray[meshIndex];
-				if (mesh.GetHandle().IsValid() && material.GetHandle().IsValid())
+				const MeshRenderData& mrd = scene->GetMeshRenderData(mesh->GetHandle());
+
+				if (lastMesh != mesh)
 				{
-					if (material != lastMaterial || !lastMaterial.GetHandle().IsValid())
+					check(mesh->GetHandle().IsValid());
+					lastMesh = mesh;
+					mrd.VertexBuffer.Bind(cmd);
+					mrd.IndexBuffer.Bind(cmd);
+				}
+
+				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
+				{
+					const PrimitiveMeshData& drawData = mrd.PrimitiveArray[j];
+					const Material* material = &scene->GetMaterialArray()[drawData.MaterialIndex];
+					// TODO: material by default if there is no material.
+					check(material && material->GetHandle().IsValid());
+					if (lastMaterial != material)
 					{
 						lastMaterial = material;
-						RenderHandle mtlHandle = material.GetHandle();
-						if (mtlHandle.IsValid())
-						{
-							const MaterialRenderData& texData = scene->GetMaterialRenderData(mtlHandle);;
-							vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-								m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, &texData.Set,
-								0, nullptr);
-						}
+						const MaterialRenderData& mtl = scene->GetMaterialRenderData(material->GetHandle());
+						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+							m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, &mtl.Set, 0, nullptr);
 					}
-
-					if (lastMesh != mesh)
-					{
-						check(mesh.GetHandle().IsValid());
-						const MeshRenderData& meshRenderData = scene->GetMeshRenderData(mesh.GetHandle());
-						meshRenderData.VertexBuffer.Bind(cmd);
-						meshRenderData.IndexBuffer.Bind(cmd);
-						lastMesh = mesh;
-					}
-					vkCmdDrawIndexed(cmd, (uint32_t)lastMesh.GetIndexCount(), 1, 0, 0, i);
+					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
 				}
 			}
 		}
@@ -143,7 +141,7 @@ namespace vkmmc
 	void ModelRenderer::ImGuiDraw()
 	{
 		ImGui::Begin("Environment");
-		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
+		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f) 
 			{
 				ImGui::Columns(2);
 				ImGui::Text(label);

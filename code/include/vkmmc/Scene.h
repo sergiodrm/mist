@@ -53,8 +53,8 @@ namespace vkmmc
 		virtual const char* GetRenderObjectName(RenderObject object) const = 0;
 		virtual void SetRenderObjectName(RenderObject object, const char* name) = 0;
 		// Render object components
-		virtual const Model* GetModel(RenderObject object) const = 0;
-		virtual void SetModel(RenderObject object, const Model& model) = 0;
+		virtual const Mesh* GetMesh(RenderObject object) const = 0;
+		virtual void SetMesh(RenderObject object, const Mesh& mesh) = 0;
 		virtual const glm::mat4& GetTransform(RenderObject object) const = 0;
 		virtual void SetTransform(RenderObject object, const glm::mat4& transform) = 0;
 		virtual const Light* GetLight(RenderObject object) const = 0;
