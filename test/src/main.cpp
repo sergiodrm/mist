@@ -15,145 +15,115 @@
 class Timer
 {
 public:
+	typedef std::chrono::high_resolution_clock::time_point TimePoint;
+
 	Timer() : m_start(Now()) {}
 
-	std::chrono::high_resolution_clock::time_point Now() const 
+	void Update()
+	{
+		m_mark = Now();
+	}
+
+	static std::chrono::high_resolution_clock::time_point Now()
 	{
 		return std::chrono::high_resolution_clock::now();
 	}
 
-	float ElapsedNow() const 
+	static float ElapsedFrom(TimePoint point)
 	{
 		auto n = Now();
-		auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(n - m_start);
+		auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(n - point);
 		float s = (float)diff.count() * 1e-9f;
 		return s;
 	}
 
+	float ElapsedNow() const
+	{
+		return ElapsedFrom(m_mark);
+	}
+
+	float ElapsedFromStart() const
+	{
+		return ElapsedFrom(m_start);
+	}
+
 private:
-	std::chrono::high_resolution_clock::time_point m_start;
+	TimePoint m_start;
+	TimePoint m_mark;
 };
 
-Timer GTimer;
-bool GIsPaused = true;
-float GAmplitude = 2.f;
-float GFrequency = 1.f; // Hz
-float GAxisXPhase = 0.2f;
-float GAxisZPhase = 0.2f;
-float GNoise = 0.02f;
-
-void ProcessLogic(vkmmc::IRenderEngine* engine, const Timer& timer)
+class Test
 {
-	if (!GIsPaused)
+public:
+	virtual ~Test() {};
+	void Init()
 	{
-		float time = timer.ElapsedNow();
-		vkmmc::IScene& scene = *engine->GetScene();
-		for (uint32_t i = 0; i < scene.GetRenderObjectCount(); ++i)
+		vkmmc::InitializationSpecs spec
 		{
-			glm::mat4 transform = scene.GetTransform(i);
-			glm::vec3 pos = transform[3];
-			int32_t r = std::rand();
-			float noise = GNoise * ((float)r / (float)RAND_MAX);
-			float rotY = GAmplitude * sinf(GFrequency * 2.f * (float)M_PI * time + pos.x * GAxisXPhase + pos.z * GAxisZPhase) + noise;
-			pos.y = rotY;
-			glm::mat4 newTransform = glm::translate(transform, pos);
-			scene.SetTransform(i, newTransform);
-		}
+			1920, 1080, "VkMMC Engine"
+		};
+		m_engine = vkmmc::IRenderEngine::MakeInstance();
+		m_engine->Init(spec);
+
+		m_engine->AddImGuiCallback([this]() { m_camera.ImGuiDraw(); });
+
+		LoadTest();
 	}
-}
 
-void SpawnMeshGrid(vkmmc::IRenderEngine* engine, vkmmc::Mesh& mesh, vkmmc::Material& mtl, const glm::ivec3& gridDim, const glm::vec3& cellSize)
-{
-	vkmmc::IScene& scene = *engine->GetScene();
-	vkmmc::RenderObject root = scene.CreateRenderObject(vkmmc::RenderObject::InvalidId);
-	vkmmc::Model model;
-	model.m_meshArray.push_back(mesh);
-	model.m_materialArray.push_back(mtl);
-	for (int32_t x = -gridDim[0] / 2; x < gridDim[0] / 2; ++x)
+	void RunLoop()
 	{
-		for (int32_t z = -gridDim[2] / 2; z < gridDim[2] / 2; ++z)
+		bool terminate = false;
+		while (!terminate)
 		{
-			for (int32_t y = -gridDim[1] / 2; y < gridDim[1] / 2; ++y)
-			{
-				vkmmc::RenderObject obj = scene.CreateRenderObject(root);
-				glm::vec3 pos = { (float)x * cellSize.x, (float)y * cellSize.y, (float)z * cellSize.z };
-				scene.SetModel(obj, model);
-				scene.SetTransform(obj, glm::translate(glm::mat4(1.f), pos));
-			}
+			m_timer.Update();
+			m_camera.Tick(0.033f);
+			ProcessLogic(0.033f); // TODO: better time control.
+			m_engine->UpdateSceneView(m_camera.GetCamera().GetView(), m_camera.GetCamera().GetProjection());
+			terminate = !m_engine->RenderProcess();
 		}
 	}
 
-	engine->AddImGuiCallback([]() 
-		{
-			ImGui::Begin("Magic params");
-			ImGui::Text("Time app: %.4f s", GTimer.ElapsedNow());
-			ImGui::Checkbox("Pause", &GIsPaused);
-			ImGui::DragFloat("Amplitude", &GAmplitude, 0.2f);
-			ImGui::DragFloat("Frequency (Hz)", &GFrequency, 0.02f);
-			float phase[] = { GAxisXPhase, GAxisZPhase };
-			if (ImGui::DragFloat2("Phase", phase, 0.1f))
-			{
-				GAxisXPhase = phase[0];
-				GAxisZPhase = phase[1];
-			}
-			ImGui::DragFloat("Noise", &GNoise, 0.01f);
-			ImGui::End();
-		});
-}
-
-void ExecuteSponza(vkmmc::IRenderEngine* engine)
-{
-	vkmmc::IScene* scene = vkmmc::IScene::LoadScene(engine, "../../assets/models/sponza/Sponza.gltf");
-	engine->SetScene(scene);
-}
-
-void ExecuteBoxBiArray(vkmmc::IRenderEngine* engine)
-{
-	vkmmc::IScene* scene = vkmmc::IScene::LoadScene(engine, "../../assets/models/box/Box.gltf");
-	vkmmc::Mesh mesh;
-	vkmmc::Material material;
-	for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
+	void Destroy()
 	{
-		const vkmmc::Model* model = scene->GetModel(i);
-		mesh = model ? model->m_meshArray[0] : vkmmc::Mesh();
-		material = model ? model->m_materialArray[0] : vkmmc::Material();
-		if (mesh.GetHandle().IsValid())
-			break;
+		UnloadTest();
+		m_engine->Shutdown();
+		vkmmc::IRenderEngine::FreeRenderEngine();
 	}
 
-#ifdef _DEBUG
-	SpawnMeshGrid(engine, mesh, material, glm::ivec3{ 20, 2, 20 }, glm::vec3{ 2.f });
-#else
-	SpawnMeshGrid(engine, mesh, material, glm::ivec3{ 120, 2, 120 }, glm::vec3{ 2.f });
-#endif
+protected:
+	virtual void LoadTest() {}
+	virtual void ProcessLogic(float timeDiff) {}
+	virtual void UnloadTest() {}
+
+protected:
+	vkmmc::IRenderEngine* m_engine = nullptr;
+	vkmmc::CameraController m_camera;
+	Timer m_timer;
+};
+
+class SponzaTest : public Test
+{
+protected:
+	virtual void LoadTest()
+	{
+		vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/sponza/Sponza.gltf");
+		m_engine->SetScene(scene);
+	}
+};
+
+Test* ExecuteTest(int32_t argc, char** argv)
+{
+	// TODO: read cmd args.
+	return new SponzaTest();
 }
+
 
 int main(int32_t argc, char** argv)
 {
-	vkmmc::InitializationSpecs spec
-	{
-		1920, 1080, "VkMMC Engine"
-	};
-	vkmmc::IRenderEngine* engine = vkmmc::IRenderEngine::MakeInstance();
-	engine->Init(spec);
-
-	ExecuteSponza(engine);
-
-	vkmmc::CameraController cameraController;
-	engine->AddImGuiCallback([&cameraController]() 
-		{
-			cameraController.ImGuiDraw();
-		});
-
-	bool terminate = false;
-	while (!terminate)
-	{
-		cameraController.Tick(0.033f);
-		ProcessLogic(engine, GTimer);
-		engine->UpdateSceneView(cameraController.GetCamera().GetView(), cameraController.GetCamera().GetProjection());
-		terminate = !engine->RenderProcess();
-	}
-	engine->Shutdown();
-	vkmmc::IRenderEngine::FreeRenderEngine();
+	Test* test = ExecuteTest(argc, argv);
+	test->Init();
+	test->RunLoop();
+	test->Destroy();
+	delete test;
 	return 0;
 }
