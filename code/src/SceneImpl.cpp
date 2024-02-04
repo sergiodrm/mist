@@ -12,6 +12,7 @@
 #include "Mesh.h"
 #include "GenericUtils.h"
 #include "VulkanRenderEngine.h"
+#include <algorithm>
 
 //#define VKMMC_ENABLE_LOADER_LOG
 
@@ -356,6 +357,11 @@ namespace vkmmc
 					pmd[j].MaterialIndex = materialIndexMap[primitive.material];
 					check(primitive.indices->count == pmd[j].Count);
 				}
+
+				// Sort primitives by index
+				std::sort(pmd.begin(), pmd.end(), 
+					[](const PrimitiveMeshData& a, const PrimitiveMeshData& b) {return a.MaterialIndex < b.MaterialIndex; }
+				);
 				
 				// Submit data
 				Mesh mesh;
