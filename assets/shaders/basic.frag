@@ -12,7 +12,8 @@ struct LightData
     vec4 Color; // w: compression
 };
 
-layout (std140, set = 1, binding = 1) uniform Environment
+// Per frame data
+layout (std140, set = 0, binding = 1) uniform Environment
 {
     vec4 AmbientColor;
     vec4 ViewPos; // w: num of lights to process
@@ -20,15 +21,12 @@ layout (std140, set = 1, binding = 1) uniform Environment
     LightData DirectionalLight;
 } u_Env;
 
-layout(set = 2, binding = 0) uniform sampler2D texArray[3];
-
-// Debug push constants
-layout( push_constant ) uniform constants
+// Per draw data
+layout(std140, set = 1, binding = 1) uniform Material 
 {
-	int ForcedTexIndex;
-	int DrawDebug;
-    int EnableLighting;
-} PushConstants;
+    float Shininess;
+} u_Material;
+layout(set = 2, binding = 0) uniform sampler2D u_Textures[3];
 
 vec3 CalculateLighting(vec3 lightDir, vec3 lightColor)
 {
@@ -70,36 +68,17 @@ vec3 ProcessDirectionalLight(LightData light)
 
 void main()
 {
-    if (PushConstants.ForcedTexIndex > -1)
+    outColor = texture(u_Textures[0], inTexCoords);
+    vec3 lightColor = vec3(1.f, 1.f, 1.f);
+    //if (PushConstants.EnableLighting != 0)
     {
-        outColor = texture(texArray[PushConstants.ForcedTexIndex], inTexCoords);
+        lightColor = vec3(0.f, 0.f, 0.f);
+        for (int i = 0; i < int(u_Env.ViewPos.w); ++i)
+            lightColor += ProcessPointLight(u_Env.Lights[i]);
+        lightColor += ProcessDirectionalLight(u_Env.DirectionalLight);
+        lightColor = vec3(u_Env.AmbientColor) + lightColor;
     }
-    else
-    {
-        outColor = texture(texArray[0], inTexCoords);
-        vec3 lightColor = vec3(1.f, 1.f, 1.f);
-        if (PushConstants.EnableLighting != 0)
-        {
-            lightColor = vec3(0.f, 0.f, 0.f);
-            for (int i = 0; i < int(u_Env.ViewPos.w); ++i)
-                lightColor += ProcessPointLight(u_Env.Lights[i]);
-            lightColor += ProcessDirectionalLight(u_Env.DirectionalLight);
-            lightColor = vec3(u_Env.AmbientColor) + lightColor;
-        }
-        outColor = vec4(lightColor, 1.f) * outColor;
-    }
-    if (PushConstants.DrawDebug == 1)
-    {
-        outColor = vec4(inNormal, 1.f);
-    } 
-    else if (PushConstants.DrawDebug == 2)
-    {
-        outColor = vec4(inTexCoords, 0.f, 1.f);
-    }
-    else if (PushConstants.DrawDebug == 3)
-    {
-        outColor = vec4(inColor, 1.f);
-    }
+    outColor = vec4(lightColor, 1.f) * outColor;
     if (outColor.a <= 0.1f)
         discard;
 }

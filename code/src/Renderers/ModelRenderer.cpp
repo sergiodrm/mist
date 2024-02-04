@@ -30,12 +30,26 @@ namespace vkmmc
 			{.Filepath = globals::BasicVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
 			{.Filepath = globals::BasicFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
+
+		// This pipeline use dynamic descriptors, we have to initialize descriptor set layout manually.
+		VkDescriptorSetLayout layouts[3];
+		uint32_t layoutCount = sizeof(layouts) / sizeof(VkDescriptorSetLayout);
+		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
+			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+			.Build(info.RContext, &layouts[0]);
+		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
+			.Build(info.RContext, &layouts[1]);
+		layouts[2] = MaterialRenderData::GetDescriptorSetLayout(info.RContext, *info.LayoutCache);
+
 		m_renderPipeline = RenderPipeline::Create(
 			info.RContext,
 			info.RenderPass,
-			0,
+			0, // subpass
 			shaderStageDescs,
 			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
+			layouts, layoutCount, nullptr, 0,
 			VertexInputLayout::GetStaticMeshVertexLayout()
 		);
 
@@ -43,23 +57,27 @@ namespace vkmmc
 		for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
 		{
 			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
+
+			// Allocate shader data
 			uint32_t modelsSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
 			uint32_t modelsOffset = uniformBuffer->AllocUniform(info.RContext, "Models", modelsSize);
-			VkDescriptorBufferInfo modelsDescInfo;
-			modelsDescInfo.buffer = uniformBuffer->GetBuffer();
-			modelsDescInfo.offset = modelsOffset;
-			modelsDescInfo.range = modelsSize;
 			uint32_t enviroSize = sizeof(EnvironmentData);
 			uint32_t enviroOffset = uniformBuffer->AllocUniform(info.RContext, "Environment", enviroSize);
-			VkDescriptorBufferInfo enviroDescInfo;
-			enviroDescInfo.buffer = uniformBuffer->GetBuffer();
-			enviroDescInfo.offset = enviroOffset;
-			enviroDescInfo.range = enviroSize;
+
+			// Configure per frame DescriptorSet.
+			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Camera");
+			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Environment");
+			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo("Models", sizeof(glm::mat4));
+			// Materials have its own descriptor set (right now).
+
 
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(0, cameraDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.BindBuffer(1, enviroDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(info.RContext, m_frameData[i].GlobalSet);
+				.Build(info.RContext, m_frameData[i].PerFrameSet);
+			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(info.RContext, m_frameData[i].ModelSet);
 		}
 
 		m_environmentData.AmbientColor = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
@@ -84,10 +102,11 @@ namespace vkmmc
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
 
 		// Bind global descriptor sets
-		VkDescriptorSet sets[] = { renderFrameContext.CameraDescriptorSet, m_frameData[renderFrameContext.FrameIndex].GlobalSet };
+		VkDescriptorSet sets[] = { m_frameData[renderFrameContext.FrameIndex].PerFrameSet };
 		uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
 
+#if 0
 		// Push constants if needed
 		if (renderFrameContext.PushConstantData)
 		{
@@ -97,6 +116,8 @@ namespace vkmmc
 				renderFrameContext.PushConstantSize,
 				renderFrameContext.PushConstantData);
 		}
+#endif // 0
+
 
 		// Iterate scene graph to render models.
 		const Material* lastMaterial = nullptr;
@@ -110,6 +131,12 @@ namespace vkmmc
 			if (mesh)
 			{
 				const MeshRenderData& mrd = scene->GetMeshRenderData(mesh->GetHandle());
+
+				// BaseOffset in buffer is already setted when descriptor was created.
+				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
+				VkDescriptorSet modelSet = m_frameData[renderFrameContext.FrameIndex].ModelSet;
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					m_renderPipeline.GetPipelineLayoutHandle(), 1, 1, &modelSet, 1, &modelDynamicOffset);
 
 				if (lastMesh != mesh)
 				{

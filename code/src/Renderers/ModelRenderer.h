@@ -34,7 +34,8 @@ namespace vkmmc
 		struct RendererFrameData
 		{
 			// Camera, models and environment
-			VkDescriptorSet GlobalSet;
+			VkDescriptorSet PerFrameSet;
+			VkDescriptorSet ModelSet;
 		};
 	public:
 		ModelRenderer();

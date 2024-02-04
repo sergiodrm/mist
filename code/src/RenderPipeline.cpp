@@ -145,6 +145,49 @@ namespace vkmmc
 		return renderPipeline;
 	}
 
+	RenderPipeline RenderPipeline::Create(
+		RenderContext renderContext, 
+		const VkRenderPass& renderPass, 
+		uint32_t subpassIndex, 
+		const ShaderDescription* shaderStages, 
+		uint32_t shaderStageCount, 
+		const VkDescriptorSetLayout* layouts, 
+		uint32_t layoutCount, 
+		const VkPushConstantRange* pushConstants, 
+		uint32_t pushConstantCount, 
+		const VertexInputLayout& inputDescription, 
+		VkPrimitiveTopology topology)
+	{
+		check(shaderStages && shaderStageCount > 0);
+		RenderPipelineBuilder builder(renderContext);
+		// Input configuration
+		builder.InputDescription = inputDescription;
+		builder.SubpassIndex = subpassIndex;
+		builder.Topology = topology;
+		// Shader stages
+		ShaderCompiler compiler(renderContext);
+		for (uint32_t i = 0; i < shaderStageCount; ++i)
+		{
+			compiler.ProcessShaderFile(shaderStages[i].Filepath.c_str(), shaderStages[i].Stage);
+			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
+		}
+		// Pass layout info
+		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
+		builder.LayoutInfo.pushConstantRangeCount = pushConstantCount;
+		builder.LayoutInfo.pPushConstantRanges = pushConstants;
+		builder.LayoutInfo.setLayoutCount = layoutCount;
+		builder.LayoutInfo.pSetLayouts = layouts;
+
+		// Build the new pipeline
+		RenderPipeline renderPipeline = builder.Build(renderPass);
+
+		// Free shader compiler cached data
+		compiler.ClearCachedData();
+
+		return renderPipeline;
+	}
+
 	bool RenderPipeline::SetupPipeline(VkPipeline pipeline, VkPipelineLayout layout)
 	{
 		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);

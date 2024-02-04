@@ -55,12 +55,30 @@ namespace vkmmc
 	{
 	public:
 
+		// TODO: dynamic buffers can't be setted from reflection directly, find out a way to 
+		// know which uniform is dynamic.
+		// Use the second function to create the RenderPipeline if the pipeline uses dynamic descriptors till fix reflection.
+
+		// Generate descriptor set layouts and push constants from shader reflection.
 		static RenderPipeline Create(
 			RenderContext renderContext,
 			const VkRenderPass& renderPass,
 			uint32_t subpassIndex,
 			const ShaderDescription* shaderStages,
 			uint32_t shaderStageCount,
+			const VertexInputLayout& inputDescription,
+			VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+		// With specific layout and push constants configs
+		static RenderPipeline Create(
+			RenderContext renderContext,
+			const VkRenderPass& renderPass,
+			uint32_t subpassIndex,
+			const ShaderDescription* shaderStages,
+			uint32_t shaderStageCount,
+			const VkDescriptorSetLayout* layouts,
+			uint32_t layoutCount,
+			const VkPushConstantRange* pushConstants,
+			uint32_t pushConstantCount,
 			const VertexInputLayout& inputDescription,
 			VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 

@@ -10,23 +10,24 @@ layout (location = 1) out vec3 outColor;
 layout (location = 2) out vec3 outNormal;
 layout (location = 3) out vec2 outTexCoords;
 
+// Per frame data
 layout (std140, set = 0, binding = 0) uniform CameraBuffer
 {
     mat4 View;
     mat4 Projection;
     mat4 ViewProjection;
-} camera;
+} u_Camera;
 
-
-layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer
+// Per draw data
+layout (std140, set = 1, binding = 0) uniform Object
 {
-    mat4 TransformArray[];
-} objects;
+    mat4 ModelMatrix;
+} u_Object;
 
 void main()
 {
-    vec4 wsPos = objects.TransformArray[gl_BaseInstance] * vec4(LSPosition, 1.0f);
-    gl_Position = camera.ViewProjection * wsPos;
+    vec4 wsPos = u_Object.ModelMatrix * vec4(LSPosition, 1.0f);
+    gl_Position = u_Camera.ViewProjection * wsPos;
     outFragPos = wsPos;
     outColor = VIColor;
     outNormal = LSNormal;
