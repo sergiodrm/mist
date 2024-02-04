@@ -267,4 +267,27 @@ namespace vkmmc
 		return ItemMapInfo();
 	}
 
+	VkDescriptorBufferInfo UniformBuffer::GenerateDescriptorBufferInfo(const char* name) const
+	{
+		check(m_infoMap.contains(name) && m_buffer.IsAllocated());
+		VkDescriptorBufferInfo descInfo;
+		ItemMapInfo locationInfo = GetLocationInfo(name);
+		descInfo.buffer = GetBuffer();
+		descInfo.offset = locationInfo.Offset;
+		descInfo.range = locationInfo.Size;
+		return descInfo;
+	}
+
+	VkDescriptorBufferInfo UniformBuffer::GenerateDescriptorBufferDynamicInfo(const char* name, uint32_t size) const
+	{
+		check(m_infoMap.contains(name) && m_buffer.IsAllocated());
+		VkDescriptorBufferInfo descInfo;
+		ItemMapInfo locationInfo = GetLocationInfo(name);
+		descInfo.buffer = GetBuffer();
+		descInfo.offset = locationInfo.Offset;
+		check(size > 0 && size <= locationInfo.Size);
+		descInfo.range = locationInfo.Size;
+		return descInfo;
+	}
+
 }

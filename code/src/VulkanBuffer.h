@@ -103,6 +103,8 @@ namespace vkmmc
 		bool SetUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t dstOffset = 0);
 		ItemMapInfo GetLocationInfo(const char* name) const;
 		VkBuffer GetBuffer() const { return m_buffer.Buffer; }
+		VkDescriptorBufferInfo GenerateDescriptorBufferInfo(const char* name) const;
+		VkDescriptorBufferInfo GenerateDescriptorBufferDynamicInfo(const char* name, uint32_t size) const;
 
 	private:
 		std::unordered_map<std::string, ItemMapInfo> m_infoMap;
