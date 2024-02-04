@@ -14,6 +14,7 @@ namespace vkmmc
 		VkDescriptorSet Set{ VK_NULL_HANDLE };
 		VkSampler Sampler{ VK_NULL_HANDLE };
 
+		static VkDescriptorSetLayout GetDescriptorSetLayout(const RenderContext& renderContext, DescriptorLayoutCache& layoutCache);
 		void Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache);
 		void Destroy(const RenderContext& renderContext);
 	};

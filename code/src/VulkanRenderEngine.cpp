@@ -232,39 +232,6 @@ namespace vkmmc
 		return newWindow;
 	}
 
-	void MaterialRenderData::Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache)
-	{
-		if (Layout == VK_NULL_HANDLE)
-		{
-			DescriptorSetLayoutBuilder::Create(layoutCache)
-				.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3)
-				.Build(renderContext, &Layout);
-		}
-		if (Set == VK_NULL_HANDLE)
-		{
-			descAllocator.Allocate(&Set, Layout);
-		}
-		if (Sampler == VK_NULL_HANDLE)
-		{
-			VkSamplerCreateInfo samplerCreateInfo
-			{
-				.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-				.pNext = nullptr,
-				.magFilter = VK_FILTER_LINEAR,
-				.minFilter = VK_FILTER_LINEAR,
-				.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
-			};
-			vkcheck(vkCreateSampler(renderContext.Device, &samplerCreateInfo, nullptr, &Sampler));
-		}
-	}
-
-	void MaterialRenderData::Destroy(const RenderContext& renderContext)
-	{
-		vkDestroySampler(renderContext.Device, Sampler, nullptr);
-	}
-
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		PROFILE_SCOPE(Init);
@@ -725,7 +692,7 @@ namespace vkmmc
 
 			// Size for uniform frame buffer
 			uint32_t size = 1024 * 1024; // 1MB
-			frameContext.GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM | BUFFER_USAGE_STORAGE);
+			frameContext.GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM);
 
 			m_shutdownStack.Add([this, &frameContext]()
 				{
