@@ -90,12 +90,16 @@ namespace vkmmc
 
 	void ModelRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
-		// Update buffers
-		// TODO: Get camera position from scene view.
-		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
-		m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
+		PROFILE_SCOPE(ModelPass);
+		{
+			PROFILE_SCOPE(UpdateBuffers);
+			// Update buffers
+			// TODO: Get camera position from scene view.
+			m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
+			m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
+			renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
+			renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
+		}
 
 		// Bind pipeline
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
@@ -105,6 +109,7 @@ namespace vkmmc
 		VkDescriptorSet sets[] = { m_frameData[renderFrameContext.FrameIndex].PerFrameSet };
 		uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
+		++GRenderStats.SetBindingCount;
 
 #if 0
 		// Push constants if needed
@@ -119,8 +124,9 @@ namespace vkmmc
 #endif // 0
 
 
+
 		// Iterate scene graph to render models.
-		const Material* lastMaterial = nullptr;
+		uint32_t lastMaterialIndex = UINT32_MAX;
 		const Mesh* lastMesh = nullptr;
 		Scene* scene = renderFrameContext.Scene;
 		uint32_t nodeCount = scene->GetRenderObjectCount();
@@ -137,6 +143,7 @@ namespace vkmmc
 				VkDescriptorSet modelSet = m_frameData[renderFrameContext.FrameIndex].ModelSet;
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					m_renderPipeline.GetPipelineLayoutHandle(), 1, 1, &modelSet, 1, &modelDynamicOffset);
+				++GRenderStats.SetBindingCount;
 
 				if (lastMesh != mesh)
 				{
@@ -149,17 +156,20 @@ namespace vkmmc
 				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
 				{
 					const PrimitiveMeshData& drawData = mrd.PrimitiveArray[j];
-					const Material* material = &scene->GetMaterialArray()[drawData.MaterialIndex];
 					// TODO: material by default if there is no material.
-					check(material && material->GetHandle().IsValid());
-					if (lastMaterial != material)
+					if (lastMaterialIndex != drawData.MaterialIndex)
 					{
-						lastMaterial = material;
+						lastMaterialIndex = drawData.MaterialIndex;
+						const Material* material = &scene->GetMaterialArray()[drawData.MaterialIndex];
+						check(material && material->GetHandle().IsValid());
 						const MaterialRenderData& mtl = scene->GetMaterialRenderData(material->GetHandle());
 						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 							m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, &mtl.Set, 0, nullptr);
+						++GRenderStats.SetBindingCount;
 					}
 					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
+					++GRenderStats.DrawCalls;
+					GRenderStats.TrianglesCount += drawData.Count / 3;
 				}
 			}
 		}
@@ -168,7 +178,7 @@ namespace vkmmc
 	void ModelRenderer::ImGuiDraw()
 	{
 		ImGui::Begin("Environment");
-		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f) 
+		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
 			{
 				ImGui::Columns(2);
 				ImGui::Text(label);

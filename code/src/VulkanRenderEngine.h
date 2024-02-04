@@ -22,12 +22,52 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <string.h>
+#include <chrono>
 
 namespace vkmmc
 {
 	class Framebuffer;
 	class IRendererBase;
 	struct ShaderModuleLoadDescription;
+
+	struct ProfilingTimer
+	{
+		std::chrono::high_resolution_clock::time_point m_start;
+
+		void Start();
+		double Stop();
+	};
+
+	struct ProfilerItem
+	{
+		double m_elapsed;
+	};
+
+	struct Profiler
+	{
+		std::unordered_map<std::string, ProfilerItem> m_items;
+	};
+
+	struct ScopedTimer
+	{
+		ScopedTimer(const char* nameId, Profiler* profiler);
+		~ScopedTimer();
+
+		std::string m_nameId;
+		Profiler* m_profiler;
+		ProfilingTimer m_timer;
+	};
+
+	struct RenderStats
+	{
+		Profiler Profiler;
+		uint32_t TrianglesCount{ 0 };
+		uint32_t DrawCalls{ 0 };
+		uint32_t SetBindingCount{ 0 };
+		void Reset();
+	};
+	extern RenderStats GRenderStats;
+#define PROFILE_SCOPE(name) vkmmc::ScopedTimer __timer##name(#name, &vkmmc::GRenderStats.Profiler)
 
 	struct Window
 	{
@@ -50,6 +90,8 @@ namespace vkmmc
 		glm::mat4 Projection;
 		glm::mat4 ViewProjection;
 	};
+
+	
 
 	class VulkanRenderEngine : public IRenderEngine
 	{

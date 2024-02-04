@@ -118,6 +118,7 @@ namespace vkmmc
 
     void DebugRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
+        PROFILE_SCOPE(DebugPass);
         if (rdbg::GLineBatch.Index > 0)
         {
             // Flush lines to vertex buffer
@@ -128,10 +129,11 @@ namespace vkmmc
             uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
             vkCmdBindDescriptorSets(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS,
                 m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
+            ++GRenderStats.SetBindingCount;
             m_lineVertexBuffer.Bind(renderFrameContext.GraphicsCommand);
             vkCmdDraw(renderFrameContext.GraphicsCommand, rdbg::GLineBatch.Index, 1, 0, 0);
-
             rdbg::GLineBatch.Index = 0;
+            ++GRenderStats.DrawCalls;
         }
     }
 

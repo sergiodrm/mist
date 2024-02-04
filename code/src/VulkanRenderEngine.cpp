@@ -31,59 +31,6 @@ namespace vkmmc_debug
 {
 	bool GTerminatedWithErrors = false;
 
-	class GUILogger
-	{
-		struct MessageItem
-		{
-			uint32_t Counter = 0;
-			std::string Severity;
-			std::string Message;
-		};
-	public:
-
-		void Add(int32_t msgId, const char* severity, const char* msg)
-		{
-			if (m_messages.contains(msgId))
-			{
-				MessageItem& it = m_messages[msgId];
-				++it.Counter;
-			}
-			else
-			{
-				m_messages[msgId] = {1, severity, msg};
-			}
-		}
-
-		void ImGuiDraw()
-		{
-			ImGui::Begin("Vulkan validation layer");
-			ImGui::Checkbox("Print to console", &m_shouldPrintToLog);
-			ImGui::Columns(3);
-			ImGui::Text("Severity");
-			ImGui::NextColumn();
-			ImGui::Text("Count");
-			ImGui::NextColumn();
-			ImGui::Text("Message");
-			ImGui::NextColumn();
-			ImGui::Separator();
-			for (const auto& it : m_messages)
-			{
-				ImGui::Text("%s", it.second.Severity.c_str());
-				ImGui::NextColumn();
-				ImGui::Text("%ld", it.second.Counter);
-				ImGui::NextColumn();
-				ImGui::Text("%s", it.second.Message.c_str());
-				ImGui::NextColumn();
-			}
-			ImGui::Columns();
-			ImGui::End();
-		}
-
-		bool m_shouldPrintToLog = true;
-	private:
-		std::unordered_map<int32_t, MessageItem> m_messages;
-	} GGuiLogger;
-
 	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 		VkDebugUtilsMessageTypeFlagsEXT type,
 		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
@@ -96,82 +43,13 @@ namespace vkmmc_debug
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = vkmmc::LogLevel::Debug; break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
-		GGuiLogger.Add(callbackData->messageIdNumber, LogLevelToStr(level), callbackData->pMessage);
-		if (GGuiLogger.m_shouldPrintToLog)
-			Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
+		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
 #if defined(_DEBUG)
 		if (level == vkmmc::LogLevel::Error)
-		{
 			PrintCallstack();
-		}
 #endif
 		return VK_FALSE;
 	}
-
-	struct ProfilingTimer
-	{
-		std::chrono::high_resolution_clock::time_point m_start;
-
-		void Start()
-		{
-			m_start = std::chrono::high_resolution_clock::now();
-		}
-
-		double Stop()
-		{
-			auto stop = std::chrono::high_resolution_clock::now();
-			auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - m_start);
-			double s = (double)diff.count() * 1e-6;
-			return s;
-		}
-	};
-
-	struct ProfilerItem
-	{
-		double m_elapsed;
-	};
-
-	struct Profiler
-	{
-		std::unordered_map<std::string, ProfilerItem> m_items;
-	};
-
-	struct ScopedTimer
-	{
-		ScopedTimer(const char* nameId, Profiler* profiler)
-			: m_nameId(nameId), m_profiler(profiler)
-		{
-			m_timer.Start();
-		}
-
-		~ScopedTimer()
-		{
-			m_profiler->m_items[m_nameId] = ProfilerItem{ m_timer.Stop() };
-		}
-
-		std::string m_nameId;
-		Profiler* m_profiler;
-		ProfilingTimer m_timer;
-	};
-
-	struct RenderStats
-	{
-		Profiler m_profiler;
-		size_t m_trianglesCount{ 0 };
-		size_t m_drawCalls{ 0 };
-	} GRenderStats;
-
-	struct DebugShaderConstants
-	{
-		enum EDrawDebug : int32_t
-		{
-			Disabled, Normals, TexCoords, InColor, Count
-		};
-
-		int32_t ForcedIndexTexture{ -1 };
-		int32_t DrawDebug{Disabled};
-		int32_t EnableLighting{ 1 };
-	} GDebugShaderConstants;
 
 	void ImGuiDraw()
 	{
@@ -184,32 +62,60 @@ namespace vkmmc_debug
 		ImGui::SetNextWindowBgAlpha(0.5f);
 		ImGui::SetNextWindowPos({ 0.f, 0.f });
 		ImGui::Begin("Render stats", nullptr, flags);
-		for (auto item : GRenderStats.m_profiler.m_items)
+		for (auto item : vkmmc::GRenderStats.Profiler.m_items)
 		{
-			ImGui::Text("%s: %.4f ms", item.first.c_str(), item.second.m_elapsed);
+			ImGui::Text("%s:\t%.4f ms", item.first.c_str(), item.second.m_elapsed);
 		}
 		ImGui::Separator();
-		ImGui::Text("Draw calls: %zd", GRenderStats.m_drawCalls);
-		ImGui::Text("Triangles:  %zd", GRenderStats.m_trianglesCount);
+		ImGui::Text("Draw calls:	%u", vkmmc::GRenderStats.DrawCalls);
+		ImGui::Text("Triangles:		%u", vkmmc::GRenderStats.TrianglesCount);
+		ImGui::Text("Binding count: %u", vkmmc::GRenderStats.SetBindingCount);
 		ImGui::End();
 		ImGui::PopStyleColor();
-
-		ImGui::Begin("Debug shader constants");
-		ImGui::SliderInt("Forced texture index", &GDebugShaderConstants.ForcedIndexTexture, -1, 3);
-		ImGui::SliderInt("Draw debug mode", &GDebugShaderConstants.DrawDebug, 0, DebugShaderConstants::Count);
-		bool lightOn = GDebugShaderConstants.EnableLighting;
-		if (ImGui::Checkbox("Enable lighting", &lightOn))
-			GDebugShaderConstants.EnableLighting = lightOn ? 1 : 0;
-		ImGui::End();
-
-		GGuiLogger.ImGuiDraw();
 	}
 }
 
-#define PROFILE_SCOPE(name) vkmmc_debug::ScopedTimer __timer##name(#name, &vkmmc_debug::GRenderStats.m_profiler)
-
 namespace vkmmc
 {
+	vkmmc::RenderStats GRenderStats;
+
+	void ProfilingTimer::Start()
+	{
+		m_start = std::chrono::high_resolution_clock::now();
+	}
+
+	double ProfilingTimer::Stop()
+	{
+		auto stop = std::chrono::high_resolution_clock::now();
+		auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - m_start);
+		double s = (double)diff.count() * 1e-6;
+		return s;
+	}
+
+	ScopedTimer::ScopedTimer(const char* nameId, Profiler* profiler)
+		: m_nameId(nameId), m_profiler(profiler)
+	{
+		m_timer.Start();
+	}
+
+	ScopedTimer::~ScopedTimer()
+	{
+		double elapsed = m_timer.Stop();
+		if (!m_profiler->m_items.contains(m_nameId))
+			m_profiler->m_items[m_nameId] = ProfilerItem{ 0.0 };
+		m_profiler->m_items[m_nameId].m_elapsed += elapsed;
+	}
+
+	void RenderStats::Reset()
+	{
+		TrianglesCount = 0;
+		DrawCalls = 0;
+		SetBindingCount = 0;
+		for (auto& it : Profiler.m_items)
+			it.second.m_elapsed = 0.0;
+	}
+
+
 	RenderHandle GenerateRenderHandle()
 	{
 		static RenderHandle h;
@@ -250,7 +156,7 @@ namespace vkmmc
 		// Swapchain
 		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
 		m_shutdownStack.Add(
-			[this]() 
+			[this]()
 			{
 				m_swapchain.Destroy(m_renderContext);
 			}
@@ -289,7 +195,7 @@ namespace vkmmc
 			)
 			.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
 			.Build(m_renderContext);
-		m_shutdownStack.Add([this]() 
+		m_shutdownStack.Add([this]()
 			{
 				vkDestroyRenderPass(m_renderContext.Device, m_renderPass, nullptr);
 			}
@@ -311,12 +217,9 @@ namespace vkmmc
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
 		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
 			rendererCreateInfo.FrameUniformBufferArray.push_back(&m_frameContextArray[i].GlobalBuffer);
-		VkPushConstantRange pcr;
-		pcr.offset = 0;
-		pcr.size = sizeof(vkmmc_debug::DebugShaderConstants);
-		pcr.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-		rendererCreateInfo.ConstantRange = &pcr;
-		rendererCreateInfo.ConstantRangeCount = 1; 
+
+		rendererCreateInfo.ConstantRange = nullptr;
+		rendererCreateInfo.ConstantRangeCount = 0;
 
 		m_renderers.push_back(new ModelRenderer());
 		m_renderers.push_back(new DebugRenderer());
@@ -332,12 +235,13 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::RenderProcess()
 	{
+		// Reset stats
 		PROFILE_SCOPE(Process);
 		bool res = true;
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
 		{
-			ImGui_ImplSDL2_ProcessEvent(&e); 
+			ImGui_ImplSDL2_ProcessEvent(&e);
 			switch (e.type)
 			{
 			case SDL_QUIT: res = false; break;
@@ -349,9 +253,7 @@ namespace vkmmc
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
 
-		// Reset stats
-		vkmmc_debug::GRenderStats.m_trianglesCount = 0;
-		vkmmc_debug::GRenderStats.m_drawCalls = 0;
+		GRenderStats.Reset();
 		Draw();
 		return res;
 	}
@@ -422,8 +324,6 @@ namespace vkmmc
 			PROFILE_SCOPE(UpdateBuffers);
 			frameContext.GlobalBuffer.SetUniform(m_renderContext, "Camera", &m_cameraData, sizeof(CameraData));
 
-			frameContext.PushConstantData = &vkmmc_debug::GDebugShaderConstants;
-			frameContext.PushConstantSize = sizeof(vkmmc_debug::DebugShaderConstants);
 		}
 
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
@@ -452,11 +352,11 @@ namespace vkmmc
 			clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
 			//clearValues[1].color = { 0.2f, 0.2f, 0.f, 1.f };
 			clearValues[1].depthStencil.depth = 1.f;
-			
-			VkRenderPassBeginInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr};
+
+			VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
 			renderPassInfo.renderPass = m_renderPass;
 			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = { .width = m_framebufferArray[swapchainImageIndex].GetWidth(), .height = m_framebufferArray[swapchainImageIndex].GetHeight()};
+			renderPassInfo.renderArea.extent = { .width = m_framebufferArray[swapchainImageIndex].GetWidth(), .height = m_framebufferArray[swapchainImageIndex].GetHeight() };
 			renderPassInfo.framebuffer = frameContext.Framebuffer;
 			renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
 			renderPassInfo.pClearValues = clearValues;
@@ -466,7 +366,7 @@ namespace vkmmc
 		// Record command buffers from renderers
 		for (IRendererBase* renderer : m_renderers)
 			renderer->RecordCommandBuffer(m_renderContext, frameContext);
-		
+
 
 		// Terminate render pass
 		vkCmdEndRenderPass(cmd);
@@ -583,7 +483,7 @@ namespace vkmmc
 		allocatorInfo.device = m_renderContext.Device;
 		allocatorInfo.instance = m_renderContext.Instance;
 		vmaCreateAllocator(&allocatorInfo, &m_renderContext.Allocator);
-		m_shutdownStack.Add([this]() 
+		m_shutdownStack.Add([this]()
 			{
 				vmaDestroyAllocator(m_renderContext.Allocator);
 			});
@@ -684,7 +584,7 @@ namespace vkmmc
 				m_descriptorAllocator.Destroy();
 				m_descriptorLayoutCache.Destroy();
 			});
-	
+
 		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
@@ -711,6 +611,6 @@ namespace vkmmc
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 		}
 		return true;
-	}	
-	
+	}
+
 }

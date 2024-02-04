@@ -79,6 +79,7 @@ namespace vkmmc
 
     void UIRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
+		PROFILE_SCOPE(ImGuiPass);
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), renderFrameContext.GraphicsCommand);
     }
