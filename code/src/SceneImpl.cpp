@@ -228,6 +228,8 @@ namespace gltf_api
 				rootAssetPath,
 				mtl.pbr_specular_glossiness.diffuse_texture);
 			material.SetSpecularTexture(handle);
+			
+			vkmmc::Log(vkmmc::LogLevel::Warn, "Specular.\n");
 		}
 #ifdef VKMMC_ENABLE_LOADER_LOG
 		else

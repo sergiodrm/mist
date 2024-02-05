@@ -3,6 +3,8 @@
 #include <fstream>
 #include "GenericUtils.h"
 #include "Debug.h"
+#include "glm/fwd.hpp"
+#include "glm/gtx/quaternion.hpp"
 
 namespace vkmmc_utils
 {
@@ -39,5 +41,10 @@ namespace vkmmc_utils
 				break;
 			}
 		}
+	}
+
+	glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr)
+	{
+		return glm::toMat4(glm::quat(pyr));;
 	}
 }

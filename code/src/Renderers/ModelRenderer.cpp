@@ -10,13 +10,17 @@
 #include "imgui_internal.h"
 
 #include "DebugRenderer.h"
+#include "GenericUtils.h"
 
 namespace vkmmc
 {
-	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0)
+	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0), m_activeSpotLightsCount(0)
 	{
 		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
+		{
 			m_environmentData.Lights[i] = { .Position = {0.f, 0.f, 0.f}, .Radius = 10.f, .Color = {1.f, 1.f, 1.f}, .Compression = 0.5f, };
+			m_environmentData.SpotLights[i] = { .Color = {1.f, 1.f, 1.f}, .Direction = {1.f, 0.f, 0.f}, .InnerCutoff = 0.5f, .Position = {0.f, 0.f, 0.f}, .OuterCutoff = 0.5f };
+		}
 		m_environmentData.DirectionalLight = { .Direction = {0.f, -1.f, 0.f}, .Radius = 0.f, .Color = {0.01f, 0.01f, 0.05f}, .Compression = 0.f };
 	}
 
@@ -97,6 +101,7 @@ namespace vkmmc
 			// TODO: Get camera position from scene view.
 			m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
 			m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
+			m_environmentData.ActiveSpotLightsCount = (float)m_activeSpotLightsCount;
 			renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
 			renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
 		}
@@ -110,19 +115,6 @@ namespace vkmmc
 		uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
 		++GRenderStats.SetBindingCount;
-
-#if 0
-		// Push constants if needed
-		if (renderFrameContext.PushConstantData)
-		{
-			check(renderFrameContext.PushConstantSize);
-			vkCmdPushConstants(cmd, m_renderPipeline.GetPipelineLayoutHandle(),
-				VK_SHADER_STAGE_FRAGMENT_BIT, 0,
-				renderFrameContext.PushConstantSize,
-				renderFrameContext.PushConstantData);
-		}
-#endif // 0
-
 
 
 		// Iterate scene graph to render models.
@@ -221,6 +213,35 @@ namespace vkmmc
 
 					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
 					rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
+				}
+			}
+		}
+		if (ImGui::CollapsingHeader("Spot lights"))
+		{
+			ImGui::SliderInt("Active spot lights", &m_activeSpotLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
+			for (uint32_t i = 0; i < (uint32_t)m_activeSpotLightsCount; ++i)
+			{
+				char buff[32];
+				sprintf_s(buff, "SpotLight_%u", i);
+				if (ImGui::CollapsingHeader(buff))
+				{
+					SpotLightData& data = m_environmentData.SpotLights[i];
+					utilDragFloat("Position", i, &data.Position[0], 3, false);
+					glm::vec3 dir = glm::normalize(data.Direction);
+					glm::vec3 pyr;
+					pyr.x = asin(-dir.y);
+					pyr.y = atan2(dir.x, dir.z);
+					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f, -(float)M_PI, (float)M_PI))
+					{
+						glm::mat4 m = vkmmc_utils::PitchYawRollToMat4(pyr);
+						data.Direction = glm::vec3(m * glm::vec4(0.f, 0.f, 1.f, 1.f));
+					}
+					utilDragFloat("Color", i, &data.Color[0], 3, true);
+					utilDragFloat("InnerCutoff", i, &data.InnerCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
+					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
+
+					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
+					rdbg::DeferredDrawLine(data.Position, data.Position + data.Direction, data.Color);
 				}
 			}
 		}

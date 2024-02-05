@@ -12,13 +12,21 @@ struct LightData
     vec4 Color; // w: compression
 };
 
+struct SpotLightData
+{
+    vec4 Color;
+    vec4 Dir; // w: inner cutoff
+    vec4 Pos; // w: outer cutoff
+};
+
 // Per frame data
 layout (std140, set = 0, binding = 1) uniform Environment
 {
-    vec4 AmbientColor;
+    vec4 AmbientColor; // w: num of spot lights to process
     vec4 ViewPos; // w: num of lights to process
     LightData Lights[8];
     LightData DirectionalLight;
+    SpotLightData SpotLights[8];
 } u_Env;
 
 // Per draw data
@@ -66,6 +74,22 @@ vec3 ProcessDirectionalLight(LightData light)
     return CalculateLighting(lightDir, vec3(light.Color));
 }
 
+vec3 ProcessSpotLight(SpotLightData light)
+{
+    vec3 lighting = vec3(0.f);
+    vec3 lightDir = normalize(vec3(light.Pos) - vec3(inFragPos));
+    float theta = dot(lightDir, -vec3(light.Dir));
+    float innerCutoff = light.Dir.a;
+    float outerCutoff = light.Pos.a;
+    float epsilon = innerCutoff - outerCutoff;
+    float intensity = clamp((theta - outerCutoff) / epsilon, 0.0, 1.0);
+    if (intensity > 0.f)
+    {
+        lighting = CalculateLighting(lightDir, vec3(light.Color));
+    }
+    return lighting * intensity;
+}
+
 void main()
 {
     outColor = texture(u_Textures[0], inTexCoords);
@@ -73,8 +97,12 @@ void main()
     //if (PushConstants.EnableLighting != 0)
     {
         lightColor = vec3(0.f, 0.f, 0.f);
-        for (int i = 0; i < int(u_Env.ViewPos.w); ++i)
+        int numPointLights = int(u_Env.ViewPos.w);
+        int numSpotLights = int(u_Env.AmbientColor.w);
+        for (int i = 0; i < numPointLights; ++i)
             lightColor += ProcessPointLight(u_Env.Lights[i]);
+        for (int i = 0; i < numSpotLights; ++i)
+            lightColor += ProcessSpotLight(u_Env.SpotLights[i]);
         lightColor += ProcessDirectionalLight(u_Env.DirectionalLight);
         lightColor = vec3(u_Env.AmbientColor) + lightColor;
     }

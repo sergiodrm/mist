@@ -19,14 +19,26 @@ namespace vkmmc
 		float Compression;
 	};
 
+	struct SpotLightData
+	{
+		glm::vec3 Color;
+		float __padding;
+		glm::vec3 Direction;
+		float InnerCutoff;
+		glm::vec3 Position;
+		float OuterCutoff;
+	};
+
 	struct EnvironmentData
 	{
-		glm::vec4 AmbientColor;
+		glm::vec3 AmbientColor;
+		float ActiveSpotLightsCount;
 		glm::vec3 ViewPosition;
 		float ActiveLightsCount;
 		static constexpr uint32_t MaxLights = 8;
 		LightData Lights[MaxLights];
 		LightData DirectionalLight;
+		SpotLightData SpotLights[MaxLights];
 	};
 
 	class ModelRenderer : public IRendererBase
@@ -51,6 +63,7 @@ namespace vkmmc
 
 		std::vector<RendererFrameData> m_frameData;
 		int32_t m_activeLightsCount;
+		int32_t m_activeSpotLightsCount;
 		EnvironmentData m_environmentData;
 	};
 }
