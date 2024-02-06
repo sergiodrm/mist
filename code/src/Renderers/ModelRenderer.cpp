@@ -228,20 +228,26 @@ namespace vkmmc
 					SpotLightData& data = m_environmentData.SpotLights[i];
 					utilDragFloat("Position", i, &data.Position[0], 3, false);
 					glm::vec3 dir = glm::normalize(data.Direction);
+
+					// dir vector to roll pitch yaw (x:pitch, y:yaw, z:roll)
 					glm::vec3 pyr;
 					pyr.x = asin(-dir.y);
 					pyr.y = atan2(dir.x, dir.z);
+					pyr.z = 0.f;
 					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f, -(float)M_PI, (float)M_PI))
 					{
+						// Transform to rot matrix
 						glm::mat4 m = vkmmc_utils::PitchYawRollToMat4(pyr);
+						// Forward direction (0, 0, 1) in rotation space.
 						data.Direction = glm::vec3(m * glm::vec4(0.f, 0.f, 1.f, 1.f));
 					}
 					utilDragFloat("Color", i, &data.Color[0], 3, true);
 					utilDragFloat("InnerCutoff", i, &data.InnerCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
 					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
 
-					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-					rdbg::DeferredDrawLine(data.Position, data.Position + data.Direction, data.Color);
+					constexpr float scl = 100.f; // meters
+					rdbg::DeferredDrawAxis(data.Position, pyr, glm::vec3(scl));
+					rdbg::DeferredDrawLine(data.Position, data.Position + data.Direction * scl, data.Color);
 				}
 			}
 		}
