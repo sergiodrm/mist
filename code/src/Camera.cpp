@@ -15,8 +15,8 @@ namespace vkmmc
 		m_rotation(0.f),
 		m_fov(45.f),
 		m_aspectRatio(16.f / 9.f),
-		m_nearClip(0.1f),
-		m_farClip(5000.f)
+		m_nearClip(20.f),
+		m_farClip(1000000.f)
 	{
 		RecalculateView();
 		RecalculateProjection();
