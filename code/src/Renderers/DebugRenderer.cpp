@@ -100,7 +100,7 @@ namespace vkmmc
         uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
 
         VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
-        m_renderPipeline = RenderPipeline::Create(info.RContext, info.RenderPass, 0,
+        m_renderPipeline = RenderPipeline::Create(info.RContext, info.ColorPass, 0,
             descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
         // VertexBuffer
@@ -116,7 +116,7 @@ namespace vkmmc
         m_renderPipeline.Destroy(renderContext);
     }
 
-    void DebugRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+    void DebugRenderer::RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
         PROFILE_SCOPE(DebugPass);
         if (rdbg::GLineBatch.Index > 0)

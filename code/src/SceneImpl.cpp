@@ -726,6 +726,57 @@ namespace vkmmc
 		return m_renderData.Materials.at(handle);
 	}
 
+	void Scene::Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
+	{
+		// Iterate scene graph to render models.
+		uint32_t lastMaterialIndex = UINT32_MAX;
+		const Mesh* lastMesh = nullptr;
+		uint32_t nodeCount = GetRenderObjectCount();
+		for (uint32_t i = 0; i < nodeCount; ++i)
+		{
+			RenderObject renderObject = i;
+			const Mesh* mesh = GetMesh(renderObject);
+			if (mesh)
+			{
+				const MeshRenderData& mrd = GetMeshRenderData(mesh->GetHandle());
+
+				// BaseOffset in buffer is already setted when descriptor was created.
+				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					pipelineLayout, modelSetIndex, 1, &modelSet, 1, &modelDynamicOffset);
+				++GRenderStats.SetBindingCount;
+
+				// Bind vertex/index buffers just if needed
+				if (lastMesh != mesh)
+				{
+					check(mesh->GetHandle().IsValid());
+					lastMesh = mesh;
+					mrd.VertexBuffer.Bind(cmd);
+					mrd.IndexBuffer.Bind(cmd);
+				}
+				// Iterate primitives of current mesh
+				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
+				{
+					const PrimitiveMeshData& drawData = mrd.PrimitiveArray[j];
+					// TODO: material by default if there is no material.
+					if (lastMaterialIndex != drawData.MaterialIndex)
+					{
+						lastMaterialIndex = drawData.MaterialIndex;
+						const Material* material = &GetMaterialArray()[drawData.MaterialIndex];
+						check(material && material->GetHandle().IsValid());
+						const MaterialRenderData& mtl = GetMaterialRenderData(material->GetHandle());
+						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+							pipelineLayout, materialSetIndex, 1, &mtl.Set, 0, nullptr);
+						++GRenderStats.SetBindingCount;
+					}
+					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
+					++GRenderStats.DrawCalls;
+					GRenderStats.TrianglesCount += drawData.Count / 3;
+				}
+			}
+		}
+	}
+
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
 	{
 		// Dirty check, must be clean

@@ -44,9 +44,6 @@ namespace vkmmc
 		VkSemaphore RenderSemaphore{};
 		VkSemaphore PresentSemaphore{};
 
-		// Framebuffer with swapchain attachment
-		VkFramebuffer Framebuffer;
-
 		// Commands
 		VkCommandPool GraphicsCommandPool{};
 		VkCommandBuffer GraphicsCommand{};

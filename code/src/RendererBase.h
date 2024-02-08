@@ -17,7 +17,8 @@ namespace vkmmc
 	struct RendererCreateInfo
 	{
 		RenderContext RContext;
-		VkRenderPass RenderPass;
+		VkRenderPass ColorPass;
+		VkRenderPass DepthPass;
 		DescriptorLayoutCache* LayoutCache{nullptr};
 		DescriptorAllocator* DescriptorAllocator{nullptr};
 
@@ -37,7 +38,8 @@ namespace vkmmc
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 
 		virtual void BeginFrame(const RenderContext& renderContext) = 0;
-		virtual void RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
+		virtual void RecordDepthPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
+		virtual void RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
 		//virtual void EndFrame(const RenderContext& renderContext) = 0;
 
 		// Debug

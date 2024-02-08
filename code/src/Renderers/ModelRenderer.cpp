@@ -49,7 +49,7 @@ namespace vkmmc
 
 		m_renderPipeline = RenderPipeline::Create(
 			info.RContext,
-			info.RenderPass,
+			info.ColorPass,
 			0, // subpass
 			shaderStageDescs,
 			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
@@ -92,7 +92,7 @@ namespace vkmmc
 		m_renderPipeline.Destroy(renderContext);
 	}
 
-	void ModelRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	void ModelRenderer::RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
 		PROFILE_SCOPE(ModelPass);
 		{
@@ -116,55 +116,12 @@ namespace vkmmc
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
 		++GRenderStats.SetBindingCount;
 
+		// DrawScene
+		renderFrameContext.Scene->Draw(cmd, m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);
+	}
 
-		// Iterate scene graph to render models.
-		uint32_t lastMaterialIndex = UINT32_MAX;
-		const Mesh* lastMesh = nullptr;
-		Scene* scene = renderFrameContext.Scene;
-		uint32_t nodeCount = scene->GetRenderObjectCount();
-		for (uint32_t i = 0; i < nodeCount; ++i)
-		{
-			RenderObject renderObject = i;
-			const Mesh* mesh = scene->GetMesh(renderObject);
-			if (mesh)
-			{
-				const MeshRenderData& mrd = scene->GetMeshRenderData(mesh->GetHandle());
-
-				// BaseOffset in buffer is already setted when descriptor was created.
-				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
-				VkDescriptorSet modelSet = m_frameData[renderFrameContext.FrameIndex].ModelSet;
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					m_renderPipeline.GetPipelineLayoutHandle(), 1, 1, &modelSet, 1, &modelDynamicOffset);
-				++GRenderStats.SetBindingCount;
-
-				if (lastMesh != mesh)
-				{
-					check(mesh->GetHandle().IsValid());
-					lastMesh = mesh;
-					mrd.VertexBuffer.Bind(cmd);
-					mrd.IndexBuffer.Bind(cmd);
-				}
-
-				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
-				{
-					const PrimitiveMeshData& drawData = mrd.PrimitiveArray[j];
-					// TODO: material by default if there is no material.
-					if (lastMaterialIndex != drawData.MaterialIndex)
-					{
-						lastMaterialIndex = drawData.MaterialIndex;
-						const Material* material = &scene->GetMaterialArray()[drawData.MaterialIndex];
-						check(material && material->GetHandle().IsValid());
-						const MaterialRenderData& mtl = scene->GetMaterialRenderData(material->GetHandle());
-						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-							m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, &mtl.Set, 0, nullptr);
-						++GRenderStats.SetBindingCount;
-					}
-					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					++GRenderStats.DrawCalls;
-					GRenderStats.TrianglesCount += drawData.Count / 3;
-				}
-			}
-		}
+	void ModelRenderer::RecordDepthPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	{
 	}
 
 	void ModelRenderer::ImGuiDraw()

@@ -91,8 +91,21 @@ namespace vkmmc
 		glm::mat4 ViewProjection;
 	};
 
-	
+	struct RenderPass
+	{
+		uint32_t Width;
+		uint32_t Height;
+		int32_t OffsetX;
+		int32_t OffsetY;
+		VkRenderPass RenderPass;
+		// one framebuffer per swapchain image
+		std::vector<Framebuffer> FramebufferArray;
+		std::vector<VkClearValue> ClearValues; // clear values per framebuffer attachment
 
+		void BeginPass(VkCommandBuffer cmd, uint32_t framebufferIndex) const;
+		void EndPass(VkCommandBuffer cmd) const;
+	};
+	
 	class VulkanRenderEngine : public IRenderEngine
 	{
 	public:
@@ -127,21 +140,25 @@ namespace vkmmc
 		// Initializations
 		bool InitVulkan();
 		bool InitCommands();
+		bool InitRenderPass();
 		bool InitFramebuffers();
 		bool InitSync();
 		bool InitPipeline();
+
+		void BeginRenderPass(VkCommandBuffer cmd, const RenderPass& renderPass, uint32_t swapchainIndex);
+		void EndRenderPass(VkCommandBuffer cmd, const RenderPass& renderPass);
 
 	private:
 
 		Window m_window;
 		
 		RenderContext m_renderContext;
-		
-		Swapchain m_swapchain;
-		VkRenderPass m_renderPass;
 
-		std::vector<VkFramebuffer> m_framebuffers;
-		std::vector<Framebuffer> m_framebufferArray;
+		Swapchain m_swapchain;
+
+		
+		RenderPass m_colorPass;
+		RenderPass m_depthPass;
 
 		RenderFrameContext m_frameContextArray[MaxOverlappedFrames];
 		size_t m_frameCounter;

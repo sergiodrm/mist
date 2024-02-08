@@ -100,6 +100,7 @@ namespace vkmmc
 		const MaterialRenderData& GetMaterialRenderData(RenderHandle handle) const;
 		MaterialRenderData& GetMaterialRenderData(RenderHandle handle);
 
+		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 
 	private:
 		VulkanRenderEngine* m_engine{nullptr};

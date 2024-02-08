@@ -53,7 +53,7 @@ namespace vkmmc
 			.ImageCount = 3,
 			.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
 		};
-		ImGui_ImplVulkan_Init(&initInfo, info.RenderPass);
+		ImGui_ImplVulkan_Init(&initInfo, info.ColorPass);
 
 		// Execute gpu command to upload imgui font textures
 		utils::CmdSubmitTransfer(info.RContext, 
@@ -77,7 +77,7 @@ namespace vkmmc
 		ImGui::NewFrame();
 	}
 
-    void UIRenderer::RecordCommandBuffer(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+    void UIRenderer::RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
 		PROFILE_SCOPE(ImGuiPass);
 		ImGui::Render();

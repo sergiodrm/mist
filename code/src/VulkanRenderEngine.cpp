@@ -149,6 +149,7 @@ namespace vkmmc
 		m_renderContext.Height = spec.WindowHeight;
 		m_renderContext.Window = m_window.WindowInstance;
 		Log(LogLevel::Ok, "Window created successfully!\n");
+		
 
 		// Init vulkan context
 		check(InitVulkan());
@@ -166,41 +167,7 @@ namespace vkmmc
 		check(InitCommands());
 
 		// RenderPass
-		VkSubpassDependency dependencies[2];
-		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependencies[0].dstSubpass = 0;
-		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[0].srcAccessMask = 0;
-		dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[0].dependencyFlags = 0;
-
-		dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
-		dependencies[1].dstSubpass = 0;
-		dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-			| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-		dependencies[1].srcAccessMask = 0;
-		dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-			| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-		dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		dependencies[1].dependencyFlags = 0;
-
-		m_renderPass = RenderPassBuilder::Create()
-			.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
-			.AddDepthAttachmentDescription(FORMAT_D32)
-			.AddSubpass(
-				{ 0 }, // Color attachments
-				1, // Depth attachment
-				{} // Input attachment
-			)
-			.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
-			.Build(m_renderContext);
-		m_shutdownStack.Add([this]()
-			{
-				vkDestroyRenderPass(m_renderContext.Device, m_renderPass, nullptr);
-			}
-		);
-		check(m_renderPass != VK_NULL_HANDLE);
+		check(InitRenderPass());
 
 		// Framebuffers
 		check(InitFramebuffers());
@@ -212,7 +179,8 @@ namespace vkmmc
 
 		RendererCreateInfo rendererCreateInfo;
 		rendererCreateInfo.RContext = m_renderContext;
-		rendererCreateInfo.RenderPass = m_renderPass;
+		rendererCreateInfo.ColorPass = m_colorPass.RenderPass;
+		rendererCreateInfo.DepthPass = m_depthPass.RenderPass;
 		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
 		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
@@ -332,7 +300,7 @@ namespace vkmmc
 			PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
 			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
-			frameContext.Framebuffer = m_framebufferArray[swapchainImageIndex].GetFramebufferHandle();
+			//frameContext.Framebuffer = m_framebufferArray[swapchainImageIndex].GetFramebufferHandle();
 
 			// Reset command buffer
 			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
@@ -345,31 +313,23 @@ namespace vkmmc
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
 			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-
-			// Begin render pass
-			// Clear values
-			VkClearValue clearValues[2];
-			clearValues[0].color = { 0.2f, 0.2f, 0.f, 1.f };
-			//clearValues[1].color = { 0.2f, 0.2f, 0.f, 1.f };
-			clearValues[1].depthStencil.depth = 1.f;
-
-			VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
-			renderPassInfo.renderPass = m_renderPass;
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			renderPassInfo.renderArea.extent = { .width = m_framebufferArray[swapchainImageIndex].GetWidth(), .height = m_framebufferArray[swapchainImageIndex].GetHeight() };
-			renderPassInfo.framebuffer = frameContext.Framebuffer;
-			renderPassInfo.clearValueCount = sizeof(clearValues) / sizeof(VkClearValue);
-			renderPassInfo.pClearValues = clearValues;
-			vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		}
 
-		// Record command buffers from renderers
-		for (IRendererBase* renderer : m_renderers)
-			renderer->RecordCommandBuffer(m_renderContext, frameContext);
+		{
+			PROFILE_SCOPE(DepthPass);
+			m_depthPass.BeginPass(cmd, swapchainImageIndex);
+			for (IRendererBase* renderer : m_renderers)
+				renderer->RecordDepthPass(m_renderContext, frameContext);
+			m_depthPass.EndPass(cmd);
+		}
+		{
+			PROFILE_SCOPE(ColorPass);
+			m_colorPass.BeginPass(cmd, swapchainImageIndex);
+			for (IRendererBase* renderer : m_renderers)
+				renderer->RecordColorPass(m_renderContext, frameContext);
+			m_colorPass.EndPass(cmd);
+		}
 
-
-		// Terminate render pass
-		vkCmdEndRenderPass(cmd);
 
 		// Terminate command buffer
 		vkcheck(vkEndCommandBuffer(cmd));
@@ -521,24 +481,124 @@ namespace vkmmc
 		return true;
 	}
 
+	bool VulkanRenderEngine::InitRenderPass()
+	{
+		// Color RenderPass
+		{
+			VkSubpassDependency dependencies[2];
+			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[0].dstSubpass = 0;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[0].srcAccessMask = 0;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependencies[0].dependencyFlags = 0;
+
+			dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[1].dstSubpass = 0;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+				| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[1].srcAccessMask = 0;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+				| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[1].dependencyFlags = 0;
+
+			m_colorPass.RenderPass = RenderPassBuilder::Create()
+				.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
+				.AddDepthAttachmentDescription(FORMAT_D32)
+				.AddSubpass(
+					{ 0 }, // Color attachments
+					1, // Depth attachment
+					{} // Input attachment
+				)
+				.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
+				.Build(m_renderContext);
+			m_shutdownStack.Add([this]()
+				{
+					vkDestroyRenderPass(m_renderContext.Device, m_colorPass.RenderPass, nullptr);
+				}
+			);
+			check(m_colorPass.RenderPass != VK_NULL_HANDLE);
+
+			m_colorPass.Width = m_window.Width;
+			m_colorPass.Height = m_window.Height;
+			m_colorPass.OffsetX = 0;
+			m_colorPass.OffsetY = 0;
+			VkClearValue value;
+			value.color = { 0.1f, 0.2f, 0.3f };
+			value.depthStencil.depth = 1.f;
+			m_colorPass.ClearValues.push_back(value);
+			m_colorPass.ClearValues.push_back(value);
+		}
+
+		// Depth RenderPass for shadow mapping
+		{
+			VkSubpassDependency dependencies[2];
+			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[0].dstSubpass = 0;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			dependencies[1].srcSubpass = 0;
+			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+			m_depthPass.RenderPass = RenderPassBuilder::Create()
+				.AddDepthAttachmentDescription(FORMAT_D32)
+				.AddSubpass({}, 0, {})
+				.AddDependencies(dependencies, 2)
+				.Build(m_renderContext);
+			check(m_depthPass.RenderPass != VK_NULL_HANDLE);
+			m_shutdownStack.Add([this]() { vkDestroyRenderPass(m_renderContext.Device, m_depthPass.RenderPass, nullptr);  });
+
+			m_depthPass.Width = m_window.Width;
+			m_depthPass.Height = m_window.Height;
+			m_depthPass.OffsetX = 0;
+			m_depthPass.OffsetY = 0;
+			VkClearValue value;
+			value.color = { 0.1f, 0.2f, 0.3f };
+			value.depthStencil.depth = 1.f;
+			m_depthPass.ClearValues.push_back(value);
+			m_depthPass.ClearValues.push_back(value);
+		}
+
+		return true;
+	}
+
 	bool VulkanRenderEngine::InitFramebuffers()
 	{
 		// Collect image in the swapchain
 		const uint32_t swapchainImageCount = m_swapchain.GetImageCount();
-		m_framebuffers = std::vector<VkFramebuffer>(swapchainImageCount);
 
 		// One framebuffer for each of the swapchain image view.
-		m_framebufferArray.resize(swapchainImageCount);
+		m_colorPass.FramebufferArray.resize(swapchainImageCount);
+		m_depthPass.FramebufferArray.resize(swapchainImageCount);
 		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
-			m_framebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_window.Width, m_window.Height)
+			// Color Framebuffer
+			m_colorPass.FramebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_colorPass.Width, m_colorPass.Height)
 				.AddAttachment(m_swapchain.GetImageViewAt(i))
 				//.CreateColorAttachment()
 				.CreateDepthStencilAttachment()
-				.Build(m_renderPass);
+				.Build(m_colorPass.RenderPass);
+
+			// Depth Framebuffer
+			m_depthPass.FramebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_depthPass.Width, m_depthPass.Height)
+				.CreateDepthStencilAttachment()
+				.Build(m_depthPass.RenderPass);
+
+			// Destroy on shutdown
 			m_shutdownStack.Add([this, i]()
 				{
-					m_framebufferArray[i].Destroy(m_renderContext);
+					m_colorPass.FramebufferArray[i].Destroy(m_renderContext);
+					m_depthPass.FramebufferArray[i].Destroy(m_renderContext);
 				});
 		}
 		return true;
@@ -611,6 +671,23 @@ namespace vkmmc
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 		}
 		return true;
+	}
+
+	void RenderPass::BeginPass(VkCommandBuffer cmd, uint32_t framebufferIndex) const
+	{
+		VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
+		renderPassInfo.renderPass = RenderPass;
+		renderPassInfo.renderArea.offset = { .x = OffsetX, .y = OffsetY };
+		renderPassInfo.renderArea.extent = { .width = Width, .height = Height };
+		renderPassInfo.framebuffer = FramebufferArray[framebufferIndex].GetFramebufferHandle();
+		renderPassInfo.clearValueCount = (uint32_t)ClearValues.size();
+		renderPassInfo.pClearValues = ClearValues.data();
+		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	}
+
+	void RenderPass::EndPass(VkCommandBuffer cmd) const
+	{
+		vkCmdEndRenderPass(cmd);
 	}
 
 }
