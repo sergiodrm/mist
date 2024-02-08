@@ -10,7 +10,6 @@ namespace vkmmc
 	// Forward declarations
 	struct RenderContext;
 	class RenderPipeline;
-	class RenderPass;
 	
 	struct ShaderDescription
 	{
