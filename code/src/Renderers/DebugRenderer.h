@@ -44,7 +44,7 @@ namespace vkmmc
 		IndexBuffer m_quadIndexBuffer;
 		RenderPipeline m_quadPipeline;
 		VkSampler m_depthSampler;
-		bool m_debugDepthMap;
+		bool m_debugDepthMap = true;
 	};
 
 }

@@ -156,9 +156,10 @@ namespace vkmmc
 		// Depth pass
 		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
 		const SpotLightData& spotLight = m_environmentData.SpotLights[m_spotLightShadowIndex];
-		const glm::mat4 depthView = math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f));
+		const glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction), glm::vec3(1.f)));
+		//const glm::mat4 depthProj = glm::ortho(0.f, 1920.f, 0.f, 1080.f, 20.f, 1000.f);
 		const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
-		const glm::mat4 depthVP = depthProj * glm::inverse(depthView);
+		const glm::mat4 depthVP = depthProj * depthView;
 		for (uint32_t i = 0; i < count; ++i)
 			m_depthMVPCache[i] = depthVP * rawTransforms[i];
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
@@ -246,6 +247,7 @@ namespace vkmmc
 		{
 			ImGui::SliderInt("Active spot lights", &m_activeSpotLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
 			ImGui::SliderInt("Spot light shadow index", &m_spotLightShadowIndex, 0, (int32_t)EnvironmentData::MaxLights, "%d");
+			ImGui::Checkbox("Use camera to depth mapping", &m_debugCameraDepthMapping);
 			for (uint32_t i = 0; i < (uint32_t)m_activeSpotLightsCount; ++i)
 			{
 				char buff[32];

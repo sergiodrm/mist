@@ -75,5 +75,6 @@ namespace vkmmc
 		EnvironmentData m_environmentData;
 		std::vector<glm::mat4> m_depthMVPCache;
 		VkSampler m_depthMapSampler;
+		bool m_debugCameraDepthMapping;
 	};
 }

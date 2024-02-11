@@ -95,10 +95,7 @@ namespace vkmmc
 	void Camera::RecalculateView()
 	{
 		glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, m_position);
-		
-		glm::mat4 rot = glm::rotate(glm::mat4(1.f), m_rotation.x, { 1.f, 0.f, 0.f });
-		rot = glm::rotate(rot, m_rotation.y, { 0.f, 1.f, 0.f });
-		rot = glm::toMat4(glm::quat(m_rotation));
+		glm::mat4 rot = glm::toMat4(glm::quat(m_rotation));
 		m_view = tras * rot;
 	}
 

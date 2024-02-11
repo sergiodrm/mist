@@ -125,6 +125,7 @@ void main()
 
         // Mix
         lightColor = vec3(u_Env.AmbientColor) + lightColor * (1.f - shadow);
+        lightColor = vec3(shadow, 0.0, 0.0);
     }
     outColor = vec4(lightColor, 1.f) * outColor;
     if (outColor.a <= 0.1f)
