@@ -71,7 +71,9 @@ namespace vkmmc
 		std::vector<RendererFrameData> m_frameData;
 		int32_t m_activeLightsCount;
 		int32_t m_activeSpotLightsCount;
+		int32_t m_spotLightShadowIndex;
 		EnvironmentData m_environmentData;
 		std::vector<glm::mat4> m_depthMVPCache;
+		VkSampler m_depthMapSampler;
 	};
 }

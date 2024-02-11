@@ -15,7 +15,7 @@
 
 namespace vkmmc
 {
-	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0), m_activeSpotLightsCount(0)
+	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0), m_activeSpotLightsCount(0), m_spotLightShadowIndex(0)
 	{
 		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
 		{
@@ -39,10 +39,14 @@ namespace vkmmc
 		// This pipeline use dynamic descriptors, we have to initialize descriptor set layout manually.
 		VkDescriptorSetLayout layouts[3];
 		uint32_t layoutCount = sizeof(layouts) / sizeof(VkDescriptorSetLayout);
+		// Per frame descriptor (camera, enviro...)
 		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
+			.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+			.AddBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 			.Build(info.RContext, &layouts[0]);
+		// Per draw descriptor (model, material...)
 		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.Build(info.RContext, &layouts[1]);
@@ -75,6 +79,10 @@ namespace vkmmc
 			inputLayout
 		);
 
+		// Sampler for shadow map binding
+		VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
+		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthMapSampler));
+
 		m_frameData.resize(info.FrameUniformBufferArray.size());
 		for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
 		{
@@ -82,18 +90,25 @@ namespace vkmmc
 
 			// Allocate shader data
 			uint32_t modelsSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
-			uint32_t modelsOffset = uniformBuffer->AllocUniform(info.RContext, "Models", modelsSize);
+			uniformBuffer->AllocUniform(info.RContext, "Models", modelsSize);
 			uint32_t enviroSize = sizeof(EnvironmentData);
-			uint32_t enviroOffset = uniformBuffer->AllocUniform(info.RContext, "Environment", enviroSize);
+			uniformBuffer->AllocUniform(info.RContext, "Environment", enviroSize);
 			// Depth pass
 			uint32_t depthMVPSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
-			uint32_t depthMVPOffset = uniformBuffer->AllocUniform(info.RContext, "DepthMVP", depthMVPSize);
+			uniformBuffer->AllocUniform(info.RContext, "DepthMVP", depthMVPSize);
+			uniformBuffer->AllocUniform(info.RContext, "LightMatrix", sizeof(glm::mat4));
 
 			// Configure per frame DescriptorSet.
 			// Color pass
 			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Camera");
 			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Environment");
 			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo("Models", sizeof(glm::mat4));
+			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("LightMatrix");
+			VkDescriptorImageInfo shadowMapDescInfo;
+			shadowMapDescInfo.imageView = info.DepthImageViewArray[i];
+			shadowMapDescInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			shadowMapDescInfo.sampler = m_depthMapSampler;
+			
 			// Materials have its own descriptor set (right now).
 
 			// Depth pass
@@ -101,7 +116,9 @@ namespace vkmmc
 
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
 				.BindBuffer(0, cameraDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.BindBuffer(1, enviroDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindBuffer(1, lightMatrixDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(2, enviroDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(3, shadowMapDescInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(info.RContext, m_frameData[i].PerFrameSet);
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
 				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
@@ -117,6 +134,7 @@ namespace vkmmc
 
 	void ModelRenderer::Destroy(const RenderContext& renderContext)
 	{
+		vkDestroySampler(renderContext.Device, m_depthMapSampler, nullptr);
 		m_renderPipeline.Destroy(renderContext);
 		m_depthPipeline.Destroy(renderContext);
 	}
@@ -128,23 +146,23 @@ namespace vkmmc
 
 		// Color pass
 		// TODO: Get camera position from scene view.
+		const uint32_t count = scene->GetRenderObjectCount();
 		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
 		m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
 		m_environmentData.ActiveSpotLightsCount = (float)m_activeSpotLightsCount;
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * scene->GetRenderObjectCount());
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * count);
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
 
 		// Depth pass
 		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
-		const uint32_t count = scene->GetRenderObjectCount();
-		const SpotLightData& spotLight = m_environmentData.SpotLights[0];
-		const glm::mat4 depthView = math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction), glm::vec3(1.f));
+		const SpotLightData& spotLight = m_environmentData.SpotLights[m_spotLightShadowIndex];
+		const glm::mat4 depthView = math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f));
 		const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
 		const glm::mat4 depthVP = depthProj * glm::inverse(depthView);
 		for (uint32_t i = 0; i < count; ++i)
 			m_depthMVPCache[i] = depthVP * rawTransforms[i];
-		UniformBuffer& uniform = renderFrameContext.GlobalBuffer;
-		uniform.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "LightMatrix", &depthView, sizeof(glm::mat4));
 	}
 
 	void ModelRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
@@ -227,6 +245,7 @@ namespace vkmmc
 		if (ImGui::CollapsingHeader("Spot lights"))
 		{
 			ImGui::SliderInt("Active spot lights", &m_activeSpotLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
+			ImGui::SliderInt("Spot light shadow index", &m_spotLightShadowIndex, 0, (int32_t)EnvironmentData::MaxLights, "%d");
 			for (uint32_t i = 0; i < (uint32_t)m_activeSpotLightsCount; ++i)
 			{
 				char buff[32];

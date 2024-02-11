@@ -9,6 +9,7 @@ layout (location = 0) out vec4 outFragPos;
 layout (location = 1) out vec3 outColor;
 layout (location = 2) out vec3 outNormal;
 layout (location = 3) out vec2 outTexCoords;
+layout (location = 4) out vec4 outLightSpaceFragPos;
 
 // Per frame data
 layout (std140, set = 0, binding = 0) uniform CameraBuffer
@@ -17,6 +18,11 @@ layout (std140, set = 0, binding = 0) uniform CameraBuffer
     mat4 Projection;
     mat4 ViewProjection;
 } u_Camera;
+
+layout (std140, set = 0, binding = 1) uniform DepthInfo
+{
+    mat4 LightMatrix;
+} u_depthInfo;
 
 // Per draw data
 layout (std140, set = 1, binding = 0) uniform Object
@@ -32,4 +38,5 @@ void main()
     outColor = VIColor;
     outNormal = LSNormal;
     outTexCoords = TexCoords;
+    outLightSpaceFragPos = u_depthInfo.LightMatrix * vec4(LSPosition, 1.f);
 }

@@ -114,10 +114,10 @@ namespace vkmmc
         {
             {{0.5f, -1.f, 0.f}, {0.f, 0.f}},
             {{1.f, -1.f, 0.f}, {1.f, 0.f}},
-            {{1.f, -0.5f, 0.f}, {1.f, -1.f}},
-            {{0.5f, -0.5f, 0.f}, {0.f, -1.f}},
+            {{1.f, -0.5f, 0.f}, {1.f, 1.f}},
+            {{0.5f, -0.5f, 0.f}, {0.f, 1.f}},
         };
-        uint32_t indices[] = { 0, 2, 1, 0, 3, 2};
+        uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
         BufferCreateInfo quadInfo;
         quadInfo.Size = sizeof(QuadVertex) * 4;
         quadInfo.Data = vertices;
