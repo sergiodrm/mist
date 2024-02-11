@@ -22,6 +22,7 @@ namespace vkmmc
 		DescriptorLayoutCache* LayoutCache{nullptr};
 		DescriptorAllocator* DescriptorAllocator{nullptr};
 
+		std::vector<VkImageView> DepthImageViewArray;
 		std::vector<UniformBuffer*> FrameUniformBufferArray;
 
 		VkPushConstantRange* ConstantRange = nullptr;
@@ -37,9 +38,9 @@ namespace vkmmc
 		virtual void Init(const RendererCreateInfo& info) = 0;
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 
-		virtual void BeginFrame(const RenderContext& renderContext) = 0;
-		virtual void RecordDepthPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
-		virtual void RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
+		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
+		virtual void RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) = 0;
+		virtual void RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) = 0;
 		//virtual void EndFrame(const RenderContext& renderContext) = 0;
 
 		// Debug

@@ -31,7 +31,10 @@ namespace vkmmc
 	{
 		VertexBuffer VertexBuffer;
 		IndexBuffer IndexBuffer;
+		uint32_t IndexCount;
 		std::vector<PrimitiveMeshData> PrimitiveArray;
+
+		void BindBuffers(VkCommandBuffer cmd) const;
 	};
 
 	struct RenderDataContainer
@@ -82,7 +85,6 @@ namespace vkmmc
 
 		void MarkAsDirty(RenderObject renderObject);
 		void RecalculateTransforms();
-		uint32_t Count() const { return (uint32_t)m_hierarchy.size(); }
 
 		const glm::mat4* GetRawGlobalTransforms() const;
 
@@ -100,7 +102,10 @@ namespace vkmmc
 		const MaterialRenderData& GetMaterialRenderData(RenderHandle handle) const;
 		MaterialRenderData& GetMaterialRenderData(RenderHandle handle);
 
+		// Draw with materials
 		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		// Draw without materials
+		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 
 	private:
 		VulkanRenderEngine* m_engine{nullptr};

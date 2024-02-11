@@ -70,14 +70,14 @@ namespace vkmmc
 		ImGui_ImplVulkan_Shutdown();
     }
 
-	void UIRenderer::BeginFrame(const RenderContext& renderContext)
+	void UIRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplSDL2_NewFrame(renderContext.Window);
 		ImGui::NewFrame();
 	}
 
-    void UIRenderer::RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+    void UIRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
     {
 		PROFILE_SCOPE(ImGuiPass);
 		ImGui::Render();

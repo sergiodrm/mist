@@ -11,6 +11,7 @@
 
 #include "DebugRenderer.h"
 #include "GenericUtils.h"
+#include "glm/ext/matrix_clip_space.inl"
 
 namespace vkmmc
 {
@@ -57,6 +58,23 @@ namespace vkmmc
 			VertexInputLayout::GetStaticMeshVertexLayout()
 		);
 
+		// Depth pipeline
+		VkDescriptorSetLayout depthMVPLayout;
+		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
+			.Build(info.RContext, &depthMVPLayout);
+
+		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
+		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+		m_depthPipeline = RenderPipeline::Create(
+			info.RContext,
+			info.DepthPass,
+			0,
+			&depthShader, 1,
+			&depthMVPLayout, 1, nullptr, 0, 
+			inputLayout
+		);
+
 		m_frameData.resize(info.FrameUniformBufferArray.size());
 		for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
 		{
@@ -67,13 +85,19 @@ namespace vkmmc
 			uint32_t modelsOffset = uniformBuffer->AllocUniform(info.RContext, "Models", modelsSize);
 			uint32_t enviroSize = sizeof(EnvironmentData);
 			uint32_t enviroOffset = uniformBuffer->AllocUniform(info.RContext, "Environment", enviroSize);
+			// Depth pass
+			uint32_t depthMVPSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
+			uint32_t depthMVPOffset = uniformBuffer->AllocUniform(info.RContext, "DepthMVP", depthMVPSize);
 
 			// Configure per frame DescriptorSet.
+			// Color pass
 			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Camera");
 			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Environment");
 			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo("Models", sizeof(glm::mat4));
 			// Materials have its own descriptor set (right now).
 
+			// Depth pass
+			VkDescriptorBufferInfo depthMVPInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo("DepthMVP", sizeof(glm::mat4));
 
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
 				.BindBuffer(0, cameraDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
@@ -82,29 +106,50 @@ namespace vkmmc
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
 				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(info.RContext, m_frameData[i].ModelSet);
+			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+				.BindBuffer(0, depthMVPInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(info.RContext, m_frameData[i].DepthMVPSet);
 		}
 
 		m_environmentData.AmbientColor = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
+		m_depthMVPCache.resize(VulkanRenderEngine::MaxRenderObjects);
 	}
 
 	void ModelRenderer::Destroy(const RenderContext& renderContext)
 	{
 		m_renderPipeline.Destroy(renderContext);
+		m_depthPipeline.Destroy(renderContext);
 	}
 
-	void ModelRenderer::RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	void ModelRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
-		PROFILE_SCOPE(ModelPass);
-		{
-			PROFILE_SCOPE(UpdateBuffers);
-			// Update buffers
-			// TODO: Get camera position from scene view.
-			m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
-			m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
-			m_environmentData.ActiveSpotLightsCount = (float)m_activeSpotLightsCount;
-			renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", renderFrameContext.Scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * renderFrameContext.Scene->Count());
-			renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
-		}
+		PROFILE_SCOPE(UpdateBuffers);
+		const Scene* scene = renderFrameContext.Scene;
+
+		// Color pass
+		// TODO: Get camera position from scene view.
+		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
+		m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
+		m_environmentData.ActiveSpotLightsCount = (float)m_activeSpotLightsCount;
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * scene->GetRenderObjectCount());
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
+
+		// Depth pass
+		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
+		const uint32_t count = scene->GetRenderObjectCount();
+		const SpotLightData& spotLight = m_environmentData.SpotLights[0];
+		const glm::mat4 depthView = math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction), glm::vec3(1.f));
+		const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
+		const glm::mat4 depthVP = depthProj * glm::inverse(depthView);
+		for (uint32_t i = 0; i < count; ++i)
+			m_depthMVPCache[i] = depthVP * rawTransforms[i];
+		UniformBuffer& uniform = renderFrameContext.GlobalBuffer;
+		uniform.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
+	}
+
+	void ModelRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
+	{
+		PROFILE_SCOPE(ModelRenderer_ColorPass);
 
 		// Bind pipeline
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
@@ -120,8 +165,14 @@ namespace vkmmc
 		renderFrameContext.Scene->Draw(cmd, m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);
 	}
 
-	void ModelRenderer::RecordDepthPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	void ModelRenderer::RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
+		PROFILE_SCOPE(ModelRenderer_DepthPass);
+
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_depthPipeline.GetPipelineHandle());
+
+		renderFrameContext.Scene->Draw(cmd, m_depthPipeline.GetPipelineLayoutHandle(), 0, m_frameData[renderFrameContext.FrameIndex].DepthMVPSet);
 	}
 
 	void ModelRenderer::ImGuiDraw()
@@ -187,14 +238,11 @@ namespace vkmmc
 					glm::vec3 dir = glm::normalize(data.Direction);
 
 					// dir vector to roll pitch yaw (x:pitch, y:yaw, z:roll)
-					glm::vec3 pyr;
-					pyr.x = asin(-dir.y);
-					pyr.y = atan2(dir.x, dir.z);
-					pyr.z = 0.f;
+					glm::vec3 pyr = math::ToRot(data.Direction);
 					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f, -(float)M_PI, (float)M_PI))
 					{
 						// Transform to rot matrix
-						glm::mat4 m = vkmmc_utils::PitchYawRollToMat4(pyr);
+						glm::mat4 m = math::PitchYawRollToMat4(pyr);
 						// Forward direction (0, 0, 1) in rotation space.
 						data.Direction = glm::vec3(m * glm::vec4(0.f, 0.f, 1.f, 1.f));
 					}

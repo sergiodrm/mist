@@ -39,7 +39,7 @@ namespace vkmmc
 		// Create vertex input vulkan structures
 		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(Topology);
 		VkPipelineVertexInputStateCreateInfo inputInfo = vkinit::PipelineVertexInputStageCreateInfo();
-		check(InputDescription.Attributes.size() > 0);
+		//check(InputDescription.Attributes.size() > 0);
 		inputInfo.pVertexAttributeDescriptions = InputDescription.Attributes.data();
 		inputInfo.vertexAttributeDescriptionCount = (uint32_t)InputDescription.Attributes.size();
 		inputInfo.pVertexBindingDescriptions = &InputDescription.Binding;

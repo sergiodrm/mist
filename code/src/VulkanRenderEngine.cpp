@@ -184,7 +184,10 @@ namespace vkmmc
 		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
 		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
+		{
 			rendererCreateInfo.FrameUniformBufferArray.push_back(&m_frameContextArray[i].GlobalBuffer);
+			rendererCreateInfo.DepthImageViewArray.push_back(m_depthPass.FramebufferArray[i].GetImageViewAt(0));
+		}
 
 		rendererCreateInfo.ConstantRange = nullptr;
 		rendererCreateInfo.ConstantRangeCount = 0;
@@ -216,7 +219,7 @@ namespace vkmmc
 			}
 		}
 		for (IRendererBase* it : m_renderers)
-			it->BeginFrame(m_renderContext);
+			it->PrepareFrame(m_renderContext, GetFrameContext());
 
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
@@ -261,6 +264,13 @@ namespace vkmmc
 		m_cameraData.View = glm::inverse(view);
 		m_cameraData.Projection = projection;
 		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.View;
+	}
+
+	void VulkanRenderEngine::SetScene(IScene* scene)
+	{
+		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
+			m_frameContextArray[i].Scene = static_cast<Scene*>(scene);
+		m_scene = scene;
 	}
 
 	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
@@ -551,7 +561,7 @@ namespace vkmmc
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 			m_depthPass.RenderPass = RenderPassBuilder::Create()
-				.AddDepthAttachmentDescription(FORMAT_D32)
+				.AddDepthAttachmentDescription(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass({}, 0, {})
 				.AddDependencies(dependencies, 2)
 				.Build(m_renderContext);

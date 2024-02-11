@@ -48,14 +48,17 @@ namespace vkmmc
 			// Camera, models and environment
 			VkDescriptorSet PerFrameSet;
 			VkDescriptorSet ModelSet;
+
+			// DepthMVP descriptor for depth pass
+			VkDescriptorSet DepthMVPSet;
 		};
 	public:
 		ModelRenderer();
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
-		virtual void BeginFrame(const RenderContext& renderContext) override {}
-		virtual void RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
-		virtual void RecordDepthPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
+		virtual void RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
 		virtual void ImGuiDraw() override;
 
 	protected:
@@ -63,10 +66,12 @@ namespace vkmmc
 	protected:
 		// Render State
 		RenderPipeline m_renderPipeline;
+		RenderPipeline m_depthPipeline;
 
 		std::vector<RendererFrameData> m_frameData;
 		int32_t m_activeLightsCount;
 		int32_t m_activeSpotLightsCount;
 		EnvironmentData m_environmentData;
+		std::vector<glm::mat4> m_depthMVPCache;
 	};
 }

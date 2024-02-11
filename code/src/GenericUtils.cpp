@@ -6,9 +6,9 @@
 #include "glm/fwd.hpp"
 #include "glm/gtx/quaternion.hpp"
 
-namespace vkmmc_utils
+namespace vkmmc
 {
-	bool ReadFile(const char* filename, std::vector<uint32_t>& data)
+	bool io::ReadFile(const char* filename, std::vector<uint32_t>& data)
 	{
 		data.clear();
 		// Open file with std::ios::ate -> with cursor at the end of the file
@@ -28,7 +28,7 @@ namespace vkmmc_utils
 		return true;
 	}
 
-	void vkmmc_utils::GetRootDir(const char* filepath, char* rootPath, size_t size)
+	void io::GetRootDir(const char* filepath, char* rootPath, size_t size)
 	{
 		size_t len = strlen(filepath);
 		check(size >= len);
@@ -43,8 +43,21 @@ namespace vkmmc_utils
 		}
 	}
 
-	glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr)
+	glm::vec3 math::ToRot(const glm::vec3& direction)
+	{
+		return glm::vec3(asin(-direction.y), atan2(direction.x, direction.z), 0.f);
+	}
+
+	glm::mat4 math::PitchYawRollToMat4(const glm::vec3& pyr)
 	{
 		return glm::toMat4(glm::quat(pyr));;
+	}
+
+	glm::mat4 math::ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
+	{
+		glm::mat4 t = glm::translate(glm::mat4(1.f), pos);
+		glm::mat4 r = PitchYawRollToMat4(rot);
+		glm::mat4 s = glm::scale(glm::mat4(1.f), scl);
+		return t * r * s;
 	}
 }

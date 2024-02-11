@@ -3,11 +3,19 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-namespace vkmmc_utils
+namespace vkmmc
 {
-	bool ReadFile(const char* filename, std::vector<uint32_t>& data);
-	void GetRootDir(const char* filepath, char* rootPath, size_t size);
+	namespace io
+	{
+		bool ReadFile(const char* filename, std::vector<uint32_t>& data);
+		void GetRootDir(const char* filepath, char* rootPath, size_t size);
+	}
 
 	// Math
-	glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
+	namespace math
+	{
+		glm::vec3 ToRot(const glm::vec3& direction);
+		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
+		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
+	}
 }

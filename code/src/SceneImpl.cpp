@@ -252,6 +252,12 @@ namespace gltf_api
 
 namespace vkmmc
 {
+	void MeshRenderData::BindBuffers(VkCommandBuffer cmd) const
+	{
+		VertexBuffer.Bind(cmd);
+		IndexBuffer.Bind(cmd);
+	}
+
 	VkDescriptorSetLayout MaterialRenderData::GetDescriptorSetLayout(const RenderContext& renderContext, DescriptorLayoutCache& layoutCache)
 	{
 		VkDescriptorSetLayout layout;
@@ -305,7 +311,7 @@ namespace vkmmc
 		Scene* scene = static_cast<Scene*>(CreateScene(engine));
 		cgltf_data* data = gltf_api::ParseFile(sceneFilepath);
 		char rootAssetPath[512];
-		vkmmc_utils::GetRootDir(sceneFilepath, rootAssetPath, 512);
+		io::GetRootDir(sceneFilepath, rootAssetPath, 512);
 		check(data);
 
 		std::unordered_map<cgltf_material*, uint32_t> materialIndexMap;
@@ -374,6 +380,7 @@ namespace vkmmc
 				// TODO: find out a better way to assign primitives to mesh render data.
 				MeshRenderData& mrd = scene->GetMeshRenderData(mesh.GetHandle());
 				mrd.PrimitiveArray = std::move(pmd);
+				mrd.IndexCount = (uint32_t)mesh.GetIndexCount();
 
 				scene->SetMesh(renderObject, mesh);
 
@@ -751,8 +758,7 @@ namespace vkmmc
 				{
 					check(mesh->GetHandle().IsValid());
 					lastMesh = mesh;
-					mrd.VertexBuffer.Bind(cmd);
-					mrd.IndexBuffer.Bind(cmd);
+					mrd.BindBuffers(cmd);
 				}
 				// Iterate primitives of current mesh
 				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
@@ -777,6 +783,45 @@ namespace vkmmc
 		}
 	}
 
+	void Scene::Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
+	{
+		// Iterate scene graph to render models.
+		uint32_t lastMaterialIndex = UINT32_MAX;
+		const Mesh* lastMesh = nullptr;
+		uint32_t nodeCount = GetRenderObjectCount();
+		for (uint32_t i = 0; i < nodeCount; ++i)
+		{
+			RenderObject renderObject = i;
+			const Mesh* mesh = GetMesh(renderObject);
+			if (mesh)
+			{
+				const MeshRenderData& mrd = GetMeshRenderData(mesh->GetHandle());
+
+				// BaseOffset in buffer is already setted when descriptor was created.
+				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
+				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+					pipelineLayout, modelSetIndex, 1, &modelSet, 1, &modelDynamicOffset);
+				++GRenderStats.SetBindingCount;
+
+				// Bind vertex/index buffers just if needed
+				if (lastMesh != mesh)
+				{
+					check(mesh->GetHandle().IsValid());
+					lastMesh = mesh;
+					mrd.BindBuffers(cmd);
+				}
+
+				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
+				{
+					const PrimitiveMeshData& drawData = mrd.PrimitiveArray[j];
+					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
+					++GRenderStats.DrawCalls;
+					GRenderStats.TrianglesCount += drawData.Count / 3;
+				}
+			}
+		}
+	}
+
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
 	{
 		// Dirty check, must be clean
@@ -784,4 +829,6 @@ namespace vkmmc
 			check(m_dirtyNodes[i].empty());
 		return m_globalTransforms.data();
 	}
+
+	
 }

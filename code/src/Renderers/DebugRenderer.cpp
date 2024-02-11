@@ -10,6 +10,7 @@
 #include "glm/gtx/quaternion.hpp"
 #include "glm/gtx/transform.hpp"
 #include <corecrt_math_defines.h>
+#include "imgui_internal.h"
 
 
 namespace vkmmc
@@ -108,15 +109,75 @@ namespace vkmmc
         vbInfo.Size = sizeof(rdbg::LineVertex) * rdbg::LineBatch::MaxLines;
         vbInfo.Data = nullptr;
         m_lineVertexBuffer.Init(info.RContext, vbInfo);
+
+        QuadVertex vertices[] =
+        {
+            {{0.5f, -1.f, 0.f}, {0.f, 0.f}},
+            {{1.f, -1.f, 0.f}, {1.f, 0.f}},
+            {{1.f, -0.5f, 0.f}, {1.f, -1.f}},
+            {{0.5f, -0.5f, 0.f}, {0.f, -1.f}},
+        };
+        uint32_t indices[] = { 0, 2, 1, 0, 3, 2};
+        BufferCreateInfo quadInfo;
+        quadInfo.Size = sizeof(QuadVertex) * 4;
+        quadInfo.Data = vertices;
+        m_quadVertexBuffer.Init(info.RContext, quadInfo);
+
+        quadInfo.Size = sizeof(uint32_t) * 6;
+        quadInfo.Data = indices;
+        m_quadIndexBuffer.Init(info.RContext, quadInfo);
+
+        // quad pipeline
+        ShaderDescription shaders[2]
+        {
+            {.Filepath = globals::QuadVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+            {.Filepath = globals::QuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
+        };
+        inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+        m_quadPipeline = RenderPipeline::Create(info.RContext, info.ColorPass, 0, shaders, 2, inputLayout);
+
+        VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
+        vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthSampler);
+
+        // Submit buffer uniform info
+        m_frameData.resize(info.FrameUniformBufferArray.size());
+        for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
+        {
+            // Uniform buffer
+            UniformBuffer* buffer = info.FrameUniformBufferArray[i];
+            buffer->AllocUniform(info.RContext, "QuadUBO", sizeof(float) * 2);
+            VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("QuadUBO");
+
+            // Image binding
+            VkDescriptorImageInfo imageInfo;
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+            imageInfo.imageView = info.DepthImageViewArray[i];
+            imageInfo.sampler = m_depthSampler;
+
+            DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+                .BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                .BindImage(1, imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                .Build(info.RContext, m_frameData[i].SetUBO);
+        }
     }
 
     void DebugRenderer::Destroy(const RenderContext& renderContext)
     {
+        m_quadVertexBuffer.Destroy(renderContext);
+        m_quadIndexBuffer.Destroy(renderContext);
+        vkDestroySampler(renderContext.Device, m_depthSampler, nullptr);
+        m_quadPipeline.Destroy(renderContext);
         m_lineVertexBuffer.Destroy(renderContext);
         m_renderPipeline.Destroy(renderContext);
     }
 
-    void DebugRenderer::RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+    void DebugRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+    {
+		float ubo[2] = { 20.f, 10000.f };
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "QuadUBO", ubo, sizeof(float) * 2);
+    }
+
+    void DebugRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
     {
         PROFILE_SCOPE(DebugPass);
         if (rdbg::GLineBatch.Index > 0)
@@ -135,6 +196,23 @@ namespace vkmmc
             rdbg::GLineBatch.Index = 0;
             ++GRenderStats.DrawCalls;
         }
+
+        if (m_debugDepthMap)
+        {
+            VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineHandle());
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineLayoutHandle(), 0, 1, &m_frameData[renderFrameContext.FrameIndex].SetUBO, 0, nullptr);
+            m_quadVertexBuffer.Bind(cmd);
+            m_quadIndexBuffer.Bind(cmd);
+            vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+        }
+    }
+
+    void DebugRenderer::ImGuiDraw()
+    {
+        ImGui::Begin("debug");
+        ImGui::Checkbox("DebugMap", &m_debugDepthMap);
+        ImGui::End();
     }
 
 }

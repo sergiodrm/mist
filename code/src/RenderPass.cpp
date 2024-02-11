@@ -19,9 +19,9 @@ namespace vkmmc
 		return *this;
 	}
 
-	RenderPassBuilder& RenderPassBuilder::AddDepthAttachmentDescription(EFormat format)
+	RenderPassBuilder& RenderPassBuilder::AddDepthAttachmentDescription(EFormat format, VkImageLayout finalLayout)
 	{
-		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(types::FormatType(format), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(types::FormatType(format), finalLayout));
 		return *this;
 	}
 

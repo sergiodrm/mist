@@ -122,7 +122,7 @@ namespace vkmmc
 
 		virtual IScene* GetScene() override { return m_scene; }
 		virtual const IScene* GetScene() const override { return m_scene; }
-		virtual void SetScene(IScene* scene) { m_scene = scene; }
+		virtual void SetScene(IScene* scene);
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 
 		virtual RenderHandle GetDefaultTexture() const;

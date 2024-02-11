@@ -17,16 +17,34 @@ namespace vkmmc
 
 	class DebugRenderer : public IRendererBase
 	{
+		struct FrameData
+		{
+			VkDescriptorSet SetUBO;
+		};
+
+		struct QuadVertex
+		{
+			glm::vec3 Position;
+			glm::vec2 UVs;
+		};
 	public:
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
-		virtual void BeginFrame(const RenderContext& renderContext) override {}
-		virtual void RecordDepthPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override {}
-		virtual void RecordColorPass(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override {}
+		virtual void RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
+		virtual void ImGuiDraw() override;
 	protected:
 		// Render State
 		RenderPipeline m_renderPipeline;
 		VertexBuffer m_lineVertexBuffer;
+
+		std::vector<FrameData> m_frameData;
+		VertexBuffer m_quadVertexBuffer;
+		IndexBuffer m_quadIndexBuffer;
+		RenderPipeline m_quadPipeline;
+		VkSampler m_depthSampler;
+		bool m_debugDepthMap;
 	};
 
 }

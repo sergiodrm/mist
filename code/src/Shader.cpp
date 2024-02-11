@@ -133,7 +133,7 @@ namespace vkmmc
 	bool ShaderCompiler::CacheSourceFromFile(const char* file, std::vector<uint32_t>& outCachedData)
 	{
 		outCachedData.clear();
-		return vkmmc_utils::ReadFile(file, outCachedData);
+		return io::ReadFile(file, outCachedData);
 	}
 
 	void ShaderCompiler::ProcessCachedSource(CachedBinaryData& cachedData)
