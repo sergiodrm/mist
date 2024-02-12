@@ -810,7 +810,9 @@ namespace vkmmc
 					lastMesh = mesh;
 					mrd.BindBuffers(cmd);
 				}
-
+				// TODO: index buffer is ordered the whole buffer or just by primitive?
+				vkCmdDrawIndexed(cmd, mesh->GetIndexCount(), 1, 0, 0, 0);
+#if 0
 				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
 				{
 					const PrimitiveMeshData& drawData = mrd.PrimitiveArray[j];
@@ -818,6 +820,8 @@ namespace vkmmc
 					++GRenderStats.DrawCalls;
 					GRenderStats.TrianglesCount += drawData.Count / 3;
 				}
+#endif // 0
+
 			}
 		}
 	}
