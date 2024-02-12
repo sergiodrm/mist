@@ -59,11 +59,18 @@ vec3 CalculateLighting(vec3 lightDir, vec3 lightColor)
 
 float CalculateShadow(vec4 fragPosInLightSpace)
 {
-    vec3 projPos = fragPosInLightSpace.xyz / fragPosInLightSpace.w;
-    projPos = projPos * 0.5 + 0.5;
-    float closest = texture(u_ShadowMap, projPos.xy).r;
-    float current = projPos.z;
-    return current > closest ? 1.f : 0.f;
+    float shadow = 1.0;
+    float w = fragPosInLightSpace.w;
+    vec3 shadowCoord = fragPosInLightSpace.xyz / w;
+	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+	{
+		float dist = texture( u_ShadowMap, shadowCoord.st ).r;
+		if ( w > 0.0 && dist < shadowCoord.z ) 
+		{
+			shadow = 0.1f;
+		}
+	}
+	return shadow;
 }
 
 vec3 ProcessPointLight(LightData light)
@@ -125,7 +132,7 @@ void main()
 
         // Mix
         lightColor = vec3(u_Env.AmbientColor) + lightColor * (1.f - shadow);
-        lightColor = vec3(shadow, 0.0, 0.0);
+        lightColor = vec3(1.f - shadow);
     }
     outColor = vec4(lightColor, 1.f) * outColor;
     if (outColor.a <= 0.1f)

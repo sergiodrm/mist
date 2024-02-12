@@ -76,5 +76,12 @@ namespace vkmmc
 		std::vector<glm::mat4> m_depthMVPCache;
 		VkSampler m_depthMapSampler;
 		bool m_debugCameraDepthMapping;
+		struct  
+		{
+			float FOV = 45.f;
+			float Aspect = 16.f / 9.f;
+			float Near = 10.f;
+			float Far = 1000.f;
+		} m_projParams;
 	};
 }

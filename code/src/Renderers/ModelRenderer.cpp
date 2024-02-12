@@ -157,9 +157,17 @@ namespace vkmmc
 		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
 		const SpotLightData& spotLight = m_environmentData.SpotLights[m_spotLightShadowIndex];
 		const glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f)));
-		//const glm::mat4 depthProj = glm::ortho(0.f, 1920.f, 0.f, 1080.f, 20.f, 1000.f);
-		const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
-		const glm::mat4 depthVP = depthProj * depthView;
+		glm::mat4 depthProj = glm::perspective(glm::radians(m_projParams.FOV), m_projParams.Aspect, m_projParams.Near, m_projParams.Far);
+		depthProj[1][1] *= -1.f;
+		//const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
+		static constexpr glm::mat4 depthBias =
+		{
+			0.5f, 0.f, 0.f, 0.f,
+			0.f, 0.5f, 0.f, 0.f,
+			0.f, 0.f, 1.f, 0.f,
+			0.5f, 0.5f, 0.f, 1.f
+		};
+		const glm::mat4 depthVP = depthBias * depthProj * depthView;
 		for (uint32_t i = 0; i < count; ++i)
 			m_depthMVPCache[i] = depthVP * rawTransforms[i];
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
@@ -277,6 +285,11 @@ namespace vkmmc
 				}
 			}
 		}
+		ImGui::Separator();
+		utilDragFloat("fov", 0, &m_projParams.FOV, 1, false);
+		//utilDragFloat("aspect", 0, &m_projParams.Aspect, 1, false);
+		utilDragFloat("near", 0, &m_projParams.Near, 1, false);
+		utilDragFloat("far", 0, &m_projParams.Far, 1, false);
 		ImGui::End();
 	}
 }
