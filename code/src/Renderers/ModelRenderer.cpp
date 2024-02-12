@@ -156,7 +156,7 @@ namespace vkmmc
 		// Depth pass
 		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
 		const SpotLightData& spotLight = m_environmentData.SpotLights[m_spotLightShadowIndex];
-		const glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction), glm::vec3(1.f)));
+		const glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f)));
 		//const glm::mat4 depthProj = glm::ortho(0.f, 1920.f, 0.f, 1080.f, 20.f, 1000.f);
 		const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
 		const glm::mat4 depthVP = depthProj * depthView;
