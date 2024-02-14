@@ -39,6 +39,11 @@ layout(std140, set = 1, binding = 1) uniform Material
 } u_Material;
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[3];
 
+float LinearizeDepth(float z, float n, float f)
+{
+    return (2.0 * n) / (f + n - z * (f - n));	
+}
+
 vec3 CalculateLighting(vec3 lightDir, vec3 lightColor)
 {
     // Diffuse
@@ -57,17 +62,17 @@ vec3 CalculateLighting(vec3 lightDir, vec3 lightColor)
     return diffuse + specular;
 }
 
-float CalculateShadow(vec4 fragPosInLightSpace)
+float CalculateShadow(vec4 shadowCoord)
 {
-    float shadow = 1.0;
-    float w = fragPosInLightSpace.w;
-    vec3 shadowCoord = fragPosInLightSpace.xyz / w;
-	if ( shadowCoord.z > -1.0 && shadowCoord.z < 1.0 ) 
+    float shadow = 0.0;
+    float z = shadowCoord.z;
+	if ( z > -1.0 && z < 1.0 ) 
 	{
-		float dist = texture( u_ShadowMap, shadowCoord.st ).r;
-		if ( w > 0.0 && dist < shadowCoord.z ) 
+		float dist = texture( u_ShadowMap, shadowCoord.xy ).r;
+        const float bias = 0.005f;
+		if ( shadowCoord.w > 0.0 && z - bias > dist ) 
 		{
-			shadow = 0.1f;
+			shadow = 1.f;
 		}
 	}
 	return shadow;
@@ -112,13 +117,16 @@ vec3 ProcessSpotLight(SpotLightData light)
 void main()
 {
     outColor = texture(u_Textures[0], inTexCoords);
+    if (outColor.a <= 0.1f)
+        discard;
     vec3 lightColor = vec3(1.f, 1.f, 1.f);
     //if (PushConstants.EnableLighting != 0)
     {
         lightColor = vec3(0.f, 0.f, 0.f);
 
         // Shadows
-        float shadow = CalculateShadow(inLightSpaceFragPos);
+        vec4 shadowCoord = inLightSpaceFragPos / inLightSpaceFragPos.w;
+        float shadow = CalculateShadow(shadowCoord);
         // Point lights
         int numPointLights = int(u_Env.ViewPos.w);
         for (int i = 0; i < numPointLights; ++i)
@@ -132,9 +140,7 @@ void main()
 
         // Mix
         lightColor = vec3(u_Env.AmbientColor) + lightColor * (1.f - shadow);
-        lightColor = vec3(1.f - shadow);
+        //lightColor = vec3(shadow);
     }
     outColor = vec4(lightColor, 1.f) * outColor;
-    if (outColor.a <= 0.1f)
-        discard;
 }

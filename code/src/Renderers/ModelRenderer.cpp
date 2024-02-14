@@ -156,22 +156,24 @@ namespace vkmmc
 		// Depth pass
 		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
 		const SpotLightData& spotLight = m_environmentData.SpotLights[m_spotLightShadowIndex];
-		const glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f)));
+		glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f)));
 		glm::mat4 depthProj = glm::perspective(glm::radians(m_projParams.FOV), m_projParams.Aspect, m_projParams.Near, m_projParams.Far);
 		depthProj[1][1] *= -1.f;
-		//const glm::mat4 depthProj = renderFrameContext.CameraData->Projection;
-		static constexpr glm::mat4 depthBias =
-		{
-			0.5f, 0.f, 0.f, 0.f,
-			0.f, 0.5f, 0.f, 0.f,
-			0.f, 0.f, 1.f, 0.f,
-			0.5f, 0.5f, 0.f, 1.f
-		};
-		const glm::mat4 depthVP = depthBias * depthProj * depthView;
+		glm::mat4 depthVP = depthProj * depthView;
 		for (uint32_t i = 0; i < count; ++i)
 			m_depthMVPCache[i] = depthVP * rawTransforms[i];
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "LightMatrix", &depthView, sizeof(glm::mat4));
+
+		// Apply bias just to light space matrix
+		static constexpr glm::mat4 depthBias =
+		{
+			0.5, 0.0, 0.0, 0.0,
+			0.0, 0.5, 0.0, 0.0,
+			0.0, 0.0, 1.0, 0.0,
+			0.5, 0.5, 0.0, 1.0
+		};
+		depthVP = depthBias * depthVP;
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "LightMatrix", &depthVP, sizeof(glm::mat4));
 	}
 
 	void ModelRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
