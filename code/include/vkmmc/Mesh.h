@@ -45,10 +45,10 @@ namespace vkmmc
 	{
 	public:
 		const Vertex* GetVertices() const { return m_vertices.data(); }
-		inline size_t GetVertexCount() const { return m_vertices.size(); }
+		inline uint32_t GetVertexCount() const { return (uint32_t)m_vertices.size(); }
 		void SetVertices(const Vertex* data, size_t count);
 		const uint32_t* GetIndices() const { return m_indices.data(); }
-		inline size_t GetIndexCount() const { return m_indices.size(); }
+		inline uint32_t GetIndexCount() const { return (uint32_t)m_indices.size(); }
 		void SetIndices(const uint32_t* data, size_t count);
 
 		void MoveVerticesFrom(std::vector<Vertex>& vertices);
