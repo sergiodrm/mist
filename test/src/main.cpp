@@ -106,7 +106,8 @@ class SponzaTest : public Test
 protected:
 	virtual void LoadTest()
 	{
-		vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/sponza/Sponza.gltf");
+		vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/vulkanscene_shadow.gltf");
+		//vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/sponza/Sponza.gltf");
 		m_engine->SetScene(scene);
 	}
 };
