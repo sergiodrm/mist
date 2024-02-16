@@ -64,7 +64,8 @@ vec3 CalculateLighting(vec3 lightDir, vec3 lightColor)
 
 float CalculateShadow(vec4 shadowCoord)
 {
-    float shadow = 0.0;
+#if 0
+    float shadow = 0.3f;
     float z = shadowCoord.z;
 	if ( z > -1.0 && z < 1.0 ) 
 	{
@@ -76,6 +77,23 @@ float CalculateShadow(vec4 shadowCoord)
 		}
 	}
 	return shadow;
+#endif
+
+    // PCF
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMap, 0);
+    float currentDepth = shadowCoord.z;
+    float bias = 0.005f;
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(u_ShadowMap, shadowCoord.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
+        }    
+    }
+    shadow /= 9.0;
+    return shadow;
 }
 
 vec3 ProcessPointLight(LightData light)
@@ -122,24 +140,27 @@ void main()
     vec3 lightColor = vec3(1.f, 1.f, 1.f);
     //if (PushConstants.EnableLighting != 0)
     {
-        lightColor = vec3(0.f, 0.f, 0.f);
 
         // Shadows
         vec4 shadowCoord = inLightSpaceFragPos / inLightSpaceFragPos.w;
         float shadow = CalculateShadow(shadowCoord);
         // Point lights
         int numPointLights = int(u_Env.ViewPos.w);
+        vec3 pointLightsColor = vec3(0.f);
         for (int i = 0; i < numPointLights; ++i)
-            lightColor += ProcessPointLight(u_Env.Lights[i]);
+            pointLightsColor += ProcessPointLight(u_Env.Lights[i]);
         // Spot lights
         int numSpotLights = int(u_Env.AmbientColor.w);
+        vec3 spotLightsColor = vec3(0.f);
         for (int i = 0; i < numSpotLights; ++i)
-            lightColor += ProcessSpotLight(u_Env.SpotLights[i]);
+            spotLightsColor += ProcessSpotLight(u_Env.SpotLights[i]);
+        spotLightsColor *= (1.f-shadow);
         // Directional light
-        lightColor += ProcessDirectionalLight(u_Env.DirectionalLight);
+        vec3 directionalLightColor = ProcessDirectionalLight(u_Env.DirectionalLight);
 
+        lightColor = pointLightsColor + spotLightsColor + directionalLightColor;
         // Mix
-        lightColor = vec3(u_Env.AmbientColor) + lightColor * (1.f - shadow);
+        lightColor = vec3(u_Env.AmbientColor) + lightColor;
         //lightColor = vec3(shadow);
     }
     outColor = vec4(lightColor, 1.f) * outColor;
