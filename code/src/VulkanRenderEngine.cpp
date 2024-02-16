@@ -536,9 +536,9 @@ namespace vkmmc
 			m_colorPass.OffsetX = 0;
 			m_colorPass.OffsetY = 0;
 			VkClearValue value;
-			value.color = { 0.1f, 0.2f, 0.3f };
-			value.depthStencil.depth = 1.f;
+			value.color = { 0.f, 0.f, 0.f };
 			m_colorPass.ClearValues.push_back(value);
+			value.depthStencil.depth = 1.f;
 			m_colorPass.ClearValues.push_back(value);
 		}
 
@@ -573,9 +573,7 @@ namespace vkmmc
 			m_depthPass.OffsetX = 0;
 			m_depthPass.OffsetY = 0;
 			VkClearValue value;
-			value.color = { 0.1f, 0.2f, 0.3f };
 			value.depthStencil.depth = 1.f;
-			m_depthPass.ClearValues.push_back(value);
 			m_depthPass.ClearValues.push_back(value);
 		}
 
