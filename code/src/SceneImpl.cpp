@@ -13,6 +13,9 @@
 #include "GenericUtils.h"
 #include "VulkanRenderEngine.h"
 #include <algorithm>
+#include "glm/gtx/quaternion.hpp"
+#include "glm/fwd.hpp"
+#include "imgui.h"
 
 //#define VKMMC_ENABLE_LOADER_LOG
 
@@ -79,6 +82,21 @@ namespace gltf_api
 	void ToMat4(glm::mat4* mat, const cgltf_float* cgltfMat4)
 	{
 		memcpy_s(&mat, sizeof(float) * 16, cgltfMat4, sizeof(cgltf_float) * 16);
+	}
+
+	void ToVec3(glm::vec3& v, const cgltf_float* data)
+	{
+		v = glm::vec3(data[0], data[1], data[2]);
+	}
+
+	void ToVec4(glm::vec4& v, const cgltf_float* data)
+	{
+		v = glm::vec4(data[0], data[1], data[2], data[3]);
+	}
+
+	void ToQuat(glm::quat& q, const cgltf_float* data)
+	{
+		q = glm::quat(data[3], data[0], data[1], data[2]);
 	}
 
 	void ReadValues(std::vector<float>& values, const cgltf_accessor& accessor)
@@ -210,7 +228,7 @@ namespace gltf_api
 
 	void LoadMaterial(vkmmc::Scene* scene, const char* rootAssetPath, vkmmc::Material& material, const cgltf_material& mtl)
 	{
-		if (mtl.has_pbr_metallic_roughness)
+		if (mtl.pbr_metallic_roughness.base_color_texture.texture)
 		{
 			vkmmc::RenderHandle diffHandle = LoadTexture(scene,
 				rootAssetPath,
@@ -222,7 +240,7 @@ namespace gltf_api
 			vkmmc::Log(vkmmc::LogLevel::Warn, "Diffuse material texture not found.\n");
 #endif // VKMMC_ENABLE_LOADER_LOG
 
-		if (mtl.has_pbr_specular_glossiness)
+		if (mtl.pbr_specular_glossiness.diffuse_texture.texture)
 		{
 			vkmmc::RenderHandle handle = LoadTexture(scene,
 				rootAssetPath,
@@ -341,12 +359,36 @@ namespace vkmmc
 			}
 			RenderObject renderObject = scene->CreateRenderObject(parent);
 
+			// Process transform
+			glm::mat4 localTransform(1.f);
 			if (node.has_matrix)
 			{
-				glm::mat4 localTransform;
 				gltf_api::ToMat4(&localTransform, node.matrix);
-				scene->SetTransform(renderObject, localTransform);
 			}
+			else
+			{
+				if (node.has_translation)
+				{
+					glm::vec3 pos;
+					gltf_api::ToVec3(pos, node.translation);
+					localTransform = glm::translate(localTransform, pos);
+				}
+				if (node.has_rotation)
+				{
+					glm::quat quat;
+					gltf_api::ToQuat(quat, node.rotation);
+					localTransform *= glm::toMat4(quat);
+				}
+				if (node.has_scale)
+				{
+					glm::vec3 scl;
+					gltf_api::ToVec3(scl, node.scale);
+					localTransform = glm::scale(localTransform, scl);
+				}
+			}
+			scene->SetTransform(renderObject, localTransform);
+
+			// Process mesh
 			if (node.mesh)
 			{
 				// Load geometry data
@@ -478,10 +520,14 @@ namespace vkmmc
 	const Mesh* Scene::GetMesh(RenderObject renderObject) const
 	{
 		check(IsValid(renderObject));
-		check(m_componentMap.contains(renderObject));
-		uint32_t index = m_componentMap.at(renderObject).MeshIndex;
-		check(index < (uint32_t)m_meshArray.size());
-		return &m_meshArray.at(renderObject.Id);
+		const Mesh* mesh = nullptr;
+		if (m_componentMap.contains(renderObject))
+		{
+			uint32_t index = m_componentMap.at(renderObject).MeshIndex;
+			check(index < (uint32_t)m_meshArray.size());
+			mesh = &m_meshArray.at(index);
+		}
+		return mesh;
 	}
 
 	void Scene::SetMesh(RenderObject renderObject, const Mesh& mesh)
@@ -666,8 +712,11 @@ namespace vkmmc
 		// Process root level first
 		if (!m_dirtyNodes[0].empty())
 		{
-			int32_t rootNode = m_dirtyNodes[0][0];
-			m_globalTransforms[rootNode] = m_localTransforms[rootNode];
+			for (uint32_t i = 0; i < m_dirtyNodes[0].size(); ++i)
+			{
+				uint32_t nodeIndex = m_dirtyNodes[0][i];
+				m_globalTransforms[nodeIndex] = m_localTransforms[nodeIndex];
+			}
 			m_dirtyNodes[0].clear();
 		}
 		// Iterate over the deeper levels
@@ -824,6 +873,16 @@ namespace vkmmc
 
 			}
 		}
+	}
+
+	void Scene::ImGuiDraw(bool createWindow)
+	{
+		if (createWindow)
+			ImGui::Begin("SceneGraph");
+
+
+		if (createWindow)
+			ImGui::End();
 	}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const

@@ -107,6 +107,8 @@ namespace vkmmc
 		// Draw without materials
 		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 
+		void ImGuiDraw(bool createWindow = false);
+
 	private:
 		VulkanRenderEngine* m_engine{nullptr};
 		static constexpr uint32_t MaxNodeLevel = 16;

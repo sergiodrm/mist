@@ -218,6 +218,9 @@ namespace vkmmc
 			case SDL_QUIT: res = false; break;
 			}
 		}
+
+		// Update scene graph transforms
+		GetFrameContext().Scene->RecalculateTransforms();
 		for (IRendererBase* it : m_renderers)
 			it->PrepareFrame(m_renderContext, GetFrameContext());
 
