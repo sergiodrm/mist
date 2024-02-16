@@ -92,6 +92,20 @@ namespace vkmmc
 		RecalculateProjection();
 	}
 
+	void Camera::ImGuiDraw(bool createWindow)
+	{
+		if (createWindow)
+			ImGui::Begin("Camera projection");
+		bool updateProjection = ImGui::DragFloat("FOV (degrees)", &m_fov, 0.f, 90.f);
+		updateProjection |= ImGui::DragFloat("Aspect ratio", &m_aspectRatio);
+		updateProjection |= ImGui::DragFloat("Near clip", &m_nearClip);
+		updateProjection |= ImGui::DragFloat("Far clip", &m_farClip);
+		if (updateProjection)
+			RecalculateProjection();
+		if (createWindow)
+			ImGui::End();
+	}
+
 	void Camera::RecalculateView()
 	{
 		glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, m_position);
@@ -193,17 +207,22 @@ namespace vkmmc
 	void CameraController::ImGuiDraw()
 	{
 		ImGui::Begin("Camera");
-		if (ImGui::Button("Reset position"))
-			m_camera.SetPosition({ 0.f, 0.f, 0.f });
-		glm::vec3 pos = m_camera.GetPosition();
-		if (ImGui::DragFloat3("Position", &pos[0], 0.5f))
-			m_camera.SetPosition(pos);
-		glm::vec3 rot = m_camera.GetRotation();
-		if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
-			m_camera.SetRotation(rot);
-		ImGui::DragFloat("MaxSpeed", &m_maxSpeed, 1.f);
-		ImGui::DragFloat("MaxRotSpeed", &m_maxRotSpeed, 0.2f);
-		ImGui::DragFloat("Acceleration", &m_acceleration, 1.f);
+		if (ImGui::CollapsingHeader("View"))
+		{
+			if (ImGui::Button("Reset position"))
+				m_camera.SetPosition({ 0.f, 0.f, 0.f });
+			glm::vec3 pos = m_camera.GetPosition();
+			if (ImGui::DragFloat3("Position", &pos[0], 0.5f))
+				m_camera.SetPosition(pos);
+			glm::vec3 rot = m_camera.GetRotation();
+			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
+				m_camera.SetRotation(rot);
+			ImGui::DragFloat("MaxSpeed", &m_maxSpeed, 1.f);
+			ImGui::DragFloat("MaxRotSpeed", &m_maxRotSpeed, 0.2f);
+			ImGui::DragFloat("Acceleration", &m_acceleration, 1.f);
+		}
+		if (ImGui::CollapsingHeader("Camera projection"))
+			m_camera.ImGuiDraw();
 		ImGui::End();
 	}
 }

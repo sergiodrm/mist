@@ -24,6 +24,8 @@ namespace vkmmc
 		void SetFarClip(float clip);
 		void SetProjection(float fov, float aspectRatio, float nearClip, float farClip);
 
+		void ImGuiDraw(bool createWindow = false);
+
 	protected:
 		void RecalculateView();
 		void RecalculateProjection();
