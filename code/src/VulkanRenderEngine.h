@@ -124,6 +124,7 @@ namespace vkmmc
 		virtual const IScene* GetScene() const override { return m_scene; }
 		virtual void SetScene(IScene* scene);
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
+		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) override { m_eventCallback = fn; }
 
 		virtual RenderHandle GetDefaultTexture() const;
 		virtual Material GetDefaultMaterial() const;
@@ -176,6 +177,8 @@ namespace vkmmc
 		FunctionStack m_shutdownStack;
 		typedef std::function<void()> ImGuiCallback;
 		std::vector<ImGuiCallback> m_imguiCallbackArray;
+		typedef std::function<void(void*)> EventCallback;
+		EventCallback m_eventCallback;
 	};
 
 	extern RenderHandle GenerateRenderHandle();

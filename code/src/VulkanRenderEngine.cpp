@@ -217,6 +217,8 @@ namespace vkmmc
 			{
 			case SDL_QUIT: res = false; break;
 			}
+			if (m_eventCallback)
+				m_eventCallback(&e);
 		}
 
 		// Update scene graph transforms
@@ -596,7 +598,6 @@ namespace vkmmc
 			// Color Framebuffer
 			m_colorPass.FramebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_colorPass.Width, m_colorPass.Height)
 				.AddAttachment(m_swapchain.GetImageViewAt(i))
-				//.CreateColorAttachment()
 				.CreateDepthStencilAttachment()
 				.Build(m_colorPass.RenderPass);
 

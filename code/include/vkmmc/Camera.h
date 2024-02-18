@@ -59,6 +59,7 @@ namespace vkmmc
 		const Camera& GetCamera() const { return m_camera; }
 
 		void ImGuiDraw();
+		void ProcessEvent(void* d);
 	protected:
 		void ReadKeyboardState();
 		void ReadMouseState();
@@ -68,6 +69,7 @@ namespace vkmmc
 		glm::vec3 m_direction{ 0.f };
 		float m_speed = 0.f;
 		float m_maxSpeed = 500.f; // eu/s
+		float m_maxScrollSpeed = 0.3f; // eu/s
 		float m_maxRotSpeed = 1.f; // rad/s
 		float m_acceleration = 1000.f;
 

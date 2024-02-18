@@ -66,6 +66,7 @@ public:
 		m_engine->Init(spec);
 
 		m_engine->AddImGuiCallback([this]() { m_camera.ImGuiDraw(); });
+		m_engine->SetAppEventCallback([this](void* d) { m_camera.ProcessEvent(d); ProcessEvent(d); });
 
 		LoadTest();
 	}
@@ -94,6 +95,7 @@ protected:
 	virtual void LoadTest() {}
 	virtual void ProcessLogic(float timeDiff) {}
 	virtual void UnloadTest() {}
+	virtual void ProcessEvent(void* eventData) {}
 
 protected:
 	vkmmc::IRenderEngine* m_engine = nullptr;

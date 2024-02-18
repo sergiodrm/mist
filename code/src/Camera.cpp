@@ -172,6 +172,7 @@ namespace vkmmc
 		// Just update mouse control if motion is activated.
 		if (m_isMotionControlActive)
 		{
+			// Mouse drag as camera control rotation
 			glm::ivec2 diff;
 			SDL_GetRelativeMouseState(&diff[0], &diff[1]);
 			static constexpr float swidth = 1920.f;
@@ -179,6 +180,8 @@ namespace vkmmc
 			const float yawdiff = (float)(diff.x) / swidth;
 			const float pitchdiff = (float)(diff.y) / sheight;
 			m_motionRotation += glm::vec2{ -pitchdiff, -yawdiff };
+
+			// Mouse scroll to increase/decrease max speed
 		}
 	}
 
@@ -217,12 +220,27 @@ namespace vkmmc
 			glm::vec3 rot = m_camera.GetRotation();
 			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
 				m_camera.SetRotation(rot);
-			ImGui::DragFloat("MaxSpeed", &m_maxSpeed, 1.f);
-			ImGui::DragFloat("MaxRotSpeed", &m_maxRotSpeed, 0.2f);
-			ImGui::DragFloat("Acceleration", &m_acceleration, 1.f);
+			if (ImGui::DragFloat("MaxSpeed", &m_maxSpeed, 1.f))
+				m_acceleration = 2.5f * m_maxSpeed;
+
+			//ImGui::DragFloat("Acceleration", &m_acceleration, 1.f);
 		}
 		if (ImGui::CollapsingHeader("Camera projection"))
 			m_camera.ImGuiDraw();
 		ImGui::End();
+	}
+
+	void CameraController::ProcessEvent(void* d)
+	{
+		SDL_Event e = *static_cast<SDL_Event*>(d);
+		switch (e.type)
+		{
+		case SDL_MOUSEWHEEL:
+			if (m_isMotionControlActive)
+			{
+				m_maxSpeed += m_maxScrollSpeed * m_maxSpeed * e.wheel.y;
+			}
+			break;
+		}
 	}
 }
