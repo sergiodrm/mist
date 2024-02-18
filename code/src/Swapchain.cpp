@@ -1,6 +1,5 @@
 #include "Swapchain.h"
 #include <vkbootstrap/VkBootstrap.h>
-#include <vk_mem_alloc.h>
 #include <InitVulkanTypes.h>
 #include <VulkanRenderEngine.h>
 
@@ -28,9 +27,13 @@ namespace vkmmc
 		// Create depth buffer
 		VkExtent3D depthExtent = { spec.ImageWidth, spec.ImageHeight, 1 };
 		m_depthFormat = types::FormatType(VK_FORMAT_D32_SFLOAT);
-		m_depthImage = Memory::CreateImage(renderContext.Allocator,
-			types::FormatType(m_depthFormat), depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		m_depthImage = Memory::CreateImage(
+			renderContext.Allocator,
+			types::FormatType(m_depthFormat), 
+			depthExtent, 
+			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			MEMORY_USAGE_GPU, 
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		// Image view
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(types::FormatType(m_depthFormat), m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);

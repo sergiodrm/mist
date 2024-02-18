@@ -4,7 +4,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
+#include <Memory.h>
 #include "VulkanBuffer.h"
 
 struct SDL_Window;
@@ -27,7 +27,7 @@ namespace vkmmc
 		VkDebugUtilsMessengerEXT DebugMessenger;
 		VkPhysicalDeviceProperties GPUProperties;
 		VkDevice Device;
-		VmaAllocator Allocator;
+		Allocator Allocator;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
 		// Viewport size. TODO: Find another way to communicate these data.

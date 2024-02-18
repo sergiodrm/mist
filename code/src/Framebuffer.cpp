@@ -34,7 +34,7 @@ namespace vkmmc
 			format, extent, 
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
             //VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY, 0);
+			MEMORY_USAGE_GPU, 0);
 		m_imageArray.push_back(image);
 
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -51,7 +51,7 @@ namespace vkmmc
 		VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
 		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator,
 			depthFormat, depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY, 0);
+            MEMORY_USAGE_GPU, 0);
         m_imageArray.push_back(image);
 
 		// Image view

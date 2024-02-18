@@ -66,8 +66,8 @@ namespace vkmmc
 		EFormat imageFormat = vkutils::GetImageFormatFromChannels(textureRaw.Channels);
 		VkFormat format = types::FormatType(imageFormat);
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(renderContext.Allocator, size,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-		Memory::MemCopy(renderContext.Allocator, stageBuffer.Alloc, textureRaw.Pixels, size);
+			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
+		Memory::MemCopy(renderContext.Allocator, stageBuffer, textureRaw.Pixels, size);
 
 		// Prepare image creation
 		VkExtent3D extent;
@@ -77,7 +77,7 @@ namespace vkmmc
 		m_image = Memory::CreateImage(renderContext.Allocator,
 			format, extent,
 			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			MEMORY_USAGE_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 		utils::CmdSubmitTransfer(renderContext, 
 			[=](VkCommandBuffer cmd) 

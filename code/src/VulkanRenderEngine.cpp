@@ -453,14 +453,10 @@ namespace vkmmc
 			deviceProperties.deviceName, deviceProperties.deviceID, deviceProperties.vendorID);
 
 		// Init memory allocator
-		VmaAllocatorCreateInfo allocatorInfo = {};
-		allocatorInfo.physicalDevice = m_renderContext.GPUDevice;
-		allocatorInfo.device = m_renderContext.Device;
-		allocatorInfo.instance = m_renderContext.Instance;
-		vmaCreateAllocator(&allocatorInfo, &m_renderContext.Allocator);
+		Memory::Init(m_renderContext.Allocator, m_renderContext.Instance, m_renderContext.Device, m_renderContext.GPUDevice);
 		m_shutdownStack.Add([this]()
 			{
-				vmaDestroyAllocator(m_renderContext.Allocator);
+				Memory::Destroy(m_renderContext.Allocator);
 			});
 		m_renderContext.GPUProperties = device.physical_device.properties;
 		Logf(LogLevel::Info, "GPU has minimum buffer alignment of %Id bytes.\n",

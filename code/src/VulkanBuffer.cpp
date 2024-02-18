@@ -142,8 +142,8 @@ namespace vkmmc
 
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		const RenderContext& context = engine->GetContext();
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
-		Memory::MemCopy(context.Allocator, stageBuffer.Alloc, cpuData, size);
+		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
+		Memory::MemCopy(context.Allocator, stageBuffer, cpuData, size);
 		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd) 
 			{
 				gpuBuffer.UpdateData(cmd, stageBuffer.Buffer, size, 0);
@@ -167,7 +167,7 @@ namespace vkmmc
 			info.Size,
 			vkutils::GetVulkanBufferUsage(m_usage)
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-			VMA_MEMORY_USAGE_GPU_ONLY);
+			MEMORY_USAGE_GPU);
 		m_size = info.Size;
 
 		if (info.Data)
@@ -211,7 +211,7 @@ namespace vkmmc
 
 		// TODO: bufferSize must be power of 2. Override with greater size or check size?
 		VkBufferUsageFlags usageFlags = vkutils::GetVulkanBufferUsage(usage);
-		m_buffer = Memory::CreateBuffer(renderContext.Allocator, bufferSize, usageFlags, VMA_MEMORY_USAGE_CPU_TO_GPU);
+		m_buffer = Memory::CreateBuffer(renderContext.Allocator, bufferSize, usageFlags, MEMORY_USAGE_CPU_TO_GPU);
 		m_maxMemoryAllocated = bufferSize;
 	}
 
@@ -254,7 +254,7 @@ namespace vkmmc
 		{
 			const ItemMapInfo& info = m_infoMap[name];
 			check(size <= dstOffset + info.Size);
-			Memory::MemCopy(renderContext.Allocator, m_buffer.Alloc, source, size, dstOffset + info.Offset);
+			Memory::MemCopy(renderContext.Allocator, m_buffer, source, size, dstOffset + info.Offset);
 			return true;
 		}
 		return false;
