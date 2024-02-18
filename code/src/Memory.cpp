@@ -1,6 +1,6 @@
 // src file for vkmmc project 
 
-
+#define VMA_IMPLEMENTATION
 #include "Memory.h"
 #include "Debug.h"
 #include <corecrt_memory.h>

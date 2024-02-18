@@ -3,8 +3,6 @@
 #include <cstdio>
 #include <glm/gtx/transform.hpp>
 
-#define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <string.h>
