@@ -32,8 +32,7 @@ namespace vkmmc
 			types::FormatType(m_depthFormat), 
 			depthExtent, 
 			VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-			MEMORY_USAGE_GPU, 
-			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			MEMORY_USAGE_GPU);
 
 		// Image view
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(types::FormatType(m_depthFormat), m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);

@@ -27,7 +27,7 @@ namespace vkmmc
 		VkDebugUtilsMessengerEXT DebugMessenger;
 		VkPhysicalDeviceProperties GPUProperties;
 		VkDevice Device;
-		Allocator Allocator;
+		Allocator* Allocator;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
 		// Viewport size. TODO: Find another way to communicate these data.

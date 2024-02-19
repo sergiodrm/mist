@@ -8,14 +8,20 @@
 #include <gltf/cgltf.h>
 #undef CGLTF_IMPLEMENTATION
 
+#ifdef VKMMC_MEM_MANAGEMENT
+// TODO: wtf windows declare these macros and project does not compile when VKMMC_MEM_MANAGEMENT is defined. WTF!?
+#undef min
+#undef max  
+#endif // VKMMC_MEM_MANAGEMENT
+
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/fwd.hpp>
 #include "Mesh.h"
 #include "GenericUtils.h"
 #include "VulkanRenderEngine.h"
 #include <algorithm>
-#include "glm/gtx/quaternion.hpp"
-#include "glm/fwd.hpp"
-#include "imgui.h"
+#include <imgui.h>
 
 //#define VKMMC_ENABLE_LOADER_LOG
 

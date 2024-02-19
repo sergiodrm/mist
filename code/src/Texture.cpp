@@ -77,7 +77,7 @@ namespace vkmmc
 		m_image = Memory::CreateImage(renderContext.Allocator,
 			format, extent,
 			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-			MEMORY_USAGE_GPU, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+			MEMORY_USAGE_GPU);
 
 		utils::CmdSubmitTransfer(renderContext, 
 			[=](VkCommandBuffer cmd) 
