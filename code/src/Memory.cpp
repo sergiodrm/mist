@@ -227,6 +227,8 @@ namespace vkmmc
 #ifndef VKMMC_MEM_MANAGEMENT
 		vmaDestroyImage(allocator.AllocatorInstance, image.Image, image.Alloc);
 #else
+		Free(allocator, image.Alloc);
+		vkDestroyImage(allocator->Device, image.Image, nullptr);
 #endif // !VKMMC_MEM_MANAGEMENT
 
 	}
