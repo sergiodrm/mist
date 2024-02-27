@@ -7,6 +7,8 @@
 
 namespace vkmmc
 {
+	class Scene;
+
 	struct LightData
 	{
 		union
@@ -41,6 +43,52 @@ namespace vkmmc
 		SpotLightData SpotLights[MaxLights];
 	};
 
+	class ShadowMapPipeline
+	{
+		struct FrameData
+		{
+			// TODO: need model set for draw scene. is this correct?
+			VkDescriptorSet ModelSet;
+			VkDescriptorSet DepthMVPSet;
+		};
+	public:
+		enum EShadowMapProjectionType
+		{
+			PROJECTION_PERSPECTIVE,
+			PROJECTION_ORTHOGRAPHIC,
+		};
+
+		ShadowMapPipeline();
+		~ShadowMapPipeline();
+
+		void Init(const RenderContext& renderContext, VkRenderPass renderPass, DescriptorAllocator* descriptorAllocator, DescriptorLayoutCache* layoutCache);
+		void Destroy(const RenderContext& renderContext);
+
+		void PushFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache);
+
+		void SetClip(float nearClip, float farClip);
+		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
+		void SetProjection(float fov, float aspectRatio);
+		void SetProjection(float minX, float maxX, float minY, float maxY);
+		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType);
+		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBuffer* buffer);
+		void RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
+		const glm::mat4& GetDepthVP(uint32_t index) const;
+
+		void ImGuiDraw(bool createWindow = false);
+	private:
+		// Shader shadowmap pipeline
+		RenderPipeline m_pipeline;
+		// Cache for save depth view projection data until flush to gpu buffer.
+		glm::mat4 m_depthMVPCache[EnvironmentData::MaxLights];
+		// Projection params
+		float m_perspectiveParams[2];
+		float m_orthoParams[4];
+		float m_clip[2];
+		// Per frame info
+		std::vector<FrameData> m_frameData;
+	};
+
 	class ModelRenderer : public IRendererBase
 	{
 		struct RendererFrameData
@@ -66,22 +114,14 @@ namespace vkmmc
 	protected:
 		// Render State
 		RenderPipeline m_renderPipeline;
-		RenderPipeline m_depthPipeline;
 
 		std::vector<RendererFrameData> m_frameData;
 		int32_t m_activeLightsCount;
 		int32_t m_activeSpotLightsCount;
 		int32_t m_spotLightShadowIndex;
 		EnvironmentData m_environmentData;
-		std::vector<glm::mat4> m_depthMVPCache;
+		ShadowMapPipeline m_shadowMapPipeline;
 		VkSampler m_depthMapSampler;
 		bool m_debugCameraDepthMapping;
-		struct  
-		{
-			float FOV = 45.f;
-			float Aspect = 16.f / 9.f;
-			float Near = 10.f;
-			float Far = 1000.f;
-		} m_projParams;
 	};
 }

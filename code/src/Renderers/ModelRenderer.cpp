@@ -13,8 +13,153 @@
 #include "GenericUtils.h"
 #include "glm/ext/matrix_clip_space.inl"
 
+#define UNIFORM_ID_DEPTH_VP "DepthVP"
+#define UNIFORM_ID_MODEL_SCENE_ARRAY "ModelArray"
+#define UNIFORM_ID_ENVIRONMENT "Environment"
+
 namespace vkmmc
 {
+	ShadowMapPipeline::ShadowMapPipeline()
+		: m_pipeline()
+	{
+		SetProjection(glm::radians(45.f), 16.f / 9.f);
+		SetProjection(0.f, 1920.f, 0.f, 1080.f);
+		SetClip(1.f, 1000.f);
+	}
+
+	ShadowMapPipeline::~ShadowMapPipeline()
+	{
+		check(!m_pipeline.IsValid());
+	}
+
+	void ShadowMapPipeline::Init(const RenderContext& renderContext, VkRenderPass renderPass, DescriptorAllocator* descriptorAllocator, DescriptorLayoutCache* layoutCache)
+	{
+		// Depth pipeline
+		VkDescriptorSetLayout depthShaderInput[2];
+		DescriptorSetLayoutBuilder::Create(*layoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
+			.Build(renderContext, &depthShaderInput[0]);
+		DescriptorSetLayoutBuilder::Create(*layoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
+			.Build(renderContext, &depthShaderInput[1]);
+
+		// CreatePipeline
+		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
+		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+		m_pipeline = RenderPipeline::Create(
+			renderContext,
+			renderPass,
+			0,
+			&depthShader, 1,
+			depthShaderInput, sizeof(depthShaderInput) / sizeof(VkDescriptorSetLayout), nullptr, 
+			0,
+			inputLayout
+		);
+	}
+
+	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
+	{
+		m_pipeline.Destroy(renderContext);
+	}
+
+	void ShadowMapPipeline::PushFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache)
+	{
+		// Alloc info for depthVP matrix
+		uint32_t depthMVPSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
+		buffer->AllocUniform(renderContext, UNIFORM_ID_DEPTH_VP, depthMVPSize);
+
+		FrameData fd;
+		// Alloc desc set pointing to buffer
+		VkDescriptorBufferInfo depthBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_DEPTH_VP);
+		DescriptorBuilder::Create(*layoutCache, *descAllocator)
+			.BindBuffer(0, depthBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+			.Build(renderContext, fd.DepthMVPSet);
+
+		// create descriptor set for model matrix array
+		VkDescriptorBufferInfo modelsBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_MODEL_SCENE_ARRAY);
+		DescriptorBuilder::Create(*layoutCache, *descAllocator)
+			.BindBuffer(0, modelsBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+			.Build(renderContext, fd.ModelSet);
+		m_frameData.push_back(fd);
+	}
+
+	void ShadowMapPipeline::SetClip(float nearClip, float farClip)
+	{
+		m_clip[0] = nearClip;
+		m_clip[1] = farClip;
+	}
+
+	glm::mat4 ShadowMapPipeline::GetProjection(EShadowMapProjectionType projType) const
+	{
+		switch (projType)
+		{
+		case PROJECTION_PERSPECTIVE:
+			return glm::perspective(m_perspectiveParams[0], m_perspectiveParams[1], m_clip[0], m_clip[1]);
+		case PROJECTION_ORTHOGRAPHIC:
+			return glm::ortho(m_orthoParams[0], m_orthoParams[1], m_orthoParams[2], m_orthoParams[3], m_clip[0], m_clip[1]);
+		}
+		return glm::mat4(1.f);
+	}
+
+	void ShadowMapPipeline::SetProjection(float fov, float aspectRatio)
+	{
+		m_perspectiveParams[0] = fov;
+		m_perspectiveParams[1] = aspectRatio;
+	}
+
+	void ShadowMapPipeline::SetProjection(float minX, float maxX, float minY, float maxY)
+	{
+		m_orthoParams[0] = minX;
+		m_orthoParams[1] = maxX;
+		m_orthoParams[2] = minY;
+		m_orthoParams[3] = maxY;
+	}
+
+	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType)
+	{
+		check(lightIndex < EnvironmentData::MaxLights);
+		glm::mat4 depthView = glm::inverse(math::ToMat4(lightPos, lightRot, glm::vec3(1.f)));
+		glm::mat4 depthProj = GetProjection(projType);
+		depthProj[1][1] *= -1.f;
+		glm::mat4 depthVP = depthProj * depthView;
+		m_depthMVPCache[lightIndex] = depthVP;
+	}
+
+	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBuffer* buffer)
+	{
+		buffer->SetUniform(renderContext, UNIFORM_ID_DEPTH_VP, m_depthMVPCache, sizeof(glm::mat4) * EnvironmentData::MaxLights);
+	}
+
+	void ShadowMapPipeline::RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
+	{
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineHandle());
+
+		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex;
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineLayoutHandle(),
+			0, 1, &m_frameData[frameIndex].DepthMVPSet, 1, &depthVPOffset);
+
+		scene->Draw(cmd, m_pipeline.GetPipelineLayoutHandle(), 1, m_frameData[frameIndex].ModelSet);
+	}
+
+	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
+	{
+		return m_depthMVPCache[index];
+	}
+
+	void ShadowMapPipeline::ImGuiDraw(bool createWindow)
+	{
+		if (createWindow)
+			ImGui::Begin("ShadowMap proj params");
+		ImGui::DragFloat("Near clip", &m_clip[0], 1.f);
+		ImGui::DragFloat("Far clip", &m_clip[1], 1.f);
+		ImGui::DragFloat("FOV", &m_perspectiveParams[0], 0.01f);
+		ImGui::DragFloat("Aspect ratio", &m_perspectiveParams[1], 0.01f);
+		ImGui::DragFloat2("Ortho x", &m_orthoParams[0]);
+		ImGui::DragFloat2("Ortho y", &m_orthoParams[2]);
+		if (createWindow)
+			ImGui::End();
+	}
+
 	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0), m_activeSpotLightsCount(0), m_spotLightShadowIndex(0)
 	{
 		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
@@ -62,23 +207,6 @@ namespace vkmmc
 			VertexInputLayout::GetStaticMeshVertexLayout()
 		);
 
-		// Depth pipeline
-		VkDescriptorSetLayout depthMVPLayout;
-		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(info.RContext, &depthMVPLayout);
-
-		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
-		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-		m_depthPipeline = RenderPipeline::Create(
-			info.RContext,
-			info.DepthPass,
-			0,
-			&depthShader, 1,
-			&depthMVPLayout, 1, nullptr, 0, 
-			inputLayout
-		);
-
 		// Sampler for shadow map binding
 		VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
 		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthMapSampler));
@@ -90,19 +218,17 @@ namespace vkmmc
 
 			// Allocate shader data
 			uint32_t modelsSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
-			uniformBuffer->AllocUniform(info.RContext, "Models", modelsSize);
+			uniformBuffer->AllocUniform(info.RContext, UNIFORM_ID_MODEL_SCENE_ARRAY, modelsSize);
 			uint32_t enviroSize = sizeof(EnvironmentData);
-			uniformBuffer->AllocUniform(info.RContext, "Environment", enviroSize);
-			// Depth pass
-			uint32_t depthMVPSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
-			uniformBuffer->AllocUniform(info.RContext, "DepthMVP", depthMVPSize);
+			uniformBuffer->AllocUniform(info.RContext, UNIFORM_ID_ENVIRONMENT, enviroSize);
 			uniformBuffer->AllocUniform(info.RContext, "LightMatrix", sizeof(glm::mat4));
+			
 
 			// Configure per frame DescriptorSet.
 			// Color pass
 			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Camera");
-			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Environment");
-			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo("Models", sizeof(glm::mat4));
+			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_ENVIRONMENT);
+			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo(UNIFORM_ID_MODEL_SCENE_ARRAY, sizeof(glm::mat4));
 			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("LightMatrix");
 			VkDescriptorImageInfo shadowMapDescInfo;
 			shadowMapDescInfo.imageView = info.DepthImageViewArray[i];
@@ -110,9 +236,6 @@ namespace vkmmc
 			shadowMapDescInfo.sampler = m_depthMapSampler;
 			
 			// Materials have its own descriptor set (right now).
-
-			// Depth pass
-			VkDescriptorBufferInfo depthMVPInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo("DepthMVP", sizeof(glm::mat4));
 
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
 				.BindBuffer(0, cameraDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
@@ -123,20 +246,19 @@ namespace vkmmc
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
 				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(info.RContext, m_frameData[i].ModelSet);
-			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-				.BindBuffer(0, depthMVPInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(info.RContext, m_frameData[i].DepthMVPSet);
-		}
 
+			// Configure frame data for shadowmap
+			m_shadowMapPipeline.PushFrameData(info.RContext, uniformBuffer, info.DescriptorAllocator, info.LayoutCache);
+		}
 		m_environmentData.AmbientColor = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
-		m_depthMVPCache.resize(VulkanRenderEngine::MaxRenderObjects);
+		m_shadowMapPipeline.Init(info.RContext, info.DepthPass, info.DescriptorAllocator, info.LayoutCache);
 	}
 
 	void ModelRenderer::Destroy(const RenderContext& renderContext)
 	{
 		vkDestroySampler(renderContext.Device, m_depthMapSampler, nullptr);
 		m_renderPipeline.Destroy(renderContext);
-		m_depthPipeline.Destroy(renderContext);
+		m_shadowMapPipeline.Destroy(renderContext);
 	}
 
 	void ModelRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
@@ -150,19 +272,16 @@ namespace vkmmc
 		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
 		m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
 		m_environmentData.ActiveSpotLightsCount = (float)m_activeSpotLightsCount;
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Models", scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * count);
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "Environment", &m_environmentData, sizeof(EnvironmentData));
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_MODEL_SCENE_ARRAY, scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * count);
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_ENVIRONMENT, &m_environmentData, sizeof(EnvironmentData));
 
-		// Depth pass
-		const glm::mat4* rawTransforms = scene->GetRawGlobalTransforms();
-		const SpotLightData& spotLight = m_environmentData.SpotLights[m_spotLightShadowIndex];
-		glm::mat4 depthView = m_debugCameraDepthMapping ? renderFrameContext.CameraData->View : glm::inverse(math::ToMat4(spotLight.Position, math::ToRot(spotLight.Direction * -1.f), glm::vec3(1.f)));
-		glm::mat4 depthProj = glm::perspective(glm::radians(m_projParams.FOV), m_projParams.Aspect, m_projParams.Near, m_projParams.Far);
-		depthProj[1][1] *= -1.f;
-		glm::mat4 depthVP = depthProj * depthView;
-		for (uint32_t i = 0; i < count; ++i)
-			m_depthMVPCache[i] = depthVP * rawTransforms[i];
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "DepthMVP", m_depthMVPCache.data(), count * sizeof(glm::mat4));
+		m_shadowMapPipeline.SetupLight(0, m_environmentData.DirectionalLight.Position, math::ToRot(m_environmentData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
+		for (uint32_t i = 0; i < m_environmentData.ActiveSpotLightsCount; ++i)
+		{
+			const SpotLightData& light = m_environmentData.SpotLights[i];
+			m_shadowMapPipeline.SetupLight(i+1, light.Position, math::ToRot(light.Direction*-1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+		}
+		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
 
 		// Apply bias just to light space matrix
 		static constexpr glm::mat4 depthBias =
@@ -172,6 +291,7 @@ namespace vkmmc
 			0.0, 0.0, 1.0, 0.0,
 			0.5, 0.5, 0.0, 1.0
 		};
+		glm::mat4 depthVP = m_shadowMapPipeline.GetDepthVP(1);
 		depthVP = depthBias * depthVP;
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "LightMatrix", &depthVP, sizeof(glm::mat4));
 	}
@@ -197,11 +317,7 @@ namespace vkmmc
 	void ModelRenderer::RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
 		PROFILE_SCOPE(ModelRenderer_DepthPass);
-
-		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_depthPipeline.GetPipelineHandle());
-
-		renderFrameContext.Scene->Draw(cmd, m_depthPipeline.GetPipelineLayoutHandle(), 0, m_frameData[renderFrameContext.FrameIndex].DepthMVPSet);
+		m_shadowMapPipeline.RenderShadowMap(renderFrameContext.GraphicsCommand, renderFrameContext.Scene, renderFrameContext.FrameIndex, 1);
 	}
 
 	void ModelRenderer::ImGuiDraw()
@@ -288,10 +404,7 @@ namespace vkmmc
 			}
 		}
 		ImGui::Separator();
-		utilDragFloat("fov", 0, &m_projParams.FOV, 1, false);
-		//utilDragFloat("aspect", 0, &m_projParams.Aspect, 1, false);
-		utilDragFloat("near", 0, &m_projParams.Near, 1, false);
-		utilDragFloat("far", 0, &m_projParams.Far, 1, false);
+		m_shadowMapPipeline.ImGuiDraw(false);
 		ImGui::End();
 	}
 }
