@@ -6,13 +6,13 @@ layout (location = 0) in vec2 inUV;
 
 layout (location = 0) out vec4 outFragColor;
 
-layout (binding = 0) uniform UBO 
+layout (set = 0, binding = 0) uniform UBO 
 {
 	float zNear;
 	float zFar;
 } ubo;
 
-layout (binding = 1) uniform sampler2D samplerColor;
+layout (set = 1, binding = 0) uniform sampler2D samplerColor;
 
 float LinearizeDepth(float depth)
 {

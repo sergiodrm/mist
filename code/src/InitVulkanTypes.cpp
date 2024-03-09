@@ -207,7 +207,35 @@ namespace vkmmc
 			return attachmentDesc;
 		}
 
-		VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent)
+		VkRenderPassBeginInfo RenderPassBeginInfo(VkRenderPass renderPass, VkFramebuffer framebuffer, VkRect2D area, const VkClearValue* clearArray, uint32_t clearCount)
+		{
+			VkRenderPassBeginInfo info;
+			info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+			info.pNext = nullptr;
+			info.clearValueCount = clearCount;
+			info.pClearValues = clearArray;
+			info.framebuffer = framebuffer;
+			info.renderArea = area;
+			info.renderPass = renderPass;
+			return info;
+		}
+
+		VkFramebufferCreateInfo FramebufferCreateInfo(VkRenderPass pass, uint32_t width, uint32_t height, const VkImageView* viewArray, uint32_t viewCount, uint32_t flags, uint32_t layers)
+		{
+			VkFramebufferCreateInfo info;
+			info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			info.pNext = nullptr;
+			info.width = width;
+			info.height = height;
+			info.flags = flags;
+			info.layers = layers;
+			info.renderPass = pass;
+			info.attachmentCount = viewCount;
+			info.pAttachments = viewArray;
+			return info;
+		}
+
+		VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent, uint32_t arrayLayers)
 		{
 			VkImageCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -217,7 +245,7 @@ namespace vkmmc
 			info.format = format;
 			info.extent = extent;
 			info.mipLevels = 1;
-			info.arrayLayers = 1;
+			info.arrayLayers = arrayLayers;
 			info.samples = VK_SAMPLE_COUNT_1_BIT;
 			info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			info.usage = usageFlags;
@@ -225,7 +253,7 @@ namespace vkmmc
 			return info;
 		}
 
-		VkImageViewCreateInfo ImageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags)
+		VkImageViewCreateInfo ImageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags, uint32_t baseArrayLayer, uint32_t layerCount)
 		{
 			VkImageViewCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -235,8 +263,8 @@ namespace vkmmc
 			info.format = format;
 			info.subresourceRange.baseMipLevel = 0;
 			info.subresourceRange.levelCount = 1;
-			info.subresourceRange.baseArrayLayer = 0;
-			info.subresourceRange.layerCount = 1;
+			info.subresourceRange.baseArrayLayer = baseArrayLayer;
+			info.subresourceRange.layerCount = layerCount;
 			info.subresourceRange.aspectMask = aspectFlags;
 			return info;
 		}

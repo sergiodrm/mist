@@ -3,51 +3,19 @@
 
 #pragma once
 #include "RendererBase.h"
+#include "Globals.h"
 #include <glm/glm.hpp>
 
 namespace vkmmc
 {
 	class Scene;
 
-	struct LightData
-	{
-		union
-		{
-			glm::vec3 Position;
-			glm::vec3 Direction;
-		};
-		float Radius;
-		glm::vec3 Color;
-		float Compression;
-	};
-
-	struct SpotLightData
-	{
-		glm::vec3 Color;
-		float __padding;
-		glm::vec3 Direction;
-		float InnerCutoff;
-		glm::vec3 Position;
-		float OuterCutoff;
-	};
-
-	struct EnvironmentData
-	{
-		glm::vec3 AmbientColor;
-		float ActiveSpotLightsCount;
-		glm::vec3 ViewPosition;
-		float ActiveLightsCount;
-		static constexpr uint32_t MaxLights = 8;
-		LightData Lights[MaxLights];
-		LightData DirectionalLight;
-		SpotLightData SpotLights[MaxLights];
-	};
+	
 
 	class ShadowMapPipeline
 	{
 		struct FrameData
 		{
-			// TODO: need model set for draw scene. is this correct?
 			VkDescriptorSet ModelSet;
 			VkDescriptorSet DepthMVPSet;
 		};
@@ -64,7 +32,7 @@ namespace vkmmc
 		void Init(const RenderContext& renderContext, VkRenderPass renderPass, DescriptorAllocator* descriptorAllocator, DescriptorLayoutCache* layoutCache);
 		void Destroy(const RenderContext& renderContext);
 
-		void PushFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache);
+		void AddFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache);
 
 		void SetClip(float nearClip, float farClip);
 		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
@@ -74,13 +42,14 @@ namespace vkmmc
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBuffer* buffer);
 		void RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
+		uint32_t GetBufferSize() const;
 
 		void ImGuiDraw(bool createWindow = false);
 	private:
 		// Shader shadowmap pipeline
 		RenderPipeline m_pipeline;
 		// Cache for save depth view projection data until flush to gpu buffer.
-		glm::mat4 m_depthMVPCache[EnvironmentData::MaxLights];
+		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
 		// Projection params
 		float m_perspectiveParams[2];
 		float m_orthoParams[4];
@@ -89,24 +58,37 @@ namespace vkmmc
 		std::vector<FrameData> m_frameData;
 	};
 
-	class ModelRenderer : public IRendererBase
+	class ShadowMapRenderer : public IRendererBase
+	{
+		struct FrameData
+		{
+			VkDescriptorSet DepthMVPSet;
+		};
+	public:
+		ShadowMapRenderer();
+		virtual void Init(const RendererCreateInfo& info) override;
+		virtual void Destroy(const RenderContext& renderContext) override;
+		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
+		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
+		virtual void ImGuiDraw() override;
+	private:
+		ShadowMapPipeline m_shadowMapPipeline;
+	};
+
+	class LightingRenderer : public IRendererBase
 	{
 		struct RendererFrameData
 		{
 			// Camera, models and environment
 			VkDescriptorSet PerFrameSet;
 			VkDescriptorSet ModelSet;
-
-			// DepthMVP descriptor for depth pass
-			VkDescriptorSet DepthMVPSet;
 		};
 	public:
-		ModelRenderer();
+		LightingRenderer();
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
-		virtual void RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
-		virtual void RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
+		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
 
 	protected:
@@ -116,11 +98,7 @@ namespace vkmmc
 		RenderPipeline m_renderPipeline;
 
 		std::vector<RendererFrameData> m_frameData;
-		int32_t m_activeLightsCount;
-		int32_t m_activeSpotLightsCount;
-		int32_t m_spotLightShadowIndex;
-		EnvironmentData m_environmentData;
-		ShadowMapPipeline m_shadowMapPipeline;
+		
 		VkSampler m_depthMapSampler;
 		bool m_debugCameraDepthMapping;
 	};

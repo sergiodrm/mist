@@ -24,6 +24,7 @@
 #include "Renderers/DebugRenderer.h"
 #include "Renderers/UIRenderer.h"
 #include "SceneImpl.h"
+#include "GenericUtils.h"
 
 namespace vkmmc_debug
 {
@@ -140,15 +141,18 @@ namespace vkmmc
 	{
 		PROFILE_SCOPE(Init);
 		InitLog("../../log.html");
+#ifdef _DEBUG
+		Log(LogLevel::Info, "Running app in DEBUG mode.\n");
+#else
+		Log(LogLevel::Info, "Running app in RELEASE mode.\n");
+#endif // _DEBUG
+
 		Log(LogLevel::Info, "Initialize render engine.\n");
 		SDL_Init(SDL_INIT_VIDEO);
 		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
-		m_renderContext.Width = spec.WindowWidth;
-		m_renderContext.Height = spec.WindowHeight;
-		m_renderContext.Window = m_window.WindowInstance;
+		m_renderContext.Window = &m_window;
 		Log(LogLevel::Ok, "Window created successfully!\n");
 		
-
 		// Init vulkan context
 		check(InitVulkan());
 
@@ -177,34 +181,39 @@ namespace vkmmc
 
 		RendererCreateInfo rendererCreateInfo;
 		rendererCreateInfo.RContext = m_renderContext;
-		rendererCreateInfo.ColorPass = m_colorPass.RenderPass;
-		rendererCreateInfo.DepthPass = m_depthPass.RenderPass;
 		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
-		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
+		for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
+			rendererCreateInfo.RenderPassArray[i] = m_renderPassArray[i].RenderPass;
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			rendererCreateInfo.FrameUniformBufferArray.push_back(&m_frameContextArray[i].GlobalBuffer);
-			rendererCreateInfo.DepthImageViewArray.push_back(m_depthPass.FramebufferArray[i].GetImageViewAt(0));
+			rendererCreateInfo.FrameUniformBufferArray[i] = &m_frameContextArray[i].GlobalBuffer;
+			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
+				rendererCreateInfo.ShadowMapAttachments[i].push_back(m_shadowMapAttachments[i].ImageViewArray[j]);
 		}
 
 		rendererCreateInfo.ConstantRange = nullptr;
 		rendererCreateInfo.ConstantRangeCount = 0;
 
-		m_renderers.push_back(new ModelRenderer());
-		m_renderers.push_back(new DebugRenderer());
-		m_renderers.push_back(new UIRenderer());
-		for (IRendererBase* renderer : m_renderers)
-			renderer->Init(rendererCreateInfo);
+		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
+		m_renderers[RENDER_PASS_LIGHTING].push_back(new LightingRenderer());
+		m_renderers[RENDER_PASS_LIGHTING].push_back(new DebugRenderer());
+		m_renderers[RENDER_PASS_LIGHTING].push_back(new UIRenderer());
+		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
+		{
+			for (IRendererBase* renderer : m_renderers[i])
+				renderer->Init(rendererCreateInfo);
+		}
 
 		AddImGuiCallback(&vkmmc_debug::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
+		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(true); });
 
 		return true;
 	}
 
 	bool VulkanRenderEngine::RenderProcess()
 	{
-		// Reset stats
 		PROFILE_SCOPE(Process);
 		bool res = true;
 		SDL_Event e;
@@ -219,14 +228,9 @@ namespace vkmmc
 				m_eventCallback(&e);
 		}
 
-		// Update scene graph transforms
-		GetFrameContext().Scene->RecalculateTransforms();
-		for (IRendererBase* it : m_renderers)
-			it->PrepareFrame(m_renderContext, GetFrameContext());
-
+		BeginFrame();
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
-
 		GRenderStats.Reset();
 		Draw();
 		return res;
@@ -236,16 +240,19 @@ namespace vkmmc
 	{
 		Log(LogLevel::Info, "Shutdown render engine.\n");
 
-		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 			WaitFence(m_frameContextArray[i].RenderFence);
 
 		if (m_scene)
 			IScene::DestroyScene(m_scene);
 
-		for (IRendererBase* it : m_renderers)
+		for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
 		{
-			it->Destroy(m_renderContext);
-			delete it;
+			for (IRendererBase* it : m_renderers[i])
+			{
+				it->Destroy(m_renderContext);
+				delete it;
+			}
 		}
 
 		m_shutdownStack.Flush();
@@ -269,11 +276,24 @@ namespace vkmmc
 		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.View;
 	}
 
+	IScene* VulkanRenderEngine::GetScene()
+	{
+		return m_scene;
+	}
+
+	const IScene* VulkanRenderEngine::GetScene() const
+	{
+		return m_scene;
+	}
+
 	void VulkanRenderEngine::SetScene(IScene* scene)
 	{
-		for (uint32_t i = 0; i < MaxOverlappedFrames; ++i)
-			m_frameContextArray[i].Scene = static_cast<Scene*>(scene);
-		m_scene = scene;
+		m_scene = static_cast<Scene*>(scene);
+
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{ 
+			m_frameContextArray[i].Scene = m_scene;
+		}
 	}
 
 	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
@@ -294,6 +314,21 @@ namespace vkmmc
 		return material;
 	}
 
+	void VulkanRenderEngine::BeginFrame()
+	{
+		// Update scene graph data
+		RenderFrameContext& frameContext = GetFrameContext();
+		glm::vec3 cameraPos = math::GetPos(glm::inverse(frameContext.CameraData->View));
+		frameContext.Scene->UpdateRenderData(m_renderContext, &frameContext.GlobalBuffer, cameraPos);
+
+		// Renderers do your things...
+		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
+		{
+			for (IRendererBase* it : m_renderers[i])
+				it->PrepareFrame(m_renderContext, GetFrameContext());
+		}
+	}
+
 	void VulkanRenderEngine::Draw()
 	{
 		PROFILE_SCOPE(Draw);
@@ -303,7 +338,7 @@ namespace vkmmc
 
 		{
 			PROFILE_SCOPE(UpdateBuffers);
-			frameContext.GlobalBuffer.SetUniform(m_renderContext, "Camera", &m_cameraData, sizeof(CameraData));
+			frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
 
 		}
 
@@ -313,7 +348,6 @@ namespace vkmmc
 			PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
 			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
-			//frameContext.Framebuffer = m_framebufferArray[swapchainImageIndex].GetFramebufferHandle();
 
 			// Reset command buffer
 			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
@@ -329,18 +363,27 @@ namespace vkmmc
 		}
 
 		{
-			PROFILE_SCOPE(DepthPass);
-			m_depthPass.BeginPass(cmd, swapchainImageIndex);
-			for (IRendererBase* renderer : m_renderers)
-				renderer->RecordDepthPass(m_renderContext, frameContext);
-			m_depthPass.EndPass(cmd);
-		}
-		{
-			PROFILE_SCOPE(ColorPass);
-			m_colorPass.BeginPass(cmd, swapchainImageIndex);
-			for (IRendererBase* renderer : m_renderers)
-				renderer->RecordColorPass(m_renderContext, frameContext);
-			m_colorPass.EndPass(cmd);
+			uint32_t frameIndex = GetFrameIndex();
+			RenderPass& shadowMapPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
+			uint32_t shadowCount = 2; // TODO: get shadow projection counts from scene info.
+			check(shadowCount <= (uint32_t)m_shadowMapAttachments[frameIndex].FramebufferArray.size());
+			for (uint32_t i = 0; i < shadowCount; ++i)
+			{
+				shadowMapPass.BeginPass(cmd, m_shadowMapAttachments[frameIndex].FramebufferArray[i]);
+				for (IRendererBase* it : m_renderers[RENDER_PASS_SHADOW_MAP])
+				{
+					it->RecordCmd(m_renderContext, frameContext, i);
+				}
+				shadowMapPass.EndPass(cmd);
+			}
+
+			RenderPass& colorPass = m_renderPassArray[RENDER_PASS_LIGHTING];
+			colorPass.BeginPass(cmd, m_swapchainAttachments[swapchainImageIndex].FramebufferArray[0]);
+			for (IRendererBase* it : m_renderers[RENDER_PASS_LIGHTING])
+			{
+				it->RecordCmd(m_renderContext, frameContext, 0);
+			}
+			colorPass.EndPass(cmd);
 		}
 
 
@@ -385,8 +428,11 @@ namespace vkmmc
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
-		for (uint32_t i = 0; i < (uint32_t)m_renderers.size(); ++i)
-			m_renderers[i]->ImGuiDraw();
+		for (uint32_t passIndex = 0; passIndex < RENDER_PASS_COUNT; ++passIndex)
+		{
+			for (uint32_t i = 0; i < (uint32_t)m_renderers[passIndex].size(); ++i)
+				m_renderers[passIndex][i]->ImGuiDraw();
+		}
 	}
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
@@ -397,7 +443,7 @@ namespace vkmmc
 
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
-		return m_frameContextArray[m_frameCounter % MaxOverlappedFrames];
+		return m_frameContextArray[m_frameCounter % globals::MaxOverlappedFrames];
 	}
 
 	VkDescriptorSet VulkanRenderEngine::AllocateDescriptorSet(VkDescriptorSetLayout layout)
@@ -467,7 +513,7 @@ namespace vkmmc
 	bool VulkanRenderEngine::InitCommands()
 	{
 		VkCommandPoolCreateInfo poolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
 			vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
@@ -495,25 +541,41 @@ namespace vkmmc
 		// Color RenderPass
 		{
 			VkSubpassDependency dependencies[2];
+			//dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			//dependencies[0].dstSubpass = 0;
+			//dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			//dependencies[0].srcAccessMask = 0;
+			//dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			//dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			//dependencies[0].dependencyFlags = 0;
+
+			//dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+			//dependencies[1].dstSubpass = 0;
+			//dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+			//	| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			//dependencies[1].srcAccessMask = 0;
+			//dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+			//	| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			//dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			//dependencies[1].dependencyFlags = 0;
+
 			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[0].dstSubpass = 0;
-			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[0].srcAccessMask = 0;
-			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 			dependencies[0].dependencyFlags = 0;
 
 			dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[1].dstSubpass = 0;
-			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-				| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			dependencies[1].srcAccessMask = 0;
-			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-				| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 			dependencies[1].dependencyFlags = 0;
 
-			m_colorPass.RenderPass = RenderPassBuilder::Create()
+			m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass = RenderPassBuilder::Create()
 				.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
 				.AddDepthAttachmentDescription(FORMAT_D32)
 				.AddSubpass(
@@ -525,20 +587,20 @@ namespace vkmmc
 				.Build(m_renderContext);
 			m_shutdownStack.Add([this]()
 				{
-					vkDestroyRenderPass(m_renderContext.Device, m_colorPass.RenderPass, nullptr);
+					vkDestroyRenderPass(m_renderContext.Device, m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass, nullptr);
 				}
 			);
-			check(m_colorPass.RenderPass != VK_NULL_HANDLE);
+			check(m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass != VK_NULL_HANDLE);
 
-			m_colorPass.Width = m_window.Width;
-			m_colorPass.Height = m_window.Height;
-			m_colorPass.OffsetX = 0;
-			m_colorPass.OffsetY = 0;
+			m_renderPassArray[RENDER_PASS_LIGHTING].Width = m_window.Width;
+			m_renderPassArray[RENDER_PASS_LIGHTING].Height = m_window.Height;
+			m_renderPassArray[RENDER_PASS_LIGHTING].OffsetX = 0;
+			m_renderPassArray[RENDER_PASS_LIGHTING].OffsetY = 0;
 			VkClearValue value;
 			value.color = { 0.f, 0.f, 0.f };
-			m_colorPass.ClearValues.push_back(value);
+			m_renderPassArray[RENDER_PASS_LIGHTING].ClearValues.push_back(value);
 			value.depthStencil.depth = 1.f;
-			m_colorPass.ClearValues.push_back(value);
+			m_renderPassArray[RENDER_PASS_LIGHTING].ClearValues.push_back(value);
 		}
 
 		// Depth RenderPass for shadow mapping
@@ -559,21 +621,21 @@ namespace vkmmc
 			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-			m_depthPass.RenderPass = RenderPassBuilder::Create()
+			m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass = RenderPassBuilder::Create()
 				.AddDepthAttachmentDescription(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass({}, 0, {})
 				.AddDependencies(dependencies, 2)
 				.Build(m_renderContext);
-			check(m_depthPass.RenderPass != VK_NULL_HANDLE);
-			m_shutdownStack.Add([this]() { vkDestroyRenderPass(m_renderContext.Device, m_depthPass.RenderPass, nullptr);  });
+			check(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass != VK_NULL_HANDLE);
+			m_shutdownStack.Add([this]() { vkDestroyRenderPass(m_renderContext.Device, m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass, nullptr);  });
 
-			m_depthPass.Width = m_window.Width;
-			m_depthPass.Height = m_window.Height;
-			m_depthPass.OffsetX = 0;
-			m_depthPass.OffsetY = 0;
+			m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width = m_window.Width;
+			m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height = m_window.Height;
+			m_renderPassArray[RENDER_PASS_SHADOW_MAP].OffsetX = 0;
+			m_renderPassArray[RENDER_PASS_SHADOW_MAP].OffsetY = 0;
 			VkClearValue value;
 			value.depthStencil.depth = 1.f;
-			m_depthPass.ClearValues.push_back(value);
+			m_renderPassArray[RENDER_PASS_SHADOW_MAP].ClearValues.push_back(value);
 		}
 
 		return true;
@@ -583,28 +645,61 @@ namespace vkmmc
 	{
 		// Collect image in the swapchain
 		const uint32_t swapchainImageCount = m_swapchain.GetImageCount();
+		check(globals::MaxOverlappedFrames <= swapchainImageCount);
 
-		// One framebuffer for each of the swapchain image view.
-		m_colorPass.FramebufferArray.resize(swapchainImageCount);
-		m_depthPass.FramebufferArray.resize(swapchainImageCount);
+		// One framebuffer per swapchain image
+		m_swapchainAttachments.resize(swapchainImageCount);
 		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
 			// Color Framebuffer
-			m_colorPass.FramebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_colorPass.Width, m_colorPass.Height)
-				.AddAttachment(m_swapchain.GetImageViewAt(i))
-				.CreateDepthStencilAttachment()
-				.Build(m_colorPass.RenderPass);
+			VkExtent3D extent{ .width = m_renderPassArray[RENDER_PASS_LIGHTING].Width, .height = m_renderPassArray[RENDER_PASS_LIGHTING].Height, .depth = 1 };
+			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, extent);
+			AllocatedImage colorImage = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
+			VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(VK_FORMAT_D32_SFLOAT, colorImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
+			VkImageView views[2];
+			views[0] = m_swapchain.GetImageViewAt(i);
+			vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &views[1]));
+			VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass, 
+				m_renderPassArray[RENDER_PASS_LIGHTING].Width, m_renderPassArray[RENDER_PASS_LIGHTING].Height,
+				views, 2);
+			VkFramebuffer fb;
+			vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &fb));
+			m_swapchainAttachments[i].Image = colorImage;
+			m_swapchainAttachments[i].FramebufferArray.push_back(fb);
+			m_swapchainAttachments[i].ImageViewArray.push_back(views[1]);
+			m_shutdownStack.Add([this, i] { m_swapchainAttachments[i].Destroy(m_renderContext); });
+		}
 
-			// Depth Framebuffer
-			m_depthPass.FramebufferArray[i] = Framebuffer::Builder::Create(m_renderContext, m_depthPass.Width, m_depthPass.Height)
-				.CreateDepthStencilAttachment()
-				.Build(m_depthPass.RenderPass);
+		// One framebuffer for each of the swapchain image view.
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			// Shadow map Framebuffer
+			VkExtent3D extent{ .width = m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width, .height = m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height, .depth = 1 };
+			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(VK_FORMAT_D32_SFLOAT,
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				extent, globals::MaxShadowMapAttachments);
+			AllocatedImage depthImage = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
+			m_shadowMapAttachments[i].Image = depthImage;
+			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
+			{
+				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(VK_FORMAT_D32_SFLOAT, depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT, j);
+				VkImageView view;
+				vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
+				VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass,
+					m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width, m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height,
+					&view, 1);
+				VkFramebuffer fb;
+				vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &fb));
+				m_shadowMapAttachments[i].FramebufferArray.push_back(fb);
+				m_shadowMapAttachments[i].ImageViewArray.push_back(view);
+			}
 
 			// Destroy on shutdown
 			m_shutdownStack.Add([this, i]()
 				{
-					m_colorPass.FramebufferArray[i].Destroy(m_renderContext);
-					m_depthPass.FramebufferArray[i].Destroy(m_renderContext);
+					//check(m_colorAttachments[i].FramebufferArray.size() == m_colorAttachments[i].ImageViewArray.size());
+					check(m_shadowMapAttachments[i].FramebufferArray.size() == m_shadowMapAttachments[i].ImageViewArray.size());
+					m_shadowMapAttachments[i].Destroy(m_renderContext);
 				});
 		}
 		return true;
@@ -612,7 +707,7 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitSync()
 	{
-		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
@@ -651,7 +746,7 @@ namespace vkmmc
 				m_descriptorLayoutCache.Destroy();
 			});
 
-		for (size_t i = 0; i < MaxOverlappedFrames; ++i)
+		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
 			frameContext.CameraData = &m_cameraData;
@@ -667,33 +762,32 @@ namespace vkmmc
 
 			// Update global descriptors
 			uint32_t cameraBufferSize = sizeof(CameraData);
-			uint32_t cameraBufferOffset = frameContext.GlobalBuffer.AllocUniform(m_renderContext, "Camera", cameraBufferSize);
+			uint32_t cameraBufferOffset = frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_CAMERA, cameraBufferSize);
 			VkDescriptorBufferInfo bufferInfo;
 			bufferInfo.buffer = frameContext.GlobalBuffer.GetBuffer();
 			bufferInfo.offset = cameraBufferOffset;
 			bufferInfo.range = cameraBufferSize;
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
+
+			// Scene buffer allocation. TODO: this should be done by scene.
+			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, sizeof(glm::mat4) * globals::MaxRenderObjects);
+			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_SCENE_ENV_DATA, sizeof(EnvironmentData));
 		}
 		return true;
 	}
 
-	void RenderPass::BeginPass(VkCommandBuffer cmd, uint32_t framebufferIndex) const
-	{
-		VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
-		renderPassInfo.renderPass = RenderPass;
-		renderPassInfo.renderArea.offset = { .x = OffsetX, .y = OffsetY };
-		renderPassInfo.renderArea.extent = { .width = Width, .height = Height };
-		renderPassInfo.framebuffer = FramebufferArray[framebufferIndex].GetFramebufferHandle();
-		renderPassInfo.clearValueCount = (uint32_t)ClearValues.size();
-		renderPassInfo.pClearValues = ClearValues.data();
-		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-	}
 
-	void RenderPass::EndPass(VkCommandBuffer cmd) const
+	void RenderPassAttachment::Destroy(const RenderContext& renderContext)
 	{
-		vkCmdEndRenderPass(cmd);
+		check(FramebufferArray.size() == ImageViewArray.size());
+		for (uint32_t i = 0; i < (uint32_t)FramebufferArray.size(); ++i)
+		{
+			vkDestroyFramebuffer(renderContext.Device, FramebufferArray[i], nullptr);
+			vkDestroyImageView(renderContext.Device, ImageViewArray[i], nullptr);
+		}
+		Memory::DestroyImage(renderContext.Allocator, Image);
 	}
 
 }

@@ -12,10 +12,9 @@
 #include "DebugRenderer.h"
 #include "GenericUtils.h"
 #include "glm/ext/matrix_clip_space.inl"
+#include "ModelRenderer.h"
 
-#define UNIFORM_ID_DEPTH_VP "DepthVP"
-#define UNIFORM_ID_MODEL_SCENE_ARRAY "ModelArray"
-#define UNIFORM_ID_ENVIRONMENT "Environment"
+
 
 namespace vkmmc
 {
@@ -25,6 +24,8 @@ namespace vkmmc
 		SetProjection(glm::radians(45.f), 16.f / 9.f);
 		SetProjection(0.f, 1920.f, 0.f, 1080.f);
 		SetClip(1.f, 1000.f);
+
+		memset(m_depthMVPCache, 0, sizeof(m_depthMVPCache));
 	}
 
 	ShadowMapPipeline::~ShadowMapPipeline()
@@ -62,23 +63,22 @@ namespace vkmmc
 		m_pipeline.Destroy(renderContext);
 	}
 
-	void ShadowMapPipeline::PushFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache)
+	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache)
 	{
 		// Alloc info for depthVP matrix
-		uint32_t depthMVPSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
-		buffer->AllocUniform(renderContext, UNIFORM_ID_DEPTH_VP, depthMVPSize);
+		buffer->AllocUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, GetBufferSize());
 
 		FrameData fd;
 		// Alloc desc set pointing to buffer
-		VkDescriptorBufferInfo depthBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_DEPTH_VP);
+		VkDescriptorBufferInfo depthBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SHADOW_MAP_VP);
 		DescriptorBuilder::Create(*layoutCache, *descAllocator)
-			.BindBuffer(0, depthBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+			.BindBuffer(0, &depthBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
 			.Build(renderContext, fd.DepthMVPSet);
 
 		// create descriptor set for model matrix array
-		VkDescriptorBufferInfo modelsBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_MODEL_SCENE_ARRAY);
+		VkDescriptorBufferInfo modelsBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
 		DescriptorBuilder::Create(*layoutCache, *descAllocator)
-			.BindBuffer(0, modelsBufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+			.BindBuffer(0, &modelsBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
 			.Build(renderContext, fd.ModelSet);
 		m_frameData.push_back(fd);
 	}
@@ -117,7 +117,7 @@ namespace vkmmc
 
 	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType)
 	{
-		check(lightIndex < EnvironmentData::MaxLights);
+		check(lightIndex < globals::MaxShadowMapAttachments);
 		glm::mat4 depthView = glm::inverse(math::ToMat4(lightPos, lightRot, glm::vec3(1.f)));
 		glm::mat4 depthProj = GetProjection(projType);
 		depthProj[1][1] *= -1.f;
@@ -127,11 +127,12 @@ namespace vkmmc
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBuffer* buffer)
 	{
-		buffer->SetUniform(renderContext, UNIFORM_ID_DEPTH_VP, m_depthMVPCache, sizeof(glm::mat4) * EnvironmentData::MaxLights);
+		buffer->SetUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, m_depthMVPCache, GetBufferSize());
 	}
 
 	void ShadowMapPipeline::RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
 	{
+		check(lightIndex < globals::MaxShadowMapAttachments);
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineHandle());
 
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex;
@@ -144,6 +145,11 @@ namespace vkmmc
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
 	{
 		return m_depthMVPCache[index];
+	}
+
+	uint32_t ShadowMapPipeline::GetBufferSize() const
+	{
+		return sizeof(glm::mat4) * globals::MaxShadowMapAttachments;
 	}
 
 	void ShadowMapPipeline::ImGuiDraw(bool createWindow)
@@ -160,17 +166,60 @@ namespace vkmmc
 			ImGui::End();
 	}
 
-	ModelRenderer::ModelRenderer() : IRendererBase(), m_activeLightsCount(0), m_activeSpotLightsCount(0), m_spotLightShadowIndex(0)
+	ShadowMapRenderer::ShadowMapRenderer()
 	{
-		for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
-		{
-			m_environmentData.Lights[i] = { .Position = {0.f, 0.f, 0.f}, .Radius = 10.f, .Color = {1.f, 1.f, 1.f}, .Compression = 0.5f, };
-			m_environmentData.SpotLights[i] = { .Color = {1.f, 1.f, 1.f}, .Direction = {1.f, 0.f, 0.f}, .InnerCutoff = 0.5f, .Position = {0.f, 0.f, 0.f}, .OuterCutoff = 0.5f };
-		}
-		m_environmentData.DirectionalLight = { .Direction = {0.f, -1.f, 0.f}, .Radius = 0.f, .Color = {0.01f, 0.01f, 0.05f}, .Compression = 0.f };
 	}
 
-	void ModelRenderer::Init(const RendererCreateInfo& info)
+	void ShadowMapRenderer::Init(const RendererCreateInfo& info)
+	{
+		m_shadowMapPipeline.Init(info.RContext, info.RenderPassArray[RENDER_PASS_SHADOW_MAP], info.DescriptorAllocator, info.LayoutCache);
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
+		{
+			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
+			// Configure frame data for shadowmap
+			m_shadowMapPipeline.AddFrameData(info.RContext, uniformBuffer, info.DescriptorAllocator, info.LayoutCache);
+		}
+	}
+
+	void ShadowMapRenderer::Destroy(const RenderContext& renderContext)
+	{
+		m_shadowMapPipeline.Destroy(renderContext);
+	}
+
+	void ShadowMapRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	{
+		const Scene* scene = renderFrameContext.Scene;
+		const EnvironmentData& envData = scene->GetEnvironmentData();
+		//m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
+
+		uint32_t maxLights = __min((uint32_t)envData.ActiveSpotLightsCount, globals::MaxShadowMapAttachments);
+		for (uint32_t i = 0; i < maxLights; ++i)
+		{
+			const SpotLightData& light = envData.SpotLights[i];
+			m_shadowMapPipeline.SetupLight(i, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+		}
+		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
+	}
+
+	void ShadowMapRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
+	{
+		check(attachmentIndex < globals::MaxShadowMapAttachments);
+		const EnvironmentData& envData = renderFrameContext.Scene->GetEnvironmentData();
+		uint32_t maxLights = __min((uint32_t)envData.ActiveSpotLightsCount, globals::MaxShadowMapAttachments);
+		for (uint32_t i = 0; i < maxLights; ++i)
+			m_shadowMapPipeline.RenderShadowMap(renderFrameContext.GraphicsCommand, renderFrameContext.Scene, renderFrameContext.FrameIndex, attachmentIndex);
+	}
+
+	void ShadowMapRenderer::ImGuiDraw()
+	{
+		m_shadowMapPipeline.ImGuiDraw(true);
+	}
+
+	LightingRenderer::LightingRenderer() : IRendererBase()
+	{
+	}
+
+	void LightingRenderer::Init(const RendererCreateInfo& info)
 	{
 		/**********************************/
 		/** Pipeline layout and pipeline **/
@@ -189,7 +238,7 @@ namespace vkmmc
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-			.AddBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+			.AddBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, globals::MaxShadowMapAttachments)
 			.Build(info.RContext, &layouts[0]);
 		// Per draw descriptor (model, material...)
 		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
@@ -199,7 +248,7 @@ namespace vkmmc
 
 		m_renderPipeline = RenderPipeline::Create(
 			info.RContext,
-			info.ColorPass,
+			info.RenderPassArray[RENDER_PASS_LIGHTING],
 			0, // subpass
 			shaderStageDescs,
 			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
@@ -211,94 +260,54 @@ namespace vkmmc
 		VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
 		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthMapSampler));
 
-		m_frameData.resize(info.FrameUniformBufferArray.size());
-		for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
+		m_frameData.resize(globals::MaxOverlappedFrames);
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
-
-			// Allocate shader data
-			uint32_t modelsSize = sizeof(glm::mat4) * VulkanRenderEngine::MaxRenderObjects;
-			uniformBuffer->AllocUniform(info.RContext, UNIFORM_ID_MODEL_SCENE_ARRAY, modelsSize);
-			uint32_t enviroSize = sizeof(EnvironmentData);
-			uniformBuffer->AllocUniform(info.RContext, UNIFORM_ID_ENVIRONMENT, enviroSize);
-			uniformBuffer->AllocUniform(info.RContext, "LightMatrix", sizeof(glm::mat4));
 			
-
 			// Configure per frame DescriptorSet.
 			// Color pass
-			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("Camera");
-			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_ENVIRONMENT);
-			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferDynamicInfo(UNIFORM_ID_MODEL_SCENE_ARRAY, sizeof(glm::mat4));
-			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo("LightMatrix");
-			VkDescriptorImageInfo shadowMapDescInfo;
-			shadowMapDescInfo.imageView = info.DepthImageViewArray[i];
-			shadowMapDescInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-			shadowMapDescInfo.sampler = m_depthMapSampler;
+			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_CAMERA);
+			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
+			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
+			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SHADOW_MAP_VP);
+			
+			check(globals::MaxShadowMapAttachments == info.ShadowMapAttachments[i].size());
+			VkDescriptorImageInfo shadowMapDescInfo[globals::MaxShadowMapAttachments];
+			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
+			{
+				shadowMapDescInfo[j].imageView = info.ShadowMapAttachments[i][j];
+				shadowMapDescInfo[j].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				shadowMapDescInfo[j].sampler = m_depthMapSampler;
+			}
 			
 			// Materials have its own descriptor set (right now).
 
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-				.BindBuffer(0, cameraDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.BindBuffer(1, lightMatrixDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.BindBuffer(2, enviroDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.BindImage(3, shadowMapDescInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindBuffer(0, &cameraDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(1, &lightMatrixDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(2, &enviroDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(3, shadowMapDescInfo, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(info.RContext, m_frameData[i].PerFrameSet);
 			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-				.BindBuffer(0, modelsDescInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(info.RContext, m_frameData[i].ModelSet);
-
-			// Configure frame data for shadowmap
-			m_shadowMapPipeline.PushFrameData(info.RContext, uniformBuffer, info.DescriptorAllocator, info.LayoutCache);
+				.BindBuffer(0, &modelsDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(info.RContext, m_frameData[i].ModelSet);	
 		}
-		m_environmentData.AmbientColor = glm::vec4(0.01f, 0.01f, 0.01f, 1.f);
-		m_shadowMapPipeline.Init(info.RContext, info.DepthPass, info.DescriptorAllocator, info.LayoutCache);
 	}
 
-	void ModelRenderer::Destroy(const RenderContext& renderContext)
+	void LightingRenderer::Destroy(const RenderContext& renderContext)
 	{
 		vkDestroySampler(renderContext.Device, m_depthMapSampler, nullptr);
 		m_renderPipeline.Destroy(renderContext);
-		m_shadowMapPipeline.Destroy(renderContext);
 	}
 
-	void ModelRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
+	void LightingRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
-		PROFILE_SCOPE(UpdateBuffers);
-		const Scene* scene = renderFrameContext.Scene;
-
-		// Color pass
-		// TODO: Get camera position from scene view.
-		const uint32_t count = scene->GetRenderObjectCount();
-		m_environmentData.ViewPosition = glm::inverse(renderFrameContext.CameraData->View)[3];
-		m_environmentData.ActiveLightsCount = (float)m_activeLightsCount;
-		m_environmentData.ActiveSpotLightsCount = (float)m_activeSpotLightsCount;
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_MODEL_SCENE_ARRAY, scene->GetRawGlobalTransforms(), sizeof(glm::mat4) * count);
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_ENVIRONMENT, &m_environmentData, sizeof(EnvironmentData));
-
-		m_shadowMapPipeline.SetupLight(0, m_environmentData.DirectionalLight.Position, math::ToRot(m_environmentData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
-		for (uint32_t i = 0; i < m_environmentData.ActiveSpotLightsCount; ++i)
-		{
-			const SpotLightData& light = m_environmentData.SpotLights[i];
-			m_shadowMapPipeline.SetupLight(i+1, light.Position, math::ToRot(light.Direction*-1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
-		}
-		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
-
-		// Apply bias just to light space matrix
-		static constexpr glm::mat4 depthBias =
-		{
-			0.5, 0.0, 0.0, 0.0,
-			0.0, 0.5, 0.0, 0.0,
-			0.0, 0.0, 1.0, 0.0,
-			0.5, 0.5, 0.0, 1.0
-		};
-		glm::mat4 depthVP = m_shadowMapPipeline.GetDepthVP(1);
-		depthVP = depthBias * depthVP;
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "LightMatrix", &depthVP, sizeof(glm::mat4));
 	}
 
-	void ModelRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
+	void LightingRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
 	{
-		PROFILE_SCOPE(ModelRenderer_ColorPass);
+		PROFILE_SCOPE(LightingRenderer_ColorPass);
 
 		// Bind pipeline
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
@@ -314,97 +323,8 @@ namespace vkmmc
 		renderFrameContext.Scene->Draw(cmd, m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);
 	}
 
-	void ModelRenderer::RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
+	void LightingRenderer::ImGuiDraw()
 	{
-		PROFILE_SCOPE(ModelRenderer_DepthPass);
-		m_shadowMapPipeline.RenderShadowMap(renderFrameContext.GraphicsCommand, renderFrameContext.Scene, renderFrameContext.FrameIndex, 1);
 	}
 
-	void ModelRenderer::ImGuiDraw()
-	{
-		ImGui::Begin("Environment");
-		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
-			{
-				ImGui::Columns(2);
-				ImGui::Text(label);
-				ImGui::NextColumn();
-				char buff[64];
-				sprintf_s(buff, "##%s%u", label, id);
-				bool r = false;
-				switch (count)
-				{
-				case 1: r = ImGui::DragFloat(buff, data, diff, minLimit, maxLimit); break;
-				case 2: r = ImGui::DragFloat2(buff, data, diff, minLimit, maxLimit); break;
-				case 3: r = asColor ? ImGui::ColorEdit3(buff, data) : ImGui::DragFloat3(buff, data, diff, minLimit, maxLimit); break;
-				case 4: r = asColor ? ImGui::ColorEdit4(buff, data) : ImGui::DragFloat4(buff, data, diff, minLimit, maxLimit); break;
-				}
-				ImGui::NextColumn();
-				ImGui::Columns();
-				return r;
-			};
-		utilDragFloat("Ambient color", 0, &m_environmentData.AmbientColor[0], 3, true);
-
-		if (ImGui::CollapsingHeader("Directional light"))
-		{
-			utilDragFloat("Direction", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Direction[0], 3, false, 0.02f, -1.f, 1.f);
-			utilDragFloat("Color", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Color[0], 3, true);
-			rdbg::DeferredDrawLine(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
-		}
-		if (ImGui::CollapsingHeader("Point lights"))
-		{
-			ImGui::SliderInt("Active point lights", &m_activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
-			for (uint32_t i = 0; i < (uint32_t)m_activeLightsCount; ++i)
-			{
-				char buff[32];
-				sprintf_s(buff, "PointLight_%u", i);
-				if (ImGui::CollapsingHeader(buff))
-				{
-					utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3, false);
-					utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, true);
-					utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, false, 0.5f, 0.f, FLT_MAX);
-					utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, false, 0.5f, 0.5f, FLT_MAX);
-
-					rdbg::DeferredDrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-					rdbg::DeferredDrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
-				}
-			}
-		}
-		if (ImGui::CollapsingHeader("Spot lights"))
-		{
-			ImGui::SliderInt("Active spot lights", &m_activeSpotLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d");
-			ImGui::SliderInt("Spot light shadow index", &m_spotLightShadowIndex, 0, (int32_t)EnvironmentData::MaxLights, "%d");
-			ImGui::Checkbox("Use camera to depth mapping", &m_debugCameraDepthMapping);
-			for (uint32_t i = 0; i < (uint32_t)m_activeSpotLightsCount; ++i)
-			{
-				char buff[32];
-				sprintf_s(buff, "SpotLight_%u", i);
-				if (ImGui::CollapsingHeader(buff))
-				{
-					SpotLightData& data = m_environmentData.SpotLights[i];
-					utilDragFloat("Position", i, &data.Position[0], 3, false);
-					glm::vec3 dir = glm::normalize(data.Direction);
-
-					// dir vector to roll pitch yaw (x:pitch, y:yaw, z:roll)
-					glm::vec3 pyr = math::ToRot(data.Direction);
-					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f, -(float)M_PI, (float)M_PI))
-					{
-						// Transform to rot matrix
-						glm::mat4 m = math::PitchYawRollToMat4(pyr);
-						// Forward direction (0, 0, 1) in rotation space.
-						data.Direction = glm::vec3(m * glm::vec4(0.f, 0.f, 1.f, 1.f));
-					}
-					utilDragFloat("Color", i, &data.Color[0], 3, true);
-					utilDragFloat("InnerCutoff", i, &data.InnerCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
-					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
-
-					constexpr float scl = 100.f; // meters
-					rdbg::DeferredDrawAxis(data.Position, pyr, glm::vec3(scl));
-					rdbg::DeferredDrawLine(data.Position, data.Position + data.Direction * scl, data.Color);
-				}
-			}
-		}
-		ImGui::Separator();
-		m_shadowMapPipeline.ImGuiDraw(false);
-		ImGui::End();
-	}
 }

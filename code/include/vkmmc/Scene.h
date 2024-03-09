@@ -14,11 +14,21 @@ namespace vkmmc
 	// Forward declarations
 	class IRenderEngine;
 
+	enum class ELightType
+	{
+		Point,
+		Directional,
+		Spot
+	};
+
 	struct Light
 	{
+		ELightType Type;
 		glm::vec3 Color;
-
 		float Radius;
+		float Compression;
+		float InnerCutoff;
+		float OuterCutoff;
 	};
 	
 	struct Hierarchy

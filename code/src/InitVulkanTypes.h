@@ -52,12 +52,18 @@ namespace vkmmc
 		 * Render pass types
 		 */
 		VkAttachmentDescription RenderPassAttachmentDescription(VkFormat format, VkImageLayout finalLayout);
+		VkRenderPassBeginInfo RenderPassBeginInfo(VkRenderPass renderPass, VkFramebuffer framebuffer, VkRect2D area, const VkClearValue* clearArray, uint32_t clearCount);
+
+		/**
+		 * Framebuffer
+		 */
+		VkFramebufferCreateInfo FramebufferCreateInfo(VkRenderPass pass, uint32_t width, uint32_t height, const VkImageView* viewArray, uint32_t viewCount, uint32_t flags = 0, uint32_t layers = 1);
 
 		/**
 		 * Image types builders
 		 */
-		VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
-		VkImageViewCreateInfo ImageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags);
+		VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent, uint32_t arrayLayers = 1);
+		VkImageViewCreateInfo ImageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1);
 		VkSamplerCreateInfo SamplerCreateInfo(VkFilter filters, VkSamplerAddressMode samplerAddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 		VkWriteDescriptorSet ImageWriteDescriptor(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo* imageInfo, uint32_t binding);
 

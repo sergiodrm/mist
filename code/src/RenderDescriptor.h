@@ -98,13 +98,15 @@ namespace vkmmc
 		static DescriptorBuilder Create(DescriptorLayoutCache& layoutCache, DescriptorAllocator& allocator);
 
 		DescriptorBuilder& BindBuffer(uint32_t binding,
-			const VkDescriptorBufferInfo& bufferInfo,
+			const VkDescriptorBufferInfo* bufferInfo,
+			uint32_t bufferInfoCount,
 			VkDescriptorType type,
-			VkShaderStageFlags stageFlags);
+			VkShaderStageFlags stageFlags, uint32_t arrayIndex = 0);
 		DescriptorBuilder& BindImage(uint32_t binding,
-			const VkDescriptorImageInfo& imageInfo,
+			const VkDescriptorImageInfo* imageInfo,
+			uint32_t imageInfoCount,
 			VkDescriptorType type,
-			VkShaderStageFlags stageFlags);
+			VkShaderStageFlags stageFlags, uint32_t arrayIndex = 0);
 
 		bool Build(const RenderContext& rc, VkDescriptorSet& set, VkDescriptorSetLayout& layout);
 		bool Build(const RenderContext& rc, VkDescriptorSet& set);

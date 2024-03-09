@@ -81,11 +81,7 @@ namespace vkmmc
 		/**
 		 * Images
 		 */
-		static AllocatedImage CreateImage(Allocator* allocator,
-			VkFormat format, 
-			VkExtent3D extent,
-			VkImageUsageFlags usageFlags,
-			EMemUsage memUsage);
+		static AllocatedImage CreateImage(Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage);
 		static void DestroyImage(Allocator* allocator, AllocatedImage image);
 	};
 }

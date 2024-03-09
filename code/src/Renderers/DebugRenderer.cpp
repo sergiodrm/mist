@@ -15,7 +15,7 @@
 
 namespace vkmmc
 {
-    namespace rdbg
+    namespace debugrender
     {
         struct LineVertex
         {
@@ -29,6 +29,8 @@ namespace vkmmc
             LineVertex LineArray[MaxLines];
             uint32_t Index = 0;
         } GLineBatch;
+
+        VkDescriptorSet DebugTexture = VK_NULL_HANDLE;
 
         void PushLineVertex(LineBatch& batch, const glm::vec3& pos, const glm::vec3& color)
         {
@@ -46,27 +48,27 @@ namespace vkmmc
             PushLineVertex(batch, end, color);
         }
 
-        void DeferredDrawLine(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
+        void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
         {
             PushLine(GLineBatch, init, end, color);
         }
 
-        void DeferredDrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
+        void DrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
         {
 			glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, pos);
             glm::mat4 rotMat = glm::toMat4(glm::quat(rot));
             glm::mat4 sclMat = glm::scale(scl);
-            DeferredDrawAxis(tras * rotMat * sclMat);
+            DrawAxis(tras * rotMat * sclMat);
         }
 
-        void DeferredDrawAxis(const glm::mat4& transform)
+        void DrawAxis(const glm::mat4& transform)
         {
-            DeferredDrawLine(transform[3], transform[3] + transform[0], glm::vec3(1.f, 0.f, 0.f));
-            DeferredDrawLine(transform[3], transform[3] + transform[1], glm::vec3(0.f, 1.f, 0.f));
-            DeferredDrawLine(transform[3], transform[3] + transform[2], glm::vec3(0.f, 0.f, 1.f));
+            DrawLine3D(transform[3], transform[3] + transform[0], glm::vec3(1.f, 0.f, 0.f));
+            DrawLine3D(transform[3], transform[3] + transform[1], glm::vec3(0.f, 1.f, 0.f));
+            DrawLine3D(transform[3], transform[3] + transform[2], glm::vec3(0.f, 0.f, 1.f));
         }
 
-        void DeferredDrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices)
+        void DrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices)
         {
             const float deltaAngle = 2.f * (float)M_PI / (float)vertices;
             for (uint32_t i = 0; i < vertices; ++i)
@@ -77,14 +79,19 @@ namespace vkmmc
                 float s1 = radius * sinf(deltaAngle * (i+1));
                 glm::vec3 pos0 = pos + glm::vec3{ c0, 0.f, s0 };
                 glm::vec3 pos1 = pos + glm::vec3{ c1, 0.f, s1 };
-                DeferredDrawLine(pos0, pos1, color);
+                DrawLine3D(pos0, pos1, color);
                 pos0 = pos + glm::vec3{ c0, s0, 0.f };
                 pos1 = pos + glm::vec3{ c1, s1, 0.f };
-                DeferredDrawLine(pos0, pos1, color);
+                DrawLine3D(pos0, pos1, color);
                 pos0 = pos + glm::vec3{ 0.f, c0, s0 };
                 pos1 = pos + glm::vec3{ 0.f, c1, s1 };
-                DeferredDrawLine(pos0, pos1, color);
+                DrawLine3D(pos0, pos1, color);
             }
+        }
+
+        void SetDebugTexture(VkDescriptorSet descriptor)
+        {
+            DebugTexture = descriptor;
         }
     }
 
@@ -101,12 +108,12 @@ namespace vkmmc
         uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
 
         VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
-        m_renderPipeline = RenderPipeline::Create(info.RContext, info.ColorPass, 0,
+        m_renderPipeline = RenderPipeline::Create(info.RContext, info.RenderPassArray[RENDER_PASS_COLOR], 0,
             descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
         // VertexBuffer
         BufferCreateInfo vbInfo;
-        vbInfo.Size = sizeof(rdbg::LineVertex) * rdbg::LineBatch::MaxLines;
+        vbInfo.Size = sizeof(debugrender::LineVertex) * debugrender::LineBatch::MaxLines;
         vbInfo.Data = nullptr;
         m_lineVertexBuffer.Init(info.RContext, vbInfo);
 
@@ -134,29 +141,22 @@ namespace vkmmc
             {.Filepath = globals::QuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
         };
         inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-        m_quadPipeline = RenderPipeline::Create(info.RContext, info.ColorPass, 0, shaders, 2, inputLayout);
+        m_quadPipeline = RenderPipeline::Create(info.RContext, info.RenderPassArray[RENDER_PASS_COLOR], 0, shaders, 2, inputLayout);
 
         VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
         vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthSampler);
 
         // Submit buffer uniform info
-        m_frameData.resize(info.FrameUniformBufferArray.size());
-        for (uint32_t i = 0; i < (uint32_t)info.FrameUniformBufferArray.size(); ++i)
+        m_frameData.resize(globals::MaxOverlappedFrames);
+        for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
         {
             // Uniform buffer
             UniformBuffer* buffer = info.FrameUniformBufferArray[i];
             buffer->AllocUniform(info.RContext, "QuadUBO", sizeof(float) * 2);
             VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("QuadUBO");
 
-            // Image binding
-            VkDescriptorImageInfo imageInfo;
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = info.DepthImageViewArray[i];
-            imageInfo.sampler = m_depthSampler;
-
             DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-                .BindBuffer(0, bufferInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-                .BindImage(1, imageInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+                .BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
                 .Build(info.RContext, m_frameData[i].SetUBO);
         }
     }
@@ -177,13 +177,13 @@ namespace vkmmc
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "QuadUBO", ubo, sizeof(float) * 2);
     }
 
-    void DebugRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
+    void DebugRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
     {
         PROFILE_SCOPE(DebugPass);
-        if (rdbg::GLineBatch.Index > 0)
+        if (debugrender::GLineBatch.Index > 0)
         {
             // Flush lines to vertex buffer
-            GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &rdbg::GLineBatch.LineArray, sizeof(rdbg::LineVertex) * rdbg::GLineBatch.Index);
+            GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &debugrender::GLineBatch.LineArray, sizeof(debugrender::LineVertex) * debugrender::GLineBatch.Index);
 
             vkCmdBindPipeline(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
             VkDescriptorSet sets[] = { renderFrameContext.CameraDescriptorSet };
@@ -192,16 +192,17 @@ namespace vkmmc
                 m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
             ++GRenderStats.SetBindingCount;
             m_lineVertexBuffer.Bind(renderFrameContext.GraphicsCommand);
-            vkCmdDraw(renderFrameContext.GraphicsCommand, rdbg::GLineBatch.Index, 1, 0, 0);
-            rdbg::GLineBatch.Index = 0;
+            vkCmdDraw(renderFrameContext.GraphicsCommand, debugrender::GLineBatch.Index, 1, 0, 0);
+            debugrender::GLineBatch.Index = 0;
             ++GRenderStats.DrawCalls;
         }
 
-        if (m_debugDepthMap)
+        if (m_debugDepthMap && debugrender::DebugTexture != VK_NULL_HANDLE)
         {
             VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
             vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineHandle());
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineLayoutHandle(), 0, 1, &m_frameData[renderFrameContext.FrameIndex].SetUBO, 0, nullptr);
+            VkDescriptorSet sets[2] = { m_frameData[renderFrameContext.FrameIndex].SetUBO, debugrender::DebugTexture };
+            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineLayoutHandle(), 0, 2, sets, 0, nullptr);
             m_quadVertexBuffer.Bind(cmd);
             m_quadIndexBuffer.Bind(cmd);
             vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
@@ -212,6 +213,13 @@ namespace vkmmc
     {
         ImGui::Begin("debug");
         ImGui::Checkbox("DebugMap", &m_debugDepthMap);
+        if (m_debugDepthMap)
+        {
+            if (debugrender::DebugTexture != VK_NULL_HANDLE)
+                ImGui::TextColored(ImVec4(0.2f, 0.5f, 0.1f, 1.f), "Texture bound.");
+            else
+                ImGui::TextColored(ImVec4(0.5f, 0.1f, 0.1f, 1.f), "Texture NOT bound.");
+        }
         ImGui::End();
     }
 

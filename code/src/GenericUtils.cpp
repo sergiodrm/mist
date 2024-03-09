@@ -60,4 +60,14 @@ namespace vkmmc
 		glm::mat4 s = glm::scale(glm::mat4(1.f), scl);
 		return t * r * s;
 	}
+
+	glm::vec3 math::GetDir(const glm::mat4& transform)
+	{
+		return transform[2];
+	}
+
+	glm::vec3 math::GetPos(const glm::mat4& transform)
+	{
+		return transform[3];
+	}
 }

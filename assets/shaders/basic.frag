@@ -30,7 +30,7 @@ layout (std140, set = 0, binding = 2) uniform Environment
     SpotLightData SpotLights[8];
 } u_Env;
 
-layout (set = 0, binding = 3) uniform sampler2D u_ShadowMap;
+layout (set = 0, binding = 3) uniform sampler2D u_ShadowMap[2];
 
 // Per draw data
 layout(std140, set = 1, binding = 1) uniform Material 
@@ -81,14 +81,14 @@ float CalculateShadow(vec4 shadowCoord)
 
     // PCF
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(u_ShadowMap, 0);
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMap[0], 0);
     float currentDepth = shadowCoord.z;
     float bias = 0.005f;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
-            float pcfDepth = texture(u_ShadowMap, shadowCoord.xy + vec2(x, y) * texelSize).r; 
+            float pcfDepth = texture(u_ShadowMap[0], shadowCoord.xy + vec2(x, y) * texelSize).r; 
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
         }    
     }

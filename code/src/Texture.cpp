@@ -7,6 +7,7 @@
 #include "Debug.h"
 #include "RenderTypes.h"
 #include "RenderContext.h"
+#include "InitVulkanTypes.h"
 
 namespace vkutils
 {
@@ -72,12 +73,10 @@ namespace vkmmc
 		// Prepare image creation
 		VkExtent3D extent;
 		extent.width = textureRaw.Width;
-			extent.height = textureRaw.Height;
-			extent.depth = 1;
-		m_image = Memory::CreateImage(renderContext.Allocator,
-			format, extent,
-			VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-			MEMORY_USAGE_GPU);
+		extent.height = textureRaw.Height;
+		extent.depth = 1;
+		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
+		m_image = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 
 		utils::CmdSubmitTransfer(renderContext, 
 			[=](VkCommandBuffer cmd) 

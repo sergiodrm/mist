@@ -30,11 +30,11 @@ namespace vkmmc
     {
 		VkExtent3D extent = { m_width, m_height, 1 };
 		VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
-        AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator,
-			format, extent, 
+
+        VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, 
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
-            //VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-			MEMORY_USAGE_GPU);
+            extent);
+        AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 		m_imageArray.push_back(image);
 
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, VK_IMAGE_ASPECT_COLOR_BIT);
@@ -49,9 +49,10 @@ namespace vkmmc
 		// Create depth buffer
 		VkExtent3D depthExtent = { m_width, m_height, 1 };
 		VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
-		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator,
-			depthFormat, depthExtent, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            MEMORY_USAGE_GPU);
+		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(depthFormat,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            depthExtent);
+		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
         m_imageArray.push_back(image);
 
 		// Image view

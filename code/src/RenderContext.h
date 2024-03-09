@@ -11,6 +11,8 @@ struct SDL_Window;
 
 namespace vkmmc
 {
+
+
 	struct TransferContext
 	{
 		VkFence Fence;
@@ -20,7 +22,7 @@ namespace vkmmc
 
 	struct RenderContext
 	{
-		SDL_Window* Window;
+		struct Window* Window;
 		VkInstance Instance;
 		VkPhysicalDevice GPUDevice;
 		VkSurfaceKHR Surface;
@@ -30,9 +32,6 @@ namespace vkmmc
 		Allocator* Allocator;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
-		// Viewport size. TODO: Find another way to communicate these data.
-		uint32_t Width;
-		uint32_t Height;
 
 		TransferContext TransferContext;
 	};

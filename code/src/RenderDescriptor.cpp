@@ -250,13 +250,13 @@ namespace vkmmc
 		return builder;
 	}
 
-	DescriptorBuilder& DescriptorBuilder::BindBuffer(uint32_t binding, const VkDescriptorBufferInfo& bufferInfo, VkDescriptorType type, VkShaderStageFlags stageFlags)
+	DescriptorBuilder& DescriptorBuilder::BindBuffer(uint32_t binding, const VkDescriptorBufferInfo* bufferInfo, uint32_t bufferInfoCount, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
 	{
 		VkDescriptorSetLayoutBinding bindingInfo
 		{
 			.binding = binding,
 			.descriptorType = type,
-			.descriptorCount = 1,
+			.descriptorCount = bufferInfoCount,
 			.stageFlags = stageFlags,
 			.pImmutableSamplers = nullptr
 		};
@@ -267,21 +267,22 @@ namespace vkmmc
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 			.pNext = nullptr,
 			.dstBinding = binding,
-			.descriptorCount = 1,
+			.dstArrayElement = arrayIndex,
+			.descriptorCount = bufferInfoCount,
 			.descriptorType = type,
-			.pBufferInfo = &bufferInfo
+			.pBufferInfo = bufferInfo
 		};
 		m_writes.push_back(newWrite);
 		return *this;
 	}
 
-	DescriptorBuilder& DescriptorBuilder::BindImage(uint32_t binding, const VkDescriptorImageInfo& imageInfo, VkDescriptorType type, VkShaderStageFlags stageFlags)
+	DescriptorBuilder& DescriptorBuilder::BindImage(uint32_t binding, const VkDescriptorImageInfo* imageInfo, uint32_t imageInfoCount, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
 	{
 		VkDescriptorSetLayoutBinding bindingInfo
 		{
 			.binding = binding,
 			.descriptorType = type,
-			.descriptorCount = 1,
+			.descriptorCount = imageInfoCount,
 			.stageFlags = stageFlags,
 			.pImmutableSamplers = nullptr
 		};
@@ -292,9 +293,10 @@ namespace vkmmc
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
 			.pNext = nullptr,
 			.dstBinding = binding,
-			.descriptorCount = 1,
+			.dstArrayElement = arrayIndex,
+			.descriptorCount = imageInfoCount,
 			.descriptorType = type,
-			.pImageInfo = &imageInfo
+			.pImageInfo = imageInfo
 		};
 		m_writes.push_back(newWrite);
 		return *this;

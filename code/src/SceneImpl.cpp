@@ -22,6 +22,7 @@
 #include "VulkanRenderEngine.h"
 #include <algorithm>
 #include <imgui.h>
+#include "Renderers/DebugRenderer.h"
 
 //#define VKMMC_ENABLE_LOADER_LOG
 
@@ -321,6 +322,30 @@ namespace vkmmc
 	{
 		vkDestroySampler(renderContext.Device, Sampler, nullptr);
 	}
+
+
+	EnvironmentData::EnvironmentData() :
+		AmbientColor(0.2f, 0.2f, 0.2f),
+		ActiveSpotLightsCount(0.f),
+		ViewPosition(0.f),
+		ActiveLightsCount(0.f)
+	{
+		LightData def;
+		def.Color = { 0.1f, 0.1f, 0.1f };
+		def.Position = { 0.f, 0.f, 1.f };
+		def.Radius = 50.f;
+		DirectionalLight = def;
+		for (uint32_t i = 0; i < MaxLights; ++i)
+		{
+			Lights[i] = def;
+			SpotLights[i].Direction = { 1.f, 0.f, 0.f };
+			SpotLights[i].Position = { 0.f, 0.f, 0.f };
+			SpotLights[i].Color = { 1.f, 0.f, 0.f };
+			SpotLights[i].InnerCutoff = 1.f;
+			SpotLights[i].OuterCutoff = 1.2f;
+		}
+	}
+
 
 	IScene* IScene::CreateScene(IRenderEngine* engine)
 	{
@@ -885,10 +910,100 @@ namespace vkmmc
 	{
 		if (createWindow)
 			ImGui::Begin("SceneGraph");
+		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
+			{
+				ImGui::Columns(2);
+				ImGui::Text(label);
+				ImGui::NextColumn();
+				char buff[64];
+				sprintf_s(buff, "##%s%u", label, id);
+				bool r = false;
+				switch (count)
+				{
+				case 1: r = ImGui::DragFloat(buff, data, diff, minLimit, maxLimit); break;
+				case 2: r = ImGui::DragFloat2(buff, data, diff, minLimit, maxLimit); break;
+				case 3: r = asColor ? ImGui::ColorEdit3(buff, data) : ImGui::DragFloat3(buff, data, diff, minLimit, maxLimit); break;
+				case 4: r = asColor ? ImGui::ColorEdit4(buff, data) : ImGui::DragFloat4(buff, data, diff, minLimit, maxLimit); break;
+				}
+				ImGui::NextColumn();
+				ImGui::Columns();
+				return r;
+			};
+		utilDragFloat("Ambient color", 0, &m_environmentData.AmbientColor[0], 3, true);
 
+		if (ImGui::CollapsingHeader("Directional light"))
+		{
+			utilDragFloat("Direction", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Direction[0], 3, false, 0.02f, -1.f, 1.f);
+			utilDragFloat("Color", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Color[0], 3, true);
+			debugrender::DrawLine3D(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
+		}
+		if (ImGui::CollapsingHeader("Point lights"))
+		{
+			int32_t activeLightsCount = (int32_t)m_environmentData.ActiveLightsCount;
+			if (ImGui::SliderInt("Active point lights", &activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d"))
+				m_environmentData.ActiveLightsCount = (float)activeLightsCount;
+			for (int32_t i = 0; i < activeLightsCount; ++i)
+			{
+				char buff[32];
+				sprintf_s(buff, "PointLight_%u", i);
+				if (ImGui::CollapsingHeader(buff))
+				{
+					utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3, false);
+					utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, true);
+					utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, false, 0.5f, 0.f, FLT_MAX);
+					utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, false, 0.5f, 0.5f, FLT_MAX);
 
+					debugrender::DrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
+					debugrender::DrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
+				}
+			}
+		}
+		if (ImGui::CollapsingHeader("Spot lights"))
+		{
+			int32_t activeLightsCount = (int32_t)m_environmentData.ActiveSpotLightsCount;
+			if (ImGui::SliderInt("Active spot lights", &activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d"))
+				m_environmentData.ActiveSpotLightsCount = (float)activeLightsCount;
+
+			for (uint32_t i = 0; i < (uint32_t)activeLightsCount; ++i)
+			{
+				char buff[32];
+				sprintf_s(buff, "SpotLight_%u", i);
+				if (ImGui::CollapsingHeader(buff))
+				{
+					SpotLightData& data = m_environmentData.SpotLights[i];
+					utilDragFloat("Position", i, &data.Position[0], 3, false);
+					glm::vec3 dir = glm::normalize(data.Direction);
+
+					// dir vector to roll pitch yaw (x:pitch, y:yaw, z:roll)
+					glm::vec3 pyr = math::ToRot(data.Direction);
+					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f, -(float)M_PI, (float)M_PI))
+					{
+						// Transform to rot matrix
+						glm::mat4 m = math::PitchYawRollToMat4(pyr);
+						// Forward direction (0, 0, 1) in rotation space.
+						data.Direction = glm::vec3(m * glm::vec4(0.f, 0.f, 1.f, 1.f));
+					}
+					utilDragFloat("Color", i, &data.Color[0], 3, true);
+					utilDragFloat("InnerCutoff", i, &data.InnerCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
+					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
+
+					constexpr float scl = 100.f; // meters
+					debugrender::DrawAxis(data.Position, pyr, glm::vec3(scl));
+					debugrender::DrawLine3D(data.Position, data.Position + data.Direction * scl, data.Color);
+				}
+			}
+		}
 		if (createWindow)
 			ImGui::End();
+	}
+
+	void Scene::UpdateRenderData(const RenderContext& renderContext, UniformBuffer* buffer, const glm::vec3& viewPosition)
+	{
+		ProcessEnvironmentData(viewPosition);
+		RecalculateTransforms();
+
+		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
+		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 	}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
@@ -899,5 +1014,49 @@ namespace vkmmc
 		return m_globalTransforms.data();
 	}
 
+	void Scene::ProcessEnvironmentData(const glm::vec3& view)
+	{
+		m_environmentData.ViewPosition = view;
+#if 0
+		m_environmentData.ActiveLightsCount = 0.f;
+		m_environmentData.ActiveSpotLightsCount = 0.f;
+		for (auto& it : m_componentMap)
+		{
+			const RenderObjectComponents& comp = it.second;
+			if (comp.LightIndex != UINT32_MAX)
+			{
+				check(it.first < GetRenderObjectCount());
+				check(comp.LightIndex < GetLightCount());
+				const Light& light = GetLightArray()[comp.LightIndex];
+				const glm::mat4& transform = GetRawGlobalTransforms()[it.first];
+				const glm::vec3 pos = math::GetPos(transform);
+				const glm::vec3 dir = math::GetDir(transform);
+				switch (light.Type)
+				{
+				case ELightType::Point:
+					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Color = light.Color;
+					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Compression = light.Compression;
+					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Position = pos;
+					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Radius = light.Radius;
+					++m_environmentData.ActiveLightsCount;
+					break;
+				case ELightType::Directional:
+					m_environmentData.DirectionalLight.Color = light.Color;
+					m_environmentData.DirectionalLight.Direction = dir;
+					break;
+				case ELightType::Spot:
+					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].Color = light.Color;
+					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].Position = pos;
+					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].Direction = dir;
+					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].InnerCutoff = light.InnerCutoff;
+					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].OuterCutoff = light.OuterCutoff;
+					++m_environmentData.ActiveSpotLightsCount;
+					break;
+				}
+			}
+		}
+#endif // 0
+
+	}
 	
 }

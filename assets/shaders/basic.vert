@@ -21,7 +21,7 @@ layout (std140, set = 0, binding = 0) uniform CameraBuffer
 
 layout (std140, set = 0, binding = 1) uniform DepthInfo
 {
-    mat4 LightMatrix;
+    mat4 LightMatrix[2];
 } u_depthInfo;
 
 // Per draw data
@@ -38,5 +38,5 @@ void main()
     outColor = VIColor;
     outNormal = LSNormal;
     outTexCoords = TexCoords;
-    outLightSpaceFragPos = u_depthInfo.LightMatrix * u_Object.ModelMatrix * vec4(LSPosition, 1.f);
+    outLightSpaceFragPos = u_depthInfo.LightMatrix[0] * u_Object.ModelMatrix * vec4(LSPosition, 1.f);
 }

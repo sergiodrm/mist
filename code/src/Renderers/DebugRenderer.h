@@ -7,12 +7,14 @@
 
 namespace vkmmc
 {
-	namespace rdbg
+	namespace debugrender
 	{
-		void DeferredDrawLine(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color);
-		void DeferredDrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
-		void DeferredDrawAxis(const glm::mat4& transform);
-		void DeferredDrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
+		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color);
+		void DrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
+		void DrawAxis(const glm::mat4& transform);
+		void DrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
+
+		void SetDebugTexture(VkDescriptorSet descriptor);
 	}
 
 	class DebugRenderer : public IRendererBase
@@ -31,8 +33,7 @@ namespace vkmmc
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
-		virtual void RecordDepthPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override {}
-		virtual void RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
+		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
 	protected:
 		// Render State

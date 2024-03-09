@@ -14,12 +14,12 @@ namespace vkmmc
 		// Configure viewport settings.
 		Viewport.x = 0.f;
 		Viewport.y = 0.f;
-		Viewport.width = (float)renderContext.Width;
-		Viewport.height = (float)renderContext.Height;
+		Viewport.width = (float)renderContext.Window->Width;
+		Viewport.height = (float)renderContext.Window->Height;
 		Viewport.minDepth = 0.f;
 		Viewport.maxDepth = 1.f;
 		Scissor.offset = { 0, 0 };
-		Scissor.extent = { .width = renderContext.Width, .height = renderContext.Height };
+		Scissor.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		// Depth testing
 		DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 		// Rasterization: draw filled triangles

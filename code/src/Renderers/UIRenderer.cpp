@@ -40,7 +40,7 @@ namespace vkmmc
 
 		// Init imgui lib
 		ImGui::CreateContext();
-		ImGui_ImplSDL2_InitForVulkan(info.RContext.Window);
+		ImGui_ImplSDL2_InitForVulkan(info.RContext.Window->WindowInstance);
 		ImGui_ImplVulkan_InitInfo initInfo
 		{
 			.Instance = info.RContext.Instance,
@@ -53,7 +53,7 @@ namespace vkmmc
 			.ImageCount = 3,
 			.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
 		};
-		ImGui_ImplVulkan_Init(&initInfo, info.ColorPass);
+		ImGui_ImplVulkan_Init(&initInfo, info.RenderPassArray[RENDER_PASS_COLOR]);
 
 		// Execute gpu command to upload imgui font textures
 		utils::CmdSubmitTransfer(info.RContext, 
@@ -73,11 +73,11 @@ namespace vkmmc
 	void UIRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
 		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL2_NewFrame(renderContext.Window);
+		ImGui_ImplSDL2_NewFrame(renderContext.Window->WindowInstance);
 		ImGui::NewFrame();
 	}
 
-    void UIRenderer::RecordColorPass(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
+    void UIRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
     {
 		PROFILE_SCOPE(ImGuiPass);
 		ImGui::Render();

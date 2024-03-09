@@ -17,5 +17,8 @@ namespace vkmmc
 		glm::vec3 ToRot(const glm::vec3& direction);
 		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
 		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
+
+		glm::vec3 GetDir(const glm::mat4& transform);
+		glm::vec3 GetPos(const glm::mat4& transform);
 	}
 }

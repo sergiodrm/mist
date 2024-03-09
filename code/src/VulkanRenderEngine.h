@@ -22,6 +22,7 @@
 #include <SDL_vulkan.h>
 #include <string.h>
 #include <chrono>
+#include "Globals.h"
 
 namespace vkmmc
 {
@@ -90,26 +91,20 @@ namespace vkmmc
 		glm::mat4 ViewProjection;
 	};
 
-	struct RenderPass
-	{
-		uint32_t Width;
-		uint32_t Height;
-		int32_t OffsetX;
-		int32_t OffsetY;
-		VkRenderPass RenderPass;
-		// one framebuffer per swapchain image
-		std::vector<Framebuffer> FramebufferArray;
-		std::vector<VkClearValue> ClearValues; // clear values per framebuffer attachment
+	
 
-		void BeginPass(VkCommandBuffer cmd, uint32_t framebufferIndex) const;
-		void EndPass(VkCommandBuffer cmd) const;
+	struct RenderPassAttachment
+	{
+		AllocatedImage Image;
+		std::vector<VkFramebuffer> FramebufferArray;
+		std::vector<VkImageView> ImageViewArray;
+
+		void Destroy(const RenderContext& renderContext);
 	};
 	
 	class VulkanRenderEngine : public IRenderEngine
 	{
 	public:
-		static constexpr size_t MaxOverlappedFrames = 2;
-		static constexpr size_t MaxRenderObjects = 1000;
 		/**
 		 * IRenderEngine interface
 		 */
@@ -119,8 +114,8 @@ namespace vkmmc
 
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) override;
 
-		virtual IScene* GetScene() override { return m_scene; }
-		virtual const IScene* GetScene() const override { return m_scene; }
+		virtual IScene* GetScene() override;
+		virtual const IScene* GetScene() const override;
 		virtual void SetScene(IScene* scene);
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) override { m_eventCallback = fn; }
@@ -131,7 +126,10 @@ namespace vkmmc
 		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
 		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
 		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
+		inline uint32_t GetFrameIndex() const { return m_frameCounter % globals::MaxOverlappedFrames; }
+		inline uint32_t GetFrameCounter() const { return m_frameCounter; }
 	protected:
+		void BeginFrame();
 		void Draw();
 		void ImGuiDraw();
 		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
@@ -145,9 +143,6 @@ namespace vkmmc
 		bool InitSync();
 		bool InitPipeline();
 
-		void BeginRenderPass(VkCommandBuffer cmd, const RenderPass& renderPass, uint32_t swapchainIndex);
-		void EndRenderPass(VkCommandBuffer cmd, const RenderPass& renderPass);
-
 	private:
 
 		Window m_window;
@@ -156,21 +151,23 @@ namespace vkmmc
 
 		Swapchain m_swapchain;
 
-		
-		RenderPass m_colorPass;
-		RenderPass m_depthPass;
+		RenderPass m_renderPassArray[RENDER_PASS_COUNT];
+		// One shadow map attachment per overlapped frames
+		RenderPassAttachment m_shadowMapAttachments[globals::MaxOverlappedFrames];
+		// One framebuffer attachment per swapchain image.
+		std::vector<RenderPassAttachment> m_swapchainAttachments;
 
-		RenderFrameContext m_frameContextArray[MaxOverlappedFrames];
-		size_t m_frameCounter;
+		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
+		uint32_t m_frameCounter;
 
 		DescriptorAllocator m_descriptorAllocator;
 		DescriptorLayoutCache m_descriptorLayoutCache;
 
 		VkDescriptorSetLayout m_globalDescriptorLayout;
 
-		std::vector<IRendererBase*> m_renderers;
+		std::vector<IRendererBase*> m_renderers[RENDER_PASS_COUNT];
 
-		IScene* m_scene;
+		Scene* m_scene;
 		CameraData m_cameraData;
 
 		FunctionStack m_shutdownStack;

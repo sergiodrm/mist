@@ -201,9 +201,8 @@ namespace vkmmc
 		return alignment;
 	}
 
-	AllocatedImage Memory::CreateImage(Allocator* allocator, VkFormat format, VkExtent3D extent, VkImageUsageFlags usageFlags, EMemUsage memUsage)
+	AllocatedImage Memory::CreateImage(Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage)
 	{
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, usageFlags, extent);
 		AllocatedImage image;
 #ifndef VKMMC_MEM_MANAGEMENT
 		VmaAllocationCreateInfo allocInfo
