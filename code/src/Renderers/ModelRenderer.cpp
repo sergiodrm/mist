@@ -172,18 +172,35 @@ namespace vkmmc
 
 	void ShadowMapRenderer::Init(const RendererCreateInfo& info)
 	{
+		// Debug shadow mapping texture
+		SamplerBuilder builder;
+		m_debugSampler = builder.Build(info.RContext);
+		VkDescriptorImageInfo imageInfo;
+		imageInfo.sampler = m_debugSampler.GetSampler();
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
 		m_shadowMapPipeline.Init(info.RContext, info.RenderPassArray[RENDER_PASS_SHADOW_MAP], info.DescriptorAllocator, info.LayoutCache);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
 			// Configure frame data for shadowmap
 			m_shadowMapPipeline.AddFrameData(info.RContext, uniformBuffer, info.DescriptorAllocator, info.LayoutCache);
+
+			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
+			{
+				imageInfo.imageView = info.ShadowMapAttachments[i][j];
+				DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+					.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+					.Build(info.RContext, m_frameData[i].DebugShadowMapTextureSet[j]);
+			}
 		}
+
 	}
 
 	void ShadowMapRenderer::Destroy(const RenderContext& renderContext)
 	{
 		m_shadowMapPipeline.Destroy(renderContext);
+		m_debugSampler.Destroy(renderContext);
 	}
 
 	void ShadowMapRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
@@ -212,7 +229,18 @@ namespace vkmmc
 
 	void ShadowMapRenderer::ImGuiDraw()
 	{
-		m_shadowMapPipeline.ImGuiDraw(true);
+		ImGui::Begin("Shadow mapping");
+		static bool debugShadows = false;
+		ImGui::Checkbox("Debug shadow mapping", &debugShadows);
+		static int shadowMapDebugIndex = 0;
+		if (debugShadows)
+		{
+			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments);
+			debugrender::SetDebugTexture(m_frameData[0].DebugShadowMapTextureSet[shadowMapDebugIndex]);
+		}
+		ImGui::Separator();
+		m_shadowMapPipeline.ImGuiDraw(false);
+		ImGui::End();
 	}
 
 	LightingRenderer::LightingRenderer() : IRendererBase()

@@ -3,7 +3,7 @@
 
 #pragma once
 #include "RendererBase.h"
-#include "Globals.h"
+#include "Texture.h"
 #include <glm/glm.hpp>
 
 namespace vkmmc
@@ -62,7 +62,7 @@ namespace vkmmc
 	{
 		struct FrameData
 		{
-			VkDescriptorSet DepthMVPSet;
+			VkDescriptorSet DebugShadowMapTextureSet[globals::MaxShadowMapAttachments];
 		};
 	public:
 		ShadowMapRenderer();
@@ -73,6 +73,8 @@ namespace vkmmc
 		virtual void ImGuiDraw() override;
 	private:
 		ShadowMapPipeline m_shadowMapPipeline;
+		Sampler m_debugSampler;
+		FrameData m_frameData[globals::MaxOverlappedFrames];
 	};
 
 	class LightingRenderer : public IRendererBase
