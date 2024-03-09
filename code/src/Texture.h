@@ -31,4 +31,55 @@ namespace vkmmc
 		AllocatedImage m_image;
 		VkImageView m_imageView;
 	};
+
+	enum EFilterType
+	{
+		FILTER_NEAREST,
+		FILTER_LINEAR,
+		FILTER_CUBIC
+	};
+	VkFilter GetFilterType(EFilterType type);
+
+	enum ESamplerAddressMode
+	{
+		SAMPLER_ADDRESS_MODE_REPEAT,
+		SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+		SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+	};
+	VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode);
+
+	class Sampler
+	{
+	public:
+		Sampler() : m_sampler(VK_NULL_HANDLE) {}
+		Sampler(VkSampler sampler) : m_sampler(sampler) {}
+		Sampler(const Sampler& other) : m_sampler(other.m_sampler) {}
+		Sampler& operator=(const Sampler& other) { m_sampler = other.m_sampler; return *this; }
+		void Destroy(const RenderContext& renderContext);
+		VkSampler GetSampler() const { return m_sampler; }
+	private:
+		VkSampler m_sampler;
+	};
+
+	class SamplerBuilder
+	{
+	public:
+		EFilterType MinFilter = FILTER_LINEAR;
+		EFilterType MaxFilter = FILTER_LINEAR;
+		union
+		{
+			struct  
+			{
+				ESamplerAddressMode U;
+				ESamplerAddressMode V;
+				ESamplerAddressMode W;
+			} AddressMode;
+			ESamplerAddressMode AddresModeUVW[3];
+		} AddressMode = { SAMPLER_ADDRESS_MODE_REPEAT, SAMPLER_ADDRESS_MODE_REPEAT, SAMPLER_ADDRESS_MODE_REPEAT };
+
+		SamplerBuilder() = default;
+		Sampler Build(const RenderContext& renderContext) const;
+	};
 }

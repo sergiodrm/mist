@@ -175,4 +175,45 @@ namespace vkmmc
 		};
 		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
+
+	VkFilter GetFilterType(EFilterType type)
+	{
+		switch (type)
+		{
+		case FILTER_NEAREST: return VK_FILTER_NEAREST;
+		case FILTER_LINEAR: return VK_FILTER_LINEAR;
+		case FILTER_CUBIC: return VK_FILTER_CUBIC_IMG;
+		default:
+			check(false && "Unreachable");	
+		}
+		return VK_FILTER_MAX_ENUM;
+	}
+	VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode)
+	{
+		switch (mode)
+		{
+		case SAMPLER_ADDRESS_MODE_REPEAT: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		case SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+		case SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		case SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+		case SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+		default:
+			check(false && "Unreachable");
+		}
+		return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
+	}
+
+	void Sampler::Destroy(const RenderContext& renderContext)
+	{
+		check(m_sampler != VK_NULL_HANDLE);
+		vkDestroySampler(renderContext.Device, m_sampler, nullptr);
+	}
+
+	Sampler SamplerBuilder::Build(const RenderContext& renderContext) const
+	{
+		VkSampler sampler;
+		VkSamplerCreateInfo info = vkinit::SamplerCreateInfo(GetFilterType(MinFilter), GetSamplerAddressMode(AddressMode.AddressMode.U));
+		vkcheck(vkCreateSampler(renderContext.Device, &info, nullptr, &sampler));
+		return Sampler(sampler);
+	}
 }
