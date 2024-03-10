@@ -156,19 +156,41 @@ namespace vkmmc
 
 	void Log(LogLevel level, const char* msg)
 	{
-		printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
-		OutputDebugString(msg);
-		GLogFile->Push(level, msg);
+		switch (level)
+		{
+		case LogLevel::Debug:
+#ifndef _DEBUG
+			break;
+#endif
+		case LogLevel::Info:
+		case LogLevel::Ok:
+		case LogLevel::Warn:
+		case LogLevel::Error:
+			printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
+			OutputDebugString(msg);
+			GLogFile->Push(level, msg);
+		}
 	}
 
 	void Logf(LogLevel level, const char* fmt, ...)
 	{
-		char buff[2048];
-		va_list lst;
-		va_start(lst, fmt);
-		vsprintf_s(buff, fmt, lst);
-		va_end(lst);
-		Log(level, buff);
+		switch (level)
+		{
+		case LogLevel::Debug:
+#ifndef _DEBUG
+			break;
+#endif
+		case LogLevel::Info:
+		case LogLevel::Ok:
+		case LogLevel::Warn:
+		case LogLevel::Error:
+			char buff[2048];
+			va_list lst;
+			va_start(lst, fmt);
+			vsprintf_s(buff, fmt, lst);
+			va_end(lst);
+			Log(level, buff);
+		}
 	}
 
 	void InitLog(const char* outputFile)
