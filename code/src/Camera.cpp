@@ -11,11 +11,11 @@
 namespace vkmmc
 {
 	Camera::Camera()
-		: m_position(0.f),
+		: m_position(0.f, 7.f, 10.f),
 		m_rotation(0.f),
 		m_fov(45.f),
 		m_aspectRatio(16.f / 9.f),
-		m_nearClip(20.f),
+		m_nearClip(10.f),
 		m_farClip(1000000.f)
 	{
 		RecalculateView();
