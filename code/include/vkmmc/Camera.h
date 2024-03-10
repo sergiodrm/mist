@@ -66,9 +66,9 @@ namespace vkmmc
 		void ProcessInputMovement(float elapsedSeconds);
 	private:
 		Camera m_camera{};
-		glm::vec3 m_direction{ 0.f };
+		glm::vec3 m_direction{ 0.f };                                 
 		float m_speed = 0.f;
-		float m_maxSpeed = 500.f; // eu/s
+		float m_maxSpeed = 10.f; // eu/s
 		float m_maxScrollSpeed = 0.3f; // eu/s
 		float m_maxRotSpeed = 1.f; // rad/s
 		float m_acceleration = 1000.f;
