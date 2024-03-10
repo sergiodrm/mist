@@ -18,6 +18,10 @@
 
 namespace vkmmc
 {
+	bool GUseCameraForShadowMapping = false;
+
+
+
 	ShadowMapPipeline::ShadowMapPipeline()
 		: m_pipeline()
 	{
@@ -87,6 +91,7 @@ namespace vkmmc
 	{
 		m_clip[0] = nearClip;
 		m_clip[1] = farClip;
+		debugrender::SetDebugClipParams(nearClip, farClip);
 	}
 
 	glm::mat4 ShadowMapPipeline::GetProjection(EShadowMapProjectionType projType) const
@@ -117,12 +122,11 @@ namespace vkmmc
 
 	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType)
 	{
-		check(lightIndex < globals::MaxShadowMapAttachments);
 		glm::mat4 depthView = glm::inverse(math::ToMat4(lightPos, lightRot, glm::vec3(1.f)));
 		glm::mat4 depthProj = GetProjection(projType);
 		depthProj[1][1] *= -1.f;
 		glm::mat4 depthVP = depthProj * depthView;
-		m_depthMVPCache[lightIndex] = depthVP;
+		SetDepthVP(lightIndex, depthVP);
 	}
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBuffer* buffer)
@@ -144,7 +148,15 @@ namespace vkmmc
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
 	{
+		check(index < globals::MaxShadowMapAttachments);
 		return m_depthMVPCache[index];
+	}
+
+	void ShadowMapPipeline::SetDepthVP(uint32_t index, const glm::mat4& mat)
+	{
+
+		check(index < globals::MaxShadowMapAttachments);
+		m_depthMVPCache[index] = mat;
 	}
 
 	uint32_t ShadowMapPipeline::GetBufferSize() const
@@ -156,8 +168,8 @@ namespace vkmmc
 	{
 		if (createWindow)
 			ImGui::Begin("ShadowMap proj params");
-		ImGui::DragFloat("Near clip", &m_clip[0], 1.f);
-		ImGui::DragFloat("Far clip", &m_clip[1], 1.f);
+		if (ImGui::DragFloat("Near clip", &m_clip[0], 1.f) | ImGui::DragFloat("Far clip", &m_clip[1], 1.f))
+			debugrender::SetDebugClipParams(m_clip[0], m_clip[1]);
 		ImGui::DragFloat("FOV", &m_perspectiveParams[0], 0.01f);
 		ImGui::DragFloat("Aspect ratio", &m_perspectiveParams[1], 0.01f);
 		ImGui::DragFloat2("Ortho x", &m_orthoParams[0]);
@@ -186,6 +198,8 @@ namespace vkmmc
 			// Configure frame data for shadowmap
 			m_shadowMapPipeline.AddFrameData(info.RContext, uniformBuffer, info.DescriptorAllocator, info.LayoutCache);
 
+			uniformBuffer->AllocUniform(info.RContext, UNIFORM_ID_LIGHT_VP, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
+
 			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 			{
 				imageInfo.imageView = info.ShadowMapAttachments[i][j];
@@ -207,15 +221,38 @@ namespace vkmmc
 	{
 		const Scene* scene = renderFrameContext.Scene;
 		const EnvironmentData& envData = scene->GetEnvironmentData();
-		//m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
 
-		uint32_t maxLights = __min((uint32_t)envData.ActiveSpotLightsCount, globals::MaxShadowMapAttachments);
-		for (uint32_t i = 0; i < maxLights; ++i)
+		// Update shadow map matrix
+		if (GUseCameraForShadowMapping)
 		{
-			const SpotLightData& light = envData.SpotLights[i];
-			m_shadowMapPipeline.SetupLight(i, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+			m_shadowMapPipeline.SetDepthVP(0, renderFrameContext.CameraData->ViewProjection);
+		}
+		else
+		{
+			//m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
+			uint32_t maxLights = __min((uint32_t)envData.ActiveSpotLightsCount, globals::MaxShadowMapAttachments);
+			for (uint32_t i = 0; i < maxLights; ++i)
+			{
+				const SpotLightData& light = envData.SpotLights[i];
+				m_shadowMapPipeline.SetupLight(i, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+			}
 		}
 		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
+
+		// Update light VP matrix for lighting pass
+		static constexpr glm::mat4 depthBias =
+		{
+			0.5f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.5f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.5f, 0.5f, 0.0f, 1.0f
+		};
+		glm::mat4 lightMatrix[globals::MaxShadowMapAttachments];
+		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+		{
+			lightMatrix[i] = depthBias * m_shadowMapPipeline.GetDepthVP(i);
+		}
+		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
 	}
 
 	void ShadowMapRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
@@ -235,9 +272,10 @@ namespace vkmmc
 		static int shadowMapDebugIndex = 0;
 		if (debugShadows)
 		{
-			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments);
+			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments-1);
 			debugrender::SetDebugTexture(m_frameData[0].DebugShadowMapTextureSet[shadowMapDebugIndex]);
 		}
+		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
 		ImGui::Separator();
 		m_shadowMapPipeline.ImGuiDraw(false);
 		ImGui::End();
@@ -285,8 +323,9 @@ namespace vkmmc
 		);
 
 		// Sampler for shadow map binding
-		VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
-		vkcheck(vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthMapSampler));
+		SamplerBuilder builder;
+		//builder.AddressMode.AddressMode.U = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		m_depthMapSampler = builder.Build(info.RContext);
 
 		m_frameData.resize(globals::MaxOverlappedFrames);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
@@ -298,7 +337,7 @@ namespace vkmmc
 			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_CAMERA);
 			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
 			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
-			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SHADOW_MAP_VP);
+			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_LIGHT_VP);
 			
 			check(globals::MaxShadowMapAttachments == info.ShadowMapAttachments[i].size());
 			VkDescriptorImageInfo shadowMapDescInfo[globals::MaxShadowMapAttachments];
@@ -306,7 +345,7 @@ namespace vkmmc
 			{
 				shadowMapDescInfo[j].imageView = info.ShadowMapAttachments[i][j];
 				shadowMapDescInfo[j].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-				shadowMapDescInfo[j].sampler = m_depthMapSampler;
+				shadowMapDescInfo[j].sampler = m_depthMapSampler.GetSampler();
 			}
 			
 			// Materials have its own descriptor set (right now).
@@ -325,12 +364,13 @@ namespace vkmmc
 
 	void LightingRenderer::Destroy(const RenderContext& renderContext)
 	{
-		vkDestroySampler(renderContext.Device, m_depthMapSampler, nullptr);
+		m_depthMapSampler.Destroy(renderContext);
 		m_renderPipeline.Destroy(renderContext);
 	}
 
 	void LightingRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
+		
 	}
 
 	void LightingRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)

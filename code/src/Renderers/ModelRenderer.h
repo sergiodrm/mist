@@ -42,6 +42,7 @@ namespace vkmmc
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBuffer* buffer);
 		void RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
+		void SetDepthVP(uint32_t index, const glm::mat4& mat);
 		uint32_t GetBufferSize() const;
 
 		void ImGuiDraw(bool createWindow = false);
@@ -101,7 +102,7 @@ namespace vkmmc
 
 		std::vector<RendererFrameData> m_frameData;
 		
-		VkSampler m_depthMapSampler;
+		Sampler m_depthMapSampler;
 		bool m_debugCameraDepthMapping;
 	};
 }

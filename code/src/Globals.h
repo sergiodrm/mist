@@ -6,6 +6,7 @@
 #define UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY "Models"
 #define UNIFORM_ID_SCENE_ENV_DATA "Environment"
 #define UNIFORM_ID_SHADOW_MAP_VP "ShadowMapVP"
+#define UNIFORM_ID_LIGHT_VP "LightVP"
 #define UNIFORM_ID_CAMERA "Camera"
 
 
