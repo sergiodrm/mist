@@ -31,6 +31,8 @@ namespace vkmmc
         } GLineBatch;
 
         VkDescriptorSet DebugTexture = VK_NULL_HANDLE;
+        float NearClip = 1.f;
+        float FarClip = 100.f;
 
         void PushLineVertex(LineBatch& batch, const glm::vec3& pos, const glm::vec3& color)
         {
@@ -92,6 +94,12 @@ namespace vkmmc
         void SetDebugTexture(VkDescriptorSet descriptor)
         {
             DebugTexture = descriptor;
+        }
+
+        void SetDebugClipParams(float nearClip, float farClip)
+        {
+            NearClip = nearClip;
+            FarClip = farClip;
         }
     }
 
@@ -173,7 +181,7 @@ namespace vkmmc
 
     void DebugRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
-		float ubo[2] = { 20.f, 10000.f };
+		float ubo[2] = { debugrender::NearClip, debugrender::FarClip };
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "QuadUBO", ubo, sizeof(float) * 2);
     }
 

@@ -15,6 +15,7 @@ namespace vkmmc
 		void DrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
 
 		void SetDebugTexture(VkDescriptorSet descriptor);
+		void SetDebugClipParams(float nearClip, float farClip);
 	}
 
 	class DebugRenderer : public IRendererBase
