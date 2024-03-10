@@ -124,3 +124,9 @@ void vkmmc_debug::PrintCallstack(size_t count, size_t offset)
 	win::WriteStackDump();
 #endif
 }
+
+void vkmmc_debug::ExitError()
+{
+	vkmmc::TerminateLog();
+	exit(EXIT_FAILURE);
+}

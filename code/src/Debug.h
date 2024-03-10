@@ -12,7 +12,7 @@ do \
 		vkmmc::Logf(vkmmc::LogLevel::Error, "Check failed: %s\n", #expr);	\
 		vkmmc_debug::PrintCallstack(); \
 		__debugbreak();\
-		assert(false && #expr);\
+		vkmmc_debug::ExitError(); \
 	}\
 } while(0)
 
@@ -21,4 +21,5 @@ do \
 namespace vkmmc_debug
 {
 	void PrintCallstack(size_t count = 0, size_t offset = 0);
+	void ExitError();
 }
