@@ -330,20 +330,20 @@ namespace vkmmc
 		ViewPosition(0.f),
 		ActiveLightsCount(0.f)
 	{
-		LightData def;
-		def.Color = { 0.05f, 0.01f, 0.1f };
-		def.Position = { 0.f, 0.f, 1.f };
-		def.Radius = 50.f;
-		def.Compression = 0.5f;
-		DirectionalLight = def;
+		DirectionalLight.Color = { 0.05f, 0.01f, 0.1f };
+		DirectionalLight.Position = { 0.f, 0.f, 1.f };
+		DirectionalLight.ShadowMapIndex = -1.f;
+		DirectionalLight.Compression = 0.5f;
 		for (uint32_t i = 0; i < MaxLights; ++i)
 		{
-			Lights[i] = def;
+			Lights[i] = DirectionalLight;
+			Lights[i].Radius = 50.f;
 			SpotLights[i].Direction = { 1.f, 0.f, 0.f };
 			SpotLights[i].Position = { 0.f, 0.f, 0.f };
 			SpotLights[i].Color = { 1.f, 0.f, 0.f };
 			SpotLights[i].InnerCutoff = 1.f;
 			SpotLights[i].OuterCutoff = 0.5f;
+			SpotLights[i].ShadowMapIndex = -1.f;
 		}
 	}
 
@@ -930,10 +930,24 @@ namespace vkmmc
 				ImGui::Columns();
 				return r;
 			};
-		utilDragFloat("Ambient color", 0, &m_environmentData.AmbientColor[0], 3, true);
+		auto utilShadowCheckbox = [](const char* label, uint32_t id, float& shadowMapIndex)
+			{
+				bool projectShadow = shadowMapIndex >= 0.f;
+				char buff[64];
+				sprintf_s(buff, "##%s%u", label, id);
+				ImGui::Columns(2);
+				ImGui::Text("%s", label);
+				ImGui::NextColumn();
+				if (ImGui::Checkbox(buff, &projectShadow))
+					shadowMapIndex = projectShadow ? 0.f : -1.f;
+				ImGui::Columns();
+			};
 
+		utilDragFloat("Ambient color", 0, &m_environmentData.AmbientColor[0], 3, true);
+		uint32_t shadowIdLabel = 0;
 		if (ImGui::CollapsingHeader("Directional light"))
 		{
+			utilShadowCheckbox("Project shadows", shadowIdLabel++, m_environmentData.DirectionalLight.ShadowMapIndex);
 			utilDragFloat("Direction", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Direction[0], 3, false, 0.02f, -1.f, 1.f);
 			utilDragFloat("Color", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Color[0], 3, true);
 			debugrender::DrawLine3D(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
@@ -972,6 +986,7 @@ namespace vkmmc
 				if (ImGui::CollapsingHeader(buff))
 				{
 					SpotLightData& data = m_environmentData.SpotLights[i];
+					utilShadowCheckbox("Project shadows", shadowIdLabel++, data.ShadowMapIndex);
 					utilDragFloat("Position", i, &data.Position[0], 3, false);
 					glm::vec3 dir = glm::normalize(data.Direction);
 
@@ -988,9 +1003,8 @@ namespace vkmmc
 					utilDragFloat("InnerCutoff", i, &data.InnerCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
 					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
 
-					constexpr float scl = 100.f; // meters
+					constexpr float scl = 1.f; // meters
 					debugrender::DrawAxis(data.Position, pyr, glm::vec3(scl));
-					debugrender::DrawLine3D(data.Position, data.Position + data.Direction * scl, data.Color);
 				}
 			}
 		}

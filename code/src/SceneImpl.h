@@ -60,7 +60,11 @@ namespace vkmmc
 			glm::vec3 Position;
 			glm::vec3 Direction;
 		};
-		float Radius;
+		union
+		{
+			float Radius;
+			float ShadowMapIndex;
+		};
 		glm::vec3 Color;
 		float Compression;
 	};
@@ -68,7 +72,7 @@ namespace vkmmc
 	struct SpotLightData
 	{
 		glm::vec3 Color;
-		float __padding;
+		float ShadowMapIndex;
 		glm::vec3 Direction;
 		float InnerCutoff;
 		glm::vec3 Position;
@@ -146,6 +150,7 @@ namespace vkmmc
 
 		void UpdateRenderData(const RenderContext& renderContext, UniformBuffer* buffer, const glm::vec3& viewPosition);
 		inline const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
+		inline EnvironmentData& GetEnvironmentData() { return m_environmentData; }
 
 		// Draw with materials
 		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;

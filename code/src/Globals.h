@@ -25,6 +25,6 @@ namespace vkmmc
 		extern const char* QuadFragmentShader;
 		constexpr uint32_t MaxOverlappedFrames = 2;
 		constexpr uint32_t MaxRenderObjects = 1000;
-		constexpr uint32_t MaxShadowMapAttachments = 2;
+		constexpr uint32_t MaxShadowMapAttachments = 3;
 	}
 }

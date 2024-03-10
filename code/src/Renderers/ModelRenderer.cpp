@@ -219,8 +219,8 @@ namespace vkmmc
 
 	void ShadowMapRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
-		const Scene* scene = renderFrameContext.Scene;
-		const EnvironmentData& envData = scene->GetEnvironmentData();
+		Scene* scene = renderFrameContext.Scene;
+		EnvironmentData& envData = scene->GetEnvironmentData();
 
 		// Update shadow map matrix
 		if (GUseCameraForShadowMapping)
@@ -229,12 +229,23 @@ namespace vkmmc
 		}
 		else
 		{
-			//m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
-			uint32_t maxLights = __min((uint32_t)envData.ActiveSpotLightsCount, globals::MaxShadowMapAttachments);
-			for (uint32_t i = 0; i < maxLights; ++i)
+			float shadowMapIndex = 0.f;
+			if (envData.DirectionalLight.ShadowMapIndex >= 0.f)
 			{
-				const SpotLightData& light = envData.SpotLights[i];
-				m_shadowMapPipeline.SetupLight(i, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+				m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
+				envData.DirectionalLight.ShadowMapIndex = shadowMapIndex++;
+			}
+
+			for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
+			{
+				SpotLightData& light = envData.SpotLights[i];
+				if (light.ShadowMapIndex >= 0.f)
+				{
+					m_shadowMapPipeline.SetupLight(shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+					light.ShadowMapIndex = shadowMapIndex++;
+					if ((uint32_t)shadowMapIndex >= globals::MaxShadowMapAttachments)
+						break;
+				}
 			}
 		}
 		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);

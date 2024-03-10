@@ -365,7 +365,7 @@ namespace vkmmc
 		{
 			uint32_t frameIndex = GetFrameIndex();
 			RenderPass& shadowMapPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
-			uint32_t shadowCount = 2; // TODO: get shadow projection counts from scene info.
+			uint32_t shadowCount = globals::MaxShadowMapAttachments; 
 			check(shadowCount <= (uint32_t)m_shadowMapAttachments[frameIndex].FramebufferArray.size());
 			for (uint32_t i = 0; i < shadowCount; ++i)
 			{
