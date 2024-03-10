@@ -69,7 +69,7 @@ float CalculateShadow(vec4 shadowCoord)
     float z = shadowCoord.z;
 	if ( z > -1.0 && z < 1.0 ) 
 	{
-		float dist = texture( u_ShadowMap, shadowCoord.xy ).r;
+		float dist = texture( u_ShadowMap[0], shadowCoord.xy ).r;
         const float bias = 0.005f;
 		if ( shadowCoord.w > 0.0 && z - bias > dist ) 
 		{
@@ -77,8 +77,7 @@ float CalculateShadow(vec4 shadowCoord)
 		}
 	}
 	return shadow;
-#endif
-
+#else
     // PCF
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(u_ShadowMap[0], 0);
@@ -94,6 +93,7 @@ float CalculateShadow(vec4 shadowCoord)
     }
     shadow /= 9.0;
     return shadow;
+#endif
 }
 
 vec3 ProcessPointLight(LightData light)
@@ -162,6 +162,7 @@ void main()
         // Mix
         lightColor = vec3(u_Env.AmbientColor) + lightColor;
         //lightColor = vec3(shadow);
+        //lightColor = vec3(shadowCoord);
     }
     outColor = vec4(lightColor, 1.f) * outColor;
 }

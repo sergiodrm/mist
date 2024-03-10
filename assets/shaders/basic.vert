@@ -38,5 +38,5 @@ void main()
     outColor = VIColor;
     outNormal = LSNormal;
     outTexCoords = TexCoords;
-    outLightSpaceFragPos = u_depthInfo.LightMatrix[0] * u_Object.ModelMatrix * vec4(LSPosition, 1.f);
+    outLightSpaceFragPos = /*depthBias **/ u_depthInfo.LightMatrix[0] * u_Object.ModelMatrix * vec4(LSPosition, 1.f);
 }
