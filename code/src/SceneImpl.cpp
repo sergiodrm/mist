@@ -325,15 +325,16 @@ namespace vkmmc
 
 
 	EnvironmentData::EnvironmentData() :
-		AmbientColor(0.2f, 0.2f, 0.2f),
+		AmbientColor(0.02f, 0.02f, 0.02f),
 		ActiveSpotLightsCount(0.f),
 		ViewPosition(0.f),
 		ActiveLightsCount(0.f)
 	{
 		LightData def;
-		def.Color = { 0.1f, 0.1f, 0.1f };
+		def.Color = { 0.05f, 0.01f, 0.1f };
 		def.Position = { 0.f, 0.f, 1.f };
 		def.Radius = 50.f;
+		def.Compression = 0.5f;
 		DirectionalLight = def;
 		for (uint32_t i = 0; i < MaxLights; ++i)
 		{
@@ -342,7 +343,7 @@ namespace vkmmc
 			SpotLights[i].Position = { 0.f, 0.f, 0.f };
 			SpotLights[i].Color = { 1.f, 0.f, 0.f };
 			SpotLights[i].InnerCutoff = 1.f;
-			SpotLights[i].OuterCutoff = 1.2f;
+			SpotLights[i].OuterCutoff = 0.5f;
 		}
 	}
 
