@@ -124,8 +124,6 @@ namespace vkmmc
 		rendererCreateInfo.RContext = m_renderContext;
 		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
 		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
-		for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
-			rendererCreateInfo.RenderPassArray[i] = m_renderPassArray[i].RenderPass;
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			rendererCreateInfo.FrameUniformBufferArray[i] = &m_frameContextArray[i].GlobalBuffer;
@@ -142,6 +140,7 @@ namespace vkmmc
 		m_renderers[RENDER_PASS_LIGHTING].push_back(new UIRenderer());
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
+			rendererCreateInfo.Pass = m_renderPassArray[i].RenderPass;
 			for (IRendererBase* renderer : m_renderers[i])
 				renderer->Init(rendererCreateInfo);
 		}

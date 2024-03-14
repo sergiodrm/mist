@@ -191,7 +191,7 @@ namespace vkmmc
 		imageInfo.sampler = m_debugSampler.GetSampler();
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-		m_shadowMapPipeline.Init(info.RContext, info.RenderPassArray[RENDER_PASS_SHADOW_MAP], info.DescriptorAllocator, info.LayoutCache);
+		m_shadowMapPipeline.Init(info.RContext, info.Pass, info.DescriptorAllocator, info.LayoutCache);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
@@ -325,7 +325,7 @@ namespace vkmmc
 
 		m_renderPipeline = RenderPipeline::Create(
 			info.RContext,
-			info.RenderPassArray[RENDER_PASS_LIGHTING],
+			info.Pass,
 			0, // subpass
 			shaderStageDescs,
 			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
@@ -386,7 +386,7 @@ namespace vkmmc
 
 	void LightingRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
 	{
-		CPU_PROFILE_SCOPE(LightingRenderer_ColorPass);
+		CPU_PROFILE_SCOPE(LightingRenderer);
 
 		// Bind pipeline
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;

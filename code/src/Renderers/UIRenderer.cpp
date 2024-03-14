@@ -53,7 +53,7 @@ namespace vkmmc
 			.ImageCount = 3,
 			.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
 		};
-		ImGui_ImplVulkan_Init(&initInfo, info.RenderPassArray[RENDER_PASS_COLOR]);
+		ImGui_ImplVulkan_Init(&initInfo, info.Pass);
 
 		// Execute gpu command to upload imgui font textures
 		utils::CmdSubmitTransfer(info.RContext, 

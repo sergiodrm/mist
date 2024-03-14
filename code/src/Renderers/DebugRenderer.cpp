@@ -116,7 +116,7 @@ namespace vkmmc
         uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
 
         VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
-        m_renderPipeline = RenderPipeline::Create(info.RContext, info.RenderPassArray[RENDER_PASS_COLOR], 0,
+        m_renderPipeline = RenderPipeline::Create(info.RContext, info.Pass, 0,
             descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
 
         // VertexBuffer
@@ -149,7 +149,7 @@ namespace vkmmc
             {.Filepath = globals::QuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
         };
         inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-        m_quadPipeline = RenderPipeline::Create(info.RContext, info.RenderPassArray[RENDER_PASS_COLOR], 0, shaders, 2, inputLayout);
+        m_quadPipeline = RenderPipeline::Create(info.RContext, info.Pass, 0, shaders, 2, inputLayout);
 
         VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
         vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthSampler);

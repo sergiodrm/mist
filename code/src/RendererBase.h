@@ -21,7 +21,7 @@ namespace vkmmc
 		DescriptorLayoutCache* LayoutCache{nullptr};
 		DescriptorAllocator* DescriptorAllocator{nullptr};
 
-		VkRenderPass RenderPassArray[RENDER_PASS_COUNT];
+		VkRenderPass Pass;
 		std::vector<VkImageView> ShadowMapAttachments[globals::MaxOverlappedFrames];
 		UniformBuffer* FrameUniformBufferArray[globals::MaxOverlappedFrames];
 
