@@ -241,7 +241,7 @@ namespace vkmmc
 				SpotLightData& light = envData.SpotLights[i];
 				if (light.ShadowMapIndex >= 0.f)
 				{
-					m_shadowMapPipeline.SetupLight(shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+					m_shadowMapPipeline.SetupLight((uint32_t)shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
 					light.ShadowMapIndex = shadowMapIndex++;
 					if ((uint32_t)shadowMapIndex >= globals::MaxShadowMapAttachments)
 						break;
@@ -386,7 +386,7 @@ namespace vkmmc
 
 	void LightingRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
 	{
-		PROFILE_SCOPE(LightingRenderer_ColorPass);
+		CPU_PROFILE_SCOPE(LightingRenderer_ColorPass);
 
 		// Bind pipeline
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
@@ -396,7 +396,7 @@ namespace vkmmc
 		VkDescriptorSet sets[] = { m_frameData[renderFrameContext.FrameIndex].PerFrameSet };
 		uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
-		++GRenderStats.SetBindingCount;
+		++vkmmc_profiling::GRenderStats.SetBindingCount;
 
 		// DrawScene
 		renderFrameContext.Scene->Draw(cmd, m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);

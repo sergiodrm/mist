@@ -79,7 +79,7 @@ namespace vkmmc
 
     void UIRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
     {
-		PROFILE_SCOPE(ImGuiPass);
+		CPU_PROFILE_SCOPE(ImGuiPass);
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), renderFrameContext.GraphicsCommand);
     }

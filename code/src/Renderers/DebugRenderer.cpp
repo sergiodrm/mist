@@ -187,7 +187,7 @@ namespace vkmmc
 
     void DebugRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
     {
-        PROFILE_SCOPE(DebugPass);
+        CPU_PROFILE_SCOPE(DebugPass);
         if (debugrender::GLineBatch.Index > 0)
         {
             // Flush lines to vertex buffer
@@ -198,11 +198,11 @@ namespace vkmmc
             uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
             vkCmdBindDescriptorSets(renderFrameContext.GraphicsCommand, VK_PIPELINE_BIND_POINT_GRAPHICS,
                 m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
-            ++GRenderStats.SetBindingCount;
+            ++vkmmc_profiling::GRenderStats.SetBindingCount;
             m_lineVertexBuffer.Bind(renderFrameContext.GraphicsCommand);
             vkCmdDraw(renderFrameContext.GraphicsCommand, debugrender::GLineBatch.Index, 1, 0, 0);
             debugrender::GLineBatch.Index = 0;
-            ++GRenderStats.DrawCalls;
+            ++vkmmc_profiling::GRenderStats.DrawCalls;
         }
 
         if (m_debugDepthMap && debugrender::DebugTexture != VK_NULL_HANDLE)

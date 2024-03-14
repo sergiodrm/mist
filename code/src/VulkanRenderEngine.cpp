@@ -49,70 +49,11 @@ namespace vkmmc_debug
 #endif
 		return VK_FALSE;
 	}
-
-	void ImGuiDraw()
-	{
-		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-			| ImGuiWindowFlags_NoDecoration
-			| ImGuiWindowFlags_AlwaysAutoResize
-			| ImGuiWindowFlags_NoResize
-			| ImGuiWindowFlags_NoInputs;
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 1.f });
-		ImGui::SetNextWindowBgAlpha(0.5f);
-		ImGui::SetNextWindowPos({ 0.f, 0.f });
-		ImGui::Begin("Render stats", nullptr, flags);
-		for (auto item : vkmmc::GRenderStats.Profiler.m_items)
-		{
-			ImGui::Text("%s:\t%.4f ms", item.first.c_str(), item.second.m_elapsed);
-		}
-		ImGui::Separator();
-		ImGui::Text("Draw calls:	%u", vkmmc::GRenderStats.DrawCalls);
-		ImGui::Text("Triangles:		%u", vkmmc::GRenderStats.TrianglesCount);
-		ImGui::Text("Binding count: %u", vkmmc::GRenderStats.SetBindingCount);
-		ImGui::End();
-		ImGui::PopStyleColor();
-	}
 }
 
 namespace vkmmc
 {
-	vkmmc::RenderStats GRenderStats;
-
-	void ProfilingTimer::Start()
-	{
-		m_start = std::chrono::high_resolution_clock::now();
-	}
-
-	double ProfilingTimer::Stop()
-	{
-		auto stop = std::chrono::high_resolution_clock::now();
-		auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - m_start);
-		double s = (double)diff.count() * 1e-6;
-		return s;
-	}
-
-	ScopedTimer::ScopedTimer(const char* nameId, Profiler* profiler)
-		: m_nameId(nameId), m_profiler(profiler)
-	{
-		m_timer.Start();
-	}
-
-	ScopedTimer::~ScopedTimer()
-	{
-		double elapsed = m_timer.Stop();
-		if (!m_profiler->m_items.contains(m_nameId))
-			m_profiler->m_items[m_nameId] = ProfilerItem{ 0.0 };
-		m_profiler->m_items[m_nameId].m_elapsed += elapsed;
-	}
-
-	void RenderStats::Reset()
-	{
-		TrianglesCount = 0;
-		DrawCalls = 0;
-		SetBindingCount = 0;
-		for (auto& it : Profiler.m_items)
-			it.second.m_elapsed = 0.0;
-	}
+	
 
 
 	RenderHandle GenerateRenderHandle()
@@ -139,7 +80,7 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
-		PROFILE_SCOPE(Init);
+		CPU_PROFILE_SCOPE(Init);
 		InitLog("../../log.html");
 #ifdef _DEBUG
 		Log(LogLevel::Info, "Running app in DEBUG mode.\n");
@@ -205,7 +146,7 @@ namespace vkmmc
 				renderer->Init(rendererCreateInfo);
 		}
 
-		AddImGuiCallback(&vkmmc_debug::ImGuiDraw);
+		AddImGuiCallback(&vkmmc_profiling::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
 		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(true); });
 
@@ -214,7 +155,7 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::RenderProcess()
 	{
-		PROFILE_SCOPE(Process);
+		CPU_PROFILE_SCOPE(Process);
 		bool res = true;
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
@@ -231,7 +172,7 @@ namespace vkmmc
 		BeginFrame();
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
-		GRenderStats.Reset();
+		vkmmc_profiling::GRenderStats.Reset();
 		Draw();
 		return res;
 	}
@@ -331,13 +272,13 @@ namespace vkmmc
 
 	void VulkanRenderEngine::Draw()
 	{
-		PROFILE_SCOPE(Draw);
+		CPU_PROFILE_SCOPE(Draw);
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 		WaitFence(frameContext.RenderFence);
 
 		{
-			PROFILE_SCOPE(UpdateBuffers);
+			CPU_PROFILE_SCOPE(UpdateBuffers);
 			frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
 
 		}
@@ -345,7 +286,7 @@ namespace vkmmc
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		uint32_t swapchainImageIndex;
 		{
-			PROFILE_SCOPE(PrepareFrame);
+			CPU_PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
 			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
 
@@ -391,7 +332,7 @@ namespace vkmmc
 		vkcheck(vkEndCommandBuffer(cmd));
 
 		{
-			PROFILE_SCOPE(QueueSubmit);
+			CPU_PROFILE_SCOPE(QueueSubmit);
 			// Submit command buffer
 			VkSubmitInfo submitInfo = {};
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -411,7 +352,7 @@ namespace vkmmc
 		}
 
 		{
-			PROFILE_SCOPE(Present);
+			CPU_PROFILE_SCOPE(Present);
 			// Present
 			VkPresentInfoKHR presentInfo = {};
 			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
