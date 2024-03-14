@@ -59,7 +59,8 @@ namespace vkmmc
 	struct RenderPassAttachment
 	{
 		AllocatedImage Image;
-		std::vector<VkFramebuffer> FramebufferArray;
+		std::vector<Framebuffer> FramebufferArray;
+
 		std::vector<VkImageView> ImageViewArray;
 
 		void Destroy(const RenderContext& renderContext);
@@ -106,6 +107,8 @@ namespace vkmmc
 		bool InitSync();
 		bool InitPipeline();
 
+		void DrawPass(VkCommandBuffer cmd, ERenderPassType passType, const RenderPassAttachment& passAttachment);
+
 	private:
 
 		Window m_window;
@@ -117,6 +120,7 @@ namespace vkmmc
 		RenderPass m_renderPassArray[RENDER_PASS_COUNT];
 		// One shadow map attachment per overlapped frames
 		RenderPassAttachment m_shadowMapAttachments[globals::MaxOverlappedFrames];
+		RenderPassAttachment m_colorAttachments[globals::MaxOverlappedFrames];
 		// One framebuffer attachment per swapchain image.
 		std::vector<RenderPassAttachment> m_swapchainAttachments;
 

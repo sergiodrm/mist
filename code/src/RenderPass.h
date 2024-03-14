@@ -7,13 +7,12 @@ namespace vkmmc
 {
 	struct RenderContext;
 
-
-
 	enum ERenderPassType
 	{
 		RENDER_PASS_SHADOW_MAP,
 		RENDER_PASS_LIGHTING,
 		RENDER_PASS_COLOR = RENDER_PASS_LIGHTING,
+		RENDER_PASS_POST_PROCESS,
 		RENDER_PASS_COUNT
 	};
 

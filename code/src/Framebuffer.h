@@ -10,7 +10,7 @@ namespace vkmmc
 {
 	struct RenderContext;
 	struct AllocatedImage;
-
+	enum EFormat;
 
 	class Framebuffer
 	{
@@ -20,8 +20,8 @@ namespace vkmmc
 			static Builder Create(const RenderContext& renderContext, uint32_t width, uint32_t height);
 
 			Builder& AddAttachment(VkImageView imageView);
-			Builder& CreateColorAttachment();
-			Builder& CreateDepthStencilAttachment();
+			Builder& CreateColorAttachment(EFormat format);
+			Builder& CreateDepthStencilAttachment(EFormat format);
 
 			Framebuffer Build(VkRenderPass renderPass);
 		private:

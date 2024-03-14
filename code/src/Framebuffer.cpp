@@ -26,10 +26,10 @@ namespace vkmmc
         return *this;
     }
 
-    Framebuffer::Builder& Framebuffer::Builder::CreateColorAttachment()
+    Framebuffer::Builder& Framebuffer::Builder::CreateColorAttachment(EFormat fmt)
     {
 		VkExtent3D extent = { m_width, m_height, 1 };
-		VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+		VkFormat format = types::FormatType(fmt);
 
         VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, 
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
@@ -44,11 +44,11 @@ namespace vkmmc
         return AddAttachment(view);
     }
 
-    Framebuffer::Builder& Framebuffer::Builder::CreateDepthStencilAttachment()
+    Framebuffer::Builder& Framebuffer::Builder::CreateDepthStencilAttachment(EFormat fmt)
     {
 		// Create depth buffer
 		VkExtent3D depthExtent = { m_width, m_height, 1 };
-		VkFormat depthFormat = VK_FORMAT_D32_SFLOAT;
+		VkFormat depthFormat = types::FormatType(fmt);
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(depthFormat,
             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             depthExtent);

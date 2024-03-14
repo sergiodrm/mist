@@ -305,26 +305,10 @@ namespace vkmmc
 
 		{
 			uint32_t frameIndex = GetFrameIndex();
-			RenderPass& shadowMapPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
-			uint32_t shadowCount = globals::MaxShadowMapAttachments; 
-			check(shadowCount <= (uint32_t)m_shadowMapAttachments[frameIndex].FramebufferArray.size());
-			for (uint32_t i = 0; i < shadowCount; ++i)
-			{
-				shadowMapPass.BeginPass(cmd, m_shadowMapAttachments[frameIndex].FramebufferArray[i]);
-				for (IRendererBase* it : m_renderers[RENDER_PASS_SHADOW_MAP])
-				{
-					it->RecordCmd(m_renderContext, frameContext, i);
-				}
-				shadowMapPass.EndPass(cmd);
-			}
-
-			RenderPass& colorPass = m_renderPassArray[RENDER_PASS_LIGHTING];
-			colorPass.BeginPass(cmd, m_swapchainAttachments[swapchainImageIndex].FramebufferArray[0]);
-			for (IRendererBase* it : m_renderers[RENDER_PASS_LIGHTING])
-			{
-				it->RecordCmd(m_renderContext, frameContext, 0);
-			}
-			colorPass.EndPass(cmd);
+			DrawPass(cmd, RENDER_PASS_SHADOW_MAP, m_shadowMapAttachments[frameIndex]);
+			DrawPass(cmd, RENDER_PASS_LIGHTING, m_colorAttachments[frameIndex]);
+			// Post pro pass over swapchain image index
+			DrawPass(cmd, RENDER_PASS_POST_PROCESS, m_swapchainAttachments[swapchainImageIndex]);
 		}
 
 
@@ -482,39 +466,37 @@ namespace vkmmc
 		// Color RenderPass
 		{
 			VkSubpassDependency dependencies[2];
+			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[0].dstSubpass = 0;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+			dependencies[1].srcSubpass = 0;
+			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
 			//dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 			//dependencies[0].dstSubpass = 0;
-			//dependencies[0].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			//dependencies[0].srcAccessMask = 0;
-			//dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			//dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			//dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			//dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			//dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			//dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 			//dependencies[0].dependencyFlags = 0;
 
 			//dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
 			//dependencies[1].dstSubpass = 0;
-			//dependencies[1].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-			//	| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			//dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			//dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 			//dependencies[1].srcAccessMask = 0;
-			//dependencies[1].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-			//	| VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			//dependencies[1].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			//dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;// | VK_ACCESS_SHADER_READ_BIT;
 			//dependencies[1].dependencyFlags = 0;
-
-			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependencies[0].dstSubpass = 0;
-			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-			dependencies[0].dependencyFlags = 0;
-
-			dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependencies[1].dstSubpass = 0;
-			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[1].srcAccessMask = 0;
-			dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-			dependencies[1].dependencyFlags = 0;
 
 			m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass = RenderPassBuilder::Create()
 				.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
@@ -526,11 +508,6 @@ namespace vkmmc
 				)
 				.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
 				.Build(m_renderContext);
-			m_shutdownStack.Add([this]()
-				{
-					vkDestroyRenderPass(m_renderContext.Device, m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass, nullptr);
-				}
-			);
 			check(m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass != VK_NULL_HANDLE);
 
 			m_renderPassArray[RENDER_PASS_LIGHTING].Width = m_window.Width;
@@ -568,7 +545,6 @@ namespace vkmmc
 				.AddDependencies(dependencies, 2)
 				.Build(m_renderContext);
 			check(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass != VK_NULL_HANDLE);
-			m_shutdownStack.Add([this]() { vkDestroyRenderPass(m_renderContext.Device, m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass, nullptr);  });
 
 			m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width = m_window.Width;
 			m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height = m_window.Height;
@@ -579,6 +555,45 @@ namespace vkmmc
 			m_renderPassArray[RENDER_PASS_SHADOW_MAP].ClearValues.push_back(value);
 		}
 
+		// Post process render pass
+		{
+			VkSubpassDependency dependencies[2];
+			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[0].dstSubpass = 0;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+			dependencies[0].dependencyFlags = 0;
+			dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
+			dependencies[1].dstSubpass = 0;
+			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+			dependencies[1].srcAccessMask = 0;
+			dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+			dependencies[1].dependencyFlags = 0;
+
+			m_renderPassArray[RENDER_PASS_POST_PROCESS].RenderPass = RenderPassBuilder::Create()
+				.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
+				.AddSubpass({ 0 }, UINT32_MAX, {})
+				.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
+				.Build(m_renderContext);
+
+			m_renderPassArray[RENDER_PASS_POST_PROCESS].Width = m_window.Width;
+			m_renderPassArray[RENDER_PASS_POST_PROCESS].Height = m_window.Height;
+			m_renderPassArray[RENDER_PASS_POST_PROCESS].OffsetX = 0;
+			m_renderPassArray[RENDER_PASS_POST_PROCESS].OffsetY = 0;
+			VkClearValue value;
+			value.color = { 0.f, 0.f, 0.f };
+			m_renderPassArray[RENDER_PASS_POST_PROCESS].ClearValues.push_back(value);
+		}
+
+		m_shutdownStack.Add([this]() 
+			{
+				for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
+					vkDestroyRenderPass(m_renderContext.Device, m_renderPassArray[i].RenderPass, nullptr);
+			});
+
 		return true;
 	}
 
@@ -586,28 +601,19 @@ namespace vkmmc
 	{
 		// Collect image in the swapchain
 		const uint32_t swapchainImageCount = m_swapchain.GetImageCount();
-		check(globals::MaxOverlappedFrames <= swapchainImageCount);
+		//check(globals::MaxOverlappedFrames <= swapchainImageCount);
 
 		// One framebuffer per swapchain image
 		m_swapchainAttachments.resize(swapchainImageCount);
 		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
-			// Color Framebuffer
-			VkExtent3D extent{ .width = m_renderPassArray[RENDER_PASS_LIGHTING].Width, .height = m_renderPassArray[RENDER_PASS_LIGHTING].Height, .depth = 1 };
-			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, extent);
-			AllocatedImage colorImage = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-			VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(VK_FORMAT_D32_SFLOAT, colorImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
-			VkImageView views[2];
-			views[0] = m_swapchain.GetImageViewAt(i);
-			vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &views[1]));
-			VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass, 
-				m_renderPassArray[RENDER_PASS_LIGHTING].Width, m_renderPassArray[RENDER_PASS_LIGHTING].Height,
-				views, 2);
-			VkFramebuffer fb;
-			vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &fb));
-			m_swapchainAttachments[i].Image = colorImage;
-			m_swapchainAttachments[i].FramebufferArray.push_back(fb);
-			m_swapchainAttachments[i].ImageViewArray.push_back(views[1]);
+			// Swapchain Framebuffer
+			const RenderPass& pass = m_renderPassArray[RENDER_PASS_POST_PROCESS];
+			m_swapchainAttachments[i].FramebufferArray.push_back(
+				Framebuffer::Builder::Create(m_renderContext, pass.Width, pass.Height)
+				.AddAttachment(m_swapchain.GetImageViewAt(i))
+				.Build(pass.RenderPass)
+			);
 			m_shutdownStack.Add([this, i] { m_swapchainAttachments[i].Destroy(m_renderContext); });
 		}
 
@@ -615,7 +621,8 @@ namespace vkmmc
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			// Shadow map Framebuffer
-			VkExtent3D extent{ .width = m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width, .height = m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height, .depth = 1 };
+			const RenderPass& shadowPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
+			VkExtent3D extent{ .width = shadowPass.Width, .height = shadowPass.Height, .depth = 1 };
 			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(VK_FORMAT_D32_SFLOAT,
 				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 				extent, globals::MaxShadowMapAttachments);
@@ -626,21 +633,29 @@ namespace vkmmc
 				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(VK_FORMAT_D32_SFLOAT, depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT, j);
 				VkImageView view;
 				vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
-				VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass,
-					m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width, m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height,
-					&view, 1);
-				VkFramebuffer fb;
-				vkcheck(vkCreateFramebuffer(m_renderContext.Device, &fbInfo, nullptr, &fb));
-				m_shadowMapAttachments[i].FramebufferArray.push_back(fb);
 				m_shadowMapAttachments[i].ImageViewArray.push_back(view);
+				m_shadowMapAttachments[i].FramebufferArray.push_back(
+					Framebuffer::Builder::Create(m_renderContext, shadowPass.Width, shadowPass.Height)
+					.AddAttachment(view)
+					.Build(shadowPass.RenderPass)
+				);
 			}
+
+			// Color framebuffer
+			const RenderPass& colorPass = m_renderPassArray[RENDER_PASS_LIGHTING];
+			RenderPassAttachment& colorPassAttachment = m_colorAttachments[i];
+			colorPassAttachment.FramebufferArray.resize(1);
+			colorPassAttachment.FramebufferArray[0] = Framebuffer::Builder::Create(m_renderContext, colorPass.Width, colorPass.Height)
+				.CreateColorAttachment(m_swapchain.GetImageFormat())
+				.CreateDepthStencilAttachment(m_swapchain.GetDepthFormat())
+				.Build(colorPass.RenderPass);
+
 
 			// Destroy on shutdown
 			m_shutdownStack.Add([this, i]()
 				{
-					//check(m_colorAttachments[i].FramebufferArray.size() == m_colorAttachments[i].ImageViewArray.size());
-					check(m_shadowMapAttachments[i].FramebufferArray.size() == m_shadowMapAttachments[i].ImageViewArray.size());
 					m_shadowMapAttachments[i].Destroy(m_renderContext);
+					m_colorAttachments[i].Destroy(m_renderContext);
 				});
 		}
 		return true;
@@ -719,16 +734,30 @@ namespace vkmmc
 		return true;
 	}
 
+	void VulkanRenderEngine::DrawPass(VkCommandBuffer cmd, ERenderPassType passType, const RenderPassAttachment& passAttachment)
+	{
+		RenderPass& renderPass = m_renderPassArray[passType];
+		std::vector<IRendererBase*>& renderers = m_renderers[passType];
+		for (uint32_t i = 0; i < (uint32_t)passAttachment.FramebufferArray.size(); ++i)
+		{
+			renderPass.BeginPass(cmd, passAttachment.FramebufferArray[i].GetFramebufferHandle());
+			for (IRendererBase* it : renderers)
+				it->RecordCmd(m_renderContext, GetFrameContext(), i);
+			renderPass.EndPass(cmd);
+		}
+	}
+
 
 	void RenderPassAttachment::Destroy(const RenderContext& renderContext)
 	{
-		check(FramebufferArray.size() == ImageViewArray.size());
 		for (uint32_t i = 0; i < (uint32_t)FramebufferArray.size(); ++i)
-		{
-			vkDestroyFramebuffer(renderContext.Device, FramebufferArray[i], nullptr);
+			FramebufferArray[i].Destroy(renderContext);
+
+		for (uint32_t i = 0; i < (uint32_t)ImageViewArray.size(); ++i)
 			vkDestroyImageView(renderContext.Device, ImageViewArray[i], nullptr);
-		}
-		Memory::DestroyImage(renderContext.Allocator, Image);
+
+		if (Image.IsAllocated())
+			Memory::DestroyImage(renderContext.Allocator, Image);
 	}
 
 }
