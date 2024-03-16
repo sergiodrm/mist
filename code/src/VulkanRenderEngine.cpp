@@ -285,11 +285,11 @@ namespace vkmmc
 		}
 
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
-		uint32_t swapchainImageIndex;
 		{
 			CPU_PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
-			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, nullptr, &swapchainImageIndex));
+			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, 
+				nullptr, &m_currentSwapchainIndex));
 
 			// Reset command buffer
 			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
@@ -307,10 +307,8 @@ namespace vkmmc
 		{
 			uint32_t frameIndex = GetFrameIndex();
 			render::DrawQuadTexture(m_quadSets[frameIndex]);
-			DrawPass(cmd, RENDER_PASS_SHADOW_MAP, m_shadowMapAttachments[frameIndex]);
-			DrawPass(cmd, RENDER_PASS_LIGHTING, m_colorAttachments[frameIndex]);
-			// Post pro pass over swapchain image index
-			DrawPass(cmd, RENDER_PASS_POST_PROCESS, m_swapchainAttachments[swapchainImageIndex]);
+			for (uint32_t pass = RENDER_PASS_SHADOW_MAP; pass < RENDER_PASS_COUNT; ++pass)
+				DrawPass(cmd, (ERenderPassType)pass, GetAttachment((ERenderPassType)pass));
 		}
 
 
@@ -348,7 +346,7 @@ namespace vkmmc
 			presentInfo.swapchainCount = 1;
 			presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
 			presentInfo.waitSemaphoreCount = 1;
-			presentInfo.pImageIndices = &swapchainImageIndex;
+			presentInfo.pImageIndices = &m_currentSwapchainIndex;
 			vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
 		}
 	}
@@ -468,21 +466,6 @@ namespace vkmmc
 		// Color RenderPass
 		{
 			VkSubpassDependency dependencies[2];
-			//dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-			//dependencies[0].dstSubpass = 0;
-			//dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			//dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			//dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			//dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			//dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-			//dependencies[1].srcSubpass = 0;
-			//dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-			//dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			//dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			//dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			//dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			//dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
 			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[0].dstSubpass = 0;
 			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
@@ -498,22 +481,6 @@ namespace vkmmc
 			dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-			//dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-			//dependencies[0].dstSubpass = 0;
-			//dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			//dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			//dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			//dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-			//dependencies[0].dependencyFlags = 0;
-
-			//dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
-			//dependencies[1].dstSubpass = 0;
-			//dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			//dependencies[1].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			//dependencies[1].srcAccessMask = 0;
-			//dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;// | VK_ACCESS_SHADER_READ_BIT;
-			//dependencies[1].dependencyFlags = 0;
 
 			m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass = RenderPassBuilder::Create()
 				.AddAttachment(m_swapchain.GetImageFormat(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -773,6 +740,19 @@ namespace vkmmc
 				it->RecordCmd(m_renderContext, GetFrameContext(), i);
 			renderPass.EndPass(cmd);
 		}
+	}
+
+	const RenderPassAttachment& VulkanRenderEngine::GetAttachment(ERenderPassType passType) const
+	{
+		switch (passType)
+		{
+		case RENDER_PASS_SHADOW_MAP: return m_shadowMapAttachments[GetFrameIndex()];
+		case RENDER_PASS_LIGHTING: return m_colorAttachments[GetFrameIndex()];
+		case RENDER_PASS_PRESENT: return m_swapchainAttachments[m_currentSwapchainIndex];
+		default:
+			check(false && "Unreachable");
+		}
+		return *(RenderPassAttachment*)0;
 	}
 
 

@@ -106,6 +106,7 @@ namespace vkmmc
 		bool InitPipeline();
 
 		void DrawPass(VkCommandBuffer cmd, ERenderPassType passType, const RenderPassAttachment& passAttachment);
+		const RenderPassAttachment& GetAttachment(ERenderPassType passType) const;
 
 	private:
 
@@ -127,6 +128,7 @@ namespace vkmmc
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
 		uint32_t m_frameCounter;
+		uint32_t m_currentSwapchainIndex;
 
 		DescriptorAllocator m_descriptorAllocator;
 		DescriptorLayoutCache m_descriptorLayoutCache;
