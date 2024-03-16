@@ -19,9 +19,11 @@ namespace vkmmc
         return builder;
     }
 
-    Framebuffer::Builder& Framebuffer::Builder::AddAttachment(VkImageView imageView)
+    Framebuffer::Builder& Framebuffer::Builder::AddAttachment(VkImageView imageView, bool freeOnDestroy)
     {
         check(m_attachments.size() < 8); // m_cleanFlags maximum capacity
+        if (freeOnDestroy)
+            MarkToClean((uint32_t)m_attachments.size());
         m_attachments.push_back(imageView);
         return *this;
     }
@@ -32,7 +34,7 @@ namespace vkmmc
 		VkFormat format = types::FormatType(fmt);
 
         VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, 
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT,
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
             extent);
         AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 		m_imageArray.push_back(image);

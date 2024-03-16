@@ -19,7 +19,7 @@ namespace vkmmc
 		{
 			static Builder Create(const RenderContext& renderContext, uint32_t width, uint32_t height);
 
-			Builder& AddAttachment(VkImageView imageView);
+			Builder& AddAttachment(VkImageView imageView, bool freeOnDestroy = false);
 			Builder& CreateColorAttachment(EFormat format);
 			Builder& CreateDepthStencilAttachment(EFormat format);
 
