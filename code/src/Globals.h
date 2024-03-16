@@ -23,6 +23,9 @@ namespace vkmmc
 		extern const char* DepthFragmentShader;
 		extern const char* QuadVertexShader;
 		extern const char* QuadFragmentShader;
+		extern const char* DepthQuadFragmentShader;
+		extern const char* PostProcessVertexShader;
+		extern const char* PostProcessFragmentShader;
 		constexpr uint32_t MaxOverlappedFrames = 2;
 		constexpr uint32_t MaxRenderObjects = 1000;
 		constexpr uint32_t MaxShadowMapAttachments = 3;

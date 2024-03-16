@@ -19,6 +19,9 @@ namespace vkmmc
 		const char* DepthFragmentShader = SHADER_ROOT_PATH "depth.frag.spv";
 		const char* QuadVertexShader = SHADER_ROOT_PATH "quad.vert.spv";
 		const char* QuadFragmentShader = SHADER_ROOT_PATH "quad.frag.spv";
+		const char* DepthQuadFragmentShader = SHADER_ROOT_PATH "quad.frag.spv";
+		const char* PostProcessVertexShader= SHADER_ROOT_PATH "quad.vert.spv";
+		const char* PostProcessFragmentShader= SHADER_ROOT_PATH "postprocess_quad.frag.spv";
 
 	}
 }
