@@ -7,6 +7,7 @@
 
 #include <SDL.h>
 #include "Logger.h"
+#include "Debug.h"
 
 namespace vkmmc
 {
@@ -16,7 +17,13 @@ namespace vkmmc
 		m_fov(45.f),
 		m_aspectRatio(16.f / 9.f),
 		m_nearClip(10.f),
-		m_farClip(1000000.f)
+		m_farClip(1000000.f),
+		m_left(0.f),
+		m_right(1920.f),
+		m_bottom(0.f),
+		m_top(1080.f),
+		m_orthoNearClip(0.f),
+		m_orthoFarClip(1000.f)
 	{
 		RecalculateView();
 		RecalculateProjection();
@@ -96,14 +103,49 @@ namespace vkmmc
 	{
 		if (createWindow)
 			ImGui::Begin("Camera projection");
-		bool updateProjection = ImGui::DragFloat("FOV (degrees)", &m_fov, 0.f, 90.f);
-		updateProjection |= ImGui::DragFloat("Aspect ratio", &m_aspectRatio);
-		updateProjection |= ImGui::DragFloat("Near clip", &m_nearClip);
-		updateProjection |= ImGui::DragFloat("Far clip", &m_farClip);
+		static const char* projTypes[] = { "Perspective", "Ortho" };
+		static int projIndex = 0;
+		if (ImGui::BeginCombo("Proj type", projTypes[projIndex]))
+		{
+			for (int i = 0; i < (int)ECameraProjectionType::Count; ++i)
+			{
+				bool selected = i == projIndex;
+				if (ImGui::Selectable(projTypes[i], &selected))
+				{
+					projIndex = i;
+					SetProjectionType((ECameraProjectionType)i);
+				}
+			}
+			ImGui::EndCombo();
+		}
+		bool updateProjection = false;
+		switch (GetProjectionType())
+		{
+		case ECameraProjectionType::Perspective:
+			updateProjection = ImGui::DragFloat("FOV (degrees)", &m_fov, 0.f, 90.f);
+			updateProjection |= ImGui::DragFloat("Aspect ratio", &m_aspectRatio);
+			updateProjection |= ImGui::DragFloat("Near clip", &m_nearClip);
+			updateProjection |= ImGui::DragFloat("Far clip", &m_farClip);
+			break;
+		case ECameraProjectionType::Othographic:
+			updateProjection = ImGui::DragFloat2("Width", &m_left);
+			updateProjection |= ImGui::DragFloat2("Height", &m_bottom);
+			updateProjection |= ImGui::DragFloat("Ortho Near clip", &m_orthoNearClip);
+			updateProjection |= ImGui::DragFloat("Oetho Far clip", &m_orthoFarClip);
+			break;
+		default:
+			check(false && "Unreachable code");
+		}
 		if (updateProjection)
 			RecalculateProjection();
 		if (createWindow)
 			ImGui::End();
+	}
+
+	void Camera::SetProjectionType(ECameraProjectionType type)
+	{
+		m_projType = type;
+		RecalculateProjection();
 	}
 
 	void Camera::RecalculateView()
@@ -115,7 +157,15 @@ namespace vkmmc
 
 	void Camera::RecalculateProjection()
 	{
-		m_projection = glm::perspective(glm::radians(m_fov), m_aspectRatio, m_nearClip, m_farClip);
+		switch (m_projType)
+		{
+		case ECameraProjectionType::Perspective:
+			m_projection = glm::perspective(glm::radians(m_fov), m_aspectRatio, m_nearClip, m_farClip);
+			break;
+		case ECameraProjectionType::Othographic:
+			m_projection = glm::ortho(m_left, m_right, m_bottom, m_top, m_orthoNearClip, m_orthoFarClip);
+			break;
+		}
 		m_projection[1][1] *= -1.f;
 	}
 

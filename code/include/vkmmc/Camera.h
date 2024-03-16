@@ -4,6 +4,13 @@
 
 namespace vkmmc
 {
+	enum class ECameraProjectionType
+	{
+		Perspective,
+		Othographic,
+		Count
+	};
+
 	class Camera
 	{
 	public:
@@ -26,20 +33,32 @@ namespace vkmmc
 
 		void ImGuiDraw(bool createWindow = false);
 
+		ECameraProjectionType GetProjectionType() const { return m_projType; }
+		void SetProjectionType(ECameraProjectionType type);
+
 	protected:
 		void RecalculateView();
 		void RecalculateProjection();
 
 	private:
+		ECameraProjectionType m_projType;
 		// View
 		glm::vec3 m_position;
 		glm::vec3 m_rotation; // Roll pitch yaw
 
-		// Projection
+		// Perspective projection
 		float m_fov; // degrees
 		float m_aspectRatio;
 		float m_nearClip;
 		float m_farClip;
+
+		// Ortho projection
+		float m_left;
+		float m_right;
+		float m_bottom;
+		float m_top;
+		float m_orthoNearClip;
+		float m_orthoFarClip;
 
 		// Cached data
 		glm::mat4 m_projection;
