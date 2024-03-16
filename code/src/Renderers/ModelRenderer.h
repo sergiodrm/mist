@@ -76,6 +76,7 @@ namespace vkmmc
 		ShadowMapPipeline m_shadowMapPipeline;
 		Sampler m_debugSampler;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
+		uint32_t m_attachmentIndexBits;
 	};
 
 	class LightingRenderer : public IRendererBase

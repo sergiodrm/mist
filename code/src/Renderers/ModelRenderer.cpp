@@ -221,6 +221,7 @@ namespace vkmmc
 	{
 		Scene* scene = renderFrameContext.Scene;
 		EnvironmentData& envData = scene->GetEnvironmentData();
+		m_attachmentIndexBits = 0;
 
 		// Update shadow map matrix
 		if (GUseCameraForShadowMapping)
@@ -232,6 +233,7 @@ namespace vkmmc
 			float shadowMapIndex = 0.f;
 			if (envData.DirectionalLight.ShadowMapIndex >= 0.f)
 			{
+				m_attachmentIndexBits |= 1 << (uint32_t)shadowMapIndex;
 				m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
 				envData.DirectionalLight.ShadowMapIndex = shadowMapIndex++;
 			}
@@ -241,7 +243,8 @@ namespace vkmmc
 				SpotLightData& light = envData.SpotLights[i];
 				if (light.ShadowMapIndex >= 0.f)
 				{
-					m_shadowMapPipeline.SetupLight((uint32_t)shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+					m_attachmentIndexBits |= 1 << (uint32_t)shadowMapIndex;
+					m_shadowMapPipeline.SetupLight((uint32_t)shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
 					light.ShadowMapIndex = shadowMapIndex++;
 					if ((uint32_t)shadowMapIndex >= globals::MaxShadowMapAttachments)
 						break;
@@ -269,10 +272,11 @@ namespace vkmmc
 	void ShadowMapRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
 	{
 		check(attachmentIndex < globals::MaxShadowMapAttachments);
-		const EnvironmentData& envData = renderFrameContext.Scene->GetEnvironmentData();
-		uint32_t maxLights = __min((uint32_t)envData.ActiveSpotLightsCount, globals::MaxShadowMapAttachments);
-		for (uint32_t i = 0; i < maxLights; ++i)
+		if (m_attachmentIndexBits & (1 << attachmentIndex))
+		{
+			const EnvironmentData& envData = renderFrameContext.Scene->GetEnvironmentData();
 			m_shadowMapPipeline.RenderShadowMap(renderFrameContext.GraphicsCommand, renderFrameContext.Scene, renderFrameContext.FrameIndex, attachmentIndex);
+		}
 	}
 
 	void ShadowMapRenderer::ImGuiDraw()
