@@ -60,7 +60,7 @@ namespace vkmmc
 
 		// Generate descriptor set layouts and push constants from shader reflection.
 		static RenderPipeline Create(
-			RenderContext renderContext,
+			const RenderContext& renderContext,
 			const VkRenderPass& renderPass,
 			uint32_t subpassIndex,
 			const ShaderDescription* shaderStages,
@@ -69,7 +69,7 @@ namespace vkmmc
 			VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 		// With specific layout and push constants configs
 		static RenderPipeline Create(
-			RenderContext renderContext,
+			const RenderContext& renderContext,
 			const VkRenderPass& renderPass,
 			uint32_t subpassIndex,
 			const ShaderDescription* shaderStages,

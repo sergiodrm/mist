@@ -105,7 +105,7 @@ namespace vkmmc
 		return pipelineObject;
 	}
 
-	RenderPipeline RenderPipeline::Create(RenderContext renderContext, 
+	RenderPipeline RenderPipeline::Create(const RenderContext& renderContext, 
 		const VkRenderPass& renderPass,
 		uint32_t subpassIndex,
 		const ShaderDescription* shaderStages,
@@ -146,7 +146,7 @@ namespace vkmmc
 	}
 
 	RenderPipeline RenderPipeline::Create(
-		RenderContext renderContext, 
+		const RenderContext& renderContext,
 		const VkRenderPass& renderPass, 
 		uint32_t subpassIndex, 
 		const ShaderDescription* shaderStages, 
