@@ -61,8 +61,6 @@ namespace vkmmc
 		AllocatedImage Image;
 		std::vector<Framebuffer> FramebufferArray;
 
-		std::vector<VkImageView> ImageViewArray;
-
 		void Destroy(const RenderContext& renderContext);
 	};
 	
@@ -123,6 +121,9 @@ namespace vkmmc
 		RenderPassAttachment m_colorAttachments[globals::MaxOverlappedFrames];
 		// One framebuffer attachment per swapchain image.
 		std::vector<RenderPassAttachment> m_swapchainAttachments;
+
+		Sampler m_quadSampler;
+		VkDescriptorSet m_quadSets[globals::MaxOverlappedFrames];
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
 		uint32_t m_frameCounter;

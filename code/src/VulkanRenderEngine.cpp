@@ -25,6 +25,7 @@
 #include "Renderers/UIRenderer.h"
 #include "SceneImpl.h"
 #include "GenericUtils.h"
+#include "Renderers/QuadRenderer.h"
 
 namespace vkmmc_debug
 {
@@ -111,7 +112,6 @@ namespace vkmmc
 
 		// RenderPass
 		check(InitRenderPass());
-
 		// Framebuffers
 		check(InitFramebuffers());
 		// Pipelines
@@ -127,8 +127,9 @@ namespace vkmmc
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			rendererCreateInfo.FrameUniformBufferArray[i] = &m_frameContextArray[i].GlobalBuffer;
+			check(m_shadowMapAttachments[i].FramebufferArray.size() == globals::MaxShadowMapAttachments);
 			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-				rendererCreateInfo.ShadowMapAttachments[i].push_back(m_shadowMapAttachments[i].ImageViewArray[j]);
+				rendererCreateInfo.ShadowMapAttachments[i].push_back(m_shadowMapAttachments[i].FramebufferArray[j].GetImageViewAt(0));
 		}
 
 		rendererCreateInfo.ConstantRange = nullptr;
@@ -137,7 +138,8 @@ namespace vkmmc
 		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
 		m_renderers[RENDER_PASS_LIGHTING].push_back(new LightingRenderer());
 		m_renderers[RENDER_PASS_LIGHTING].push_back(new DebugRenderer());
-		m_renderers[RENDER_PASS_LIGHTING].push_back(new UIRenderer());
+		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new UIRenderer());
+		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new QuadRenderer());
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
 			rendererCreateInfo.Pass = m_renderPassArray[i].RenderPass;
@@ -304,6 +306,7 @@ namespace vkmmc
 
 		{
 			uint32_t frameIndex = GetFrameIndex();
+			render::DrawQuadTexture(m_quadSets[frameIndex]);
 			DrawPass(cmd, RENDER_PASS_SHADOW_MAP, m_shadowMapAttachments[frameIndex]);
 			DrawPass(cmd, RENDER_PASS_LIGHTING, m_colorAttachments[frameIndex]);
 			// Post pro pass over swapchain image index
@@ -465,20 +468,35 @@ namespace vkmmc
 		// Color RenderPass
 		{
 			VkSubpassDependency dependencies[2];
+			//dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+			//dependencies[0].dstSubpass = 0;
+			//dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			//dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			//dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			//dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			//dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+			//dependencies[1].srcSubpass = 0;
+			//dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+			//dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			//dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			//dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			//dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			//dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
 			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[0].dstSubpass = 0;
-			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 			dependencies[1].srcSubpass = 0;
 			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 			//dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -498,8 +516,8 @@ namespace vkmmc
 			//dependencies[1].dependencyFlags = 0;
 
 			m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass = RenderPassBuilder::Create()
-				.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
-				.AddDepthAttachmentDescription(FORMAT_D32)
+				.AddAttachment(m_swapchain.GetImageFormat(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+				.AddAttachment(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass(
 					{ 0 }, // Color attachments
 					1, // Depth attachment
@@ -522,7 +540,7 @@ namespace vkmmc
 
 		// Depth RenderPass for shadow mapping
 		{
-			VkSubpassDependency dependencies[2];
+			std::array<VkSubpassDependency, 2> dependencies;
 			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 			dependencies[0].dstSubpass = 0;
 			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
@@ -539,9 +557,9 @@ namespace vkmmc
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 			m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass = RenderPassBuilder::Create()
-				.AddDepthAttachmentDescription(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+				.AddAttachment(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass({}, 0, {})
-				.AddDependencies(dependencies, 2)
+				.AddDependencies(dependencies.data(), dependencies.size())
 				.Build(m_renderContext);
 			check(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass != VK_NULL_HANDLE);
 
@@ -573,7 +591,7 @@ namespace vkmmc
 			dependencies[1].dependencyFlags = 0;
 
 			m_renderPassArray[RENDER_PASS_POST_PROCESS].RenderPass = RenderPassBuilder::Create()
-				.AddColorAttachmentDescription(m_swapchain.GetImageFormat(), true)
+				.AddAttachment(m_swapchain.GetImageFormat(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
 				.AddSubpass({ 0 }, UINT32_MAX, {})
 				.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
 				.Build(m_renderContext);
@@ -632,10 +650,9 @@ namespace vkmmc
 				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(VK_FORMAT_D32_SFLOAT, depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT, j);
 				VkImageView view;
 				vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
-				m_shadowMapAttachments[i].ImageViewArray.push_back(view);
 				m_shadowMapAttachments[i].FramebufferArray.push_back(
 					Framebuffer::Builder::Create(m_renderContext, shadowPass.Width, shadowPass.Height)
-					.AddAttachment(view)
+					.AddAttachment(view, true)
 					.Build(shadowPass.RenderPass)
 				);
 			}
@@ -648,7 +665,6 @@ namespace vkmmc
 				.CreateColorAttachment(m_swapchain.GetImageFormat())
 				.CreateDepthStencilAttachment(m_swapchain.GetDepthFormat())
 				.Build(colorPass.RenderPass);
-
 
 			// Destroy on shutdown
 			m_shutdownStack.Add([this, i]()
@@ -701,6 +717,10 @@ namespace vkmmc
 				m_descriptorLayoutCache.Destroy();
 			});
 
+		SamplerBuilder builder;
+		m_quadSampler = builder.Build(m_renderContext);
+		m_shutdownStack.Add([this]() { m_quadSampler.Destroy(m_renderContext); });
+
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
@@ -725,6 +745,15 @@ namespace vkmmc
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
+
+			VkDescriptorImageInfo quadImageInfo;
+			quadImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			//quadImageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			quadImageInfo.imageView = m_colorAttachments[i].FramebufferArray[0].GetImageViewAt(0);
+			quadImageInfo.sampler = m_quadSampler.GetSampler();
+			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+				.BindImage(0, &quadImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(m_renderContext, m_quadSets[i]);
 
 			// Scene buffer allocation. TODO: this should be done by scene.
 			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, sizeof(glm::mat4) * globals::MaxRenderObjects);
@@ -751,9 +780,6 @@ namespace vkmmc
 	{
 		for (uint32_t i = 0; i < (uint32_t)FramebufferArray.size(); ++i)
 			FramebufferArray[i].Destroy(renderContext);
-
-		for (uint32_t i = 0; i < (uint32_t)ImageViewArray.size(); ++i)
-			vkDestroyImageView(renderContext.Device, ImageViewArray[i], nullptr);
 
 		if (Image.IsAllocated())
 			Memory::DestroyImage(renderContext.Allocator, Image);
