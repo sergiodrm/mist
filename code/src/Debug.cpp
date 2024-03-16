@@ -250,12 +250,13 @@ namespace vkmmc_profiling
 	void ImGuiDraw()
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-			| ImGuiWindowFlags_NoDecoration
+			//| ImGuiWindowFlags_NoDecoration
 			| ImGuiWindowFlags_AlwaysAutoResize
 			| ImGuiWindowFlags_NoResize
-			| ImGuiWindowFlags_NoInputs;
+			//| ImGuiWindowFlags_NoInputs
+			;
 		ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
-		ImGui::SetNextWindowBgAlpha(0.1f);
+		ImGui::SetNextWindowBgAlpha(0.f);
 		ImGui::SetNextWindowPos({ 0.f, 0.f });
 		ImGui::SetNextWindowSize({ 400.f, 300.f });
 		ImGui::Begin("Render stats", nullptr, flags);
