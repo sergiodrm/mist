@@ -369,8 +369,8 @@ namespace vkmmc
 		{
 			Material m;
 			gltf_api::LoadMaterial(scene, rootAssetPath, m, data->materials[i]);
+			materialIndexMap[&data->materials[i]] = scene->GetMaterialCount();
 			scene->SubmitMaterial(m);
-			materialIndexMap[&data->materials[i]] = i;
 		}
 
 		uint32_t nodesCount = (uint32_t)data->nodes_count;
@@ -816,6 +816,7 @@ namespace vkmmc
 
 	void Scene::Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
+		CPU_PROFILE_SCOPE(Scene_Draw);
 		// Iterate scene graph to render models.
 		uint32_t lastMaterialIndex = UINT32_MAX;
 		const Mesh* lastMesh = nullptr;
@@ -832,7 +833,7 @@ namespace vkmmc
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					pipelineLayout, modelSetIndex, 1, &modelSet, 1, &modelDynamicOffset);
-				++GRenderStats.SetBindingCount;
+				++vkmmc_profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)
@@ -854,11 +855,11 @@ namespace vkmmc
 						const MaterialRenderData& mtl = GetMaterialRenderData(material->GetHandle());
 						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 							pipelineLayout, materialSetIndex, 1, &mtl.Set, 0, nullptr);
-						++GRenderStats.SetBindingCount;
+						++vkmmc_profiling::GRenderStats.SetBindingCount;
 					}
 					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					++GRenderStats.DrawCalls;
-					GRenderStats.TrianglesCount += drawData.Count / 3;
+					++vkmmc_profiling::GRenderStats.DrawCalls;
+					vkmmc_profiling::GRenderStats.TrianglesCount += drawData.Count / 3;
 				}
 			}
 		}
@@ -866,6 +867,7 @@ namespace vkmmc
 
 	void Scene::Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
+		CPU_PROFILE_SCOPE(Scene_Draw);
 		// Iterate scene graph to render models.
 		uint32_t lastMaterialIndex = UINT32_MAX;
 		const Mesh* lastMesh = nullptr;
@@ -882,7 +884,7 @@ namespace vkmmc
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
 				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
 					pipelineLayout, modelSetIndex, 1, &modelSet, 1, &modelDynamicOffset);
-				++GRenderStats.SetBindingCount;
+				++vkmmc_profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)

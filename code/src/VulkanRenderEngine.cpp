@@ -138,8 +138,8 @@ namespace vkmmc
 		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
 		m_renderers[RENDER_PASS_LIGHTING].push_back(new LightingRenderer());
 		m_renderers[RENDER_PASS_LIGHTING].push_back(new DebugRenderer());
-		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new UIRenderer());
 		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new QuadRenderer());
+		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new UIRenderer());
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
 			rendererCreateInfo.Pass = m_renderPassArray[i].RenderPass;
@@ -559,7 +559,7 @@ namespace vkmmc
 			m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass = RenderPassBuilder::Create()
 				.AddAttachment(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass({}, 0, {})
-				.AddDependencies(dependencies.data(), dependencies.size())
+				.AddDependencies(dependencies.data(), (uint32_t)dependencies.size())
 				.Build(m_renderContext);
 			check(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass != VK_NULL_HANDLE);
 
