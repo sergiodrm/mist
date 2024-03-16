@@ -43,13 +43,11 @@ namespace vkmmc
 	public:
 		static RenderPassBuilder Create();
 
-		RenderPassBuilder& AddColorAttachmentDescription(EFormat format, bool presentAttachment = false);
-		RenderPassBuilder& AddDepthAttachmentDescription(EFormat format, VkImageLayout finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+		RenderPassBuilder& AddAttachment(EFormat format, VkImageLayout finalLayout);
 		RenderPassBuilder& AddSubpass(const std::initializer_list<uint32_t>& colorAttachmentIndices,
 			uint32_t depthIndex, 
 			const std::initializer_list<uint32_t>& inputAttachments);
 		RenderPassBuilder& AddDependencies(const VkSubpassDependency* dependencies, uint32_t count);
-
 		VkRenderPass Build(const RenderContext& renderContext);
 	private:
 		std::vector<VkAttachmentDescription> m_attachments;

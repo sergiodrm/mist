@@ -30,14 +30,7 @@ namespace vkmmc
 		return builder;
 	}
 
-	RenderPassBuilder& RenderPassBuilder::AddColorAttachmentDescription(EFormat format, bool presentAttachment)
-	{
-		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(types::FormatType(format), 
-			presentAttachment ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
-		return *this;
-	}
-
-	RenderPassBuilder& RenderPassBuilder::AddDepthAttachmentDescription(EFormat format, VkImageLayout finalLayout)
+	RenderPassBuilder& RenderPassBuilder::AddAttachment(EFormat format, VkImageLayout finalLayout)
 	{
 		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(types::FormatType(format), finalLayout));
 		return *this;
