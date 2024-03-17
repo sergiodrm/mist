@@ -244,7 +244,7 @@ namespace vkmmc
 				if (light.ShadowMapIndex >= 0.f)
 				{
 					m_attachmentIndexBits |= 1 << (uint32_t)shadowMapIndex;
-					m_shadowMapPipeline.SetupLight((uint32_t)shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
+					m_shadowMapPipeline.SetupLight((uint32_t)shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
 					light.ShadowMapIndex = shadowMapIndex++;
 					if ((uint32_t)shadowMapIndex >= globals::MaxShadowMapAttachments)
 						break;
