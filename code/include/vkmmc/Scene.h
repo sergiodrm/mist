@@ -53,6 +53,8 @@ namespace vkmmc
 		virtual void Init() = 0;
 		virtual void Destroy() = 0;
 
+		virtual bool LoadModel(const char* filepath) = 0;
+
 		// Render object life cycle
 		virtual RenderObject CreateRenderObject(RenderObject parent) = 0;
 		virtual void DestroyRenderObject(RenderObject object) = 0;

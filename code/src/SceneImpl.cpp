@@ -106,6 +106,35 @@ namespace gltf_api
 		q = glm::quat(data[3], data[0], data[1], data[2]);
 	}
 
+	void ReadNodeLocalTransform(const cgltf_node& node, glm::mat4& t)
+	{
+		if (node.has_matrix)
+		{
+			gltf_api::ToMat4(&t, node.matrix);
+		}
+		else
+		{
+			if (node.has_translation)
+			{
+				glm::vec3 pos;
+				gltf_api::ToVec3(pos, node.translation);
+				t = glm::translate(t, pos);
+			}
+			if (node.has_rotation)
+			{
+				glm::quat quat;
+				gltf_api::ToQuat(quat, node.rotation);
+				t *= glm::toMat4(quat);
+			}
+			if (node.has_scale)
+			{
+				glm::vec3 scl;
+				gltf_api::ToVec3(scl, node.scale);
+				t = glm::scale(t, scl);
+			}
+		}
+	}
+
 	void ReadValues(std::vector<float>& values, const cgltf_accessor& accessor)
 	{
 		uint32_t elementCount = GetElementCountFromType(accessor.type);
@@ -359,110 +388,12 @@ namespace vkmmc
 	IScene* IScene::LoadScene(IRenderEngine* engine, const char* sceneFilepath)
 	{
 		Scene* scene = static_cast<Scene*>(CreateScene(engine));
-		cgltf_data* data = gltf_api::ParseFile(sceneFilepath);
-		char rootAssetPath[512];
-		io::GetRootDir(sceneFilepath, rootAssetPath, 512);
-		check(data);
-
-		std::unordered_map<cgltf_material*, uint32_t> materialIndexMap;
-		for (uint32_t i = 0; i < data->materials_count; ++i)
+		if (!scene->LoadModel(sceneFilepath))
 		{
-			Material m;
-			gltf_api::LoadMaterial(scene, rootAssetPath, m, data->materials[i]);
-			materialIndexMap[&data->materials[i]] = scene->GetMaterialCount();
-			scene->SubmitMaterial(m);
+			Logf(LogLevel::Error, "Error loading scene from: %s.\n", sceneFilepath);
+			DestroyScene(scene);
+			scene = nullptr;
 		}
-
-		uint32_t nodesCount = (uint32_t)data->nodes_count;
-		for (uint32_t i = 0; i < nodesCount; ++i)
-		{
-			const cgltf_node& node = data->nodes[i];
-			RenderObject parent;
-			if (node.parent)
-			{
-				for (uint32_t j = 0; j < i; ++j)
-				{
-					if (&data->nodes[j] == node.parent)
-					{
-						parent = j;
-						break;
-					}
-				}
-			}
-			RenderObject renderObject = scene->CreateRenderObject(parent);
-
-			// Process transform
-			glm::mat4 localTransform(1.f);
-			if (node.has_matrix)
-			{
-				gltf_api::ToMat4(&localTransform, node.matrix);
-			}
-			else
-			{
-				if (node.has_translation)
-				{
-					glm::vec3 pos;
-					gltf_api::ToVec3(pos, node.translation);
-					localTransform = glm::translate(localTransform, pos);
-				}
-				if (node.has_rotation)
-				{
-					glm::quat quat;
-					gltf_api::ToQuat(quat, node.rotation);
-					localTransform *= glm::toMat4(quat);
-				}
-				if (node.has_scale)
-				{
-					glm::vec3 scl;
-					gltf_api::ToVec3(scl, node.scale);
-					localTransform = glm::scale(localTransform, scl);
-				}
-			}
-			scene->SetTransform(renderObject, localTransform);
-
-			// Process mesh
-			if (node.mesh)
-			{
-				// Load geometry data
-				std::vector<Vertex> vertices;
-				std::vector<uint32_t> indices;
-				std::vector<PrimitiveMeshData> pmd(node.mesh->primitives_count);
-				
-				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
-				{
-					const cgltf_primitive& primitive = node.mesh->primitives[j];
-					uint32_t vertexOffset = (uint32_t)vertices.size();
-					pmd[j].FirstIndex = (uint32_t)indices.size();
-					gltf_api::LoadIndices(indices, &primitive, vertexOffset);
-					gltf_api::LoadVertices(vertices, &primitive, data->nodes, (uint32_t)data->nodes_count);
-					pmd[j].Count = (uint32_t)indices.size() - pmd[j].FirstIndex;
-					pmd[j].MaterialIndex = materialIndexMap[primitive.material];
-					check(primitive.indices->count == pmd[j].Count);
-				}
-
-				// Sort primitives by index
-				std::sort(pmd.begin(), pmd.end(), 
-					[](const PrimitiveMeshData& a, const PrimitiveMeshData& b) {return a.MaterialIndex < b.MaterialIndex; }
-				);
-				
-				// Submit data
-				Mesh mesh;
-				mesh.MoveIndicesFrom(indices);
-				mesh.MoveVerticesFrom(vertices);
-				scene->SubmitMesh(mesh);
-
-				// TODO: find out a better way to assign primitives to mesh render data.
-				MeshRenderData& mrd = scene->GetMeshRenderData(mesh.GetHandle());
-				mrd.PrimitiveArray = std::move(pmd);
-				mrd.IndexCount = (uint32_t)mesh.GetIndexCount();
-
-				scene->SetMesh(renderObject, mesh);
-
-				if (node.mesh->name && *node.mesh->name)
-					scene->SetRenderObjectName(renderObject, node.mesh->name);
-			}
-		}
-		gltf_api::FreeData(data);
 		return scene;
 	}
 
@@ -473,7 +404,10 @@ namespace vkmmc
 	}
 
 	Scene::Scene(IRenderEngine* engine) : IScene(), m_engine(static_cast<VulkanRenderEngine*>(engine))
-	{}
+	{
+		// Create root scene
+		CreateRenderObject(RenderObject::InvalidId);
+	}
 
 	Scene::~Scene()
 	{}
@@ -527,9 +461,7 @@ namespace vkmmc
 			if (firstSibling.IsValid())
 			{
 				RenderObject sibling;
-				for (sibling = firstSibling;
-					m_hierarchy[sibling].Sibling.IsValid();
-					sibling = m_hierarchy[sibling].Sibling);
+				for (sibling = firstSibling; m_hierarchy[sibling].Sibling.IsValid(); sibling = m_hierarchy[sibling].Sibling);
 				m_hierarchy[sibling].Sibling = node;
 			}
 			else
@@ -542,6 +474,96 @@ namespace vkmmc
 		m_hierarchy[node].Child = RenderObject::InvalidId;
 		m_hierarchy[node].Sibling = RenderObject::InvalidId;
 		return node;
+	}
+
+	bool Scene::LoadModel(const char* filepath)
+	{
+		cgltf_data* data = gltf_api::ParseFile(filepath);
+		char rootAssetPath[512];
+		io::GetRootDir(filepath, rootAssetPath, 512);
+		if (!data)
+		{
+			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", filepath);
+			return false;
+		}
+
+		std::unordered_map<cgltf_material*, uint32_t> materialIndexMap;
+		for (uint32_t i = 0; i < data->materials_count; ++i)
+		{
+			Material m;
+			gltf_api::LoadMaterial(this, rootAssetPath, m, data->materials[i]);
+			materialIndexMap[&data->materials[i]] = GetMaterialCount();
+			SubmitMaterial(m);
+		}
+
+		uint32_t nodesCount = (uint32_t)data->nodes_count;
+		uint32_t renderObjectOffset = GetRenderObjectCount();
+		for (uint32_t i = 0; i < nodesCount; ++i)
+		{
+			const cgltf_node& node = data->nodes[i];
+			RenderObject parent = GetRoot();
+			if (node.parent)
+			{
+				for (uint32_t j = 0; j < i; ++j)
+				{
+					if (&data->nodes[j] == node.parent)
+					{
+						parent = j + renderObjectOffset;
+						break;
+					}
+				}
+			}
+			RenderObject renderObject = CreateRenderObject(parent);
+
+			// Process transform
+			glm::mat4 localTransform(1.f);
+			gltf_api::ReadNodeLocalTransform(node, localTransform);
+			SetTransform(renderObject, localTransform);
+
+			// Process mesh
+			if (node.mesh)
+			{
+				// Load geometry data
+				std::vector<Vertex> vertices;
+				std::vector<uint32_t> indices;
+				std::vector<PrimitiveMeshData> pmd(node.mesh->primitives_count);
+
+				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
+				{
+					const cgltf_primitive& primitive = node.mesh->primitives[j];
+					uint32_t vertexOffset = (uint32_t)vertices.size();
+					pmd[j].FirstIndex = (uint32_t)indices.size();
+					gltf_api::LoadIndices(indices, &primitive, vertexOffset);
+					gltf_api::LoadVertices(vertices, &primitive, data->nodes, (uint32_t)data->nodes_count);
+					pmd[j].Count = (uint32_t)indices.size() - pmd[j].FirstIndex;
+					pmd[j].MaterialIndex = materialIndexMap[primitive.material];
+					check(primitive.indices->count == pmd[j].Count);
+				}
+
+				// Sort primitives by index
+				std::sort(pmd.begin(), pmd.end(),
+					[](const PrimitiveMeshData& a, const PrimitiveMeshData& b) {return a.MaterialIndex < b.MaterialIndex; }
+				);
+
+				// Submit data
+				Mesh mesh;
+				mesh.MoveIndicesFrom(indices);
+				mesh.MoveVerticesFrom(vertices);
+				SubmitMesh(mesh);
+
+				// TODO: find out a better way to assign primitives to mesh render data.
+				MeshRenderData& mrd = GetMeshRenderData(mesh.GetHandle());
+				mrd.PrimitiveArray = std::move(pmd);
+				mrd.IndexCount = (uint32_t)mesh.GetIndexCount();
+
+				SetMesh(renderObject, mesh);
+
+				if (node.mesh->name && *node.mesh->name)
+					SetRenderObjectName(renderObject, node.mesh->name);
+			}
+		}
+		gltf_api::FreeData(data);
+		return true;
 	}
 
 	void Scene::DestroyRenderObject(RenderObject object)
@@ -601,8 +623,8 @@ namespace vkmmc
 
 	RenderObject Scene::GetRoot() const
 	{
-		RenderObject root = 0;
-		for (; m_hierarchy[root].Parent.IsValid(); root = m_hierarchy[root].Parent);
+		static RenderObject root = 0;
+		//for (; m_hierarchy[root].Parent.IsValid(); root = m_hierarchy[root].Parent);
 		return root;
 	}
 

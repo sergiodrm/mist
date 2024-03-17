@@ -112,6 +112,8 @@ namespace vkmmc
 		virtual void Init() override;
 		virtual void Destroy() override;
 
+		virtual bool LoadModel(const char* filepath) override;
+
 		virtual RenderObject CreateRenderObject(RenderObject parent) override;
 		virtual void DestroyRenderObject(RenderObject object) override;
 		virtual bool IsValid(RenderObject object) const override;
