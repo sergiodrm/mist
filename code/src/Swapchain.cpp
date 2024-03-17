@@ -22,16 +22,16 @@ namespace vkmmc
 		m_swapchain = swapchain.swapchain;
 		m_images = swapchain.get_images().value();
 		m_imageViews = swapchain.get_image_views().value();
-		m_imageFormat = types::FormatType(swapchain.image_format);
+		m_imageFormat = fromvk::GetFormat(swapchain.image_format);
 
 		// Create depth buffer
 		VkExtent3D depthExtent = { spec.ImageWidth, spec.ImageHeight, 1 };
-		m_depthFormat = types::FormatType(VK_FORMAT_D32_SFLOAT);
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthExtent);
+		m_depthFormat = FORMAT_D32;
+		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(m_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthExtent);
 		m_depthImage = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 
 		// Image view
-		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(types::FormatType(m_depthFormat), m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
+		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(m_depthFormat, m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
 		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_depthImageView));
 		return true;
 	}

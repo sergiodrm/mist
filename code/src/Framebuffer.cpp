@@ -10,64 +10,51 @@
 
 
 namespace vkmmc
-{   
-    Framebuffer::Builder Framebuffer::Builder::Create(const RenderContext& renderContext, uint32_t width, uint32_t height)
+{
+
+    Framebuffer::Builder::Builder(const RenderContext& renderContext, const tExtent3D& extent)
+        : m_renderContext(renderContext), m_extent(extent), m_cleanFlags(0)
+    {    }
+
+    Framebuffer::Builder::~Builder()
     {
-        Builder builder(renderContext);
-        builder.m_width = width;
-        builder.m_height = height;
-        return builder;
+        check(m_attachments.empty());
+        check(m_imageArray.empty());
     }
 
-    Framebuffer::Builder& Framebuffer::Builder::AddAttachment(VkImageView imageView, bool freeOnDestroy)
+    void Framebuffer::Builder::AddAttachment(VkImageView imageView, bool freeOnDestroy)
     {
-        check(m_attachments.size() < 8); // m_cleanFlags maximum capacity
         if (freeOnDestroy)
             MarkToClean((uint32_t)m_attachments.size());
         m_attachments.push_back(imageView);
-        return *this;
     }
 
-    Framebuffer::Builder& Framebuffer::Builder::CreateColorAttachment(EFormat fmt)
+    void Framebuffer::Builder::CreateAttachment(EFormat format, EImageUsage usage)
     {
-		VkExtent3D extent = { m_width, m_height, 1 };
-		VkFormat format = types::FormatType(fmt);
+        VkImageAspectFlags aspectFlags = 0;
+        if (usage & IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+            aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+        else if (usage & IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        {
+            aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
+        }
+        check(aspectFlags);
 
-        VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, 
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            extent);
-        AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
+        VkImageCreateInfo imageCI = vkinit::ImageCreateInfo(format, usage, m_extent);
+		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageCI, MEMORY_USAGE_GPU);
 		m_imageArray.push_back(image);
 
-		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, VK_IMAGE_ASPECT_COLOR_BIT);
-        VkImageView view;
+		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, aspectFlags);
+		VkImageView view;
 		vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
-        MarkToClean((uint32_t)m_attachments.size());
-        return AddAttachment(view);
+		AddAttachment(view, true);
     }
 
-    Framebuffer::Builder& Framebuffer::Builder::CreateDepthStencilAttachment(EFormat fmt)
+    bool Framebuffer::Builder::Build(Framebuffer& framebuffer, VkRenderPass renderPass)
     {
-		// Create depth buffer
-		VkExtent3D depthExtent = { m_width, m_height, 1 };
-		VkFormat depthFormat = types::FormatType(fmt);
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(depthFormat,
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            depthExtent);
-		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-        m_imageArray.push_back(image);
-
-		// Image view
-		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(depthFormat, image.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
-        VkImageView view;
-		vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
-
-        MarkToClean((uint32_t)m_attachments.size());
-        return AddAttachment(view);
-    }
-
-    Framebuffer Framebuffer::Builder::Build(VkRenderPass renderPass)
-    {
+        check(framebuffer.m_framebuffer == VK_NULL_HANDLE);
+        check(framebuffer.m_imageArray.empty());
+        check(framebuffer.m_attachmentViewArray.empty());
 		VkFramebufferCreateInfo info
 		{
 			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -75,29 +62,33 @@ namespace vkmmc
 			.renderPass = renderPass,
 			.attachmentCount = (uint32_t)m_attachments.size(),
 			.pAttachments = m_attachments.data(),
-			.width = m_width,
-			.height = m_height,
+			.width = m_extent.width,
+			.height = m_extent.height,
 			.layers = 1
 		};
 		VkFramebuffer framebufferHandle;
 		vkcheck(vkCreateFramebuffer(m_renderContext.Device, &info, nullptr, &framebufferHandle));
 
-        Framebuffer framebuffer;
         framebuffer.m_imageArray = std::move(m_imageArray);
-        framebuffer.m_atttachmentViewArray = std::move(m_attachments);
-        framebuffer.m_width = m_width;
-        framebuffer.m_height = m_height;
+        framebuffer.m_attachmentViewArray = std::move(m_attachments);
+        framebuffer.m_extent = m_extent;
         framebuffer.m_cleanFlags = m_cleanFlags;
         framebuffer.m_framebuffer = framebufferHandle;
-		return framebuffer;
+		return true;
     }
 
     void Framebuffer::Builder::MarkToClean(uint32_t index)
     {
+        check(index < sizeof(m_cleanFlags));
         m_cleanFlags |= BIT_N(index);
     }
 
-    Framebuffer::Builder::Builder(const RenderContext& renderContext) : m_renderContext(renderContext), m_cleanFlags(0) {}
+    Framebuffer::~Framebuffer()
+    {
+        check(m_framebuffer == VK_NULL_HANDLE);
+        check(m_imageArray.empty());
+        check(m_attachmentViewArray.empty());
+    }
 
     void Framebuffer::Destroy(const RenderContext& renderContext)
     {
@@ -105,12 +96,15 @@ namespace vkmmc
         {
             Memory::DestroyImage(renderContext.Allocator, m_imageArray[i]);
         }
-        for (uint32_t i = 0; i < m_atttachmentViewArray.size(); ++i)
+        m_imageArray.clear();
+        for (uint32_t i = 0; i < m_attachmentViewArray.size(); ++i)
         {
             if (m_cleanFlags & BIT_N(i))
-                vkDestroyImageView(renderContext.Device, m_atttachmentViewArray[i], nullptr);
+                vkDestroyImageView(renderContext.Device, m_attachmentViewArray[i], nullptr);
         }
+        m_attachmentViewArray.clear();
         vkDestroyFramebuffer(renderContext.Device, m_framebuffer, nullptr);
+        m_framebuffer = VK_NULL_HANDLE;
     }
 
     VkFramebuffer Framebuffer::GetFramebufferHandle() const

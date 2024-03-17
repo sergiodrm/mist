@@ -32,7 +32,7 @@ namespace vkmmc
 
 	RenderPassBuilder& RenderPassBuilder::AddAttachment(EFormat format, VkImageLayout finalLayout)
 	{
-		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(types::FormatType(format), finalLayout));
+		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(tovk::GetFormat(format), finalLayout));
 		return *this;
 	}
 

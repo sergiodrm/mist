@@ -151,7 +151,7 @@ namespace vkmmc
         inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
         m_quadPipeline = RenderPipeline::Create(info.RContext, info.Pass, 0, shaders, 2, inputLayout);
 
-        VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(VK_FILTER_LINEAR);
+        VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR);
         vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthSampler);
 
         // Submit buffer uniform info

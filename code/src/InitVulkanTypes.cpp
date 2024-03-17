@@ -235,50 +235,48 @@ namespace vkmmc
 			return info;
 		}
 
-		VkImageCreateInfo ImageCreateInfo(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent, uint32_t arrayLayers)
+		VkImageCreateInfo ImageCreateInfo(EFormat format, EImageUsage usageFlags, tExtent3D extent, uint32_t arrayLayers)
 		{
 			VkImageCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 			info.pNext = nullptr;
-
 			info.imageType = VK_IMAGE_TYPE_2D;
-			info.format = format;
+			info.format = tovk::GetFormat(format);
 			info.extent = extent;
 			info.mipLevels = 1;
 			info.arrayLayers = arrayLayers;
 			info.samples = VK_SAMPLE_COUNT_1_BIT;
 			info.tiling = VK_IMAGE_TILING_OPTIMAL;
-			info.usage = usageFlags;
-
+			info.usage = tovk::GetImageUsage(usageFlags);
 			return info;
 		}
 
-		VkImageViewCreateInfo ImageViewCreateInfo(VkFormat format, VkImage image, VkImageAspectFlags aspectFlags, uint32_t baseArrayLayer, uint32_t layerCount)
+		VkImageViewCreateInfo ImageViewCreateInfo(EFormat format, VkImage image, EImageAspect aspectFlags, uint32_t baseArrayLayer, uint32_t layerCount)
 		{
 			VkImageViewCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 			info.pNext = nullptr;
 			info.viewType = VK_IMAGE_VIEW_TYPE_2D;
 			info.image = image;
-			info.format = format;
+			info.format = tovk::GetFormat(format);
 			info.subresourceRange.baseMipLevel = 0;
 			info.subresourceRange.levelCount = 1;
 			info.subresourceRange.baseArrayLayer = baseArrayLayer;
 			info.subresourceRange.layerCount = layerCount;
-			info.subresourceRange.aspectMask = aspectFlags;
+			info.subresourceRange.aspectMask = tovk::GetImageUsage(aspectFlags);
 			return info;
 		}
 
-		VkSamplerCreateInfo SamplerCreateInfo(VkFilter filters, VkSamplerAddressMode samplerAddressMode)
+		VkSamplerCreateInfo SamplerCreateInfo(EFilterType filters, ESamplerAddressMode samplerAddressMode)
 		{
 			VkSamplerCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 			info.pNext = nullptr;
-			info.magFilter = filters;
-			info.minFilter = filters;
-			info.addressModeU = samplerAddressMode;
-			info.addressModeV = samplerAddressMode;
-			info.addressModeW = samplerAddressMode;
+			info.magFilter = tovk::GetFilter(filters);
+			info.minFilter = tovk::GetFilter(filters);
+			info.addressModeU = tovk::GetSamplerAddressMode(samplerAddressMode);
+			info.addressModeV = tovk::GetSamplerAddressMode(samplerAddressMode);
+			info.addressModeW = tovk::GetSamplerAddressMode(samplerAddressMode);
 			return info;
 		}
 

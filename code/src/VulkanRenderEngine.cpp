@@ -129,7 +129,7 @@ namespace vkmmc
 			rendererCreateInfo.FrameUniformBufferArray[i] = &m_frameContextArray[i].GlobalBuffer;
 			check(m_shadowMapAttachments[i].FramebufferArray.size() == globals::MaxShadowMapAttachments);
 			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-				rendererCreateInfo.ShadowMapAttachments[i].push_back(m_shadowMapAttachments[i].FramebufferArray[j].GetImageViewAt(0));
+				rendererCreateInfo.ShadowMapAttachments[i].push_back(m_shadowMapAttachments[i].FramebufferArray[j]->GetImageViewAt(0));
 		}
 
 		rendererCreateInfo.ConstantRange = nullptr;
@@ -593,11 +593,12 @@ namespace vkmmc
 		{
 			// Swapchain Framebuffer
 			const RenderPass& pass = m_renderPassArray[RENDER_PASS_POST_PROCESS];
-			m_swapchainAttachments[i].FramebufferArray.push_back(
-				Framebuffer::Builder::Create(m_renderContext, pass.Width, pass.Height)
-				.AddAttachment(m_swapchain.GetImageViewAt(i))
-				.Build(pass.RenderPass)
-			);
+			Framebuffer* fb = new Framebuffer();
+			Framebuffer::Builder builder(m_renderContext, { .width = pass.Width, .height = pass.Height });
+			builder.AddAttachment(m_swapchain.GetImageViewAt(i));
+			builder.Build(*fb, pass.RenderPass);
+
+			m_swapchainAttachments[i].FramebufferArray.push_back(fb);
 			m_shutdownStack.Add([this, i] { m_swapchainAttachments[i].Destroy(m_renderContext); });
 		}
 
@@ -606,32 +607,34 @@ namespace vkmmc
 		{
 			// Shadow map Framebuffer
 			const RenderPass& shadowPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
-			VkExtent3D extent{ .width = shadowPass.Width, .height = shadowPass.Height, .depth = 1 };
-			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(VK_FORMAT_D32_SFLOAT,
-				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			tExtent3D extent{ .width = shadowPass.Width, .height = shadowPass.Height, .depth = 1 };
+			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(FORMAT_D32,
+				IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT,
 				extent, globals::MaxShadowMapAttachments);
 			AllocatedImage depthImage = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 			m_shadowMapAttachments[i].Image = depthImage;
 			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 			{
-				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(VK_FORMAT_D32_SFLOAT, depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT, j);
+				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(FORMAT_D32, depthImage.Image, IMAGE_ASPECT_DEPTH_BIT, j);
 				VkImageView view;
 				vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
-				m_shadowMapAttachments[i].FramebufferArray.push_back(
-					Framebuffer::Builder::Create(m_renderContext, shadowPass.Width, shadowPass.Height)
-					.AddAttachment(view, true)
-					.Build(shadowPass.RenderPass)
-				);
+
+				Framebuffer* fb = new Framebuffer();
+				Framebuffer::Builder builder(m_renderContext, extent);
+				builder.AddAttachment(view, true);
+				builder.Build(*fb, shadowPass.RenderPass);
+				m_shadowMapAttachments[i].FramebufferArray.push_back(fb);
 			}
 
 			// Color framebuffer
 			const RenderPass& colorPass = m_renderPassArray[RENDER_PASS_LIGHTING];
 			RenderPassAttachment& colorPassAttachment = m_colorAttachments[i];
 			colorPassAttachment.FramebufferArray.resize(1);
-			colorPassAttachment.FramebufferArray[0] = Framebuffer::Builder::Create(m_renderContext, colorPass.Width, colorPass.Height)
-				.CreateColorAttachment(m_swapchain.GetImageFormat())
-				.CreateDepthStencilAttachment(m_swapchain.GetDepthFormat())
-				.Build(colorPass.RenderPass);
+			Framebuffer* fb = new Framebuffer();
+			Framebuffer::Builder builder(m_renderContext, extent);
+			builder.CreateAttachment(m_swapchain.GetImageFormat(), IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
+			builder.CreateAttachment(m_swapchain.GetDepthFormat(), IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
+			builder.Build(*fb, colorPass.RenderPass);
 
 			// Destroy on shutdown
 			m_shutdownStack.Add([this, i]()
@@ -716,7 +719,7 @@ namespace vkmmc
 			VkDescriptorImageInfo quadImageInfo;
 			quadImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			//quadImageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			quadImageInfo.imageView = m_colorAttachments[i].FramebufferArray[0].GetImageViewAt(0);
+			quadImageInfo.imageView = m_colorAttachments[i].FramebufferArray[0]->GetImageViewAt(0);
 			quadImageInfo.sampler = m_quadSampler.GetSampler();
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindImage(0, &quadImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -735,7 +738,7 @@ namespace vkmmc
 		std::vector<IRendererBase*>& renderers = m_renderers[passType];
 		for (uint32_t i = 0; i < (uint32_t)passAttachment.FramebufferArray.size(); ++i)
 		{
-			renderPass.BeginPass(cmd, passAttachment.FramebufferArray[i].GetFramebufferHandle());
+			renderPass.BeginPass(cmd, passAttachment.FramebufferArray[i]->GetFramebufferHandle());
 			for (IRendererBase* it : renderers)
 				it->RecordCmd(m_renderContext, GetFrameContext(), i);
 			renderPass.EndPass(cmd);
@@ -759,7 +762,11 @@ namespace vkmmc
 	void RenderPassAttachment::Destroy(const RenderContext& renderContext)
 	{
 		for (uint32_t i = 0; i < (uint32_t)FramebufferArray.size(); ++i)
-			FramebufferArray[i].Destroy(renderContext);
+		{
+			FramebufferArray[i]->Destroy(renderContext);
+			delete FramebufferArray[i];
+		}
+		FramebufferArray.clear();
 
 		if (Image.IsAllocated())
 			Memory::DestroyImage(renderContext.Allocator, Image);

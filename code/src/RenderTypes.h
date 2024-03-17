@@ -12,12 +12,17 @@
 #else
 #error SO not supported.
 #endif
+
+#define DEFINE_FLAG_BITS_TYPE(flagName) typedef vkmmc::tFlagBits flagName
 #define DEFINE_ENUM_BIT_OPERATORS(enumType) DEFINE_ENUM_FLAG_OPERATORS(enumType)
 #define BIT_N(n) (1 << n)
 
 namespace vkmmc
 {
 	struct RenderContext;
+
+	typedef uint32_t tFlagBits;
+	typedef VkExtent3D tExtent3D;
 
 	enum EImageLayout
 	{
@@ -38,13 +43,82 @@ namespace vkmmc
 		FORMAT_D32,
 		FORMAT_INVALID = 0x7fffffff
 	};
-	namespace types
-	{
-		VkImageLayout ImageLayoutType(EImageLayout layout);
-		EImageLayout ImageLayoutType(VkImageLayout layout);
 
-		VkFormat FormatType(EFormat format);
-		EFormat FormatType(VkFormat format);
+	enum EImageUsageBits
+	{
+		IMAGE_USAGE_TRANSFER_SRC_BIT = 0x00000001,
+		IMAGE_USAGE_TRANSFER_DST_BIT = 0x00000002,
+		IMAGE_USAGE_SAMPLED_BIT = 0x00000004,
+		IMAGE_USAGE_STORAGE_BIT = 0x00000008,
+		IMAGE_USAGE_COLOR_ATTACHMENT_BIT = 0x00000010,
+		IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = 0x00000020,
+		IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT = 0x00000040,
+		IMAGE_USAGE_INPUT_ATTACHMENT_BIT = 0x00000080,
+		IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT = 0x00000200,
+		IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = 0x00000100,
+		IMAGE_USAGE_INVOCATION_MASK_BIT_HUAWEI = 0x00040000,
+		IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV = VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR,
+		IMAGE_USAGE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+	};
+	DEFINE_FLAG_BITS_TYPE(EImageUsage);
+
+	enum EImageAspectBits 
+	{
+		IMAGE_ASPECT_COLOR_BIT = 0x00000001,
+		IMAGE_ASPECT_DEPTH_BIT = 0x00000002,
+		IMAGE_ASPECT_STENCIL_BIT = 0x00000004,
+		IMAGE_ASPECT_METADATA_BIT = 0x00000008,
+		IMAGE_ASPECT_PLANE_0_BIT = 0x00000010,
+		IMAGE_ASPECT_PLANE_1_BIT = 0x00000020,
+		IMAGE_ASPECT_PLANE_2_BIT = 0x00000040,
+		IMAGE_ASPECT_NONE = 0,
+		IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT = 0x00000080,
+		IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT = 0x00000100,
+		IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT = 0x00000200,
+		IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT = 0x00000400,
+		IMAGE_ASPECT_PLANE_0_BIT_KHR = IMAGE_ASPECT_PLANE_0_BIT,
+		IMAGE_ASPECT_PLANE_1_BIT_KHR = IMAGE_ASPECT_PLANE_1_BIT,
+		IMAGE_ASPECT_PLANE_2_BIT_KHR = IMAGE_ASPECT_PLANE_2_BIT,
+		IMAGE_ASPECT_NONE_KHR = VK_IMAGE_ASPECT_NONE,
+		IMAGE_ASPECT_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+	};
+	DEFINE_FLAG_BITS_TYPE(EImageAspect);
+
+	enum EFilterType
+	{
+		FILTER_NEAREST,
+		FILTER_LINEAR,
+		FILTER_CUBIC,
+		FILTER_MAX_ENUM
+	};
+
+	enum ESamplerAddressMode
+	{
+		SAMPLER_ADDRESS_MODE_REPEAT,
+		SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+		SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+		SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
+		SAMPLER_ADDRESS_MODE_MAX_ENUM,
+	};
+
+	namespace tovk
+	{
+		VkImageLayout GetImageLayout(EImageLayout layout);
+		VkFormat GetFormat(EFormat format);
+		VkImageUsageFlags GetImageUsage(EImageUsage usage);
+		VkImageAspectFlags GetImageAspect(EImageAspect aspect);
+		VkFilter GetFilter(EFilterType type);
+		VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode);
+	}
+	namespace fromvk
+	{
+		EImageLayout GetImageLayout(VkImageLayout layout);
+		EFormat GetFormat(VkFormat format);
+		EImageUsage GetImageUsage(VkImageUsageFlags usage);
+		EImageAspect GetImageAspect(VkImageAspectFlags aspect);
+		EFilterType GetFilter(VkFilter type);
+		ESamplerAddressMode GetSamplerAddressMode(VkSamplerAddressMode mode);
 	}
 
 	namespace utils

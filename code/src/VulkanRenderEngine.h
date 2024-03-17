@@ -59,7 +59,7 @@ namespace vkmmc
 	struct RenderPassAttachment
 	{
 		AllocatedImage Image;
-		std::vector<Framebuffer> FramebufferArray;
+		std::vector<Framebuffer*> FramebufferArray;
 
 		void Destroy(const RenderContext& renderContext);
 	};

@@ -32,23 +32,7 @@ namespace vkmmc
 		VkImageView m_imageView;
 	};
 
-	enum EFilterType
-	{
-		FILTER_NEAREST,
-		FILTER_LINEAR,
-		FILTER_CUBIC
-	};
-	VkFilter GetFilterType(EFilterType type);
-
-	enum ESamplerAddressMode
-	{
-		SAMPLER_ADDRESS_MODE_REPEAT,
-		SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
-		SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-		SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-		SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE,
-	};
-	VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode);
+	
 
 	class Sampler
 	{

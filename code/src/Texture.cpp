@@ -65,7 +65,6 @@ namespace vkmmc
 		// Create transit buffer
 		VkDeviceSize size = textureRaw.Width * textureRaw.Height * textureRaw.Channels;
 		EFormat imageFormat = vkutils::GetImageFormatFromChannels(textureRaw.Channels);
-		VkFormat format = types::FormatType(imageFormat);
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(renderContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
 		Memory::MemCopy(renderContext.Allocator, stageBuffer, textureRaw.Pixels, size);
@@ -75,7 +74,7 @@ namespace vkmmc
 		extent.width = textureRaw.Width;
 		extent.height = textureRaw.Height;
 		extent.depth = 1;
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
+		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(imageFormat, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
 		m_image = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 
 		utils::CmdSubmitTransfer(renderContext, 
@@ -136,7 +135,7 @@ namespace vkmmc
 			.pNext = nullptr,
 			.image = m_image.Image,
 			.viewType = VK_IMAGE_VIEW_TYPE_2D,
-			.format = format,
+			.format = tovk::GetFormat(imageFormat),
 		};
 		viewInfo.subresourceRange.baseMipLevel = 0;
 		viewInfo.subresourceRange.levelCount = 1;
@@ -176,32 +175,6 @@ namespace vkmmc
 		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
-	VkFilter GetFilterType(EFilterType type)
-	{
-		switch (type)
-		{
-		case FILTER_NEAREST: return VK_FILTER_NEAREST;
-		case FILTER_LINEAR: return VK_FILTER_LINEAR;
-		case FILTER_CUBIC: return VK_FILTER_CUBIC_IMG;
-		default:
-			check(false && "Unreachable");	
-		}
-		return VK_FILTER_MAX_ENUM;
-	}
-	VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode)
-	{
-		switch (mode)
-		{
-		case SAMPLER_ADDRESS_MODE_REPEAT: return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		case SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-		case SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		case SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER: return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-		case SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE: return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-		default:
-			check(false && "Unreachable");
-		}
-		return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
-	}
 
 	void Sampler::Destroy(const RenderContext& renderContext)
 	{
@@ -212,7 +185,7 @@ namespace vkmmc
 	Sampler SamplerBuilder::Build(const RenderContext& renderContext) const
 	{
 		VkSampler sampler;
-		VkSamplerCreateInfo info = vkinit::SamplerCreateInfo(GetFilterType(MinFilter), GetSamplerAddressMode(AddressMode.AddressMode.U));
+		VkSamplerCreateInfo info = vkinit::SamplerCreateInfo(MinFilter, AddressMode.AddressMode.U);
 		vkcheck(vkCreateSampler(renderContext.Device, &info, nullptr, &sampler));
 		return Sampler(sampler);
 	}

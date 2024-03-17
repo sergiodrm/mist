@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
+#include "RenderTypes.h"
 
 namespace vkmmc
 {
@@ -14,42 +15,44 @@ namespace vkmmc
 
 	class Framebuffer
 	{
+		Framebuffer(const Framebuffer&) = delete;
+		Framebuffer(Framebuffer&&) = delete;
 	public:
+
 		struct Builder
 		{
-			static Builder Create(const RenderContext& renderContext, uint32_t width, uint32_t height);
+			Builder(const RenderContext& renderContext, const tExtent3D& extent);
+			~Builder();
 
-			Builder& AddAttachment(VkImageView imageView, bool freeOnDestroy = false);
-			Builder& CreateColorAttachment(EFormat format);
-			Builder& CreateDepthStencilAttachment(EFormat format);
+			void CreateAttachment(EFormat format, EImageUsage usage);
+			void AddAttachment(VkImageView imageView, bool freeOnDestroy = false);
 
-			Framebuffer Build(VkRenderPass renderPass);
+			bool Build(Framebuffer& framebuffer, VkRenderPass renderPass);
 		private:
 			void MarkToClean(uint32_t index);
 
-			Builder(const RenderContext& renderContext);
 
 			std::vector<VkImageView> m_attachments;
 			std::vector<AllocatedImage> m_imageArray;
-			uint32_t m_width;
-			uint32_t m_height;
+			tExtent3D m_extent;
 			uint8_t m_cleanFlags;
 			const RenderContext& m_renderContext;
 		};
 
+		Framebuffer() = default;
+		~Framebuffer();
 		void Destroy(const RenderContext& renderContext);
 
 		VkFramebuffer GetFramebufferHandle() const;
-		uint32_t GetWidth() const { return m_width; }
-		uint32_t GetHeight() const { return m_height; }
-		VkImageView GetImageViewAt(uint32_t index) const { return m_atttachmentViewArray[index]; }
+		uint32_t GetWidth() const { return m_extent.width; }
+		uint32_t GetHeight() const { return m_extent.height; }
+		VkImageView GetImageViewAt(uint32_t index) const { return m_attachmentViewArray[index]; }
 	private:
 		VkFramebuffer m_framebuffer;
-		uint32_t m_width;
-		uint32_t m_height;
+		tExtent3D m_extent;
 		uint8_t m_cleanFlags;
 
 		std::vector<AllocatedImage> m_imageArray;
-		std::vector<VkImageView> m_atttachmentViewArray;
+		std::vector<VkImageView> m_attachmentViewArray;
 	};
 }
