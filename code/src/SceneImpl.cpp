@@ -86,19 +86,29 @@ namespace gltf_api
 		return 0;
 	}
 
+	void ReadValue(void* dst, const cgltf_float* data, uint32_t count)
+	{
+		memcpy_s(dst, sizeof(float) * count, data, sizeof(float) * count);
+	}
+
 	void ToMat4(glm::mat4* mat, const cgltf_float* cgltfMat4)
 	{
-		memcpy_s(&mat, sizeof(float) * 16, cgltfMat4, sizeof(cgltf_float) * 16);
+		ReadValue(mat, cgltfMat4, 16);
+	}
+
+	void ToVec2(glm::vec2& v, const cgltf_float* data)
+	{
+		ReadValue(&v, data, 2);
 	}
 
 	void ToVec3(glm::vec3& v, const cgltf_float* data)
 	{
-		v = glm::vec3(data[0], data[1], data[2]);
+		ReadValue(&v, data, 3);
 	}
 
 	void ToVec4(glm::vec4& v, const cgltf_float* data)
 	{
-		v = glm::vec4(data[0], data[1], data[2], data[3]);
+		ReadValue(&v, data, 4);
 	}
 
 	void ToQuat(glm::quat& q, const cgltf_float* data)
@@ -146,27 +156,39 @@ namespace gltf_api
 	void ReadAttribute(vkmmc::Vertex& vertex, const float* source, uint32_t index, cgltf_attribute_type type)
 	{
 		const char* attributeName = nullptr;
+		const float* data = &source[index];
 		switch (type)
 		{
 		case cgltf_attribute_type_position:
-			vertex.Position = glm::vec3(source[index], source[index + 1], source[index + 2]);
+			ToVec3(vertex.Position, data);
 			break;
 		case cgltf_attribute_type_texcoord:
-			vertex.TexCoords = glm::vec2(source[index], source[index + 1]);
+			ToVec2(vertex.TexCoords, data);
 			break;
 		case cgltf_attribute_type_normal:
-			vertex.Normal = glm::vec3(source[index], source[index + 1], source[index + 2]);
+			ToVec3(vertex.Normal, data);
 			if (Length2(vertex.Normal) < 1e-5f)
 				vertex.Normal = glm::vec3{ 0.f, 1.f, 0.f };
 			else
 				vertex.Normal = glm::normalize(vertex.Normal);
 			break;
 		case cgltf_attribute_type_color:
-			vertex.Color = glm::vec3(source[index], source[index + 1], source[index + 2]);
+			ToVec3(vertex.Color, data);
 			break;
-		case cgltf_attribute_type_tangent: attributeName = "tangent"; break;
-		case cgltf_attribute_type_joints: attributeName = "joints"; break;
-		case cgltf_attribute_type_weights: attributeName = "weights"; break;
+		case cgltf_attribute_type_tangent: 
+			ToVec3(vertex.Tangent, data);
+			break;
+		case cgltf_attribute_type_joints: 
+#ifdef VKMMC_ENABLE_LOADER_LOG
+			attributeName = "joints";
+#endif // VKMMC_ENABLE_LOADER_LOG
+
+			break;
+		case cgltf_attribute_type_weights: 
+#ifdef VKMMC_ENABLE_LOADER_LOG
+			attributeName = "weights";
+#endif // VKMMC_ENABLE_LOADER_LOG
+			break;
 		case cgltf_attribute_type_invalid:
 		case cgltf_attribute_type_custom:
 		case cgltf_attribute_type_max_enum:
@@ -174,8 +196,11 @@ namespace gltf_api
 		default:
 			break;
 		}
-		//if (attributeName)
-		//	vkmmc::Logf(vkmmc::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
+#ifdef VKMMC_ENABLE_LOADER_LOG
+		if (attributeName)
+			vkmmc::Logf(vkmmc::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
+#endif // VKMMC_ENABLE_LOADER_LOG
+
 	}
 
 	// Attributes are an continuous array of positions, normals, uvs...

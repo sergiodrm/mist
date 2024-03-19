@@ -111,6 +111,7 @@ namespace vkmmc
 					EAttributeType::Float3, // Position
 					EAttributeType::Float3, // Normal
 					EAttributeType::Float3, // Color
+					EAttributeType::Float3, // Tangent
 					EAttributeType::Float2 // UVs
 				}
 			);
