@@ -26,7 +26,7 @@ namespace vkmmc
 
 		// Create depth buffer
 		VkExtent3D depthExtent = { spec.ImageWidth, spec.ImageHeight, 1 };
-		m_depthFormat = FORMAT_D32;
+		m_depthFormat = FORMAT_D32_SFLOAT;
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(m_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthExtent);
 		m_depthImage = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 

@@ -29,6 +29,8 @@ namespace vkmmc
 
 		void BeginPass(VkCommandBuffer cmd, VkFramebuffer framebuffer) const;
 		void EndPass(VkCommandBuffer cmd) const;
+
+		void Destroy(const RenderContext& renderContext);
 	};
 
 	struct RenderPassSubpassDescription
@@ -44,7 +46,7 @@ namespace vkmmc
 	public:
 		static RenderPassBuilder Create();
 
-		RenderPassBuilder& AddAttachment(EFormat format, VkImageLayout finalLayout);
+		RenderPassBuilder& AddAttachment(EFormat format, EImageLayout finalLayout);
 		RenderPassBuilder& AddSubpass(const std::initializer_list<uint32_t>& colorAttachmentIndices,
 			uint32_t depthIndex, 
 			const std::initializer_list<uint32_t>& inputAttachments);

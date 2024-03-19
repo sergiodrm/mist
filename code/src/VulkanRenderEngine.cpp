@@ -483,8 +483,8 @@ namespace vkmmc
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 			m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass = RenderPassBuilder::Create()
-				.AddAttachment(m_swapchain.GetImageFormat(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.AddAttachment(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)
+				.AddAttachment(m_swapchain.GetImageFormat(), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+				.AddAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass(
 					{ 0 }, // Color attachments
 					1, // Depth attachment
@@ -524,7 +524,7 @@ namespace vkmmc
 			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 			m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass = RenderPassBuilder::Create()
-				.AddAttachment(FORMAT_D32, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+				.AddAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
 				.AddSubpass({}, 0, {})
 				.AddDependencies(dependencies.data(), (uint32_t)dependencies.size())
 				.Build(m_renderContext);
@@ -558,7 +558,7 @@ namespace vkmmc
 			dependencies[1].dependencyFlags = 0;
 
 			m_renderPassArray[RENDER_PASS_POST_PROCESS].RenderPass = RenderPassBuilder::Create()
-				.AddAttachment(m_swapchain.GetImageFormat(), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+				.AddAttachment(m_swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR)
 				.AddSubpass({ 0 }, UINT32_MAX, {})
 				.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
 				.Build(m_renderContext);
@@ -608,14 +608,14 @@ namespace vkmmc
 			// Shadow map Framebuffer
 			const RenderPass& shadowPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
 			tExtent3D extent{ .width = shadowPass.Width, .height = shadowPass.Height, .depth = 1 };
-			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(FORMAT_D32,
+			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(FORMAT_D32_SFLOAT,
 				IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT,
 				extent, globals::MaxShadowMapAttachments);
 			AllocatedImage depthImage = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 			m_shadowMapAttachments[i].Image = depthImage;
 			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 			{
-				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(FORMAT_D32, depthImage.Image, IMAGE_ASPECT_DEPTH_BIT, j);
+				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(FORMAT_D32_SFLOAT, depthImage.Image, IMAGE_ASPECT_DEPTH_BIT, j);
 				VkImageView view;
 				vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
 
@@ -635,6 +635,7 @@ namespace vkmmc
 			builder.CreateAttachment(m_swapchain.GetImageFormat(), IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 			builder.CreateAttachment(m_swapchain.GetDepthFormat(), IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 			builder.Build(*fb, colorPass.RenderPass);
+			colorPassAttachment.FramebufferArray[0] = fb;
 
 			// Destroy on shutdown
 			m_shutdownStack.Add([this, i]()

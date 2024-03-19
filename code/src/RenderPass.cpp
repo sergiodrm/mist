@@ -24,15 +24,20 @@ namespace vkmmc
 		vkCmdEndRenderPass(cmd);
 	}
 
+	void RenderPass::Destroy(const RenderContext& renderContext)
+	{
+		vkDestroyRenderPass(renderContext.Device, RenderPass, nullptr);
+	}
+
 	RenderPassBuilder RenderPassBuilder::Create()
 	{
 		RenderPassBuilder builder;
 		return builder;
 	}
 
-	RenderPassBuilder& RenderPassBuilder::AddAttachment(EFormat format, VkImageLayout finalLayout)
+	RenderPassBuilder& RenderPassBuilder::AddAttachment(EFormat format, EImageLayout finalLayout)
 	{
-		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(tovk::GetFormat(format), finalLayout));
+		m_attachments.push_back(vkinit::RenderPassAttachmentDescription(format, finalLayout));
 		return *this;
 	}
 

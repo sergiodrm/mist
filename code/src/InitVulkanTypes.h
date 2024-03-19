@@ -52,7 +52,7 @@ namespace vkmmc
 		/**
 		 * Render pass types
 		 */
-		VkAttachmentDescription RenderPassAttachmentDescription(VkFormat format, VkImageLayout finalLayout);
+		VkAttachmentDescription RenderPassAttachmentDescription(EFormat format, EImageLayout finalLayout);
 		VkRenderPassBeginInfo RenderPassBeginInfo(VkRenderPass renderPass, VkFramebuffer framebuffer, VkRect2D area, const VkClearValue* clearArray, uint32_t clearCount);
 
 		/**

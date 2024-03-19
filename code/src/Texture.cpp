@@ -15,11 +15,11 @@ namespace vkutils
 	{
 		switch (channels)
 		{
-		case 3: return vkmmc::FORMAT_R8G8B8;
-		case 4: return vkmmc::FORMAT_R8G8B8A8;
+		case 3: return vkmmc::FORMAT_R8G8B8_SRGB;
+		case 4: return vkmmc::FORMAT_R8G8B8A8_SRGB;
 		}
 		vkmmc::Logf(vkmmc::LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
-		return vkmmc::FORMAT_INVALID;
+		return vkmmc::FORMAT_UNDEFINED;
 	}
 }
 

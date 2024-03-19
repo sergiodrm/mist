@@ -79,7 +79,7 @@ namespace vkmmc
 
     void Framebuffer::Builder::MarkToClean(uint32_t index)
     {
-        check(index < sizeof(m_cleanFlags));
+        check(index < sizeof(m_cleanFlags) * 8);
         m_cleanFlags |= BIT_N(index);
     }
 
