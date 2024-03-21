@@ -4,7 +4,7 @@
 
 
 #define ASSET_ROOT_PATH "../../assets/"
-#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
+#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/compiled/"
 
 namespace vkmmc
 {
@@ -19,7 +19,7 @@ namespace vkmmc
 		const char* DepthFragmentShader = SHADER_ROOT_PATH "depth.frag.spv";
 		const char* QuadVertexShader = SHADER_ROOT_PATH "quad.vert.spv";
 		const char* QuadFragmentShader = SHADER_ROOT_PATH "quad.frag.spv";
-		const char* DepthQuadFragmentShader = SHADER_ROOT_PATH "quad.frag.spv";
+		const char* DepthQuadFragmentShader = SHADER_ROOT_PATH "depth_quad.frag.spv";
 		const char* PostProcessVertexShader= SHADER_ROOT_PATH "quad.vert.spv";
 		const char* PostProcessFragmentShader= SHADER_ROOT_PATH "postprocess_quad.frag.spv";
 

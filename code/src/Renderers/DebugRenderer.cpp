@@ -146,7 +146,7 @@ namespace vkmmc
         ShaderDescription shaders[2]
         {
             {.Filepath = globals::QuadVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-            {.Filepath = globals::QuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
+            {.Filepath = globals::DepthQuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
         };
         inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
         m_quadPipeline = RenderPipeline::Create(info.RContext, info.Pass, 0, shaders, 2, inputLayout);
