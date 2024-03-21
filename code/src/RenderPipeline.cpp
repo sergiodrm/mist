@@ -24,8 +24,6 @@ namespace vkmmc
 		DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
 		// Rasterization: draw filled triangles
 		Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
-		// Single blenc attachment without blending and writing RGBA
-		ColorBlendAttachment = vkinit::PipelineColorBlendAttachmentState();
 		// Disable multisampling by default
 		Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
 	}
@@ -61,8 +59,8 @@ namespace vkmmc
 		colorBlending.pNext = nullptr;
 		colorBlending.logicOpEnable = VK_FALSE;
 		colorBlending.logicOp = VK_LOGIC_OP_COPY;
-		colorBlending.attachmentCount = 1;
-		colorBlending.pAttachments = &ColorBlendAttachment;
+		colorBlending.attachmentCount = (uint32_t)ColorBlendAttachment.size();
+		colorBlending.pAttachments = ColorBlendAttachment.data();
 
 		// Build the pipeline
 		VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -111,7 +109,8 @@ namespace vkmmc
 		const ShaderDescription* shaderStages,
 		uint32_t shaderStageCount,
 		const VertexInputLayout& inputDescription,
-		VkPrimitiveTopology topology)
+		VkPrimitiveTopology topology, 
+		uint32_t colorAttachmentCount)
 	{
 		check(shaderStages && shaderStageCount > 0);
 		RenderPipelineBuilder builder(renderContext);
@@ -129,6 +128,14 @@ namespace vkmmc
 		}
 		// TODO: remove singleton dependency
 		compiler.GenerateResources(IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetDescriptorSetLayoutCache());
+
+		// Blending info for color attachments
+		builder.ColorBlendAttachment.resize(colorAttachmentCount);
+		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
+		{
+			// Single blenc attachment without blending and writing RGBA
+			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
+		}
 		// Pass layout info
 		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
 		builder.LayoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
@@ -156,7 +163,8 @@ namespace vkmmc
 		const VkPushConstantRange* pushConstants, 
 		uint32_t pushConstantCount, 
 		const VertexInputLayout& inputDescription, 
-		VkPrimitiveTopology topology)
+		VkPrimitiveTopology topology,
+		uint32_t colorAttachmentCount)
 	{
 		check(shaderStages && shaderStageCount > 0);
 		RenderPipelineBuilder builder(renderContext);
@@ -172,6 +180,15 @@ namespace vkmmc
 			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
 			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
 		}
+
+		// Blending info for color attachments
+		builder.ColorBlendAttachment.resize(colorAttachmentCount);
+		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
+		{
+			// Single blenc attachment without blending and writing RGBA
+			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
+		}
+
 		// Pass layout info
 		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
 		builder.LayoutInfo.pushConstantRangeCount = pushConstantCount;
