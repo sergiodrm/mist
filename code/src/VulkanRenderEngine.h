@@ -23,6 +23,7 @@
 #include <string.h>
 #include <chrono>
 #include "Globals.h"
+#include "DeferredRender.h"
 
 namespace vkmmc
 {
@@ -53,8 +54,6 @@ namespace vkmmc
 		glm::mat4 Projection;
 		glm::mat4 ViewProjection;
 	};
-
-	
 
 	struct RenderPassAttachment
 	{
@@ -136,6 +135,7 @@ namespace vkmmc
 		VkDescriptorSetLayout m_globalDescriptorLayout;
 
 		std::vector<IRendererBase*> m_renderers[RENDER_PASS_COUNT];
+		GBuffer m_gbuffer;
 
 		Scene* m_scene;
 		CameraData m_cameraData;

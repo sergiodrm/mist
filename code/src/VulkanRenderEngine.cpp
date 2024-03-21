@@ -98,6 +98,17 @@ namespace vkmmc
 		// Init vulkan context
 		check(InitVulkan());
 
+		// Descriptor layout and allocator
+		m_descriptorLayoutCache.Init(m_renderContext);
+		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+		m_shutdownStack.Add([this]() mutable
+			{
+				m_descriptorAllocator.Destroy();
+				m_descriptorLayoutCache.Destroy();
+			});
+		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
+		m_renderContext.DescAllocator = &m_descriptorAllocator;
+
 		// Swapchain
 		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
 		m_shutdownStack.Add(
@@ -146,6 +157,11 @@ namespace vkmmc
 			for (IRendererBase* renderer : m_renderers[i])
 				renderer->Init(rendererCreateInfo);
 		}
+
+		m_gbuffer.Init(m_renderContext);
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+			m_gbuffer.InitFrameData(m_renderContext, &m_frameContextArray[i].GlobalBuffer, i);
+		m_shutdownStack.Add([this] { m_gbuffer.Destroy(m_renderContext); });
 
 		AddImGuiCallback(&vkmmc_profiling::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
@@ -305,6 +321,8 @@ namespace vkmmc
 		}
 
 		{
+			m_gbuffer.DrawPass(m_renderContext, frameContext);
+
 			uint32_t frameIndex = GetFrameIndex();
 			render::DrawQuadTexture(m_quadSets[frameIndex]);
 			for (uint32_t pass = RENDER_PASS_SHADOW_MAP; pass < RENDER_PASS_COUNT; ++pass)
@@ -679,15 +697,6 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitPipeline()
 	{
-		// Pipeline descriptors
-		m_descriptorLayoutCache.Init(m_renderContext);
-		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
-		m_shutdownStack.Add([this]() mutable
-			{
-				m_descriptorAllocator.Destroy();
-				m_descriptorLayoutCache.Destroy();
-			});
-
 		SamplerBuilder builder;
 		m_quadSampler = builder.Build(m_renderContext);
 		m_shutdownStack.Add([this]() { m_quadSampler.Destroy(m_renderContext); });

@@ -1,9 +1,11 @@
 #version 460
 
+
 layout (location = 0) in vec3 LSPosition;
 layout (location = 1) in vec3 LSNormal;
 layout (location = 2) in vec3 VIColor;
-layout (location = 3) in vec2 TexCoords;
+layout (location = 3) in vec3 Tangent;
+layout (location = 4) in vec2 TexCoords;
 
 layout (location = 0) out vec4 outFragPos;
 layout (location = 1) out vec3 outColor;

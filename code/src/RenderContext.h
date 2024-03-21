@@ -11,7 +11,8 @@ struct SDL_Window;
 
 namespace vkmmc
 {
-
+	class DescriptorLayoutCache;
+	class DescriptorAllocator;
 
 	struct TransferContext
 	{
@@ -30,6 +31,8 @@ namespace vkmmc
 		VkPhysicalDeviceProperties GPUProperties;
 		VkDevice Device;
 		Allocator* Allocator;
+		DescriptorLayoutCache* LayoutCache;
+		DescriptorAllocator* DescAllocator;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
 
