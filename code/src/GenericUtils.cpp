@@ -14,7 +14,10 @@ namespace vkmmc
 		// Open file with std::ios::ate -> with cursor at the end of the file
 		std::ifstream file(filename, std::ios::ate | std::ios::binary);
 		if (!file.is_open())
+		{
+			Logf(LogLevel::Error, "File not found: %s.\n", filename);
 			return false;
+		}
 		// Tell size (remember cursor at the end of the file)
 		size_t fileSize = (size_t)file.tellg();
 		// SpirV expects a uint32 buffer
