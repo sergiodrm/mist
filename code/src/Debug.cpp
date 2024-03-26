@@ -120,6 +120,19 @@ namespace win
 	}
 }
 
+void vkmmc_debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
+{
+	vkmmc_debug::PrintCallstack();
+	vkmmc::Log(vkmmc::LogLevel::Error, "============================================================\n\n");
+	vkmmc::Logf(vkmmc::LogLevel::Error, "Check failed: %s\n\n", txt);
+	vkmmc::Logf(vkmmc::LogLevel::Error, "File: %s\n", file);
+	vkmmc::Logf(vkmmc::LogLevel::Error, "Function: %s\n", fn);
+	vkmmc::Logf(vkmmc::LogLevel::Error, "Line: %d\n\n", line);
+	vkmmc::Log(vkmmc::LogLevel::Error, "============================================================\n\n");
+	__debugbreak();
+	vkmmc_debug::ExitError();
+}
+
 void vkmmc_debug::PrintCallstack(size_t count, size_t offset)
 {
 #ifdef _WIN32
@@ -150,7 +163,7 @@ namespace vkmmc_profiling
 		void Push(const T& value)
 		{
 			Data[Index] = value;
-			Index = GetIndex(Index+1);
+			Index = GetIndex(Index + 1);
 		}
 
 		const T& Get(uint32_t i) const
@@ -158,7 +171,7 @@ namespace vkmmc_profiling
 			return Data[GetIndex(i)];
 		}
 
-		const T& GetLast() const { return Get(Index-1); }
+		const T& GetLast() const { return Get(Index - 1); }
 		uint32_t GetIndex(uint32_t i) const { return i % N; }
 		constexpr uint32_t GetCount() const { return N; }
 
@@ -169,14 +182,14 @@ namespace vkmmc_profiling
 
 	struct sProfilerKey
 	{
-		union 
+		union
 		{
 			char Id[32];
 			uint32_t AsUint;
 		};
 
 		sProfilerKey() : AsUint(0) {}
-		sProfilerKey(const char* id) : AsUint (0) { strcpy_s(Id, id); }
+		sProfilerKey(const char* id) : AsUint(0) { strcpy_s(Id, id); }
 
 		bool operator==(const sProfilerKey& other) const { return AsUint == other.AsUint; }
 
