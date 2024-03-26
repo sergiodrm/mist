@@ -15,6 +15,7 @@ namespace vkmmc
 
 	void Log(LogLevel level, const char* msg);
 	void Logf(LogLevel level, const char* fmt, ...);
+	void FlushLogToFile();
 
 	void InitLog(const char* outputFile);
 	void TerminateLog();

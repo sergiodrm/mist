@@ -30,6 +30,8 @@
 #define ANSI_STYLE_ITALIC       "\x1b[3m"
 #define ANSI_STYLE_UNDERLINE    "\x1b[4m"
 
+//#define LOG_DEBUG_FLUSH
+
 namespace vkmmc
 {
 	const char* LogLevelFormat(LogLevel level)
@@ -169,6 +171,9 @@ namespace vkmmc
 			printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
 			OutputDebugString(msg);
 			GLogFile->Push(level, msg);
+#ifdef LOG_DEBUG_FLUSH
+			GLogFile->Flush();
+#endif // LOG_DEBUG_FLUSH
 		}
 	}
 
@@ -191,6 +196,12 @@ namespace vkmmc
 			va_end(lst);
 			Log(level, buff);
 		}
+	}
+
+	void FlushLogToFile()
+	{
+		check(GLogFile);
+		GLogFile->Flush();
 	}
 
 	void InitLog(const char* outputFile)
