@@ -1,12 +1,10 @@
 // header file for vkmmc project 
 #pragma once
 
-#define VKMMC_MEM_MANAGEMENT
-
-#ifndef VKMMC_MEM_MANAGEMENT
-#include <vk_mem_alloc.h>
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 #include <vulkan/vulkan.h>
+#else
+#include <vk_mem_alloc.h>
 #endif
 
 namespace vkmmc
@@ -23,20 +21,20 @@ namespace vkmmc
 
 	struct Allocator
 	{
-#ifndef VKMMC_MEM_MANAGEMENT
-		VmaAllocator AllocatorInstance;
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 		VkDevice Device;
 		VkPhysicalDevice PhysicalDevice;
+#else
+		VmaAllocator AllocatorInstance;
 #endif
 	};
 
 	struct Allocation
 	{
-#ifndef VKMMC_MEM_MANAGEMENT
-		VmaAllocation Alloc{ nullptr };
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 		VkDeviceMemory Alloc{ nullptr };
+#else
+		VmaAllocation Alloc{ nullptr };
 #endif // !VKMMC_MEM_MANAGEMENT
 		inline bool IsAllocated() const { return Alloc != nullptr; }
 	};
@@ -60,6 +58,7 @@ namespace vkmmc
 		static void Init(Allocator*& allocator, VkInstance vkInstance, VkDevice vkDevice, VkPhysicalDevice vkPhysicalDevice);
 		static void Destroy(Allocator*& allocator);
 
+#ifdef VKMMC_MEM_MANAGEMENT
 		/**
 		 * Common
 		 */
@@ -67,6 +66,7 @@ namespace vkmmc
 		static VkDeviceMemory Allocate(Allocator* allocator, VkBuffer buffer, VkMemoryPropertyFlags memoryProperties);
 		static VkDeviceMemory Allocate(Allocator* allocator, VkImage image, VkMemoryPropertyFlags memoryProperties);
 		static void Free(Allocator* allocator, VkDeviceMemory memory);
+#endif // VKMMC_MEM_MANAGEMENT
 
 		/**
 		 * Buffers

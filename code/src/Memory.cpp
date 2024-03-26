@@ -82,13 +82,14 @@ namespace vkmmc
 	void Memory::Destroy(Allocator*& allocator)
 	{
 #ifndef VKMMC_MEM_MANAGEMENT
-		vmaDestroyAllocator(allocator.AllocatorInstance);
-		allocator.AllocatorInstance = VK_NULL_HANDLE;
+		vmaDestroyAllocator(allocator->AllocatorInstance);
+		allocator->AllocatorInstance = VK_NULL_HANDLE;
 #endif
 		delete allocator;
 		allocator = nullptr;
 	}
 
+#ifdef VKMMC_MEM_MANAGEMENT
 	uint32_t Memory::FindMemoryType(VkPhysicalDevice physicalDevice, uint32_t filter, VkMemoryPropertyFlags flags)
 	{
 		VkPhysicalDeviceMemoryProperties properties;
@@ -135,6 +136,8 @@ namespace vkmmc
 	{
 		vkFreeMemory(allocator->Device, memory, nullptr);
 	}
+#endif // !VKMMC_MEM_MANAGEMENT
+
 
 	AllocatedBuffer Memory::CreateBuffer(Allocator* allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, EMemUsage memUsage)
 	{
@@ -147,17 +150,17 @@ namespace vkmmc
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE
 		};
 		AllocatedBuffer newBuffer;
-#ifndef VKMMC_MEM_MANAGEMENT
+#ifdef VKMMC_MEM_MANAGEMENT
+		vkcheck(vkCreateBuffer(allocator->Device, &bufferInfo, nullptr, &newBuffer.Buffer));
+		newBuffer.Alloc = Allocate(allocator, newBuffer.Buffer, memapi::GetMemPropertyFlags(memUsage));
+		vkcheck(vkBindBufferMemory(allocator->Device, newBuffer.Buffer, newBuffer.Alloc, 0));
+#else
 		VmaAllocationCreateInfo allocInfo
 		{
 			.usage = memapi::GetMemUsage(memUsage)
 		};
-		vkcheck(vmaCreateBuffer(allocator.AllocatorInstance, &bufferInfo, &allocInfo,
+		vkcheck(vmaCreateBuffer(allocator->AllocatorInstance, &bufferInfo, &allocInfo,
 			&newBuffer.Buffer, &newBuffer.Alloc, nullptr));
-#else
-		vkcheck(vkCreateBuffer(allocator->Device, &bufferInfo, nullptr, &newBuffer.Buffer));
-		newBuffer.Alloc = Allocate(allocator, newBuffer.Buffer, memapi::GetMemPropertyFlags(memUsage));
-		vkcheck(vkBindBufferMemory(allocator->Device, newBuffer.Buffer, newBuffer.Alloc, 0));
 #endif // !VKMMC_MEM_MANAGEMENT
 
 		return newBuffer;
@@ -165,13 +168,12 @@ namespace vkmmc
 
 	void Memory::DestroyBuffer(Allocator* allocator, AllocatedBuffer buffer)
 	{
-#ifndef VKMMC_MEM_MANAGEMENT
-		vmaDestroyBuffer(allocator.AllocatorInstance, buffer.Buffer, buffer.Alloc);
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 		Free(allocator, buffer.Alloc);
 		vkDestroyBuffer(allocator->Device, buffer.Buffer, nullptr);
+#else
+		vmaDestroyBuffer(allocator->AllocatorInstance, buffer.Buffer, buffer.Alloc);
 #endif // !VKMMC_MEM_MANAGEMENT
-
 	}
 
 	void Memory::MemCopy(Allocator* allocator, Allocation allocation, const void* source, size_t cpySize, size_t dstOffset, size_t srcOffset)
@@ -181,15 +183,15 @@ namespace vkmmc
 		check(srcOffset < cpySize);
 		void* data;
 		const char* pSrc = reinterpret_cast<const char*>(source);
-#ifndef VKMMC_MEM_MANAGEMENT
-		vkcheck(vmaMapMemory(allocator.AllocatorInstance, allocation.Alloc, &data));
-		char* pData = reinterpret_cast<char*>(data);
-		memcpy_s(pData + dstOffset, cpySize, pSrc + srcOffset, cpySize);
-		vmaUnmapMemory(allocator.AllocatorInstance, allocation.Alloc);
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 		vkcheck(vkMapMemory(allocator->Device, allocation.Alloc, dstOffset, cpySize, 0, &data));
 		memcpy_s(data, cpySize, pSrc + srcOffset, cpySize);
 		vkUnmapMemory(allocator->Device, allocation.Alloc);
+#else
+		vkcheck(vmaMapMemory(allocator->AllocatorInstance, allocation.Alloc, &data));
+		char* pData = reinterpret_cast<char*>(data);
+		memcpy_s(pData + dstOffset, cpySize, pSrc + srcOffset, cpySize);
+		vmaUnmapMemory(allocator->AllocatorInstance, allocation.Alloc);
 #endif // !VKMMC_MEM_MANAGEMENT
 	}
 
@@ -204,18 +206,18 @@ namespace vkmmc
 	AllocatedImage Memory::CreateImage(Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage)
 	{
 		AllocatedImage image;
-#ifndef VKMMC_MEM_MANAGEMENT
-		VmaAllocationCreateInfo allocInfo
-		{
-			.usage = memapi::GetMemUsage(memUsage),
-			.requiredFlags = memProperties
-		};
-		vkcheck(vmaCreateImage(allocator.AllocatorInstance, &imageInfo, &allocInfo,
-			&image.Image, &image.Alloc, nullptr));
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 		vkcheck(vkCreateImage(allocator->Device, &imageInfo, nullptr, &image.Image));
 		image.Alloc = Allocate(allocator, image.Image, memapi::GetMemPropertyFlags(memUsage));
 		vkcheck(vkBindImageMemory(allocator->Device, image.Image, image.Alloc, 0));
+#else
+		VmaAllocationCreateInfo allocInfo
+		{
+			.usage = memapi::GetMemUsage(memUsage),
+			.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+		};
+		vkcheck(vmaCreateImage(allocator->AllocatorInstance, &imageInfo, &allocInfo,
+			&image.Image, &image.Alloc, nullptr));
 #endif // !VKMMC_MEM_MANAGEMENT
 
 		return image;
@@ -223,12 +225,11 @@ namespace vkmmc
 
 	void Memory::DestroyImage(Allocator* allocator, AllocatedImage image)
 	{
-#ifndef VKMMC_MEM_MANAGEMENT
-		vmaDestroyImage(allocator.AllocatorInstance, image.Image, image.Alloc);
-#else
+#ifdef VKMMC_MEM_MANAGEMENT
 		Free(allocator, image.Alloc);
 		vkDestroyImage(allocator->Device, image.Image, nullptr);
+#else
+		vmaDestroyImage(allocator->AllocatorInstance, image.Image, image.Alloc);
 #endif // !VKMMC_MEM_MANAGEMENT
-
 	}
 }
