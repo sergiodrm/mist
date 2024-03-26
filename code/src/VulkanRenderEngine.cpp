@@ -407,12 +407,19 @@ namespace vkmmc
 			//.use_default_debug_messenger()
 			.set_debug_callback(&vkmmc_debug::DebugVulkanCallback)
 			.build();
+		if (instanceReturn.matches_error(vkb::InstanceError::failed_create_instance))
+		{
+			Log(LogLevel::Error, "Failed to create vulkan instance.\n");
+			return false;
+		}
 		vkb::Instance instance = instanceReturn.value();
 		m_renderContext.Instance = instance.instance;
 		m_renderContext.DebugMessenger = instance.debug_messenger;
+		Log(LogLevel::Ok, "Vulkan render instance created...\n");
 
 		// Physical device
 		SDL_Vulkan_CreateSurface(m_window.WindowInstance, m_renderContext.Instance, &m_renderContext.Surface);
+		Log(LogLevel::Ok, "Vulkan surface instance created...\n");
 		vkb::PhysicalDeviceSelector selector(instance);
 		vkb::PhysicalDevice physicalDevice = selector
 			.set_minimum_version(1, 1)
@@ -420,6 +427,7 @@ namespace vkmmc
 			.select()
 			.value();
 		vkb::DeviceBuilder deviceBuilder{ physicalDevice };
+		Log(LogLevel::Ok, "Vulkan physical device instance created...\n");
 		VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParamsFeatures = {};
 		shaderDrawParamsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
 		shaderDrawParamsFeatures.pNext = nullptr;
@@ -428,10 +436,12 @@ namespace vkmmc
 		vkb::Device device = deviceBuilder.build().value();
 		m_renderContext.Device = device.device;
 		m_renderContext.GPUDevice = physicalDevice.physical_device;
+		Log(LogLevel::Ok, "Vulkan logical device instance created...\n");
 
 		// Graphics queue from device
 		m_renderContext.GraphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
 		m_renderContext.GraphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
+		Log(LogLevel::Ok, "Vulkan graphics queue instance created...\n");
 
 		// Dump physical device info
 		VkPhysicalDeviceProperties deviceProperties;
@@ -439,17 +449,19 @@ namespace vkmmc
 		Logf(LogLevel::Info, "Physical device:\n\t- %s\n\t- Id: %d\n\t- VendorId: %d\n",
 			deviceProperties.deviceName, deviceProperties.deviceID, deviceProperties.vendorID);
 
+		m_renderContext.GPUProperties = device.physical_device.properties;
+		Logf(LogLevel::Info, "GPU has minimum buffer alignment of %Id bytes.\n",
+			m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment);
+		Logf(LogLevel::Info, "GPU max bound descriptor sets: %d\n",
+			m_renderContext.GPUProperties.limits.maxBoundDescriptorSets);
+
 		// Init memory allocator
 		Memory::Init(m_renderContext.Allocator, m_renderContext.Instance, m_renderContext.Device, m_renderContext.GPUDevice);
 		m_shutdownStack.Add([this]()
 			{
 				Memory::Destroy(m_renderContext.Allocator);
 			});
-		m_renderContext.GPUProperties = device.physical_device.properties;
-		Logf(LogLevel::Info, "GPU has minimum buffer alignment of %Id bytes.\n",
-			m_renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment);
-		Logf(LogLevel::Info, "GPU max bound descriptor sets: %d\n",
-			m_renderContext.GPUProperties.limits.maxBoundDescriptorSets);
+		Log(LogLevel::Ok, "Vulkan memory allocator instance created...\n");
 		return true;
 	}
 
