@@ -376,6 +376,7 @@ namespace vkmmc
 			for (uint32_t i = 0; i < (uint32_t)m_renderers[passIndex].size(); ++i)
 				m_renderers[passIndex][i]->ImGuiDraw();
 		}
+		m_gbuffer.ImGuiDraw();
 	}
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
