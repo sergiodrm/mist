@@ -7,6 +7,8 @@
 #include "SceneImpl.h"
 #include "VulkanBuffer.h"
 #include "RenderDescriptor.h"
+#include "imgui_internal.h"
+#include "Renderers/DebugRenderer.h"
 
 #define GBUFFER_RT_FORMAT_POSITION FORMAT_R16G16B16A16_SFLOAT
 #define GBUFFER_RT_FORMAT_NORMAL GBUFFER_RT_FORMAT_POSITION
@@ -21,6 +23,19 @@ namespace vkmmc
 {
 	void GBuffer::Init(const RenderContext& renderContext)
 	{
+		tClearValue clearValue{ .color = {1.f, 1.f, 1.f, 1.f} };
+		RenderTargetDescription description;
+		description.AddColorAttachment(GBUFFER_RT_FORMAT_POSITION, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(GBUFFER_RT_FORMAT_NORMAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(GBUFFER_RT_FORMAT_ALBEDO, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+		description.DepthAttachmentDescription.Format = GBUFFER_RT_FORMAT_DEPTH;
+		description.DepthAttachmentDescription.Layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+		description.DepthAttachmentDescription.MultisampledBit = SAMPLE_COUNT_1_BIT;
+		description.DepthAttachmentDescription.ClearValue = clearValue;
+		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
+		description.RenderArea.offset = { .x = 0, .y = 0 };
+		m_renderTarget.Create(renderContext, description);
+
 		InitRenderPass(renderContext);
 		InitFramebuffer(renderContext);
 		InitPipeline(renderContext);
@@ -28,9 +43,11 @@ namespace vkmmc
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
+		m_sampler.Destroy(renderContext);
 		m_pipeline.Destroy(renderContext);
 		m_framebuffer.Destroy(renderContext);
 		m_renderPass.Destroy(renderContext);
+		m_renderTarget.Destroy(renderContext);
 	}
 
 	void GBuffer::InitFrameData(const RenderContext& renderContext, UniformBuffer* buffer, uint32_t frameIndex)
@@ -44,7 +61,8 @@ namespace vkmmc
 	void GBuffer::DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
-		m_renderPass.BeginPass(frameContext.GraphicsCommand, m_framebuffer.GetFramebufferHandle());
+		//m_renderPass.BeginPass(frameContext.GraphicsCommand, m_framebuffer.GetFramebufferHandle());
+		m_renderTarget.Bind(cmd);
 
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineHandle());
 
@@ -52,6 +70,27 @@ namespace vkmmc
 			0, 1, &frameContext.CameraDescriptorSet, 0, nullptr);
 		frameContext.Scene->Draw(cmd, m_pipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[frameContext.FrameIndex].ModelSet);
 		m_renderPass.EndPass(frameContext.GraphicsCommand);
+	}
+
+	void GBuffer::ImGuiDraw()
+	{
+		ImGui::Begin("GBuffer");
+		static bool debugEnabled = false;
+		static int rtindex = 0;
+		if (ImGui::Checkbox("Enable debug gbuffer", &debugEnabled))
+		{
+			debugrender::SetDebugTexture(m_rtDescriptors[rtindex]);
+		}
+		if (debugEnabled && ImGui::SliderInt("GBuffer target", &rtindex, 0, 2))
+		{
+			debugrender::SetDebugTexture(m_rtDescriptors[rtindex]);
+		}
+		ImGui::End();
+	}
+
+	VkImageView GBuffer::GetRenderTarget(EGBufferTarget target) const
+	{
+		return m_framebuffer.GetImageViewAt(target);
 	}
 
 	void GBuffer::InitRenderPass(const RenderContext& renderContext)
@@ -74,9 +113,9 @@ namespace vkmmc
 		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 		m_renderPass.RenderPass = RenderPassBuilder::Create()
-			.AddAttachment(GBUFFER_RT_FORMAT_POSITION, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-			.AddAttachment(GBUFFER_RT_FORMAT_NORMAL, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-			.AddAttachment(GBUFFER_RT_FORMAT_ALBEDO, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+			.AddAttachment(GBUFFER_RT_FORMAT_POSITION, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+			.AddAttachment(GBUFFER_RT_FORMAT_NORMAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+			.AddAttachment(GBUFFER_RT_FORMAT_ALBEDO, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 			.AddAttachment(GBUFFER_RT_FORMAT_DEPTH, IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)
 			.AddSubpass({ 0, 1, 2 }, 3, {})
 			.AddDependencies(dependencies.data(), (uint32_t)dependencies.size())
@@ -100,30 +139,53 @@ namespace vkmmc
 		builder.CreateAttachment(GBUFFER_RT_FORMAT_ALBEDO, IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 		builder.CreateAttachment(GBUFFER_RT_FORMAT_DEPTH, IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 		builder.Build(m_framebuffer, m_renderPass.RenderPass);
+
+		// Binding to draw debug render target
+		SamplerBuilder samplerBuilder;
+		m_sampler = samplerBuilder.Build(renderContext);
+		for (uint32_t i = 0; i < 3; i++)
+		{
+			VkDescriptorImageInfo imageInfo;
+			imageInfo.imageLayout = i == 3 ? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			//imageInfo.imageView = m_framebuffer.GetImageViewAt(i);
+			imageInfo.imageView = m_renderTarget.GetRenderTarget(i);
+			imageInfo.sampler = m_sampler.GetSampler();
+			DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(renderContext, m_rtDescriptors[i]);
+		}
 	}
 
 	void GBuffer::InitPipeline(const RenderContext& renderContext)
 	{
-		std::array<VkDescriptorSetLayout, 3> layouts;
-		// Set Layout for per frame data (camera proj etc...)
-		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(renderContext, &layouts[0]);
-		// Set Layout for per mesh data (model mat, textures...)
-		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(renderContext, &layouts[1]);
-		layouts[2] = MaterialRenderData::GetDescriptorSetLayout(renderContext, *renderContext.LayoutCache);
+		// MRT pipeline
 
-		ShaderDescription descs[2] =
 		{
-			{.Filepath = SHADER_ROOT_PATH "gbuffer_mrt.vert.spv", .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-			{.Filepath = SHADER_ROOT_PATH "gbuffer_mrt.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
-		};
+			std::array<VkDescriptorSetLayout, 3> layouts;
+			// Set Layout for per frame data (camera proj etc...)
+			DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
+				.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
+				.Build(renderContext, &layouts[0]);
+			// Set Layout for per mesh data (model mat, textures...)
+			DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
+				.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
+				.Build(renderContext, &layouts[1]);
+			layouts[2] = MaterialRenderData::GetDescriptorSetLayout(renderContext, *renderContext.LayoutCache);
 
-		m_pipeline = RenderPipeline::Create(renderContext, m_renderPass.RenderPass, 0,
-			descs, 2, layouts.data(), (uint32_t)layouts.size(), 
-			nullptr, 0, VertexInputLayout::GetStaticMeshVertexLayout(),
-			VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 3);
+			ShaderDescription descs[2] =
+			{
+				{.Filepath = SHADER_ROOT_PATH "mrt.vert.spv", .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+				{.Filepath = SHADER_ROOT_PATH "mrt.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
+			};
+
+			m_pipeline = RenderPipeline::Create(renderContext, m_renderTarget.GetRenderPass(), 0,
+				descs, 2, layouts.data(), (uint32_t)layouts.size(),
+				nullptr, 0, VertexInputLayout::GetStaticMeshVertexLayout(),
+				VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 3);
+		}
+
+		// Deferred pipeline
+		{
+		}
 	}
 }
