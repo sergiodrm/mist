@@ -378,6 +378,22 @@ namespace vkmmc
 			}
 			return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
 		}
+
+		VkSampleCountFlagBits GetSampleCount(ESampleCount sample)
+		{
+			switch (sample)
+			{
+			case SAMPLE_COUNT_1_BIT: return VK_SAMPLE_COUNT_1_BIT;
+			case SAMPLE_COUNT_2_BIT: return VK_SAMPLE_COUNT_2_BIT;
+			case SAMPLE_COUNT_4_BIT: return VK_SAMPLE_COUNT_4_BIT;
+			case SAMPLE_COUNT_8_BIT: return VK_SAMPLE_COUNT_8_BIT;
+			case SAMPLE_COUNT_16_BIT: return VK_SAMPLE_COUNT_16_BIT;
+			case SAMPLE_COUNT_32_BIT: return VK_SAMPLE_COUNT_32_BIT;
+			case SAMPLE_COUNT_64_BIT: return VK_SAMPLE_COUNT_64_BIT;
+			case SAMPLE_COUNT_MAX: return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+			}
+			return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+		}
 	}
 
 
@@ -738,6 +754,22 @@ namespace vkmmc
 			case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE: return SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
 			}
 			return SAMPLER_ADDRESS_MODE_MAX_ENUM;
+		}
+
+		ESampleCount GetSampleCount(VkSampleCountFlags sample)
+		{
+			switch (sample)
+			{
+				case VK_SAMPLE_COUNT_1_BIT: return SAMPLE_COUNT_1_BIT;
+				case VK_SAMPLE_COUNT_2_BIT: return SAMPLE_COUNT_2_BIT;
+				case VK_SAMPLE_COUNT_4_BIT: return SAMPLE_COUNT_4_BIT;
+				case VK_SAMPLE_COUNT_8_BIT: return SAMPLE_COUNT_8_BIT;
+				case VK_SAMPLE_COUNT_16_BIT: return SAMPLE_COUNT_16_BIT;
+				case VK_SAMPLE_COUNT_32_BIT: return SAMPLE_COUNT_32_BIT;
+				case VK_SAMPLE_COUNT_64_BIT: return SAMPLE_COUNT_64_BIT;
+				case VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM: return SAMPLE_COUNT_MAX;
+			}
+			return SAMPLE_COUNT_MAX;
 		}
 	}
 
