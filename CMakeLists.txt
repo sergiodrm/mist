@@ -10,6 +10,10 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin")
 set (VKMMC_SHADERS_DIRECTORY "${PROJECT_SOURCE_DIR}/assets/shaders")
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+
+add_compile_definitions(VKMMC_VULKAN)
+add_compile_definitions(VKMMC_MEM_MANAGEMENT)
+
 add_subdirectory(thirdparty)
 add_subdirectory(code)
 add_subdirectory(test)
