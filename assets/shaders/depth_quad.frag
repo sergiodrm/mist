@@ -24,6 +24,7 @@ float LinearizeDepth(float depth)
 
 void main() 
 {
-	float depth = texture(samplerColor, inUV).r;
-	outFragColor = vec4(vec3(1.0-LinearizeDepth(depth)), 1.0);
+	//float depth = texture(samplerColor, inUV).r;
+	//outFragColor = vec4(vec3(1.0-LinearizeDepth(depth)), 1.0);
+  outFragColor = texture(samplerColor, inUV);
 }
