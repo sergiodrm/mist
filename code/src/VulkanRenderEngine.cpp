@@ -29,7 +29,7 @@
 
 namespace vkmmc_debug
 {
-	bool GTerminatedWithErrors = false;
+	uint32_t GVulkanLayerValidationErrors = 0;
 
 	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 		VkDebugUtilsMessageTypeFlagsEXT type,
@@ -39,7 +39,7 @@ namespace vkmmc_debug
 		vkmmc::LogLevel level = vkmmc::LogLevel::Info;
 		switch (severity)
 		{
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = vkmmc::LogLevel::Error; GTerminatedWithErrors = true; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = vkmmc::LogLevel::Error; ++GVulkanLayerValidationErrors; break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = vkmmc::LogLevel::Debug; break;
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
@@ -222,8 +222,8 @@ namespace vkmmc
 		SDL_DestroyWindow(m_window.WindowInstance);
 
 		Log(LogLevel::Ok, "Render engine terminated.\n");
-		if (vkmmc_debug::GTerminatedWithErrors)
-			Log(LogLevel::Error, "Render engine was terminated with vulkan validation layer errors registered.\n");
+		Logf(vkmmc_debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
+			"Total vulkan layer validation errors: %u.\n", vkmmc_debug::GVulkanLayerValidationErrors);
 		TerminateLog();
 	}
 
@@ -318,9 +318,33 @@ namespace vkmmc
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
 			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+#if 0
+			VkDebugUtilsLabelEXT cmdDebug;
+			cmdDebug.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+			cmdDebug.pNext = nullptr;
+			cmdDebug.color[0] = 1.f;
+			cmdDebug.color[1] = 0.f;
+			cmdDebug.color[2] = 0.f;
+			cmdDebug.color[3] = 1.f;
+			cmdDebug.pLabelName = "Begin command buffer";
+			vkCmdBeginDebugUtilsLabelEXT(cmd, &cmdDebug);
+#endif // 0
+
 		}
 
 		{
+#if 0
+			VkDebugUtilsLabelEXT cmdDebug;
+			cmdDebug.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+			cmdDebug.pNext = nullptr;
+			cmdDebug.color[0] = 0.f;
+			cmdDebug.color[1] = 1.f;
+			cmdDebug.color[2] = 0.f;
+			cmdDebug.color[3] = 1.f;
+			cmdDebug.pLabelName = "GBuffer";
+			vkCmdInsertDebugUtilsLabelEXT(cmd, &cmdDebug);
+#endif // 0
+
 			m_gbuffer.DrawPass(m_renderContext, frameContext);
 
 			uint32_t frameIndex = GetFrameIndex();
@@ -332,6 +356,18 @@ namespace vkmmc
 
 		// Terminate command buffer
 		vkcheck(vkEndCommandBuffer(cmd));
+#if 0
+		VkDebugUtilsLabelEXT cmdDebug;
+		cmdDebug.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+		cmdDebug.pNext = nullptr;
+		cmdDebug.color[0] = 1.f;
+		cmdDebug.color[1] = 0.f;
+		cmdDebug.color[2] = 0.f;
+		cmdDebug.color[3] = 1.f;
+		cmdDebug.pLabelName = "Begin command buffer";
+		vkCmdEndDebugUtilsLabelEXT(cmd);
+#endif // 0
+
 
 		{
 			CPU_PROFILE_SCOPE(QueueSubmit);
