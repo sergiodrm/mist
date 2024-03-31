@@ -129,6 +129,7 @@ void vkmmc_debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 	vkmmc::Logf(vkmmc::LogLevel::Error, "Function: %s\n", fn);
 	vkmmc::Logf(vkmmc::LogLevel::Error, "Line: %d\n\n", line);
 	vkmmc::Log(vkmmc::LogLevel::Error, "============================================================\n\n");
+	ErrorMessage("Check failed");
 	__debugbreak();
 	vkmmc_debug::ExitError();
 }
@@ -146,7 +147,27 @@ void vkmmc_debug::ExitError()
 	exit(EXIT_FAILURE);
 }
 
-#define PROFILING_AVERAGE_DATA_COUNT 32
+void vkmmc_debug::InfoMessage(const char* text)
+{
+	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONINFORMATION);
+}
+
+void vkmmc_debug::WarningMessage(const char* text)
+{
+	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONWARNING);
+}
+
+void vkmmc_debug::ErrorMessage(const char* text)
+{
+	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONERROR);
+}
+
+#define PROFILING_AVERAGE_DATA_COUNT 64
+
+namespace vkmmc_debug
+{
+	extern uint32_t GVulkanLayerValidationErrors;
+}
 
 namespace vkmmc_profiling
 {
@@ -315,6 +336,8 @@ namespace vkmmc_profiling
 		ImGui::Text("%u", GRenderStats.SetBindingCount);
 		ImGui::NextColumn();
 		ImGui::Columns();
+		if (vkmmc_debug::GVulkanLayerValidationErrors)
+			ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", vkmmc_debug::GVulkanLayerValidationErrors);
 		ImGui::End();
 		ImGui::PopStyleColor();
 	}

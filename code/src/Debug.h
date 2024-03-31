@@ -27,6 +27,10 @@ namespace vkmmc_debug
 	void DebugCheck(const char* txt, const char* file, const char* fn, int line);
 	void PrintCallstack(size_t count = 0, size_t offset = 0);
 	void ExitError();
+
+	void InfoMessage(const char* text);
+	void WarningMessage(const char* text);
+	void ErrorMessage(const char* text);
 }
 
 namespace vkmmc_profiling
