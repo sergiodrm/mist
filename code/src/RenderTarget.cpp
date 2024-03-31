@@ -13,7 +13,7 @@ namespace vkmmc
 	void RenderTargetAttachment::Destroy(const RenderContext& renderContext)
 	{
 		vkDestroyImageView(renderContext.Device, View, nullptr);
-		vkDestroyImage(renderContext.Device, Image.Image, nullptr);
+		Memory::DestroyImage(renderContext.Allocator, Image);
 	}
 
 	RenderTarget::RenderTarget()
@@ -34,6 +34,10 @@ namespace vkmmc
 	void RenderTarget::Create(const RenderContext& renderContext, const RenderTargetDescription& desc)
 	{
 		m_description = desc;
+		for (uint32_t i = 0; i < desc.ColorAttachmentCount; ++i)
+			m_clearValues[i] = desc.ColorAttachmentDescriptions[i].ClearValue;
+		if (desc.DepthAttachmentDescription.IsValidAttachment())
+			m_clearValues[desc.ColorAttachmentCount] = desc.DepthAttachmentDescription.ClearValue;
 		CreateResources(renderContext);
 	}
 
@@ -152,6 +156,7 @@ namespace vkmmc
 		subpass.pResolveAttachments = nullptr;
 
 		// Create dependencies
+#if 1
 		tArray<VkSubpassDependency, 4> dependencies;
 		uint32_t dependencyCount = 0;
 		if (m_description.ColorAttachmentCount)
@@ -202,6 +207,26 @@ namespace vkmmc
 				depedency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 			}
 		}
+#else
+		std::array<VkSubpassDependency, 2> dependencies;
+		uint32_t dependencyCount = (uint32_t)dependencies.size();
+		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+		dependencies[0].dstSubpass = 0;
+		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+		dependencies[1].srcSubpass = 0;
+		dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+		dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		dependencies[1].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		dependencies[1].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+#endif // 0
+
 
 		VkRenderPassCreateInfo passCreateInfo{ .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, .pNext = nullptr };
 		passCreateInfo.flags = 0;
