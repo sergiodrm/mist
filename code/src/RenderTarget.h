@@ -72,7 +72,8 @@ namespace vkmmc
 		void Destroy(const RenderContext& renderContext);
 		void Invalidate(const RenderContext& renderContext);
 
-		void Bind(VkCommandBuffer cmd);
+		void BeginPass(VkCommandBuffer cmd);
+		void EndPass(VkCommandBuffer cmd);
 
 		uint32_t GetWidth() const;
 		uint32_t GetHeight() const;

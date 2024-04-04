@@ -66,7 +66,7 @@ namespace vkmmc
 		CreateResources(renderContext);
 	}
 
-	void RenderTarget::Bind(VkCommandBuffer cmd)
+	void RenderTarget::BeginPass(VkCommandBuffer cmd)
 	{
 		VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
 		renderPassInfo.renderPass = m_renderPass;
@@ -75,6 +75,11 @@ namespace vkmmc
 		renderPassInfo.clearValueCount = (uint32_t)m_clearValues.size();
 		renderPassInfo.pClearValues = m_clearValues.data();
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	}
+
+	void RenderTarget::EndPass(VkCommandBuffer cmd)
+	{
+		vkCmdEndRenderPass(cmd);
 	}
 
 	uint32_t RenderTarget::GetWidth() const
@@ -146,7 +151,7 @@ namespace vkmmc
 		subpass.flags = 0;
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 		subpass.colorAttachmentCount = m_description.ColorAttachmentCount;
-		subpass.pColorAttachments = attachmentReferences.data();
+		subpass.pColorAttachments = m_description.ColorAttachmentCount ? attachmentReferences.data() : VK_NULL_HANDLE;
 		subpass.pDepthStencilAttachment = depthReference;
 		// TODO: implement more type of attachments (input?, preserve and resolve)
 		subpass.inputAttachmentCount = 0;
@@ -241,23 +246,26 @@ namespace vkmmc
 
 	void RenderTarget::CreateFramebuffer(const RenderContext& renderContext)
 	{
+		uint32_t viewCount = 0;
 		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> views;
 		for (uint32_t i = 0; i < m_description.ColorAttachmentCount; ++i)
 		{
 			CreateAttachment(m_attachments[i], renderContext, m_description.ColorAttachmentDescriptions[i], IMAGE_ASPECT_COLOR_BIT, 
 				IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 			views[i] = m_attachments[i].View;
+			++viewCount;
 		}
 		if (m_description.DepthAttachmentDescription.IsValidAttachment())
 		{
 			CreateAttachment(m_attachments[m_description.ColorAttachmentCount], renderContext, m_description.DepthAttachmentDescription, IMAGE_ASPECT_DEPTH_BIT,
 				IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 			views[m_description.ColorAttachmentCount] = m_attachments[m_description.ColorAttachmentCount].View;
+			++viewCount;
 		}
 		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass,
 			m_description.RenderArea.extent.width,
 			m_description.RenderArea.extent.height,
-			views.data(), m_description.ColorAttachmentCount + 1
+			views.data(), viewCount
 		);
 		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
 	}
