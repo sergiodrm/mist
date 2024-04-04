@@ -4,6 +4,49 @@
 #include "VulkanRenderEngine.h"
 #include "Debug.h"
 #include "RenderContext.h"
+#include "Logger.h"
+
+#define VK_RESULT_LIST \
+	_X_(VK_SUCCESS )\
+	_X_(VK_NOT_READY )\
+	_X_(VK_TIMEOUT )\
+	_X_(VK_EVENT_SET )\
+	_X_(VK_EVENT_RESET )\
+	_X_(VK_INCOMPLETE )\
+	_X_(VK_ERROR_OUT_OF_HOST_MEMORY)\
+	_X_(VK_ERROR_OUT_OF_DEVICE_MEMORY)\
+	_X_(VK_ERROR_INITIALIZATION_FAILED)\
+	_X_(VK_ERROR_DEVICE_LOST )\
+	_X_(VK_ERROR_MEMORY_MAP_FAILED)\
+	_X_(VK_ERROR_LAYER_NOT_PRESENT)\
+	_X_(VK_ERROR_EXTENSION_NOT_PRESENT)\
+	_X_(VK_ERROR_FEATURE_NOT_PRESENT)\
+	_X_(VK_ERROR_INCOMPATIBLE_DRIVER)\
+	_X_(VK_ERROR_TOO_MANY_OBJECTS)\
+	_X_(VK_ERROR_FORMAT_NOT_SUPPORTED)\
+	_X_(VK_ERROR_FRAGMENTED_POOL)\
+	_X_(VK_ERROR_UNKNOWN)\
+	_X_(VK_ERROR_OUT_OF_POOL_MEMORY)\
+	_X_(VK_ERROR_INVALID_EXTERNAL_HANDLE)\
+	_X_(VK_ERROR_FRAGMENTATION)\
+	_X_(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS)\
+	_X_(VK_PIPELINE_COMPILE_REQUIRED)\
+	_X_(VK_ERROR_SURFACE_LOST_KHR)\
+	_X_(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR)\
+	_X_(VK_SUBOPTIMAL_KHR )\
+	_X_(VK_ERROR_OUT_OF_DATE_KHR )\
+	_X_(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR )\
+	_X_(VK_ERROR_VALIDATION_FAILED_EXT )\
+	_X_(VK_ERROR_INVALID_SHADER_NV )\
+	_X_(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT )\
+	_X_(VK_ERROR_NOT_PERMITTED_KHR )\
+	_X_(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT )\
+	_X_(VK_THREAD_IDLE_KHR )\
+	_X_(VK_THREAD_DONE_KHR )\
+	_X_(VK_OPERATION_DEFERRED_KHR )\
+	_X_(VK_OPERATION_NOT_DEFERRED_KHR )\
+	_X_(VK_ERROR_COMPRESSION_EXHAUSTED_EXT )\
+	_X_(VK_RESULT_MAX_ENUM)
 
 template <>
 struct std::hash<vkmmc::RenderHandle>
@@ -16,6 +59,62 @@ struct std::hash<vkmmc::RenderHandle>
 
 namespace vkmmc
 {
+	const Color Color::Red = 0xff0000ff;
+	const Color Color::Green = 0x00ff00ff;
+	const Color Color::Blue = 0x0000ffff;
+
+	uint32_t Color::R() const
+	{
+		return (m_color & 0xff000000) >> 24;
+	}
+	uint32_t Color::G() const
+	{
+		return (m_color & 0x00ff0000) >> 16;
+	}
+	uint32_t Color::B() const
+	{
+		return (m_color & 0x0000ff00) >> 8;
+	}
+	uint32_t Color::A() const
+	{
+		return (m_color & 0x000000ff);
+	}
+
+	float Color::NormR() const
+	{
+		return (float)R() / 255.f;
+	}
+
+	float Color::NormG() const
+	{
+		return (float)G() / 255.f;
+	}
+
+	float Color::NormB() const
+	{
+		return (float)B() / 255.f;
+	}
+
+	float Color::NormA() const
+	{
+		return (float)A() / 255.f;
+	}
+
+	void Color::Normalize(float colorOut[4]) const
+	{
+		colorOut[0] = NormR();
+		colorOut[1] = NormG();
+		colorOut[2] = NormB();
+		colorOut[3] = NormA();
+	}
+
+	void Color::Set(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
+	{
+		uint32_t m = 0x000000ff;
+		m_color = (a & m) | ((b & m) << 8) | ((g & m) << 16) | ((r & m) << 24);
+	}
+
+
 	namespace tovk
 	{
 		VkImageLayout GetImageLayout(EImageLayout layout)
@@ -789,5 +888,17 @@ namespace vkmmc
 		vkcheck(vkResetFences(renderContext.Device, 1, &renderContext.TransferContext.Fence));
 		vkResetCommandPool(renderContext.Device, renderContext.TransferContext.CommandPool, 0);
 	}
+	const char* VkResultToStr(VkResult res)
+	{
+		switch (res)
+		{
+#define _X_(x) case x: return #x;
+			VK_RESULT_LIST
+#undef _X_
+		}
+		check(false && "Unreachable code");
+		return nullptr;
+	}
+
 }
 

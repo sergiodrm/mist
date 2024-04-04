@@ -1,7 +1,8 @@
 #pragma once
 #include "Memory.h"
+#include "Debug.h"
 #include "RenderHandle.h"
-#include <cassert>
+
 #include <vector>
 #include <array>
 #include <string>
@@ -36,6 +37,36 @@ namespace vkmmc
 	typedef VkRect2D tRect2D;
 	typedef VkClearValue tClearValue;
 #endif // VKMMC_VULKAN
+
+	class Color
+	{
+	public:
+
+		static const Color Red;
+		static const Color Green;
+		static const Color Blue;
+
+		Color() : m_color(0) {}
+		Color(uint32_t c) : m_color(c) {}
+		Color(uint32_t r, uint32_t g, uint32_t b, uint32_t a = 255) { Set(r, g, b, a); }
+		Color& operator=(uint32_t c) { m_color = c; return *this; }
+		// 0 to 255
+		uint32_t R() const; 
+		uint32_t G() const; 
+		uint32_t B() const; 
+		uint32_t A() const; 
+		// 0.f to 1.f
+		float NormR() const; 
+		float NormG() const;
+		float NormB() const;
+		float NormA() const;
+		void Normalize(float colorOut[4]) const;
+
+		void Set(uint32_t r, uint32_t g, uint32_t b, uint32_t a = 255);
+		void Set(uint32_t rgba) { m_color = rgba; }
+	
+		uint32_t m_color;
+	};
 
 
 	enum EImageLayout
@@ -333,7 +364,7 @@ namespace vkmmc
 	};
 	DEFINE_FLAG_BITS_TYPE(EImageUsage);
 
-	enum EImageAspectBits 
+	enum EImageAspectBits
 	{
 		IMAGE_ASPECT_COLOR_BIT = 0x00000001,
 		IMAGE_ASPECT_DEPTH_BIT = 0x00000002,
@@ -387,6 +418,9 @@ namespace vkmmc
 	DEFINE_FLAG_BITS_TYPE(ESampleCount);
 
 #ifdef VKMMC_VULKAN
+
+	const char* VkResultToStr(VkResult res);
+
 	namespace tovk
 	{
 		VkImageLayout GetImageLayout(EImageLayout layout);
