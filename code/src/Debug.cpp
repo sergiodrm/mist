@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include <unordered_map>
 #include <algorithm>
+#include "RenderTypes.h"
 
 #pragma comment(lib,"Dbghelp.lib")
 
@@ -129,9 +130,20 @@ void vkmmc_debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 	vkmmc::Logf(vkmmc::LogLevel::Error, "Function: %s\n", fn);
 	vkmmc::Logf(vkmmc::LogLevel::Error, "Line: %d\n\n", line);
 	vkmmc::Log(vkmmc::LogLevel::Error, "============================================================\n\n");
-	ErrorMessage("Check failed");
+
+	char buff[1024];
+	sprintf_s(buff, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\nLine: %d\n", txt, file, fn, line);
+	ErrorMessage(buff);
 	__debugbreak();
 	vkmmc_debug::ExitError();
+}
+
+void vkmmc_debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
+{
+	VkResult vkres = (VkResult)res;
+	const char* vkstr = vkmmc::VkResultToStr(vkres);
+	vkmmc::Logf(vkmmc::LogLevel::Error, "VkCheck failed. VkResult %d: %s\n", res, vkstr);
+	DebugCheck(txt, file, fn, line);
 }
 
 void vkmmc_debug::PrintCallstack(size_t count, size_t offset)

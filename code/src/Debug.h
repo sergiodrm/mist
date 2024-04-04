@@ -1,6 +1,6 @@
 // header file for vkmmc project 
 #pragma once
-#include "Logger.h"
+
 #include <cassert>
 
 #define _USE_CHRONO_PROFILING
@@ -18,13 +18,19 @@ do \
 	} \
 } while(0)
 
-#define vkcheck(expr) check((VkResult)expand(expr) == VK_SUCCESS)
+#define vkcheck(expr) \
+do { \
+VkResult __vkres = expand(expr); \
+if (__vkres != VK_SUCCESS) { vkmmc_debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__); } \
+} while(0)
+
 
 #define CPU_PROFILE_SCOPE(name) vkmmc_profiling::sScopedTimer __timer##name(#name)
 
 namespace vkmmc_debug
 {
 	void DebugCheck(const char* txt, const char* file, const char* fn, int line);
+	void DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line);
 	void PrintCallstack(size_t count = 0, size_t offset = 0);
 	void ExitError();
 
