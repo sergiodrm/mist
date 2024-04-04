@@ -14,8 +14,22 @@ namespace vkmmc
 	{
 		struct FrameData
 		{
-			VkDescriptorSet ModelSet;
+			tArray<VkDescriptorSet, 4> DescriptorSetArray;
 		};
+
+		struct PassData
+		{
+			RenderTarget m_renderTarget;
+			RenderPipeline m_pipeline;
+			FrameData m_frameData[globals::MaxOverlappedFrames];
+
+			inline void Destroy(const RenderContext& renderContext)
+			{
+				m_pipeline.Destroy(renderContext);
+				m_renderTarget.Destroy(renderContext);
+			}
+		};
+
 	public:
 
 		enum EGBufferTarget
@@ -36,17 +50,10 @@ namespace vkmmc
 		VkImageView GetRenderTarget(EGBufferTarget target) const;
 
 	private:
-		void InitRenderPass(const RenderContext& renderContext);
-		void InitFramebuffer(const RenderContext& renderContext);
 		void InitPipeline(const RenderContext& renderContext);
 	public:
-		RenderPass m_renderPass;
-		Framebuffer m_framebuffer;
-		RenderPipeline m_pipeline;
-		RenderTarget m_renderTarget;
-
-
-		FrameData m_frameData[globals::MaxOverlappedFrames];
+		PassData m_mrt;
+		PassData m_composition;
 
 		// Show render targets in debug mode.
 		Sampler m_sampler;

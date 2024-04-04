@@ -1,94 +1,197 @@
-#version 450
+#version 460
 
-layout (binding = 1) uniform sampler2D samplerposition;
-layout (binding = 2) uniform sampler2D samplerNormal;
-layout (binding = 3) uniform sampler2D samplerAlbedo;
+layout(location = 0) in vec2 inTexCoords;
+layout(location = 0) out vec4 outColor;
 
-layout (location = 0) in vec2 inUV;
-
-layout (location = 0) out vec4 outFragcolor;
-
-struct Light {
-	vec4 position;
-	vec3 color;
-	float radius;
+struct LightData
+{
+    vec4 Pos; // w: pointlight-radius; directional-project shadows (-1.f not project. >=0.f shadow map index)
+    vec4 Color; // w: compression
 };
 
-layout (binding = 4) uniform UBO 
+struct SpotLightData
 {
-	Light lights[6];
-	vec4 viewPos;
-	int displayDebugTarget;
-} ubo;
+    vec4 Color; // w: project shadows (-1.f not project. >=0.f shadow map index)
+    vec4 Dir; // w: inner cutoff
+    vec4 Pos; // w: outer cutoff
+};
 
-void main() 
+// Per frame data
+layout (std140, set = 0, binding = 0) uniform Environment
 {
-	// Get G-Buffer values
-	vec3 fragPos = texture(samplerposition, inUV).rgb;
-	vec3 normal = texture(samplerNormal, inUV).rgb;
-	vec4 albedo = texture(samplerAlbedo, inUV);
-	
-	// Debug display
-	if (ubo.displayDebugTarget > 0) {
-		switch (ubo.displayDebugTarget) {
-			case 1: 
-				outFragcolor.rgb = fragPos;
-				break;
-			case 2: 
-				outFragcolor.rgb = normal;
-				break;
-			case 3: 
-				outFragcolor.rgb = albedo.rgb;
-				break;
-			case 4: 
-				outFragcolor.rgb = albedo.aaa;
-				break;
-		}		
-		outFragcolor.a = 1.0;
-		return;
-	}
+    vec4 AmbientColor; // w: num of spot lights to process
+    vec4 ViewPos; // w: num of lights to process
+    LightData Lights[8];
+    LightData DirectionalLight;
+    SpotLightData SpotLights[8];
+} u_Env;
 
-	// Render-target composition
+// GBuffer textures
+layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
+layout(set = 1, binding = 1) uniform sampler2D u_GBufferNormal;
+layout(set = 1, binding = 2) uniform sampler2D u_GBufferAlbedo;
 
-	#define lightCount 6
-	#define ambient 0.0
-	
-	// Ambient part
-	vec3 fragcolor  = albedo.rgb * ambient;
-	
-	for(int i = 0; i < lightCount; ++i)
+float LinearizeDepth(float z, float n, float f)
+{
+    return (2.0 * n) / (f + n - z * (f - n));	
+}
+
+vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDir, vec3 lightColor)
+{
+    // Diffuse
+    vec3 normal = normalize(fragNormal);
+    float diff = max(dot(normal, lightDir), 0.f);
+    vec3 diffuse = diff * lightColor;
+
+    // Specular
+    float specularStrength = 0.5f;
+    vec3 viewDir = normalize(viewPos - fragPos);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    // TODO: shininess from material
+    float shininess = 32.f;
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
+    vec3 specular = specularStrength * spec * lightColor;
+    return diffuse + specular;
+}
+
+#if 0
+vec4 GetLightSpaceCoords(int lightIndex)
+{
+    if (lightIndex == 0)
+        return inLightSpaceFragPos_0;
+    if (lightIndex == 1)
+        return inLightSpaceFragPos_1;
+    if (lightIndex == 2)
+        return inLightSpaceFragPos_2;
+}
+
+
+float CalculateShadow(int shadowMapIndex)
+{
+    vec4 lightSpaceCoord = GetLightSpaceCoords(shadowMapIndex);
+    vec4 shadowCoord = lightSpaceCoord / lightSpaceCoord.w;
+#if 1
+    // PCF
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(u_ShadowMap[shadowMapIndex], 0);
+    float currentDepth = shadowCoord.z;
+    float bias = 0.005f;
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(u_ShadowMap[shadowMapIndex], shadowCoord.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+        }    
+    }
+    shadow /= 9.0;
+    return shadow;
+#else
+    float shadow = 0.3f;
+    float z = shadowCoord.z;
+	if ( z > -1.0 && z < 1.0 ) 
 	{
-		// Vector to light
-		vec3 L = ubo.lights[i].position.xyz - fragPos;
-		// Distance from light to fragment position
-		float dist = length(L);
-
-		// Viewer to fragment
-		vec3 V = ubo.viewPos.xyz - fragPos;
-		V = normalize(V);
-		
-		//if(dist < ubo.lights[i].radius)
+		float dist = texture( u_ShadowMap[0], shadowCoord.xy ).r;
+        const float bias = 0.005f;
+		if ( shadowCoord.w > 0.0 && z - bias > dist ) 
 		{
-			// Light to fragment
-			L = normalize(L);
+			shadow = 1.f;
+		}
+	}
+	return shadow;
+#endif
+}
+#endif
 
-			// Attenuation
-			float atten = ubo.lights[i].radius / (pow(dist, 2.0) + 1.0);
+vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, LightData light)
+{
+    // Attenuation
+    float dist = length(vec3(light.Pos) - fragPos);
+    float r = light.Pos.a;
+    float c = light.Color.a;
+    float attenuation = pow(smoothstep(r, 0, dist), c);
 
-			// Diffuse part
-			vec3 N = normalize(normal);
-			float NdotL = max(0.0, dot(N, L));
-			vec3 diff = ubo.lights[i].color * albedo.rgb * NdotL * atten;
+    vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
+    vec3 lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
+    return lighting * attenuation;
+}
 
-			// Specular part
-			// Specular map values are stored in alpha of albedo mrt
-			vec3 R = reflect(-L, N);
-			float NdotR = max(0.0, dot(R, V));
-			vec3 spec = ubo.lights[i].color * albedo.a * pow(NdotR, 16.0) * atten;
+vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, LightData light)
+{
+    vec3 lightDir = normalize(vec3(-light.Pos));
+    return CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
+}
 
-			fragcolor += diff + spec;	
-		}	
-	}    	
-   
-  outFragcolor = vec4(fragcolor, 1.0);	
+vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, SpotLightData light)
+{
+    vec3 lighting = vec3(0.f);
+    vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
+    float theta = dot(lightDir, -vec3(light.Dir));
+    float innerCutoff = light.Dir.a;
+    float outerCutoff = light.Pos.a;
+    float epsilon = innerCutoff - outerCutoff;
+    float intensity = clamp((theta - outerCutoff) / epsilon, 0.0, 1.0);
+    if (intensity > 0.f)
+    {
+        lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
+    }
+    return lighting * intensity;
+}
+
+void main()
+{
+	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
+	vec3 fragNormal = texture(u_GBufferNormal, inTexCoords).rgb;
+	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
+	vec3 viewPos = u_Env.ViewPos.xyz;
+    if (fragColor.a <= 0.1f)
+        discard;
+
+    vec3 lightColor = vec3(1.f, 1.f, 1.f);
+    
+    {
+        // Shadows
+
+        // Point lights (no shadows)
+        int numPointLights = int(u_Env.ViewPos.w);
+        vec3 pointLightsColor = vec3(0.f);
+        for (int i = 0; i < numPointLights; ++i)
+            pointLightsColor += ProcessPointLight(fragPos, fragNormal, viewPos, u_Env.Lights[i]);
+
+        // Spot lights
+        int numSpotLights = int(u_Env.AmbientColor.w);
+        vec3 spotLightsColor = vec3(0.f);
+        float spotLightShadow = 0.f;
+        for (int i = 0; i < numSpotLights; ++i)
+        {
+            vec3 spotLightColor = ProcessSpotLight(fragPos, fragNormal, viewPos, u_Env.SpotLights[i]);
+			#if 0
+            if (u_Env.SpotLights[i].Color.w >= 0.f)
+            {
+                int shadowIndex = int(u_Env.SpotLights[i].Color.w);
+                float shadow = CalculateShadow(shadowIndex);
+                spotLightColor *= (1.f-shadow);
+            }
+			#endif
+            spotLightsColor += spotLightColor;
+        }
+        spotLightsColor *= (1.f-spotLightShadow);
+        // Directional light
+        vec3 directionalLightColor = ProcessDirectionalLight(fragPos, fragNormal, viewPos, u_Env.DirectionalLight);
+		#if 0
+        if (u_Env.DirectionalLight.Pos.w >= 0.f)
+        {
+            int shadowIndex = int(u_Env.DirectionalLight.Pos.w);
+            float shadow = CalculateShadow(shadowIndex);
+            directionalLightColor *= (1.f - shadow);
+        }
+		#endif
+
+        lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
+        // Mix
+        lightColor = vec3(u_Env.AmbientColor) + lightColor;
+        //lightColor = vec3(shadow);
+        //lightColor = vec3(shadowCoord);
+    }
+    outColor = vec4(lightColor, 1.f) * outColor;
 }
