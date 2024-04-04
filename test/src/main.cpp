@@ -108,13 +108,14 @@ class SponzaTest : public Test
 protected:
 	virtual void LoadTest()
 	{
-		vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/vulkanscene_shadow.gltf");
-		//vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/sponza/Sponza.gltf");
+		//vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/vulkanscene_shadow.gltf");
+		vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "../../assets/models/sponza/Sponza.gltf");
+		scene->LoadModel("../../assets/models/vulkanscene_shadow.gltf");
 		m_engine->SetScene(scene);
 	}
 };
 
-Test* ExecuteTest(int32_t argc, char** argv)
+Test* CreateTest(int32_t argc, char** argv)
 {
 	// TODO: read cmd args.
 	return new SponzaTest();
@@ -123,7 +124,7 @@ Test* ExecuteTest(int32_t argc, char** argv)
 
 int main(int32_t argc, char** argv)
 {
-	Test* test = ExecuteTest(argc, argv);
+	Test* test = CreateTest(argc, argv);
 	test->Init();
 	test->RunLoop();
 	test->Destroy();
