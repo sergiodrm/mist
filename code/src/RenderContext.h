@@ -37,6 +37,10 @@ namespace vkmmc
 		uint32_t GraphicsQueueFamily;
 
 		TransferContext TransferContext;
+
+		PFN_vkCmdBeginDebugUtilsLabelEXT pfn_vkCmdBeginDebugUtilsLabelEXT;
+		PFN_vkCmdEndDebugUtilsLabelEXT pfn_vkCmdEndDebugUtilsLabelEXT;
+		PFN_vkCmdInsertDebugUtilsLabelEXT pfn_vkCmdInsertDebugUtilsLabelEXT;
 	};
 
 	struct RenderFrameContext
@@ -65,4 +69,8 @@ namespace vkmmc
 		uint32_t FrameIndex;
 	};
 
+
+	void BeginGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color = 0xffffffff);
+	void InsertGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color = 0xffffffff);
+	void EndGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd);
 }
