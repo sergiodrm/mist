@@ -5,6 +5,7 @@
 #undef STB_IMAGE_IMPLEMENTATION
 #include "RenderPipeline.h"
 #include "Debug.h"
+#include "Logger.h"
 #include "RenderTypes.h"
 #include "RenderContext.h"
 #include "InitVulkanTypes.h"

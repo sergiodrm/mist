@@ -9,6 +9,7 @@
 #include "Debug.h"
 #include "InitVulkanTypes.h"
 #include "RenderDescriptor.h"
+#include "Logger.h"
 #include "RenderContext.h"
 
 namespace vkutils

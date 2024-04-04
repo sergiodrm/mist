@@ -4,6 +4,7 @@
 #include "Debug.h"
 #include "InitVulkanTypes.h"
 #include "Shader.h"
+#include "Logger.h"
 #include "Globals.h"
 #include "VulkanRenderEngine.h"
 #include "RendererBase.h"

@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include "GenericUtils.h"
+#include "Logger.h"
 #include "Debug.h"
 #include "glm/fwd.hpp"
 #include "glm/gtx/quaternion.hpp"

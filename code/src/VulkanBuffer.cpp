@@ -3,6 +3,7 @@
 #include "Debug.h"
 #include "InitVulkanTypes.h"
 #include "VulkanRenderEngine.h"
+#include "Logger.h"
 #include "RenderContext.h"
 
 namespace vkutils

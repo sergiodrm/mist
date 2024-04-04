@@ -2,6 +2,7 @@
 #include <vkbootstrap/VkBootstrap.h>
 #include <InitVulkanTypes.h>
 #include <VulkanRenderEngine.h>
+#include <Logger.h>
 
 namespace vkmmc
 {
