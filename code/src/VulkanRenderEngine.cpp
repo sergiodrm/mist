@@ -311,6 +311,7 @@ namespace vkmmc
 			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
 
 			// Prepare command buffer
+			BeginGPUEvent(m_renderContext, cmd, "Begin CMD", 0xff0000ff);
 			VkCommandBufferBeginInfo cmdBeginInfo = {};
 			cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			cmdBeginInfo.pNext = nullptr;
@@ -318,33 +319,9 @@ namespace vkmmc
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
 			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-#if 0
-			VkDebugUtilsLabelEXT cmdDebug;
-			cmdDebug.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-			cmdDebug.pNext = nullptr;
-			cmdDebug.color[0] = 1.f;
-			cmdDebug.color[1] = 0.f;
-			cmdDebug.color[2] = 0.f;
-			cmdDebug.color[3] = 1.f;
-			cmdDebug.pLabelName = "Begin command buffer";
-			vkCmdBeginDebugUtilsLabelEXT(cmd, &cmdDebug);
-#endif // 0
-
 		}
 
 		{
-#if 0
-			VkDebugUtilsLabelEXT cmdDebug;
-			cmdDebug.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-			cmdDebug.pNext = nullptr;
-			cmdDebug.color[0] = 0.f;
-			cmdDebug.color[1] = 1.f;
-			cmdDebug.color[2] = 0.f;
-			cmdDebug.color[3] = 1.f;
-			cmdDebug.pLabelName = "GBuffer";
-			vkCmdInsertDebugUtilsLabelEXT(cmd, &cmdDebug);
-#endif // 0
-
 			m_gbuffer.DrawPass(m_renderContext, frameContext);
 
 			uint32_t frameIndex = GetFrameIndex();
@@ -355,18 +332,8 @@ namespace vkmmc
 
 
 		// Terminate command buffer
+		EndGPUEvent(m_renderContext, cmd);
 		vkcheck(vkEndCommandBuffer(cmd));
-#if 0
-		VkDebugUtilsLabelEXT cmdDebug;
-		cmdDebug.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-		cmdDebug.pNext = nullptr;
-		cmdDebug.color[0] = 1.f;
-		cmdDebug.color[1] = 0.f;
-		cmdDebug.color[2] = 0.f;
-		cmdDebug.color[3] = 1.f;
-		cmdDebug.pLabelName = "Begin command buffer";
-		vkCmdEndDebugUtilsLabelEXT(cmd);
-#endif // 0
 
 
 		{
@@ -435,7 +402,32 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitVulkan()
 	{
-		// Create Vulkan instance
+#if 0
+		{
+			// Create Vulkan instance
+			uint32_t extensionCount = 0;
+			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+			vkEnumerateInstanceExtensionProperties()
+
+			VkInstance instance;
+			VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pNext = nullptr };
+			appInfo.pApplicationName = "VkMMC";
+			appInfo.applicationVersion = VK_API_VERSION_1_1;
+			appInfo.apiVersion = VK_API_VERSION_1_1;
+			appInfo.engineVersion = VK_API_VERSION_1_1;
+			appInfo.pEngineName = "VkMMC";
+
+			tDynArray<const char*> extensions;
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+			tDynArray<const char*> layers;
+			layers.push_back("VK_LAYER_KHRONOS_validation");
+
+			VkInstanceCreateInfo instanceCreateInfo{ .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pNext = nullptr };
+			//instanceCreateInfo.
+		}
+#endif // 0
+
+
 		vkb::InstanceBuilder builder;
 		vkb::Result<vkb::Instance> instanceReturn = builder
 			.set_app_name("Vulkan renderer")
@@ -444,6 +436,9 @@ namespace vkmmc
 			//.use_default_debug_messenger()
 			.set_debug_callback(&vkmmc_debug::DebugVulkanCallback)
 			.build();
+		check(instanceReturn.has_value());
+		//check(instanceReturn.full_error().vk_result == VK_SUCCESS);
+		//check(false && "holaholahola");
 		if (instanceReturn.matches_error(vkb::InstanceError::failed_create_instance))
 		{
 			Log(LogLevel::Error, "Failed to create vulkan instance.\n");
@@ -470,7 +465,9 @@ namespace vkmmc
 		shaderDrawParamsFeatures.pNext = nullptr;
 		shaderDrawParamsFeatures.shaderDrawParameters = VK_TRUE;
 		deviceBuilder.add_pNext(&shaderDrawParamsFeatures);
-		vkb::Device device = deviceBuilder.build().value();
+		vkb::Result<vkb::Device> deviceResult = deviceBuilder.build();
+		check(deviceResult.has_value());
+		vkb::Device device = deviceResult.value();
 		m_renderContext.Device = device.device;
 		m_renderContext.GPUDevice = physicalDevice.physical_device;
 		Log(LogLevel::Ok, "Vulkan logical device instance created...\n");
@@ -499,6 +496,14 @@ namespace vkmmc
 				Memory::Destroy(m_renderContext.Allocator);
 			});
 		Log(LogLevel::Ok, "Vulkan memory allocator instance created...\n");
+
+		// Load external pfn
+#define GET_VK_PROC_ADDRESS(inst, fn) (PFN_##fn)vkGetInstanceProcAddr(inst, #fn)
+		m_renderContext.pfn_vkCmdBeginDebugUtilsLabelEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkCmdBeginDebugUtilsLabelEXT);
+		m_renderContext.pfn_vkCmdEndDebugUtilsLabelEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkCmdEndDebugUtilsLabelEXT);
+		m_renderContext.pfn_vkCmdInsertDebugUtilsLabelEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkCmdInsertDebugUtilsLabelEXT);
+#undef GET_VK_PROC_ADDRESS
+
 		return true;
 	}
 
