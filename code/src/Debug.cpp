@@ -97,7 +97,7 @@ namespace win
 			//try to get line
 			if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &disp, line))
 			{
-				vkmmc::Logf(vkmmc::LogLevel::Debug, "%s in %s: line: %lu: address: 0x%0X\n", pSymbol->Name, line->FileName, line->LineNumber, pSymbol->Address);
+				vkmmc::Logf(vkmmc::LogLevel::Debug, "%s(%lu) in %s : address: 0x%0X\n", line->FileName, line->LineNumber, pSymbol->Name, pSymbol->Address);
 			}
 			else
 			{
