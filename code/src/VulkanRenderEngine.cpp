@@ -26,6 +26,9 @@
 #include "SceneImpl.h"
 #include "GenericUtils.h"
 #include "Renderers/QuadRenderer.h"
+#include "RenderTarget.h"
+
+//#define VKMMC_CRASH_ON_VALIDATION_LAYER
 
 namespace vkmmc_debug
 {
@@ -44,10 +47,15 @@ namespace vkmmc_debug
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
 		}
 		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
-#if defined(_DEBUG)
 		if (level == vkmmc::LogLevel::Error)
+		{
+#if defined(_DEBUG)
 			PrintCallstack();
 #endif
+#ifdef VKMMC_CRASH_ON_VALIDATION_LAYER
+			check(false && "Validation layer error");
+#endif
+		}
 		return VK_FALSE;
 	}
 }
@@ -77,6 +85,64 @@ namespace vkmmc
 		);
 
 		return newWindow;
+	}
+
+	void ScreenQuadPipeline::Init(const RenderContext& context, const Swapchain& swapchain)
+	{
+		RenderTargetDescription rtDesc;
+		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+		rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {1.f, 0.f, 0.f, 1.f} });
+
+		uint32_t swapchainCount = swapchain.GetImageCount();
+		RenderTargetArray.resize(swapchainCount);
+		for (uint32_t i = 0; i < swapchainCount; ++i)
+		{
+			rtDesc.ExternalAttachments[0] = swapchain.GetImageViewAt(i);
+			rtDesc.ExternalAttachmentCount = 1;
+			RenderTargetArray[i].Create(context, rtDesc);
+		}
+
+		// Init shader
+		ShaderDescription shaders[] =
+		{
+			{.Filepath = globals::PostProcessVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+			{.Filepath = globals::PostProcessFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
+		};
+
+		VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		Pipeline = RenderPipeline::Create(context, RenderTargetArray[0].GetRenderPass(), 0,
+			shaders, sizeof(shaders) / sizeof(ShaderDescription),
+			inputLayout);
+
+		// Init vertexbuffer
+		float vertices[] =
+		{
+			// vkscreencoords	// uvs
+			-1.f, -1.f, 0.f,	0.f, 0.f,
+			1.f, -1.f, 0.f,		1.f, 0.f,
+			1.f, 1.f, 0.f,		1.f, 1.f,
+			-1.f, 1.f, 0.f,		0.f, 1.f
+		};
+		BufferCreateInfo quadInfo;
+		quadInfo.Data = vertices;
+		quadInfo.Size = sizeof(vertices);
+		VB.Init(context, quadInfo);
+
+		uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
+		quadInfo.Data = indices;
+		quadInfo.Size = sizeof(indices);
+		IB.Init(context, quadInfo);
+	}
+
+	void ScreenQuadPipeline::Destroy(const RenderContext& context)
+	{
+		IB.Destroy(context);
+		VB.Destroy(context);
+		Pipeline.Destroy(context);
+		for (uint32_t i = 0; i < (uint32_t)RenderTargetArray.size(); ++i)
+		{
+			RenderTargetArray[i].Destroy(context);
+		}
 	}
 
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
@@ -132,28 +198,26 @@ namespace vkmmc
 		check(InitSync());
 
 		RendererCreateInfo rendererCreateInfo;
-		rendererCreateInfo.RContext = m_renderContext;
-		rendererCreateInfo.DescriptorAllocator = &m_descriptorAllocator;
-		rendererCreateInfo.LayoutCache = &m_descriptorLayoutCache;
+		rendererCreateInfo.Context = m_renderContext;
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			rendererCreateInfo.FrameUniformBufferArray[i] = &m_frameContextArray[i].GlobalBuffer;
-			check(m_shadowMapAttachments[i].FramebufferArray.size() == globals::MaxShadowMapAttachments);
-			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-				rendererCreateInfo.ShadowMapAttachments[i].push_back(m_shadowMapAttachments[i].FramebufferArray[j]->GetImageViewAt(0));
+			//rendererCreateInfo.ShadowMapAttachments[i] = m_renderTargetArray[i][RENDER_PASS_SHADOW_MAP].GetRenderTarget(0);
 		}
 
 		rendererCreateInfo.ConstantRange = nullptr;
 		rendererCreateInfo.ConstantRangeCount = 0;
 
+		LightingRenderer* lightingRenderer = new LightingRenderer();
+		UIRenderer* uiRenderer = new UIRenderer();
+
 		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
-		m_renderers[RENDER_PASS_LIGHTING].push_back(new LightingRenderer());
-		m_renderers[RENDER_PASS_LIGHTING].push_back(new DebugRenderer());
-		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new QuadRenderer());
-		m_renderers[RENDER_PASS_POST_PROCESS].push_back(new UIRenderer());
+		m_renderers[RENDER_PASS_LIGHTING].push_back(lightingRenderer);
+		m_renderers[RENDER_PASS_POST_PROCESS].push_back(uiRenderer);
+		//m_renderers[RENDER_PASS_POST_PROCESS].push_back(new QuadRenderer());
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
-			rendererCreateInfo.Pass = m_renderPassArray[i].RenderPass;
+			//rendererCreateInfo.Pass = m_renderTargetArray[0][i].GetRenderPass();
 			for (IRendererBase* renderer : m_renderers[i])
 				renderer->Init(rendererCreateInfo);
 		}
@@ -162,6 +226,30 @@ namespace vkmmc
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 			m_gbuffer.InitFrameData(m_renderContext, &m_frameContextArray[i].GlobalBuffer, i);
 		m_shutdownStack.Add([this] { m_gbuffer.Destroy(m_renderContext); });
+
+		m_screenPipeline.Init(m_renderContext, m_swapchain);
+		m_shutdownStack.Add([this] { m_screenPipeline.Destroy(m_renderContext); });
+
+#if 1
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
+		{
+			tArray<VkDescriptorImageInfo, 2> quadImageInfoArray;
+			quadImageInfoArray[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[0].imageView = lightingRenderer->GetRenderTarget(i, 0);
+			quadImageInfoArray[0].sampler = m_quadSampler.GetSampler();
+			quadImageInfoArray[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[1].imageView = uiRenderer->GetRenderTarget(i, 0);
+			quadImageInfoArray[1].sampler = m_quadSampler.GetSampler();
+			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+				.BindImage(0, &quadImageInfoArray[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(1, &quadImageInfoArray[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(m_renderContext, m_quadSets[i]);
+			char buff[64];
+			sprintf_s(buff, "DescriptorSet_Quad_%d", i);
+			SetVkObjectName(m_renderContext, &m_quadSets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
+		}
+#endif // 0
+
 
 		AddImGuiCallback(&vkmmc_profiling::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
@@ -297,7 +385,6 @@ namespace vkmmc
 		{
 			CPU_PROFILE_SCOPE(UpdateBuffers);
 			frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
-
 		}
 
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
@@ -311,7 +398,6 @@ namespace vkmmc
 			vkcheck(vkResetCommandBuffer(frameContext.GraphicsCommand, 0));
 
 			// Prepare command buffer
-			BeginGPUEvent(m_renderContext, cmd, "Begin CMD", 0xff0000ff);
 			VkCommandBufferBeginInfo cmdBeginInfo = {};
 			cmdBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 			cmdBeginInfo.pNext = nullptr;
@@ -319,6 +405,7 @@ namespace vkmmc
 			cmdBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 			// Begin command buffer
 			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+			BeginGPUEvent(m_renderContext, cmd, "Begin CMD", 0xff0000ff);
 		}
 
 		{
@@ -327,13 +414,25 @@ namespace vkmmc
 			uint32_t frameIndex = GetFrameIndex();
 			render::DrawQuadTexture(m_quadSets[frameIndex]);
 			for (uint32_t pass = RENDER_PASS_SHADOW_MAP; pass < RENDER_PASS_COUNT; ++pass)
-				DrawPass(cmd, (ERenderPassType)pass, GetAttachment((ERenderPassType)pass));
+				DrawPass(cmd, frameIndex, (ERenderPassType)pass);
+
+			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
+			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineHandle());
+
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineLayoutHandle(),
+				0, 1, &m_quadSets[frameIndex], 0, nullptr);
+			m_screenPipeline.VB.Bind(cmd);
+			m_screenPipeline.IB.Bind(cmd);
+			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].EndPass(cmd);
+			EndGPUEvent(m_renderContext, cmd);
 		}
 
 
 		// Terminate command buffer
-		EndGPUEvent(m_renderContext, cmd);
 		vkcheck(vkEndCommandBuffer(cmd));
+		EndGPUEvent(m_renderContext, cmd);
 
 
 		{
@@ -502,6 +601,7 @@ namespace vkmmc
 		m_renderContext.pfn_vkCmdBeginDebugUtilsLabelEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkCmdBeginDebugUtilsLabelEXT);
 		m_renderContext.pfn_vkCmdEndDebugUtilsLabelEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkCmdEndDebugUtilsLabelEXT);
 		m_renderContext.pfn_vkCmdInsertDebugUtilsLabelEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkCmdInsertDebugUtilsLabelEXT);
+		m_renderContext.pfn_vkSetDebugUtilsObjectNameEXT = GET_VK_PROC_ADDRESS(m_renderContext.Instance, vkSetDebugUtilsObjectNameEXT);
 #undef GET_VK_PROC_ADDRESS
 
 		return true;
@@ -535,81 +635,48 @@ namespace vkmmc
 
 	bool VulkanRenderEngine::InitRenderPass()
 	{
-		// Color RenderPass
+#if 0
+		tClearValue clearValues[2];
+		clearValues[0].color = { 1.f, 0.f, 0.f, 1.f };
+		clearValues[1].depthStencil.depth = 1.f;
+		// Color description
+		RenderTargetDescription colorDesc;
+		colorDesc.RenderArea.extent = { .width = m_window.Width, .height = m_window.Height };
+		colorDesc.RenderArea.offset = { 0, 0 };
+		colorDesc.AddColorAttachment(m_swapchain.GetImageFormat(), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValues[0]);
+		colorDesc.DepthAttachmentDescription.Format = FORMAT_D32_SFLOAT;
+		colorDesc.DepthAttachmentDescription.Layout = IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+		colorDesc.DepthAttachmentDescription.ClearValue = clearValues[1];
+
+		// Depth shadow map description
+		RenderTargetDescription shadowMapDesc;
+		shadowMapDesc.RenderArea = colorDesc.RenderArea;
+		shadowMapDesc.SetDepthAttachment(FORMAT_R32G32B32A32_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValues[1]);
+
+		// Postprocess render target desc
+		RenderTargetDescription postDesc;
+		postDesc.RenderArea = colorDesc.RenderArea;
+		postDesc.AddColorAttachment(m_swapchain.GetImageFormat(), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValues[0]);
+
+		for (uint32_t i = 0; i < (uint32_t)m_renderTargetArray.size(); ++i)
 		{
-			VkSubpassDependency dependencies[2];
-			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependencies[0].dstSubpass = 0;
-			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-			dependencies[1].srcSubpass = 0;
-			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-			m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass = RenderPassBuilder::Create()
-				.AddAttachment(m_swapchain.GetImageFormat(), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-				.AddAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL)
-				.AddSubpass(
-					{ 0 }, // Color attachments
-					1, // Depth attachment
-					{} // Input attachment
-				)
-				.AddDependencies(dependencies, sizeof(dependencies) / sizeof(VkSubpassDependency))
-				.Build(m_renderContext);
-			check(m_renderPassArray[RENDER_PASS_LIGHTING].RenderPass != VK_NULL_HANDLE);
-
-			m_renderPassArray[RENDER_PASS_LIGHTING].Width = m_window.Width;
-			m_renderPassArray[RENDER_PASS_LIGHTING].Height = m_window.Height;
-			m_renderPassArray[RENDER_PASS_LIGHTING].OffsetX = 0;
-			m_renderPassArray[RENDER_PASS_LIGHTING].OffsetY = 0;
-			VkClearValue value;
-			value.color = { 0.f, 0.f, 0.f };
-			m_renderPassArray[RENDER_PASS_LIGHTING].ClearValues.push_back(value);
-			value.depthStencil.depth = 1.f;
-			m_renderPassArray[RENDER_PASS_LIGHTING].ClearValues.push_back(value);
+			m_renderTargetArray[i][RENDER_PASS_LIGHTING].Create(m_renderContext, colorDesc);
+			m_renderTargetArray[i][RENDER_PASS_SHADOW_MAP].Create(m_renderContext, shadowMapDesc);
+			m_renderTargetArray[i][RENDER_PASS_POST_PROCESS].Create(m_renderContext, postDesc);
 		}
+		m_shutdownStack.Add(
+			[this] {
+				for (uint32_t i = 0; i < (uint32_t)m_renderTargetArray.size(); ++i)
+				{
+					m_renderTargetArray[i][RENDER_PASS_LIGHTING].Destroy(m_renderContext);
+					m_renderTargetArray[i][RENDER_PASS_SHADOW_MAP].Destroy(m_renderContext);
+					m_renderTargetArray[i][RENDER_PASS_POST_PROCESS].Destroy(m_renderContext);
+				}
+			}
+		);
+#endif // 0
 
-		// Depth RenderPass for shadow mapping
-		{
-			std::array<VkSubpassDependency, 2> dependencies;
-			dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-			dependencies[0].dstSubpass = 0;
-			dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-			dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-			dependencies[1].srcSubpass = 0;
-			dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-			dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-			dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-			dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-
-			m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass = RenderPassBuilder::Create()
-				.AddAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-				.AddSubpass({}, 0, {})
-				.AddDependencies(dependencies.data(), (uint32_t)dependencies.size())
-				.Build(m_renderContext);
-			check(m_renderPassArray[RENDER_PASS_SHADOW_MAP].RenderPass != VK_NULL_HANDLE);
-
-			m_renderPassArray[RENDER_PASS_SHADOW_MAP].Width = m_window.Width;
-			m_renderPassArray[RENDER_PASS_SHADOW_MAP].Height = m_window.Height;
-			m_renderPassArray[RENDER_PASS_SHADOW_MAP].OffsetX = 0;
-			m_renderPassArray[RENDER_PASS_SHADOW_MAP].OffsetY = 0;
-			VkClearValue value;
-			value.depthStencil.depth = 1.f;
-			m_renderPassArray[RENDER_PASS_SHADOW_MAP].ClearValues.push_back(value);
-		}
+#if 0
 
 		// Post process render pass
 		{
@@ -644,78 +711,44 @@ namespace vkmmc
 			m_renderPassArray[RENDER_PASS_POST_PROCESS].ClearValues.push_back(value);
 		}
 
-		m_shutdownStack.Add([this]() 
+		m_shutdownStack.Add([this]()
 			{
 				for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
 					vkDestroyRenderPass(m_renderContext.Device, m_renderPassArray[i].RenderPass, nullptr);
 			});
+#endif // 0
+
 
 		return true;
 	}
 
 	bool VulkanRenderEngine::InitFramebuffers()
 	{
+#if 0
 		// Collect image in the swapchain
 		const uint32_t swapchainImageCount = m_swapchain.GetImageCount();
 		//check(globals::MaxOverlappedFrames <= swapchainImageCount);
 
 		// One framebuffer per swapchain image
-		m_swapchainAttachments.resize(swapchainImageCount);
+		m_swapchainTargetArray.resize(swapchainImageCount);
+		tClearValue clearValue{ .color = {1.f, 0.f, 0.f, 1.f} };
+		RenderTargetDescription presentDesc;
+		presentDesc.RenderArea.extent = { .width = m_window.Width, .height = m_window.Height };
+		presentDesc.AddColorAttachment(m_swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, clearValue);
+		presentDesc.ExternalAttachmentCount = 1;
 		for (uint32_t i = 0; i < swapchainImageCount; ++i)
 		{
-			// Swapchain Framebuffer
-			const RenderPass& pass = m_renderPassArray[RENDER_PASS_POST_PROCESS];
-			Framebuffer* fb = new Framebuffer();
-			Framebuffer::Builder builder(m_renderContext, { .width = pass.Width, .height = pass.Height });
-			builder.AddAttachment(m_swapchain.GetImageViewAt(i));
-			builder.Build(*fb, pass.RenderPass);
-
-			m_swapchainAttachments[i].FramebufferArray.push_back(fb);
-			m_shutdownStack.Add([this, i] { m_swapchainAttachments[i].Destroy(m_renderContext); });
+			// Swapchain RT
+			presentDesc.ExternalAttachments[0] = m_swapchain.GetImageViewAt(i);
+			m_swapchainTargetArray[i].Create(m_renderContext, presentDesc);
 		}
+		m_shutdownStack.Add(
+			[this] {
+				for (auto& rt : m_swapchainTargetArray)
+					rt.Destroy(m_renderContext);
+			});
+#endif // 0
 
-		// One framebuffer for each of the swapchain image view.
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			// Shadow map Framebuffer
-			const RenderPass& shadowPass = m_renderPassArray[RENDER_PASS_SHADOW_MAP];
-			tExtent3D extent{ .width = shadowPass.Width, .height = shadowPass.Height, .depth = 1 };
-			VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(FORMAT_D32_SFLOAT,
-				IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT,
-				extent, globals::MaxShadowMapAttachments);
-			AllocatedImage depthImage = Memory::CreateImage(m_renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-			m_shadowMapAttachments[i].Image = depthImage;
-			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-			{
-				VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(FORMAT_D32_SFLOAT, depthImage.Image, IMAGE_ASPECT_DEPTH_BIT, j);
-				VkImageView view;
-				vkcheck(vkCreateImageView(m_renderContext.Device, &viewInfo, nullptr, &view));
-
-				Framebuffer* fb = new Framebuffer();
-				Framebuffer::Builder builder(m_renderContext, extent);
-				builder.AddAttachment(view, true);
-				builder.Build(*fb, shadowPass.RenderPass);
-				m_shadowMapAttachments[i].FramebufferArray.push_back(fb);
-			}
-
-			// Color framebuffer
-			const RenderPass& colorPass = m_renderPassArray[RENDER_PASS_LIGHTING];
-			RenderPassAttachment& colorPassAttachment = m_colorAttachments[i];
-			colorPassAttachment.FramebufferArray.resize(1);
-			Framebuffer* fb = new Framebuffer();
-			Framebuffer::Builder builder(m_renderContext, extent);
-			builder.CreateAttachment(m_swapchain.GetImageFormat(), IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
-			builder.CreateAttachment(m_swapchain.GetDepthFormat(), IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
-			builder.Build(*fb, colorPass.RenderPass);
-			colorPassAttachment.FramebufferArray[0] = fb;
-
-			// Destroy on shutdown
-			m_shutdownStack.Add([this, i]()
-				{
-					m_shadowMapAttachments[i].Destroy(m_renderContext);
-					m_colorAttachments[i].Destroy(m_renderContext);
-				});
-		}
 		return true;
 	}
 
@@ -780,14 +813,20 @@ namespace vkmmc
 				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 
-			VkDescriptorImageInfo quadImageInfo;
-			quadImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			//quadImageInfo.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			quadImageInfo.imageView = m_colorAttachments[i].FramebufferArray[0]->GetImageViewAt(0);
-			quadImageInfo.sampler = m_quadSampler.GetSampler();
+#if 0
+			tArray<VkDescriptorImageInfo, 2> quadImageInfoArray;
+			quadImageInfoArray[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			quadImageInfoArray[0].imageView = m_colorAttachments[i].FramebufferArray[0]->GetImageViewAt(0);
+			quadImageInfoArray[0].sampler = m_quadSampler.GetSampler();
+			quadImageInfoArray[1].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			quadImageInfoArray[1].imageView = m_colorAttachments[i].FramebufferArray[0]->GetImageViewAt(0);
+			quadImageInfoArray[1].sampler = m_quadSampler.GetSampler();
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindImage(0, &quadImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(0, &quadImageInfoArray[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(1, &quadImageInfoArray[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(m_renderContext, m_quadSets[i]);
+#endif // 0
+
 
 			// Scene buffer allocation. TODO: this should be done by scene.
 			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, sizeof(glm::mat4) * globals::MaxRenderObjects);
@@ -796,32 +835,16 @@ namespace vkmmc
 		return true;
 	}
 
-	void VulkanRenderEngine::DrawPass(VkCommandBuffer cmd, ERenderPassType passType, const RenderPassAttachment& passAttachment)
+	void VulkanRenderEngine::DrawPass(VkCommandBuffer cmd, uint32_t frameIndex, ERenderPassType passType)
 	{
-		RenderPass& renderPass = m_renderPassArray[passType];
+		//RenderTarget& rt = m_renderTargetArray[frameIndex][passType];
+
 		std::vector<IRendererBase*>& renderers = m_renderers[passType];
-		for (uint32_t i = 0; i < (uint32_t)passAttachment.FramebufferArray.size(); ++i)
-		{
-			renderPass.BeginPass(cmd, passAttachment.FramebufferArray[i]->GetFramebufferHandle());
-			for (IRendererBase* it : renderers)
-				it->RecordCmd(m_renderContext, GetFrameContext(), i);
-			renderPass.EndPass(cmd);
-		}
+		//rt.BeginPass(cmd);
+		for (IRendererBase* it : renderers)
+			it->RecordCmd(m_renderContext, GetFrameContext(), 0);
+		//rt.EndPass(cmd);
 	}
-
-	const RenderPassAttachment& VulkanRenderEngine::GetAttachment(ERenderPassType passType) const
-	{
-		switch (passType)
-		{
-		case RENDER_PASS_SHADOW_MAP: return m_shadowMapAttachments[GetFrameIndex()];
-		case RENDER_PASS_LIGHTING: return m_colorAttachments[GetFrameIndex()];
-		case RENDER_PASS_PRESENT: return m_swapchainAttachments[m_currentSwapchainIndex];
-		default:
-			check(false && "Unreachable");
-		}
-		return *(RenderPassAttachment*)0;
-	}
-
 
 	void RenderPassAttachment::Destroy(const RenderContext& renderContext)
 	{
@@ -835,5 +858,7 @@ namespace vkmmc
 		if (Image.IsAllocated())
 			Memory::DestroyImage(renderContext.Allocator, Image);
 	}
+
+
 
 }

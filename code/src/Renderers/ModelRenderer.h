@@ -4,6 +4,7 @@
 #pragma once
 #include "RendererBase.h"
 #include "Texture.h"
+#include "RenderTarget.h"
 #include <glm/glm.hpp>
 
 namespace vkmmc
@@ -63,6 +64,7 @@ namespace vkmmc
 	{
 		struct FrameData
 		{
+			tArray<RenderTarget, globals::MaxShadowMapAttachments> RenderTargetArray;
 			VkDescriptorSet DebugShadowMapTextureSet[globals::MaxShadowMapAttachments];
 		};
 	public:
@@ -72,6 +74,7 @@ namespace vkmmc
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
+		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
 	private:
 		ShadowMapPipeline m_shadowMapPipeline;
 		Sampler m_debugSampler;
@@ -81,8 +84,10 @@ namespace vkmmc
 
 	class LightingRenderer : public IRendererBase
 	{
-		struct RendererFrameData
+		struct FrameData
 		{
+			RenderTarget RT;
+
 			// Camera, models and environment
 			VkDescriptorSet PerFrameSet;
 			VkDescriptorSet ModelSet;
@@ -94,14 +99,14 @@ namespace vkmmc
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
-
+		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
 	protected:
 
 	protected:
 		// Render State
 		RenderPipeline m_renderPipeline;
 
-		std::vector<RendererFrameData> m_frameData;
+		tArray<FrameData, globals::MaxOverlappedFrames> m_frameData;
 		
 		Sampler m_depthMapSampler;
 		bool m_debugCameraDepthMapping;

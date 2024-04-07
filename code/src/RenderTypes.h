@@ -27,7 +27,7 @@ namespace vkmmc
 	using tDynArray = std::vector<T>;
 	template <typename T, size_t N>
 	using tArray = std::array<T, N>;
-	template <typename Key_t, typename Value_t, typename Hasher_t>
+	template <typename Key_t, typename Value_t/*, typename Hasher_t*/>
 	using tMap = std::unordered_map<Key_t, Value_t/*, Hasher_t = hash<Key_t>*/>;
 
 	typedef uint32_t tFlagBits;

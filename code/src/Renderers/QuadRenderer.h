@@ -3,6 +3,7 @@
 
 #pragma once
 #include "RendererBase.h"
+#include "RenderTarget.h"
 
 namespace vkmmc
 {
@@ -13,15 +14,21 @@ namespace vkmmc
 
 	class QuadRenderer : public IRendererBase
 	{
+		struct FrameData
+		{
+			RenderTarget RT;
+		};
 	public:
 		virtual void Init(const RendererCreateInfo& info) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override {}
+		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
 	protected:
 
 	private:
+		tArray<FrameData, globals::MaxOverlappedFrames> m_frameData;
 		VertexBuffer m_vb;
 		IndexBuffer m_ib;
 		RenderPipeline m_pipeline;

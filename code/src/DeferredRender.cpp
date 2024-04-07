@@ -70,12 +70,22 @@ namespace vkmmc
 			imageInfo.sampler = m_sampler.GetSampler();
 			DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(renderContext, m_rtDescriptors[i]);
+				.Build(renderContext, m_debugTexDescriptors[i]);
 		}
+
+		VkDescriptorImageInfo imageInfo;
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = m_composition.m_renderTarget.GetRenderTarget(0);
+		imageInfo.sampler = m_sampler.GetSampler();
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(renderContext, m_debugTexDescriptors[4]);
 	}
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
+		m_quadIB.Destroy(renderContext);
+		m_quadVB.Destroy(renderContext);
 		m_sampler.Destroy(renderContext);
 		m_mrt.Destroy(renderContext);
 		m_composition.Destroy(renderContext);
@@ -131,24 +141,26 @@ namespace vkmmc
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_composition.m_pipeline.GetPipelineHandle());
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_composition.m_pipeline.GetPipelineLayoutHandle(),
 			0, 2, m_composition.m_frameData[frameContext.FrameIndex].DescriptorSetArray.data(), 0, nullptr);
-		vkCmdDraw(cmd, 3, 1, 0, 0);
+		m_quadVB.Bind(cmd);
+		m_quadIB.Bind(cmd);
+		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 		m_composition.m_renderTarget.EndPass(cmd);
 	}
 
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* targets[] = { "Position", "Normals", "Albedo", "Depth" };
+		static const char* targets[] = { "Position", "Normals", "Albedo", "Depth", "Composition"};
 		static uint32_t rtindex = 0;
 		if (ImGui::BeginCombo("Gbuffer target", targets[rtindex]))
 		{
-			for (uint32_t i = 0; i < 4; ++i)
+			for (uint32_t i = 0; i < 5; ++i)
 			{
 				bool selected = i == rtindex;
 				if (ImGui::Selectable(targets[i], &selected))
 				{
 					rtindex = i;
-					debugrender::SetDebugTexture(m_rtDescriptors[rtindex]);
+					debugrender::SetDebugTexture(m_debugTexDescriptors[rtindex]);
 					break;
 				}
 			}
@@ -160,6 +172,11 @@ namespace vkmmc
 	VkImageView GBuffer::GetRenderTarget(EGBufferTarget target) const
 	{
 		return m_mrt.m_renderTarget.GetRenderTarget(target);
+	}
+
+	VkImageView GBuffer::GetComposition() const 
+	{
+		return m_composition.m_renderTarget.GetRenderTarget(0);
 	}
 
 	void GBuffer::InitPipeline(const RenderContext& renderContext)
@@ -211,9 +228,27 @@ namespace vkmmc
 				.Build(renderContext, &layouts[1]);
 
 			// Empty input layout
-			VertexInputLayout inputLayout;
+			VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
 			m_composition.m_pipeline = RenderPipeline::Create(renderContext, m_composition.m_renderTarget.GetRenderPass(),
 				0, descs, 2, layouts.data(), (uint32_t)layouts.size(), nullptr, 0, inputLayout);
+
+			// init quad
+			float vertices[] =
+			{
+				// vkscreencoords	// uvs
+				-1.f, -1.f, 0.f,	0.f, 0.f,
+				1.f, -1.f, 0.f,		1.f, 0.f,
+				1.f, 1.f, 0.f,		1.f, 1.f,
+				-1.f, 1.f, 0.f,		0.f, 1.f
+			};
+			uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
+			BufferCreateInfo bufferInfo;
+			bufferInfo.Data = vertices;
+			bufferInfo.Size = sizeof(vertices);
+			m_quadVB.Init(renderContext, bufferInfo);
+			bufferInfo.Data = indices;
+			bufferInfo.Size = sizeof(indices);
+			m_quadIB.Init(renderContext, bufferInfo);
 		}
 	}
 }

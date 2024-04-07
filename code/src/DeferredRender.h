@@ -48,6 +48,7 @@ namespace vkmmc
 		void ImGuiDraw();
 
 		VkImageView GetRenderTarget(EGBufferTarget target) const;
+		VkImageView GetComposition() const;
 
 	private:
 		void InitPipeline(const RenderContext& renderContext);
@@ -55,8 +56,11 @@ namespace vkmmc
 		PassData m_mrt;
 		PassData m_composition;
 
+		VertexBuffer m_quadVB;
+		IndexBuffer m_quadIB;
+
 		// Show render targets in debug mode.
 		Sampler m_sampler;
-		VkDescriptorSet m_rtDescriptors[4];
+		tArray<VkDescriptorSet, 5> m_debugTexDescriptors;
 	};
 }

@@ -144,6 +144,7 @@ void main()
 	vec3 fragNormal = texture(u_GBufferNormal, inTexCoords).rgb;
 	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
 	vec3 viewPos = u_Env.ViewPos.xyz;
+    outColor = fragColor;
     if (fragColor.a <= 0.1f)
         discard;
 
@@ -165,27 +166,27 @@ void main()
         for (int i = 0; i < numSpotLights; ++i)
         {
             vec3 spotLightColor = ProcessSpotLight(fragPos, fragNormal, viewPos, u_Env.SpotLights[i]);
-			#if 0
+#if 0
             if (u_Env.SpotLights[i].Color.w >= 0.f)
             {
                 int shadowIndex = int(u_Env.SpotLights[i].Color.w);
                 float shadow = CalculateShadow(shadowIndex);
                 spotLightColor *= (1.f-shadow);
             }
-			#endif
+#endif
             spotLightsColor += spotLightColor;
         }
         spotLightsColor *= (1.f-spotLightShadow);
         // Directional light
         vec3 directionalLightColor = ProcessDirectionalLight(fragPos, fragNormal, viewPos, u_Env.DirectionalLight);
-		#if 0
+#if 0
         if (u_Env.DirectionalLight.Pos.w >= 0.f)
         {
             int shadowIndex = int(u_Env.DirectionalLight.Pos.w);
             float shadow = CalculateShadow(shadowIndex);
             directionalLightColor *= (1.f - shadow);
         }
-		#endif
+#endif
 
         lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
         // Mix

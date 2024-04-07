@@ -3,6 +3,7 @@
 
 #pragma once
 #include "RendererBase.h"
+#include "Texture.h"
 #include <glm/glm.hpp>
 
 namespace vkmmc
@@ -18,12 +19,36 @@ namespace vkmmc
 		void SetDebugClipParams(float nearClip, float farClip);
 	}
 
-	class DebugRenderer : public IRendererBase
+	class DebugPipeline
 	{
 		struct FrameData
 		{
+			VkDescriptorSet CameraSet;
 			VkDescriptorSet SetUBO;
 		};
+	public:
+		void Init(const RenderContext& context, VkRenderPass renderPass);
+		void SetupFrameData(const RenderContext& context, uint32_t index, UniformBuffer* buffer);
+		void PrepareFrame(const RenderContext& context, UniformBuffer* buffer);
+		void Draw(const RenderContext& context, VkCommandBuffer cmd, uint32_t frameIndex);
+		void Destroy(const RenderContext& context);
+		void ImGuiDraw();
+	private:
+		// Render State
+		RenderPipeline m_renderPipeline;
+		VertexBuffer m_lineVertexBuffer;
+
+		tArray<FrameData, globals::MaxOverlappedFrames> m_frameSet;
+		VertexBuffer m_quadVertexBuffer;
+		IndexBuffer m_quadIndexBuffer;
+		RenderPipeline m_quadPipeline;
+		Sampler m_depthSampler;
+		bool m_debugDepthMap = true;
+	};
+#if 0
+
+	class DebugRenderer : public IRendererBase
+	{
 
 		struct QuadVertex
 		{
@@ -36,6 +61,7 @@ namespace vkmmc
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
+		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
 	protected:
 		// Render State
 		RenderPipeline m_renderPipeline;
@@ -48,5 +74,7 @@ namespace vkmmc
 		VkSampler m_depthSampler;
 		bool m_debugDepthMap = true;
 	};
+
+#endif // 0
 
 }

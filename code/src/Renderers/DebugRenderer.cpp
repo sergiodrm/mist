@@ -103,12 +103,13 @@ namespace vkmmc
             FarClip = farClip;
         }
     }
+#if 0
 
     void DebugRenderer::Init(const RendererCreateInfo& info)
     {
-		/**********************************/
-		/** Pipeline layout and pipeline **/
-		/**********************************/
+        /**********************************/
+        /** Pipeline layout and pipeline **/
+        /**********************************/
         ShaderDescription descriptions[] =
         {
             {.Filepath = globals::LineVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
@@ -150,7 +151,7 @@ namespace vkmmc
             {.Filepath = globals::DepthQuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
         };
         inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-        m_quadPipeline = RenderPipeline::Create(info.RContext, info.Pass, 0, shaders, 2, inputLayout);
+        //m_quadPipeline = RenderPipeline::Create(info.RContext, info.Pass, 0, shaders, 2, inputLayout);
 
         VkSamplerCreateInfo samplerInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR);
         vkCreateSampler(info.RContext.Device, &samplerInfo, nullptr, &m_depthSampler);
@@ -164,7 +165,7 @@ namespace vkmmc
             buffer->AllocUniform(info.RContext, "QuadUBO", sizeof(float) * 2);
             VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("QuadUBO");
 
-            DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+            DescriptorBuilder::Create(*info.Context.LayoutCache, *info.Context.DescAllocator)
                 .BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
                 .Build(info.RContext, m_frameData[i].SetUBO);
         }
@@ -182,13 +183,14 @@ namespace vkmmc
 
     void DebugRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
     {
-		float ubo[2] = { debugrender::NearClip, debugrender::FarClip };
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, "QuadUBO", ubo, sizeof(float) * 2);
+        float ubo[2] = { debugrender::NearClip, debugrender::FarClip };
+        renderFrameContext.GlobalBuffer.SetUniform(renderContext, "QuadUBO", ubo, sizeof(float) * 2);
     }
 
     void DebugRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
     {
         CPU_PROFILE_SCOPE(DebugPass);
+        BeginGPUEvent(renderContext, renderFrameContext.GraphicsCommand, "DebugRenderer");
         if (debugrender::GLineBatch.Index > 0)
         {
             // Flush lines to vertex buffer
@@ -216,20 +218,158 @@ namespace vkmmc
             m_quadIndexBuffer.Bind(cmd);
             vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
         }
+        EndGPUEvent(renderContext, renderFrameContext.GraphicsCommand);
     }
 
     void DebugRenderer::ImGuiDraw()
     {
-        ImGui::Begin("debug");
-        ImGui::Checkbox("DebugMap", &m_debugDepthMap);
-        if (m_debugDepthMap)
-        {
-            if (debugrender::DebugTexture != VK_NULL_HANDLE)
-                ImGui::TextColored(ImVec4(0.2f, 0.5f, 0.1f, 1.f), "Texture bound.");
-            else
-                ImGui::TextColored(ImVec4(0.5f, 0.1f, 0.1f, 1.f), "Texture NOT bound.");
-        }
-        ImGui::End();
+		ImGui::Begin("debug");
+		ImGui::Checkbox("DebugMap", &m_debugDepthMap);
+		if (m_debugDepthMap)
+		{
+			if (debugrender::DebugTexture != VK_NULL_HANDLE)
+				ImGui::TextColored(ImVec4(0.2f, 0.5f, 0.1f, 1.f), "Texture bound.");
+			else
+				ImGui::TextColored(ImVec4(0.5f, 0.1f, 0.1f, 1.f), "Texture NOT bound.");
+		}
+		ImGui::End();
+    }
+
+    VkImageView DebugRenderer::GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
+    {
+        return VK_NULL_HANDLE;
+    }
+#endif // 0
+
+    void DebugPipeline::Init(const RenderContext& context, VkRenderPass renderPass)
+    {
+		/**********************************/
+		/** Pipeline layout and pipeline **/
+		/**********************************/
+		ShaderDescription descriptions[] =
+		{
+			{.Filepath = globals::LineVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+			{.Filepath = globals::LineFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
+		};
+		uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
+
+		VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
+		m_renderPipeline = RenderPipeline::Create(context, renderPass, 0,
+			descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+
+		// VertexBuffer
+		BufferCreateInfo vbInfo;
+		vbInfo.Size = sizeof(debugrender::LineVertex) * debugrender::LineBatch::MaxLines;
+		vbInfo.Data = nullptr;
+		m_lineVertexBuffer.Init(context, vbInfo);
+
+		float vertices[] =
+		{
+			0.5f, -1.f, 0.f, 0.f, 0.f,
+			1.f, -1.f, 0.f, 1.f, 0.f,
+			1.f, -0.5f, 0.f, 1.f, 1.f,
+			0.5f, -0.5f, 0.f, 0.f, 1.f,
+		};
+		uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
+		BufferCreateInfo quadInfo;
+		quadInfo.Size = sizeof(vertices);
+		quadInfo.Data = vertices;
+		m_quadVertexBuffer.Init(context, quadInfo);
+
+		quadInfo.Size = sizeof(uint32_t) * 6;
+		quadInfo.Data = indices;
+		m_quadIndexBuffer.Init(context, quadInfo);
+
+		// quad pipeline
+		ShaderDescription shaders[2]
+		{
+			{.Filepath = globals::QuadVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+			{.Filepath = globals::DepthQuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
+		};
+		inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		m_quadPipeline = RenderPipeline::Create(context, renderPass, 0, shaders, 2, inputLayout);
+
+        SamplerBuilder builder;
+        m_depthSampler = builder.Build(context);
+    }
+
+    void DebugPipeline::SetupFrameData(const RenderContext& context, uint32_t index, UniformBuffer* buffer)
+    {
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			// Uniform buffer
+			buffer->AllocUniform(context, "QuadUBO", sizeof(float) * 2);
+			VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("QuadUBO");
+
+			DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(context, m_frameSet[i].SetUBO);
+
+            VkDescriptorBufferInfo cameraBI = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_CAMERA);
+            DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+                .BindBuffer(0, &cameraBI, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+                .Build(context, m_frameSet[i].CameraSet);
+		}
+    }
+
+    void DebugPipeline::PrepareFrame(const RenderContext& context, UniformBuffer* buffer)
+    {
+		float ubo[2] = { debugrender::NearClip, debugrender::FarClip };
+		buffer->SetUniform(context, "QuadUBO", ubo, sizeof(float) * 2);
+    }
+
+    void DebugPipeline::Draw(const RenderContext& context, VkCommandBuffer cmd, uint32_t frameIndex)
+    {
+		CPU_PROFILE_SCOPE(DebugPass);
+		BeginGPUEvent(context, cmd, "DebugRenderer");
+		if (debugrender::GLineBatch.Index > 0)
+		{
+			// Flush lines to vertex buffer
+			GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &debugrender::GLineBatch.LineArray, sizeof(debugrender::LineVertex) * debugrender::GLineBatch.Index);
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+				m_renderPipeline.GetPipelineLayoutHandle(), 0, 1, &m_frameSet[frameIndex].CameraSet, 0, nullptr);
+			++vkmmc_profiling::GRenderStats.SetBindingCount;
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
+			m_lineVertexBuffer.Bind(cmd);
+			vkCmdDraw(cmd, debugrender::GLineBatch.Index, 1, 0, 0);
+			debugrender::GLineBatch.Index = 0;
+			++vkmmc_profiling::GRenderStats.DrawCalls;
+		}
+
+		if (m_debugDepthMap && debugrender::DebugTexture != VK_NULL_HANDLE)
+		{
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineHandle());
+			VkDescriptorSet sets[2] = { m_frameSet[frameIndex].SetUBO, debugrender::DebugTexture };
+			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineLayoutHandle(), 0, 2, sets, 0, nullptr);
+			m_quadVertexBuffer.Bind(cmd);
+			m_quadIndexBuffer.Bind(cmd);
+			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+		}
+		EndGPUEvent(context, cmd);
+    }
+
+    void DebugPipeline::Destroy(const RenderContext& context)
+    {
+		m_quadVertexBuffer.Destroy(context);
+		m_quadIndexBuffer.Destroy(context);
+        m_depthSampler.Destroy(context);
+		m_quadPipeline.Destroy(context);
+		m_lineVertexBuffer.Destroy(context);
+		m_renderPipeline.Destroy(context);
+    }
+
+    void DebugPipeline::ImGuiDraw()
+    {
+		ImGui::Begin("debug");
+		ImGui::Checkbox("DebugMap", &m_debugDepthMap);
+		if (m_debugDepthMap)
+		{
+			if (debugrender::DebugTexture != VK_NULL_HANDLE)
+				ImGui::TextColored(ImVec4(0.2f, 0.5f, 0.1f, 1.f), "Texture bound.");
+			else
+				ImGui::TextColored(ImVec4(0.5f, 0.1f, 0.1f, 1.f), "Texture NOT bound.");
+		}
+		ImGui::End();
     }
 
 }

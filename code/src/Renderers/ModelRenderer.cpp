@@ -20,7 +20,8 @@ namespace vkmmc
 {
 	bool GUseCameraForShadowMapping = false;
 
-
+	// TODO: share render targets between renderers... do something
+	tArray<tArray<VkImageView, globals::MaxShadowMapAttachments>, globals::MaxOverlappedFrames> GShadowMapViews;
 
 	ShadowMapPipeline::ShadowMapPipeline()
 		: m_pipeline()
@@ -184,35 +185,51 @@ namespace vkmmc
 
 	void ShadowMapRenderer::Init(const RendererCreateInfo& info)
 	{
+		// RenderTarget description
+		RenderTargetDescription rtDesc;
+		rtDesc.SetDepthAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
+		rtDesc.RenderArea.extent = { .width = info.Context.Window->Width, .height = info.Context.Window->Height };
+
 		// Debug shadow mapping texture
 		SamplerBuilder builder;
-		m_debugSampler = builder.Build(info.RContext);
+		m_debugSampler = builder.Build(info.Context);
 		VkDescriptorImageInfo imageInfo;
 		imageInfo.sampler = m_debugSampler.GetSampler();
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
-		m_shadowMapPipeline.Init(info.RContext, info.Pass, info.DescriptorAllocator, info.LayoutCache);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
 			// Configure frame data for shadowmap
-			m_shadowMapPipeline.AddFrameData(info.RContext, uniformBuffer, info.DescriptorAllocator, info.LayoutCache);
+			m_shadowMapPipeline.AddFrameData(info.Context, uniformBuffer, info.Context.DescAllocator, info.Context.LayoutCache);
 
-			uniformBuffer->AllocUniform(info.RContext, UNIFORM_ID_LIGHT_VP, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
+			uniformBuffer->AllocUniform(info.Context, UNIFORM_ID_LIGHT_VP, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
 
 			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 			{
-				imageInfo.imageView = info.ShadowMapAttachments[i][j];
-				DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
+				// Create shadow map rt
+				m_frameData[i].RenderTargetArray[j].Create(info.Context, rtDesc);
+				GShadowMapViews[i][j] = m_frameData[i].RenderTargetArray[j].GetRenderTarget(0);
+
+				// Shadow map descriptors for debug
+				imageInfo.imageView = GShadowMapViews[i][j];
+				DescriptorBuilder::Create(*info.Context.LayoutCache, *info.Context.DescAllocator)
 					.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-					.Build(info.RContext, m_frameData[i].DebugShadowMapTextureSet[j]);
+					.Build(info.Context, m_frameData[i].DebugShadowMapTextureSet[j]);
 			}
 		}
 
+		// Init shadow map pipeline when render target is created
+		m_shadowMapPipeline.Init(info.Context, m_frameData[0].RenderTargetArray[0].GetRenderPass(), info.Context.DescAllocator, info.Context.LayoutCache);
 	}
 
 	void ShadowMapRenderer::Destroy(const RenderContext& renderContext)
 	{
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
+				m_frameData[i].RenderTargetArray[j].Destroy(renderContext);
+		}
 		m_shadowMapPipeline.Destroy(renderContext);
 		m_debugSampler.Destroy(renderContext);
 	}
@@ -272,11 +289,21 @@ namespace vkmmc
 	void ShadowMapRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
 	{
 		check(attachmentIndex < globals::MaxShadowMapAttachments);
-		if (m_attachmentIndexBits & (1 << attachmentIndex))
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
+
+		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-			const EnvironmentData& envData = renderFrameContext.Scene->GetEnvironmentData();
-			m_shadowMapPipeline.RenderShadowMap(renderFrameContext.GraphicsCommand, renderFrameContext.Scene, renderFrameContext.FrameIndex, attachmentIndex);
+			m_frameData[renderFrameContext.FrameIndex].RenderTargetArray[i].BeginPass(cmd);
+			if (m_attachmentIndexBits & (1 << i))
+			{
+				const EnvironmentData& envData = renderFrameContext.Scene->GetEnvironmentData();
+				m_shadowMapPipeline.RenderShadowMap(cmd, renderFrameContext.Scene, renderFrameContext.FrameIndex, attachmentIndex);
+			}
+			m_frameData[renderFrameContext.FrameIndex].RenderTargetArray[i].EndPass(cmd);
 		}
+
+		EndGPUEvent(renderContext, cmd);
 	}
 
 	void ShadowMapRenderer::ImGuiDraw()
@@ -296,12 +323,64 @@ namespace vkmmc
 		ImGui::End();
 	}
 
+	VkImageView ShadowMapRenderer::GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
+	{
+		return m_frameData[currentFrameIndex].RenderTargetArray[attachmentIndex].GetRenderTarget(0);
+	}
+
 	LightingRenderer::LightingRenderer() : IRendererBase()
 	{
 	}
 
 	void LightingRenderer::Init(const RendererCreateInfo& info)
 	{
+		// Sampler for shadow map binding
+		SamplerBuilder builder;
+		//builder.AddressMode.AddressMode.U = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		m_depthMapSampler = builder.Build(info.Context);
+
+		// RenderTarget description for lighting
+		RenderTargetDescription rtDesc;
+		rtDesc.RenderArea.extent = { .width = info.Context.Window->Width, .height = info.Context.Window->Height };
+		rtDesc.AddColorAttachment(FORMAT_R32G32B32A32_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .color = {1.f, 0.f, 0.f, 1.f} });
+		rtDesc.SetDepthAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
+
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			// Create render target
+			m_frameData[i].RT.Create(info.Context, rtDesc);
+
+			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
+
+			// Configure per frame DescriptorSet.
+			// Color pass
+			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_CAMERA);
+			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
+			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
+			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_LIGHT_VP);
+
+			//check(globals::MaxShadowMapAttachments == info.ShadowMapAttachments[i].size());
+			VkDescriptorImageInfo shadowMapDescInfo[globals::MaxShadowMapAttachments];
+			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
+			{
+				shadowMapDescInfo[j].imageView = GShadowMapViews[i][j];
+				shadowMapDescInfo[j].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+				shadowMapDescInfo[j].sampler = m_depthMapSampler.GetSampler();
+			}
+
+			// Materials have its own descriptor set (right now).
+
+			DescriptorBuilder::Create(*info.Context.LayoutCache, *info.Context.DescAllocator)
+				.BindBuffer(0, &cameraDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(1, &lightMatrixDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(2, &enviroDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(3, shadowMapDescInfo, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(info.Context, m_frameData[i].PerFrameSet);
+			DescriptorBuilder::Create(*info.Context.LayoutCache, *info.Context.DescAllocator)
+				.BindBuffer(0, &modelsDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
+				.Build(info.Context, m_frameData[i].ModelSet);
+		}
+
 		/**********************************/
 		/** Pipeline layout and pipeline **/
 		/**********************************/
@@ -315,21 +394,21 @@ namespace vkmmc
 		VkDescriptorSetLayout layouts[3];
 		uint32_t layoutCount = sizeof(layouts) / sizeof(VkDescriptorSetLayout);
 		// Per frame descriptor (camera, enviro...)
-		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
+		DescriptorSetLayoutBuilder::Create(*info.Context.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 			.AddBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, globals::MaxShadowMapAttachments)
-			.Build(info.RContext, &layouts[0]);
+			.Build(info.Context, &layouts[0]);
 		// Per draw descriptor (model, material...)
-		DescriptorSetLayoutBuilder::Create(*info.LayoutCache)
+		DescriptorSetLayoutBuilder::Create(*info.Context.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(info.RContext, &layouts[1]);
-		layouts[2] = MaterialRenderData::GetDescriptorSetLayout(info.RContext, *info.LayoutCache);
+			.Build(info.Context, &layouts[1]);
+		layouts[2] = MaterialRenderData::GetDescriptorSetLayout(info.Context, *info.Context.LayoutCache);
 
 		m_renderPipeline = RenderPipeline::Create(
-			info.RContext,
-			info.Pass,
+			info.Context,
+			m_frameData[0].RT.GetRenderPass(),
 			0, // subpass
 			shaderStageDescs,
 			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
@@ -337,48 +416,13 @@ namespace vkmmc
 			VertexInputLayout::GetStaticMeshVertexLayout()
 		);
 
-		// Sampler for shadow map binding
-		SamplerBuilder builder;
-		//builder.AddressMode.AddressMode.U = SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-		m_depthMapSampler = builder.Build(info.RContext);
-
-		m_frameData.resize(globals::MaxOverlappedFrames);
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
-			
-			// Configure per frame DescriptorSet.
-			// Color pass
-			VkDescriptorBufferInfo cameraDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_CAMERA);
-			VkDescriptorBufferInfo enviroDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
-			VkDescriptorBufferInfo modelsDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
-			VkDescriptorBufferInfo lightMatrixDescInfo = uniformBuffer->GenerateDescriptorBufferInfo(UNIFORM_ID_LIGHT_VP);
-			
-			check(globals::MaxShadowMapAttachments == info.ShadowMapAttachments[i].size());
-			VkDescriptorImageInfo shadowMapDescInfo[globals::MaxShadowMapAttachments];
-			for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-			{
-				shadowMapDescInfo[j].imageView = info.ShadowMapAttachments[i][j];
-				shadowMapDescInfo[j].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-				shadowMapDescInfo[j].sampler = m_depthMapSampler.GetSampler();
-			}
-			
-			// Materials have its own descriptor set (right now).
-
-			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-				.BindBuffer(0, &cameraDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.BindBuffer(1, &lightMatrixDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-				.BindBuffer(2, &enviroDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.BindImage(3, shadowMapDescInfo, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(info.RContext, m_frameData[i].PerFrameSet);
-			DescriptorBuilder::Create(*info.LayoutCache, *info.DescriptorAllocator)
-				.BindBuffer(0, &modelsDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-				.Build(info.RContext, m_frameData[i].ModelSet);	
-		}
+		
 	}
 
 	void LightingRenderer::Destroy(const RenderContext& renderContext)
 	{
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+			m_frameData[i].RT.Destroy(renderContext);
 		m_depthMapSampler.Destroy(renderContext);
 		m_renderPipeline.Destroy(renderContext);
 	}
@@ -391,9 +435,12 @@ namespace vkmmc
 	void LightingRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
 	{
 		CPU_PROFILE_SCOPE(LightingRenderer);
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+
+		BeginGPUEvent(renderContext, cmd, "Forward Lighting");
+		m_frameData[renderFrameContext.FrameIndex].RT.BeginPass(cmd);
 
 		// Bind pipeline
-		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
 
 		// Bind global descriptor sets
@@ -404,10 +451,18 @@ namespace vkmmc
 
 		// DrawScene
 		renderFrameContext.Scene->Draw(cmd, m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);
+
+		m_frameData[renderFrameContext.FrameIndex].RT.EndPass(cmd);
+		EndGPUEvent(renderContext, cmd);
 	}
 
 	void LightingRenderer::ImGuiDraw()
 	{
+	}
+
+	VkImageView LightingRenderer::GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
+	{
+		return m_frameData[currentFrameIndex].RT.GetRenderTarget(attachmentIndex);
 	}
 
 }

@@ -3,8 +3,6 @@
 #include "RenderPass.h"
 #include "RenderPipeline.h"
 #include "RenderTypes.h"
-#include "Framebuffer.h"
-#include "Swapchain.h"
 #include "RenderContext.h"
 #include "Globals.h"
 
@@ -17,12 +15,8 @@ namespace vkmmc
 
 	struct RendererCreateInfo
 	{
-		RenderContext RContext;
-		DescriptorLayoutCache* LayoutCache{nullptr};
-		DescriptorAllocator* DescriptorAllocator{nullptr};
+		RenderContext Context;
 
-		VkRenderPass Pass;
-		std::vector<VkImageView> ShadowMapAttachments[globals::MaxOverlappedFrames];
 		UniformBuffer* FrameUniformBufferArray[globals::MaxOverlappedFrames];
 
 		VkPushConstantRange* ConstantRange = nullptr;
@@ -37,6 +31,8 @@ namespace vkmmc
 
 		virtual void Init(const RendererCreateInfo& info) = 0;
 		virtual void Destroy(const RenderContext& renderContext) = 0;
+
+		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const = 0;
 
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) = 0;

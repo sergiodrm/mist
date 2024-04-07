@@ -8,6 +8,7 @@
 #include "RenderObject.h"
 #include "RenderContext.h"
 #include "RenderDescriptor.h"
+#include "RenderTarget.h"
 #include "Texture.h"
 #include "VulkanBuffer.h"
 #include "Debug.h"
@@ -62,6 +63,18 @@ namespace vkmmc
 
 		void Destroy(const RenderContext& renderContext);
 	};
+
+	struct ScreenQuadPipeline
+	{
+		VertexBuffer VB;
+		IndexBuffer IB;
+		RenderPipeline Pipeline;
+		tDynArray<RenderTarget> RenderTargetArray;
+		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> RendererResultArray;
+
+		void Init(const RenderContext& context, const Swapchain& swapchain);
+		void Destroy(const RenderContext& context);
+	};
 	
 	class VulkanRenderEngine : public IRenderEngine
 	{
@@ -104,25 +117,16 @@ namespace vkmmc
 		bool InitSync();
 		bool InitPipeline();
 
-		void DrawPass(VkCommandBuffer cmd, ERenderPassType passType, const RenderPassAttachment& passAttachment);
-		const RenderPassAttachment& GetAttachment(ERenderPassType passType) const;
+		void DrawPass(VkCommandBuffer cmd, uint32_t frameIndex, ERenderPassType passType);
 
 	private:
 
 		Window m_window;
-		
 		RenderContext m_renderContext;
-
 		Swapchain m_swapchain;
 
-		RenderPass m_renderPassArray[RENDER_PASS_COUNT];
-		// One shadow map attachment per overlapped frames
-		RenderPassAttachment m_shadowMapAttachments[globals::MaxOverlappedFrames];
-		RenderPassAttachment m_colorAttachments[globals::MaxOverlappedFrames];
-		// One framebuffer attachment per swapchain image.
-		std::vector<RenderPassAttachment> m_swapchainAttachments;
-
 		Sampler m_quadSampler;
+		ScreenQuadPipeline m_screenPipeline;
 		VkDescriptorSet m_quadSets[globals::MaxOverlappedFrames];
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
