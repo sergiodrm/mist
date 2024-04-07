@@ -9,15 +9,21 @@
 
 namespace vkmmc
 {
+#define MEM_USAGE_LIST \
+		_X_(MEMORY_USAGE_UNKNOWN )\
+		_X_(MEMORY_USAGE_CPU )\
+		_X_(MEMORY_USAGE_CPU_COPY )\
+		_X_(MEMORY_USAGE_CPU_TO_GPU )\
+		_X_(MEMORY_USAGE_GPU )\
+		_X_(MEMORY_USAGE_GPU_TO_CPU) 
+
 	enum EMemUsage
 	{
-		MEMORY_USAGE_UNKNOWN = 0,
-		MEMORY_USAGE_CPU,
-		MEMORY_USAGE_CPU_COPY,
-		MEMORY_USAGE_CPU_TO_GPU,
-		MEMORY_USAGE_GPU,
-		MEMORY_USAGE_GPU_TO_CPU,
+#define _X_(v) v,
+		MEM_USAGE_LIST
+#undef _X_
 	};
+	const char* MemUsageToStr(EMemUsage usage);
 
 	struct Allocator
 	{
