@@ -41,6 +41,7 @@ namespace vkmmc
 		PFN_vkCmdBeginDebugUtilsLabelEXT pfn_vkCmdBeginDebugUtilsLabelEXT;
 		PFN_vkCmdEndDebugUtilsLabelEXT pfn_vkCmdEndDebugUtilsLabelEXT;
 		PFN_vkCmdInsertDebugUtilsLabelEXT pfn_vkCmdInsertDebugUtilsLabelEXT;
+		PFN_vkSetDebugUtilsObjectNameEXT pfn_vkSetDebugUtilsObjectNameEXT;
 	};
 
 	struct RenderFrameContext
@@ -73,4 +74,7 @@ namespace vkmmc
 	void BeginGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color = 0xffffffff);
 	void InsertGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color = 0xffffffff);
 	void EndGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd);
+
+	void SetVkObjectName(const RenderContext& renderContext, const void* object, VkObjectType type, const char* name);
+
 }
