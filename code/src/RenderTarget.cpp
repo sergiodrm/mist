@@ -2,6 +2,7 @@
 #include "Debug.h"
 #include "RenderContext.h"
 #include "InitVulkanTypes.h"
+#include "Logger.h"
 
 namespace vkmmc
 {
@@ -12,8 +13,12 @@ namespace vkmmc
 
 	void RenderTargetAttachment::Destroy(const RenderContext& renderContext)
 	{
-		vkDestroyImageView(renderContext.Device, View, nullptr);
-		Memory::DestroyImage(renderContext.Allocator, Image);
+		// Destroy resources only if there is an image allocated. Otherwise is external framebuffer.
+		if (Image.IsAllocated())
+		{
+			vkDestroyImageView(renderContext.Device, View, nullptr);
+			Memory::DestroyImage(renderContext.Allocator, Image);
+		}
 	}
 
 	RenderTarget::RenderTarget()
@@ -33,6 +38,13 @@ namespace vkmmc
 
 	void RenderTarget::Create(const RenderContext& renderContext, const RenderTargetDescription& desc)
 	{
+		if (desc.DepthAttachmentDescription.IsValidAttachment())
+		{
+			VkFormatProperties formatProperties;
+			VkFormat depthFormat = tovk::GetFormat(desc.DepthAttachmentDescription.Format);
+			vkGetPhysicalDeviceFormatProperties(renderContext.GPUDevice, depthFormat, &formatProperties);
+			check(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+		}
 		m_description = desc;
 		for (uint32_t i = 0; i < desc.ColorAttachmentCount; ++i)
 			m_clearValues[i] = desc.ColorAttachmentDescriptions[i].ClearValue;
@@ -113,8 +125,10 @@ namespace vkmmc
 		check(m_renderPass == VK_NULL_HANDLE);
 		check(m_framebuffer == VK_NULL_HANDLE);
 		CreateRenderPass(renderContext);
-		if (m_description.ExternalFramebuffer == VK_NULL_HANDLE)
+		if (m_description.ExternalAttachments.at(0) == VK_NULL_HANDLE)
 			CreateFramebuffer(renderContext);
+		else
+			CreateFramebuffer(renderContext, m_description.ExternalAttachments.data(), m_description.ExternalAttachmentCount);
 	}
 
 	void RenderTarget::CreateRenderPass(const RenderContext& renderContext)
@@ -242,6 +256,10 @@ namespace vkmmc
 		passCreateInfo.dependencyCount = dependencyCount;
 		passCreateInfo.pDependencies = dependencies.data();
 		vkcheck(vkCreateRenderPass(renderContext.Device, &passCreateInfo, nullptr, &m_renderPass));
+		static int c = 0;
+		char buff[64];
+		sprintf_s(buff, "RT_RenderPass_%d", c++);
+		SetVkObjectName(renderContext, &m_renderPass, VK_OBJECT_TYPE_RENDER_PASS, buff);
 	}
 
 	void RenderTarget::CreateFramebuffer(const RenderContext& renderContext)
@@ -262,21 +280,44 @@ namespace vkmmc
 			views[m_description.ColorAttachmentCount] = m_attachments[m_description.ColorAttachmentCount].View;
 			++viewCount;
 		}
+		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass, 
+			m_description.RenderArea.extent.width, 
+			m_description.RenderArea.extent.height,
+			views.data(), viewCount);
+		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
+	}
+
+	void RenderTarget::CreateFramebuffer(const RenderContext& renderContext, const VkImageView* views, uint32_t viewCount)
+	{
+		check(viewCount && viewCount <= MAX_RENDER_TARGET_ATTACHMENTS);
+		for (uint32_t i = 0; i < viewCount; ++i)
+		{
+			m_attachments[i].View = views[i];
+			m_attachments[i].Image.Alloc = VK_NULL_HANDLE;
+			m_attachments[i].Image.Image = VK_NULL_HANDLE;
+		}
 		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass,
 			m_description.RenderArea.extent.width,
 			m_description.RenderArea.extent.height,
-			views.data(), viewCount
-		);
+			views, viewCount);
 		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
 	}
 
 	void RenderTarget::CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const
 	{
+
 		tExtent3D extent{ .width = m_description.RenderArea.extent.width, .height = m_description.RenderArea.extent.height, .depth = 1 };
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(description.Format, imageUsage, extent);
 		attachment.Image = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
+		static int c = 0;
+		char buff[64];
+		sprintf_s(buff, "RT_Image_%d", c);
+		SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
+		Logf(LogLevel::Debug, "Creating attachment %d...\n", c);
 
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(description.Format, attachment.Image.Image, aspect);
 		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &attachment.View));
+		sprintf_s(buff, "RT_ImageView_%d", c++);
+		SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 	}
 }

@@ -23,14 +23,19 @@ namespace vkmmc
 
 	struct RenderTargetDescription
 	{
-		tRect2D RenderArea;
+		tRect2D RenderArea{ .offset = {.x=0, .y=0} };
 		tArray<RenderTargetAttachmentDescription, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> ColorAttachmentDescriptions;
 		uint32_t ColorAttachmentCount = 0;
 		RenderTargetAttachmentDescription DepthAttachmentDescription;
 #ifdef VKMMC_VULKAN
-		// Can exists an external fb with previous allocated image. Use this, but we have to create the render pass.
-		VkFramebuffer ExternalFramebuffer = VK_NULL_HANDLE;
+		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> ExternalAttachments;
 #endif // VKMMC_VULKAN
+		uint32_t ExternalAttachmentCount = 0;
+
+		RenderTargetDescription()
+		{
+			memset(ExternalAttachments.data(), 0, sizeof(VkImageView) * ExternalAttachments.size());
+		}
 
 		inline void AddColorAttachment(const RenderTargetAttachmentDescription& desc)
 		{
@@ -40,16 +45,24 @@ namespace vkmmc
 
 		inline void AddColorAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
 		{
-			RenderTargetAttachmentDescription desc
-			{
-				.MultisampledBit = sampleCount,
-				.Format = format,
-				.Layout = layout,
-				.ClearValue = clearValue
-			};
-			AddColorAttachment(desc);
+			AddColorAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
 		}
 
+		inline void SetDepthAttachment(const RenderTargetAttachmentDescription& desc)
+		{
+			DepthAttachmentDescription = desc;
+		}
+
+		inline void SetDepthAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
+		{
+			SetDepthAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
+		}
+
+		inline void AddExternalAttachment(VkImageView view)
+		{
+			check(ExternalAttachmentCount < MAX_RENDER_TARGET_ATTACHMENTS);
+			ExternalAttachments[ExternalAttachmentCount++] = view;
+		}
 	};
 
 	struct RenderTargetAttachment
@@ -89,6 +102,7 @@ namespace vkmmc
 		void CreateResources(const RenderContext& renderContext);
 		void CreateRenderPass(const RenderContext& renderContext);
 		void CreateFramebuffer(const RenderContext& renderContext);
+		void CreateFramebuffer(const RenderContext& renderContext, const VkImageView* views, uint32_t viewCount);
 		void CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const;
 	private:
 #ifdef VKMMC_VULKAN
