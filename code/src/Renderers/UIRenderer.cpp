@@ -14,7 +14,7 @@
 namespace vkmmc
 {
 
-	void UIRenderer::ImGuiInstance::Init(const RenderContext& context, VkRenderPass renderPass)
+	void ImGuiInstance::Init(const RenderContext& context, VkRenderPass renderPass)
 	{
 		// Create descriptor pool for imgui
 		VkDescriptorPoolSize poolSizes[] =
@@ -66,7 +66,7 @@ namespace vkmmc
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 
-	void UIRenderer::ImGuiInstance::Draw(const RenderContext& context, VkCommandBuffer cmd)
+	void ImGuiInstance::Draw(const RenderContext& context, VkCommandBuffer cmd)
 	{
 		CPU_PROFILE_SCOPE(ImGuiPass);
 		BeginGPUEvent(context, cmd, "ImGui");
@@ -75,13 +75,13 @@ namespace vkmmc
 		EndGPUEvent(context, cmd);
 	}
 
-	void UIRenderer::ImGuiInstance::Destroy(const RenderContext& context)
+	void ImGuiInstance::Destroy(const RenderContext& context)
 	{
 		vkDestroyDescriptorPool(context.Device, m_imguiPool, nullptr);
 		ImGui_ImplVulkan_Shutdown();
 	}
 
-	void UIRenderer::ImGuiInstance::BeginFrame(const RenderContext& context)
+	void ImGuiInstance::BeginFrame(const RenderContext& context)
 	{
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplSDL2_NewFrame(context.Window->WindowInstance);
@@ -92,7 +92,8 @@ namespace vkmmc
     {
 		RenderTargetDescription rtDesc;
 		rtDesc.RenderArea.extent = { .width = info.Context.Window->Width, .height = info.Context.Window->Height };
-		rtDesc.AddColorAttachment(FORMAT_R32G32B32A32_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .color = {1.f, 0.f, 0.f, 1.f} });
+		rtDesc.AddColorAttachment(FORMAT_R32G32B32A32_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .color = {0.f, 0.f, 0.f, 1.f} });
+		rtDesc.SetDepthAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			m_frameData[i].RT.Create(info.Context, rtDesc);
@@ -102,7 +103,7 @@ namespace vkmmc
 
 		m_debugPipeline.Init(info.Context, m_frameData[0].RT.GetRenderPass());
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-			m_debugPipeline.SetupFrameData(info.Context, i, info.FrameUniformBufferArray[i]);
+			m_debugPipeline.PushFrameData(info.Context, info.FrameUniformBufferArray[i]);
     }
 
     void UIRenderer::Destroy(const RenderContext& renderContext)
@@ -124,8 +125,8 @@ namespace vkmmc
     {
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
 		m_frameData[renderFrameContext.FrameIndex].RT.BeginPass(cmd);
-		m_imgui.Draw(renderContext, cmd);
 		m_debugPipeline.Draw(renderContext, cmd, renderFrameContext.FrameIndex);
+		m_imgui.Draw(renderContext, cmd);
 		m_frameData[renderFrameContext.FrameIndex].RT.EndPass(cmd);
     }
 
@@ -134,5 +135,8 @@ namespace vkmmc
 		return m_frameData[currentFrameIndex].RT.GetRenderTarget(attachmentIndex);
 	}
 
-
+	VkImageView UIRenderer::GetDepthBuffer(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
+	{
+		return m_frameData[currentFrameIndex].RT.GetDepthBuffer();
+	}
 }

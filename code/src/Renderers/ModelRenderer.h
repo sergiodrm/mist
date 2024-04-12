@@ -75,6 +75,7 @@ namespace vkmmc
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
 		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
+		virtual VkImageView GetDepthBuffer(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
 	private:
 		ShadowMapPipeline m_shadowMapPipeline;
 		Sampler m_debugSampler;
@@ -100,6 +101,7 @@ namespace vkmmc
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) override;
 		virtual void ImGuiDraw() override;
 		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
+		virtual VkImageView GetDepthBuffer(uint32_t currentFrameIndex, uint32_t attachmentIndex) const override;
 	protected:
 
 	protected:

@@ -28,7 +28,7 @@ namespace vkmmc
 		};
 	public:
 		void Init(const RenderContext& context, VkRenderPass renderPass);
-		void SetupFrameData(const RenderContext& context, uint32_t index, UniformBuffer* buffer);
+		void PushFrameData(const RenderContext& context, UniformBuffer* buffer);
 		void PrepareFrame(const RenderContext& context, UniformBuffer* buffer);
 		void Draw(const RenderContext& context, VkCommandBuffer cmd, uint32_t frameIndex);
 		void Destroy(const RenderContext& context);
@@ -38,7 +38,7 @@ namespace vkmmc
 		RenderPipeline m_renderPipeline;
 		VertexBuffer m_lineVertexBuffer;
 
-		tArray<FrameData, globals::MaxOverlappedFrames> m_frameSet;
+		tDynArray<FrameData> m_frameSet;
 		VertexBuffer m_quadVertexBuffer;
 		IndexBuffer m_quadIndexBuffer;
 		RenderPipeline m_quadPipeline;

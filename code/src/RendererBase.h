@@ -32,7 +32,8 @@ namespace vkmmc
 		virtual void Init(const RendererCreateInfo& info) = 0;
 		virtual void Destroy(const RenderContext& renderContext) = 0;
 
-		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const = 0;
+		virtual VkImageView GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const { return VK_NULL_HANDLE; }
+		virtual VkImageView GetDepthBuffer(uint32_t currentFrameIndex, uint32_t attachmentIndex) const { return VK_NULL_HANDLE; }
 
 		virtual void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) = 0;
 		virtual void RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex) = 0;

@@ -30,6 +30,9 @@
 
 //#define VKMMC_CRASH_ON_VALIDATION_LAYER
 
+#define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
+#define MAX_RT_SCREEN 6
+
 namespace vkmmc_debug
 {
 	uint32_t GVulkanLayerValidationErrors = 0;
@@ -92,13 +95,13 @@ namespace vkmmc
 		RenderTargetDescription rtDesc;
 		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
 		rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {1.f, 0.f, 0.f, 1.f} });
+		rtDesc.ExternalAttachmentCount = 1;
 
 		uint32_t swapchainCount = swapchain.GetImageCount();
 		RenderTargetArray.resize(swapchainCount);
 		for (uint32_t i = 0; i < swapchainCount; ++i)
 		{
 			rtDesc.ExternalAttachments[0] = swapchain.GetImageViewAt(i);
-			rtDesc.ExternalAttachmentCount = 1;
 			RenderTargetArray[i].Create(context, rtDesc);
 		}
 
@@ -132,10 +135,16 @@ namespace vkmmc
 		quadInfo.Data = indices;
 		quadInfo.Size = sizeof(indices);
 		IB.Init(context, quadInfo);
+
+		// Init ui and debug pipelines
+		DebugInstance.Init(context, RenderTargetArray[0].GetRenderPass());
+		UIInstance.Init(context, RenderTargetArray[0].GetRenderPass());
 	}
 
 	void ScreenQuadPipeline::Destroy(const RenderContext& context)
 	{
+		UIInstance.Destroy(context);
+		DebugInstance.Destroy(context);
 		IB.Destroy(context);
 		VB.Destroy(context);
 		Pipeline.Destroy(context);
@@ -209,11 +218,11 @@ namespace vkmmc
 		rendererCreateInfo.ConstantRangeCount = 0;
 
 		LightingRenderer* lightingRenderer = new LightingRenderer();
-		UIRenderer* uiRenderer = new UIRenderer();
+		//UIRenderer* uiRenderer = new UIRenderer();
 
 		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
 		m_renderers[RENDER_PASS_LIGHTING].push_back(lightingRenderer);
-		m_renderers[RENDER_PASS_POST_PROCESS].push_back(uiRenderer);
+		//m_renderers[RENDER_PASS_POST_PROCESS].push_back(uiRenderer);
 		//m_renderers[RENDER_PASS_POST_PROCESS].push_back(new QuadRenderer());
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
@@ -233,20 +242,39 @@ namespace vkmmc
 #if 1
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
-			tArray<VkDescriptorImageInfo, 2> quadImageInfoArray;
+			tArray<VkDescriptorImageInfo, MAX_RT_SCREEN> quadImageInfoArray;
 			quadImageInfoArray[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			quadImageInfoArray[0].imageView = lightingRenderer->GetRenderTarget(i, 0);
 			quadImageInfoArray[0].sampler = m_quadSampler.GetSampler();
-			quadImageInfoArray[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray[1].imageView = uiRenderer->GetRenderTarget(i, 0);
+			quadImageInfoArray[1].imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[1].imageView = lightingRenderer->GetDepthBuffer(i, 0);
 			quadImageInfoArray[1].sampler = m_quadSampler.GetSampler();
-			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindImage(0, &quadImageInfoArray[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.BindImage(1, &quadImageInfoArray[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(m_renderContext, m_quadSets[i]);
-			char buff[64];
-			sprintf_s(buff, "DescriptorSet_Quad_%d", i);
-			SetVkObjectName(m_renderContext, &m_quadSets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
+			quadImageInfoArray[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[2].imageView = m_gbuffer.GetRenderTarget(GBuffer::RT_POSITION);
+			quadImageInfoArray[2].sampler = m_quadSampler.GetSampler();
+			quadImageInfoArray[3].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[3].imageView = m_gbuffer.GetRenderTarget(GBuffer::RT_NORMAL);
+			quadImageInfoArray[3].sampler = m_quadSampler.GetSampler();
+			quadImageInfoArray[4].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[4].imageView = m_gbuffer.GetRenderTarget(GBuffer::RT_ALBEDO);
+			quadImageInfoArray[4].sampler = m_quadSampler.GetSampler();
+			quadImageInfoArray[5].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			quadImageInfoArray[5].imageView = m_gbuffer.GetComposition();
+			quadImageInfoArray[5].sampler = m_quadSampler.GetSampler();
+
+			UniformBuffer& buffer = m_frameContextArray[i].GlobalBuffer;
+			buffer.AllocUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, sizeof(int));
+			buffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(int));
+			VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCREEN_QUAD_INDEX);
+
+			DescriptorBuilder builder = DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator);
+			/*for (uint32_t j = 0; j < (uint32_t)quadImageInfoArray.size(); ++j)
+				builder.BindImage(j, &quadImageInfoArray[j], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);*/
+			builder.BindImage(0, quadImageInfoArray.data(), (uint32_t)quadImageInfoArray.size(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+			builder.BindBuffer(1, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+			builder.Build(m_renderContext, m_screenPipeline.QuadSets[i]);
+
+			m_screenPipeline.DebugInstance.PushFrameData(m_renderContext, &buffer);
 		}
 #endif // 0
 
@@ -270,6 +298,17 @@ namespace vkmmc
 			{
 			case SDL_QUIT: res = false; break;
 			}
+			const uint8_t* keystate = SDL_GetKeyboardState(nullptr);
+			static int s = 0;
+			int c = keystate[SDL_SCANCODE_SPACE];
+			if (s != c)
+			{
+				s = c;
+				if (c)
+					m_screenPipeline.QuadIndex = ++m_screenPipeline.QuadIndex % MAX_RT_SCREEN;
+			}
+			else if (keystate[SDL_SCANCODE_ESCAPE])
+				m_screenPipeline.QuadIndex = -1;
 			if (m_eventCallback)
 				m_eventCallback(&e);
 		}
@@ -373,6 +412,11 @@ namespace vkmmc
 			for (IRendererBase* it : m_renderers[i])
 				it->PrepareFrame(m_renderContext, GetFrameContext());
 		}
+
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
+
+		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
+		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 	}
 
 	void VulkanRenderEngine::Draw()
@@ -412,19 +456,25 @@ namespace vkmmc
 			m_gbuffer.DrawPass(m_renderContext, frameContext);
 
 			uint32_t frameIndex = GetFrameIndex();
-			render::DrawQuadTexture(m_quadSets[frameIndex]);
+			render::DrawQuadTexture(m_screenPipeline.QuadSets[frameIndex]);
 			for (uint32_t pass = RENDER_PASS_SHADOW_MAP; pass < RENDER_PASS_COUNT; ++pass)
 				DrawPass(cmd, frameIndex, (ERenderPassType)pass);
 
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineHandle());
 
+			// Flush debug draw list
+			m_screenPipeline.DebugInstance.Draw(m_renderContext, cmd, frameIndex);
+			// Post process
+			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineHandle());
 			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineLayoutHandle(),
-				0, 1, &m_quadSets[frameIndex], 0, nullptr);
+				0, 1, &m_screenPipeline.QuadSets[frameIndex], 0, nullptr);
 			m_screenPipeline.VB.Bind(cmd);
 			m_screenPipeline.IB.Bind(cmd);
 			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+			// UI
+			m_screenPipeline.UIInstance.Draw(m_renderContext, cmd);
+
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].EndPass(cmd);
 			EndGPUEvent(m_renderContext, cmd);
 		}
@@ -479,6 +529,10 @@ namespace vkmmc
 				m_renderers[passIndex][i]->ImGuiDraw();
 		}
 		m_gbuffer.ImGuiDraw();
+
+		ImGui::Begin("Engine");
+		ImGui::DragInt("Screen quad index", (int*)(&m_screenPipeline.QuadIndex), 1, 0, 10);
+		ImGui::End();
 	}
 
 	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)

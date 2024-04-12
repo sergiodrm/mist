@@ -127,16 +127,17 @@ namespace vkmmc
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 
 		// MRT
-		InsertGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
+		BeginGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
 		m_mrt.m_renderTarget.BeginPass(cmd);
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_mrt.m_pipeline.GetPipelineHandle());
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_mrt.m_pipeline.GetPipelineLayoutHandle(),
 			0, 1, &frameContext.CameraDescriptorSet, 0, nullptr);
 		frameContext.Scene->Draw(cmd, m_mrt.m_pipeline.GetPipelineLayoutHandle(), 2, 1, m_mrt.m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
 		m_mrt.m_renderTarget.EndPass(frameContext.GraphicsCommand);
+		EndGPUEvent(renderContext, cmd);
 
 		// Composition
-		InsertGPUEvent(renderContext, cmd, "GBuffer_Composition", 0xff00ffff);
+		BeginGPUEvent(renderContext, cmd, "GBuffer_Composition", 0xff00ffff);
 		m_composition.m_renderTarget.BeginPass(cmd);
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_composition.m_pipeline.GetPipelineHandle());
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_composition.m_pipeline.GetPipelineLayoutHandle(),
@@ -145,6 +146,7 @@ namespace vkmmc
 		m_quadIB.Bind(cmd);
 		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 		m_composition.m_renderTarget.EndPass(cmd);
+		EndGPUEvent(renderContext, cmd);
 	}
 
 	void GBuffer::ImGuiDraw()

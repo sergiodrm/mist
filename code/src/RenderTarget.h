@@ -94,6 +94,7 @@ namespace vkmmc
 		inline VkFramebuffer GetFramebuffer() const { return m_framebuffer; }
 		inline VkRenderPass GetRenderPass() const { return m_renderPass; }
 		inline VkImageView GetRenderTarget(uint32_t index) const { return m_attachments[index].View; }
+		VkImageView GetDepthBuffer() const;
 
 		uint32_t GetAttachmentCount() const;
 		const RenderTargetAttachment& GetAttachment(uint32_t index) const;

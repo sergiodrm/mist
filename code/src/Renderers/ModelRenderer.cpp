@@ -328,6 +328,11 @@ namespace vkmmc
 		return m_frameData[currentFrameIndex].RenderTargetArray[attachmentIndex].GetRenderTarget(0);
 	}
 
+	VkImageView ShadowMapRenderer::GetDepthBuffer(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
+	{
+		return m_frameData[currentFrameIndex].RenderTargetArray[attachmentIndex].GetDepthBuffer();
+	}
+
 	LightingRenderer::LightingRenderer() : IRendererBase()
 	{
 	}
@@ -463,6 +468,11 @@ namespace vkmmc
 	VkImageView LightingRenderer::GetRenderTarget(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
 	{
 		return m_frameData[currentFrameIndex].RT.GetRenderTarget(attachmentIndex);
+	}
+
+	VkImageView LightingRenderer::GetDepthBuffer(uint32_t currentFrameIndex, uint32_t attachmentIndex) const
+	{
+		return m_frameData[currentFrameIndex].RT.GetDepthBuffer();
 	}
 
 }

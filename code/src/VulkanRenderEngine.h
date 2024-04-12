@@ -17,8 +17,10 @@
 #include "FunctionStack.h"
 #include "Framebuffer.h"
 #include "Scene.h"
-#include <cstdio>
+#include "Renderers/DebugRenderer.h"
+#include "Renderers/UIRenderer.h"
 
+#include <cstdio>
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include <string.h>
@@ -31,8 +33,6 @@ namespace vkmmc
 	class Framebuffer;
 	class IRendererBase;
 	struct ShaderModuleLoadDescription;
-
-	
 
 	struct Window
 	{
@@ -66,11 +66,17 @@ namespace vkmmc
 
 	struct ScreenQuadPipeline
 	{
+		// Pipelines to render in screen framebuffer directly.
+		ImGuiInstance  UIInstance;
+		DebugPipeline DebugInstance;
+
+		// Quad info
 		VertexBuffer VB;
 		IndexBuffer IB;
 		RenderPipeline Pipeline;
 		tDynArray<RenderTarget> RenderTargetArray;
-		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> RendererResultArray;
+		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> QuadSets;
+		int32_t QuadIndex = -1;
 
 		void Init(const RenderContext& context, const Swapchain& swapchain);
 		void Destroy(const RenderContext& context);
@@ -127,7 +133,7 @@ namespace vkmmc
 
 		Sampler m_quadSampler;
 		ScreenQuadPipeline m_screenPipeline;
-		VkDescriptorSet m_quadSets[globals::MaxOverlappedFrames];
+		
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
 		uint32_t m_frameCounter;

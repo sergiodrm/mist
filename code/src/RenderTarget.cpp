@@ -320,4 +320,13 @@ namespace vkmmc
 		sprintf_s(buff, "RT_ImageView_%d", c++);
 		SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 	}
+
+	VkImageView RenderTarget::GetDepthBuffer() const
+	{
+		if (m_description.DepthAttachmentDescription.IsValidAttachment())
+		{
+			return m_attachments[m_description.ColorAttachmentCount].View;
+		}
+		return VK_NULL_HANDLE;
+	}
 }
