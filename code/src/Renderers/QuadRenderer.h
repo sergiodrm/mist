@@ -31,6 +31,6 @@ namespace vkmmc
 		tArray<FrameData, globals::MaxOverlappedFrames> m_frameData;
 		VertexBuffer m_vb;
 		IndexBuffer m_ib;
-		RenderPipeline m_pipeline;
+		ShaderProgram* m_shader;
 	};
 }

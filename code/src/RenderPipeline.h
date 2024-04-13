@@ -10,6 +10,7 @@ namespace vkmmc
 	// Forward declarations
 	struct RenderContext;
 	class RenderPipeline;
+	class RenderTarget;
 	
 	struct ShaderDescription
 	{
@@ -17,83 +18,79 @@ namespace vkmmc
 		VkShaderStageFlagBits Stage;
 	};
 
-	class RenderPipelineBuilder
+	struct ShaderProgramDescription
 	{
-	public:
-		RenderPipelineBuilder(const RenderContext& renderContext);
+		/// Shader files
+		tString VertexShaderFile;
+		tString FragmentShaderFile;
 
-		const RenderContext& RContext;
-
-		// Layout configuration
-		VkPipelineLayoutCreateInfo LayoutInfo;
-
-		// Viewport configuration
-		VkViewport Viewport;
-		VkRect2D Scissor;
-
-		// Stages
-		std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
-		// Pipeline states
-		VkPipelineRasterizationStateCreateInfo Rasterizer;
-		VkPipelineMultisampleStateCreateInfo Multisampler;
-		VkPipelineDepthStencilStateCreateInfo DepthStencil;
-		// Color attachment
-		std::vector<VkPipelineColorBlendAttachmentState> ColorBlendAttachment;
-
-		// Vertex input. How the vertices are arranged in memory and how to bind them.
-		VertexInputLayout InputDescription;
-		// Input assembly type
-		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		// Subpass of renderpass
 		uint32_t SubpassIndex = 0;
+		const RenderTarget* RenderTarget = nullptr;
+		VertexInputLayout InputLayout;
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-		RenderPipeline Build(VkRenderPass renderPass);
+		/// Leave empty to run shader reflexion on shader file content.
+		/// Use to specify dynamic uniform buffers.
+		VkDescriptorSetLayout* SetLayoutArray = nullptr;
+		uint32_t SetLayoutCount = 0;
+
+		VkPushConstantRange* PushConstantArray = nullptr;
+		uint32_t PushConstantCount = 0;
+
 	};
 
-	class RenderPipeline
+	class ShaderProgram
+	{
+	public:
+		ShaderProgram();
+
+		static ShaderProgram* Create(const RenderContext& context, const ShaderProgramDescription& description);
+
+		void Destroy(const RenderContext& context);
+		bool Reload(const RenderContext& context);
+		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
+
+		void UseProgram(VkCommandBuffer cmd);
+		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0);
+
+		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
+
+		const ShaderProgramDescription& GetDescription() const { return m_description; }
+
+	private:
+		bool _Create(const RenderContext& context, const ShaderProgramDescription& description);
+		ShaderProgramDescription m_description;
+		VkPipeline m_pipeline;
+		VkPipelineLayout m_pipelineLayout;
+	};
+
+
+	class ShaderFileDB
 	{
 	public:
 
-		// TODO: dynamic buffers can't be setted from reflection directly, find out a way to 
-		// know which uniform is dynamic.
-		// Use the second function to create the RenderPipeline if the pipeline uses dynamic descriptors till fix reflection.
+		template <size_t _KeySize>
+		static void GenerateKey(char(&key)[_KeySize], const char* vertexFile, const char* fragmentFile);
 
-		// Generate descriptor set layouts and push constants from shader reflection.
-		static RenderPipeline Create(
-			const RenderContext& renderContext,
-			const VkRenderPass& renderPass,
-			uint32_t subpassIndex,
-			const ShaderDescription* shaderStages,
-			uint32_t shaderStageCount,
-			const VertexInputLayout& inputDescription,
-			VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-			uint32_t colorAttachmentCount = 1);
-		// With specific layout and push constants configs
-		static RenderPipeline Create(
-			const RenderContext& renderContext,
-			const VkRenderPass& renderPass,
-			uint32_t subpassIndex,
-			const ShaderDescription* shaderStages,
-			uint32_t shaderStageCount,
-			const VkDescriptorSetLayout* layouts,
-			uint32_t layoutCount,
-			const VkPushConstantRange* pushConstants,
-			uint32_t pushConstantCount,
-			const VertexInputLayout& inputDescription,
-			VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-			uint32_t colorAttachmentCount = 1);
+		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
+		ShaderProgram* FindShaderProgram(const char* vertexFile, const char* fragmentFile) const;
+		void Destroy(const RenderContext& context);
 
-		bool SetupPipeline(VkPipeline pipeline, VkPipelineLayout pipelineLayout);
-		void Destroy(const RenderContext& renderContext);
-		inline bool IsValid() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
-
-		inline VkPipeline GetPipelineHandle() const { return m_pipeline; }
-		inline VkPipelineLayout GetPipelineLayoutHandle() const { return m_pipelineLayout; }
-
-		bool operator==(const RenderPipeline& r) const { return m_pipeline == r.m_pipeline && m_pipelineLayout == r.m_pipelineLayout; }
-		bool operator!=(const RenderPipeline& r) const { return !(*this == r); }
 	private:
-		VkPipeline m_pipeline = VK_NULL_HANDLE;
-		VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+		tDynArray<ShaderProgram*> m_pipelineArray;
+		tMap<tString, uint32_t> m_indexMap;
 	};
+
+	template <size_t _KeySize>
+	void ShaderFileDB::GenerateKey(char(&key)[_KeySize], const char* vertexFile, const char* fragmentFile)
+	{
+		strcpy_s(key, vertexFile);
+		strcat_s(key, fragmentFile);
+		char* i = key;
+		while (*i)
+		{
+			*i = tolower(*i);
+			++i;
+		}
+	}
 }

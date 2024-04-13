@@ -241,21 +241,20 @@ namespace vkmmc
 	}
 #endif // 0
 
-	void DebugPipeline::Init(const RenderContext& context, VkRenderPass renderPass)
+	void DebugPipeline::Init(const RenderContext& context, const RenderTarget* renderTarget)
 	{
 		/**********************************/
 		/** Pipeline layout and pipeline **/
 		/**********************************/
-		ShaderDescription descriptions[] =
 		{
-			{.Filepath = globals::LineVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-			{.Filepath = globals::LineFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
-		};
-		uint32_t descriptionCount = sizeof(descriptions) / sizeof(ShaderDescription);
-
-		VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
-		m_renderPipeline = RenderPipeline::Create(context, renderPass, 0,
-			descriptions, descriptionCount, inputLayout, VK_PRIMITIVE_TOPOLOGY_LINE_LIST);
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile = globals::LineVertexShader;
+			shaderDesc.FragmentShaderFile = globals::LineFragmentShader;
+			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
+			shaderDesc.Topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			shaderDesc.RenderTarget = renderTarget;
+			m_lineShader = ShaderProgram::Create(context, shaderDesc);
+		}
 
 		// VertexBuffer
 		BufferCreateInfo vbInfo;
@@ -280,14 +279,15 @@ namespace vkmmc
 		quadInfo.Data = indices;
 		m_quadIndexBuffer.Init(context, quadInfo);
 
-		// quad pipeline
-		ShaderDescription shaders[2]
+		// Quad pipeline
 		{
-			{.Filepath = globals::QuadVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-			{.Filepath = globals::DepthQuadFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
-		};
-		inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-		m_quadPipeline = RenderPipeline::Create(context, renderPass, 0, shaders, 2, inputLayout);
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile = globals::QuadVertexShader;
+			shaderDesc.FragmentShaderFile = globals::DepthQuadFragmentShader;
+			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+			shaderDesc.RenderTarget = renderTarget;
+			m_quadShader = ShaderProgram::Create(context, shaderDesc);
+		}
 
 		SamplerBuilder builder;
 		m_depthSampler = builder.Build(context);
@@ -328,12 +328,10 @@ namespace vkmmc
 			// Flush lines to vertex buffer
 			GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &debugrender::GLineBatch.LineArray, sizeof(debugrender::LineVertex) * debugrender::GLineBatch.Index);
 
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
+			m_lineShader->UseProgram(cmd);
 			VkDescriptorSet sets[] = { m_frameSet[frameIndex].CameraSet };
 			uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-				m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
-			++vkmmc_profiling::GRenderStats.SetBindingCount;
+			m_lineShader->BindDescriptorSets(cmd, sets, setCount);
 			m_lineVertexBuffer.Bind(cmd);
 			vkCmdDraw(cmd, debugrender::GLineBatch.Index, 1, 0, 0);
 			debugrender::GLineBatch.Index = 0;
@@ -342,9 +340,9 @@ namespace vkmmc
 
 		if (m_debugDepthMap && debugrender::DebugTexture != VK_NULL_HANDLE)
 		{
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineHandle());
+			m_quadShader->UseProgram(cmd);
 			VkDescriptorSet sets[2] = { m_frameSet[frameIndex].SetUBO, debugrender::DebugTexture };
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_quadPipeline.GetPipelineLayoutHandle(), 0, 2, sets, 0, nullptr);
+			m_quadShader->BindDescriptorSets(cmd, sets, 2);
 			m_quadVertexBuffer.Bind(cmd);
 			m_quadIndexBuffer.Bind(cmd);
 			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
@@ -357,9 +355,7 @@ namespace vkmmc
 		m_quadVertexBuffer.Destroy(context);
 		m_quadIndexBuffer.Destroy(context);
 		m_depthSampler.Destroy(context);
-		m_quadPipeline.Destroy(context);
 		m_lineVertexBuffer.Destroy(context);
-		m_renderPipeline.Destroy(context);
 	}
 
 	void DebugPipeline::ImGuiDraw()

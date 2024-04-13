@@ -12,6 +12,7 @@ namespace vkmmc
 {
 	struct RenderContext;
 	class IRenderEngine;
+	class ShaderProgram;
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
 
@@ -155,9 +156,9 @@ namespace vkmmc
 		inline EnvironmentData& GetEnvironmentData() { return m_environmentData; }
 
 		// Draw with materials
-		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 		// Draw without materials
-		void Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 
 		void ImGuiDraw(bool createWindow = false);
 

@@ -28,7 +28,7 @@
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
 
-//#define VKMMC_CRASH_ON_VALIDATION_LAYER
+#define VKMMC_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -65,9 +65,6 @@ namespace vkmmc_debug
 
 namespace vkmmc
 {
-	
-
-
 	RenderHandle GenerateRenderHandle()
 	{
 		static RenderHandle h;
@@ -106,16 +103,12 @@ namespace vkmmc
 		}
 
 		// Init shader
-		ShaderDescription shaders[] =
-		{
-			{.Filepath = globals::PostProcessVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-			{.Filepath = globals::PostProcessFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT},
-		};
-
-		VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-		Pipeline = RenderPipeline::Create(context, RenderTargetArray[0].GetRenderPass(), 0,
-			shaders, sizeof(shaders) / sizeof(ShaderDescription),
-			inputLayout);
+		ShaderProgramDescription shaderDesc;
+		shaderDesc.VertexShaderFile = globals::PostProcessVertexShader;
+		shaderDesc.FragmentShaderFile = globals::PostProcessFragmentShader;
+		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		shaderDesc.RenderTarget = &RenderTargetArray[0];
+		Shader = ShaderProgram::Create(context, shaderDesc);
 
 		// Init vertexbuffer
 		float vertices[] =
@@ -137,7 +130,7 @@ namespace vkmmc
 		IB.Init(context, quadInfo);
 
 		// Init ui and debug pipelines
-		DebugInstance.Init(context, RenderTargetArray[0].GetRenderPass());
+		DebugInstance.Init(context, &RenderTargetArray[0]);
 		UIInstance.Init(context, RenderTargetArray[0].GetRenderPass());
 	}
 
@@ -147,7 +140,6 @@ namespace vkmmc
 		DebugInstance.Destroy(context);
 		IB.Destroy(context);
 		VB.Destroy(context);
-		Pipeline.Destroy(context);
 		for (uint32_t i = 0; i < (uint32_t)RenderTargetArray.size(); ++i)
 		{
 			RenderTargetArray[i].Destroy(context);
@@ -176,13 +168,15 @@ namespace vkmmc
 		// Descriptor layout and allocator
 		m_descriptorLayoutCache.Init(m_renderContext);
 		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
+		m_renderContext.DescAllocator = &m_descriptorAllocator;
+		m_renderContext.ShaderDB = &m_shaderDb;
 		m_shutdownStack.Add([this]() mutable
 			{
 				m_descriptorAllocator.Destroy();
 				m_descriptorLayoutCache.Destroy();
+				m_shaderDb.Destroy(m_renderContext);
 			});
-		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
-		m_renderContext.DescAllocator = &m_descriptorAllocator;
 
 		// Swapchain
 		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
@@ -462,16 +456,14 @@ namespace vkmmc
 
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
-
-			// Flush debug draw list
-			m_screenPipeline.DebugInstance.Draw(m_renderContext, cmd, frameIndex);
 			// Post process
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineHandle());
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_screenPipeline.Pipeline.GetPipelineLayoutHandle(),
-				0, 1, &m_screenPipeline.QuadSets[frameIndex], 0, nullptr);
 			m_screenPipeline.VB.Bind(cmd);
 			m_screenPipeline.IB.Bind(cmd);
+			m_screenPipeline.Shader->UseProgram(cmd);
+			m_screenPipeline.Shader->BindDescriptorSets(cmd, &m_screenPipeline.QuadSets[frameIndex], 1);
 			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+			// Flush debug draw list
+			m_screenPipeline.DebugInstance.Draw(m_renderContext, cmd, frameIndex);
 			// UI
 			m_screenPipeline.UIInstance.Draw(m_renderContext, cmd);
 
@@ -531,7 +523,7 @@ namespace vkmmc
 		m_gbuffer.ImGuiDraw();
 
 		ImGui::Begin("Engine");
-		ImGui::DragInt("Screen quad index", (int*)(&m_screenPipeline.QuadIndex), 1, 0, 10);
+		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
 		ImGui::End();
 	}
 

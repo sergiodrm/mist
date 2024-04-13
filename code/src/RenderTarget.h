@@ -99,6 +99,7 @@ namespace vkmmc
 		uint32_t GetAttachmentCount() const;
 		const RenderTargetAttachment& GetAttachment(uint32_t index) const;
 		const RenderTargetDescription& GetDescription() const;
+		inline bool HasDepthBufferAttachment() const { return m_description.DepthAttachmentDescription.IsValidAttachment(); }
 	protected:
 		void CreateResources(const RenderContext& renderContext);
 		void CreateRenderPass(const RenderContext& renderContext);

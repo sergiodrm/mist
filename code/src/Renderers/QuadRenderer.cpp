@@ -27,16 +27,12 @@ namespace vkmmc
 		}
 
 		// Init shader
-		ShaderDescription shaders[] =
-		{
-			{.Filepath = globals::PostProcessVertexShader, .Stage=VK_SHADER_STAGE_VERTEX_BIT},
-			{.Filepath = globals::PostProcessFragmentShader, .Stage=VK_SHADER_STAGE_FRAGMENT_BIT},
-		};
-
-		VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-		m_pipeline = RenderPipeline::Create(info.Context, m_frameData[0].RT.GetRenderPass(), 0,
-			shaders, sizeof(shaders) / sizeof(ShaderDescription),
-			inputLayout);
+		ShaderProgramDescription shaderDesc;
+		shaderDesc.VertexShaderFile = globals::PostProcessVertexShader;
+		shaderDesc.FragmentShaderFile = globals::PostProcessFragmentShader;
+		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		shaderDesc.RenderTarget = &m_frameData[0].RT;
+		m_shader = ShaderProgram::Create(info.Context, shaderDesc);
 
 		// Init vertexbuffer
 		float vertices[] =
@@ -62,7 +58,6 @@ namespace vkmmc
 	{
 		m_ib.Destroy(renderContext);
 		m_vb.Destroy(renderContext);
-		m_pipeline.Destroy(renderContext);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			m_frameData[i].RT.Destroy(renderContext);
@@ -80,10 +75,8 @@ namespace vkmmc
 		m_frameData[renderFrameContext.FrameIndex].RT.BeginPass(cmd);
 		if (render::GTextureSet != VK_NULL_HANDLE)
 		{
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineHandle());
-
-			vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineLayoutHandle(),
-				0, 1, &render::GTextureSet, 0, nullptr);
+			m_shader->UseProgram(cmd);
+			m_shader->BindDescriptorSets(cmd, &render::GTextureSet, 1, 0, nullptr, 0);
 			m_vb.Bind(cmd);
 			m_ib.Bind(cmd);
 			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);

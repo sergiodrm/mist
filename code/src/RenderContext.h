@@ -13,6 +13,7 @@ namespace vkmmc
 {
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
+	class ShaderFileDB;
 
 	struct TransferContext
 	{
@@ -33,6 +34,7 @@ namespace vkmmc
 		Allocator* Allocator;
 		DescriptorLayoutCache* LayoutCache;
 		DescriptorAllocator* DescAllocator;
+		ShaderFileDB* ShaderDB;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
 

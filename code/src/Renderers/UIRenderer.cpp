@@ -101,7 +101,7 @@ namespace vkmmc
 
 		m_imgui.Init(info.Context, m_frameData[0].RT.GetRenderPass());
 
-		m_debugPipeline.Init(info.Context, m_frameData[0].RT.GetRenderPass());
+		m_debugPipeline.Init(info.Context, &m_frameData[0].RT);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 			m_debugPipeline.PushFrameData(info.Context, info.FrameUniformBufferArray[i]);
     }

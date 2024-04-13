@@ -20,12 +20,11 @@ namespace vkmmc
 		struct PassData
 		{
 			RenderTarget m_renderTarget;
-			RenderPipeline m_pipeline;
+			ShaderProgram* m_shader;
 			FrameData m_frameData[globals::MaxOverlappedFrames];
 
 			inline void Destroy(const RenderContext& renderContext)
 			{
-				m_pipeline.Destroy(renderContext);
 				m_renderTarget.Destroy(renderContext);
 			}
 		};

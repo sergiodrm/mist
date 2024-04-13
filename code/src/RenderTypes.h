@@ -7,6 +7,7 @@
 #include <array>
 #include <string>
 #include <functional>
+#include <string>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -29,6 +30,7 @@ namespace vkmmc
 	using tArray = std::array<T, N>;
 	template <typename Key_t, typename Value_t/*, typename Hasher_t*/>
 	using tMap = std::unordered_map<Key_t, Value_t/*, Hasher_t = hash<Key_t>*/>;
+	using tString = std::string;
 
 	typedef uint32_t tFlagBits;
 #ifdef VKMMC_VULKAN

@@ -862,7 +862,7 @@ namespace vkmmc
 		return m_renderData.Materials.at(handle);
 	}
 
-	void Scene::Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
+	void Scene::Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
 		// Iterate scene graph to render models.
@@ -879,8 +879,7 @@ namespace vkmmc
 
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					pipelineLayout, modelSetIndex, 1, &modelSet, 1, &modelDynamicOffset);
+				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
 				++vkmmc_profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed
@@ -901,8 +900,7 @@ namespace vkmmc
 						const Material* material = &GetMaterialArray()[drawData.MaterialIndex];
 						check(material && material->GetHandle().IsValid());
 						const MaterialRenderData& mtl = GetMaterialRenderData(material->GetHandle());
-						vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-							pipelineLayout, materialSetIndex, 1, &mtl.Set, 0, nullptr);
+						shader->BindDescriptorSets(cmd, &mtl.Set, 1, materialSetIndex);
 						++vkmmc_profiling::GRenderStats.SetBindingCount;
 					}
 					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
@@ -913,7 +911,7 @@ namespace vkmmc
 		}
 	}
 
-	void Scene::Draw(VkCommandBuffer cmd, VkPipelineLayout pipelineLayout, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
+	void Scene::Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
 		// Iterate scene graph to render models.
@@ -930,8 +928,7 @@ namespace vkmmc
 
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
-				vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
-					pipelineLayout, modelSetIndex, 1, &modelSet, 1, &modelDynamicOffset);
+				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
 				++vkmmc_profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed

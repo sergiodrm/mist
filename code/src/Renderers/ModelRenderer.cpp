@@ -24,7 +24,7 @@ namespace vkmmc
 	tArray<tArray<VkImageView, globals::MaxShadowMapAttachments>, globals::MaxOverlappedFrames> GShadowMapViews;
 
 	ShadowMapPipeline::ShadowMapPipeline()
-		: m_pipeline()
+		: m_shader(nullptr)
 	{
 		SetProjection(glm::radians(45.f), 16.f / 9.f);
 		SetProjection(0.f, 1920.f, 0.f, 1080.f);
@@ -35,40 +35,36 @@ namespace vkmmc
 
 	ShadowMapPipeline::~ShadowMapPipeline()
 	{
-		check(!m_pipeline.IsValid());
 	}
 
-	void ShadowMapPipeline::Init(const RenderContext& renderContext, VkRenderPass renderPass, DescriptorAllocator* descriptorAllocator, DescriptorLayoutCache* layoutCache)
+	void ShadowMapPipeline::Init(const RenderContext& renderContext, const RenderTarget* renderTarget)
 	{
 		// Depth pipeline
-		VkDescriptorSetLayout depthShaderInput[2];
-		DescriptorSetLayoutBuilder::Create(*layoutCache)
+		tArray<VkDescriptorSetLayout, 2> depthShaderInput;
+		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.Build(renderContext, &depthShaderInput[0]);
-		DescriptorSetLayoutBuilder::Create(*layoutCache)
+		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.Build(renderContext, &depthShaderInput[1]);
 
 		// CreatePipeline
 		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
 		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-		m_pipeline = RenderPipeline::Create(
-			renderContext,
-			renderPass,
-			0,
-			&depthShader, 1,
-			depthShaderInput, sizeof(depthShaderInput) / sizeof(VkDescriptorSetLayout), nullptr, 
-			0,
-			inputLayout
-		);
+
+		ShaderProgramDescription shaderDesc;
+		shaderDesc.VertexShaderFile = globals::DepthVertexShader;
+		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+		shaderDesc.SetLayoutArray = depthShaderInput.data();
+		shaderDesc.SetLayoutCount = (uint32_t)depthShaderInput.size();
+		shaderDesc.RenderTarget = renderTarget;
+		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 	}
 
 	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
-	{
-		m_pipeline.Destroy(renderContext);
-	}
+	{	}
 
-	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache)
+	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBuffer* buffer)
 	{
 		// Alloc info for depthVP matrix
 		buffer->AllocUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, GetBufferSize());
@@ -76,13 +72,13 @@ namespace vkmmc
 		FrameData fd;
 		// Alloc desc set pointing to buffer
 		VkDescriptorBufferInfo depthBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SHADOW_MAP_VP);
-		DescriptorBuilder::Create(*layoutCache, *descAllocator)
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 			.BindBuffer(0, &depthBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
 			.Build(renderContext, fd.DepthMVPSet);
 
 		// create descriptor set for model matrix array
 		VkDescriptorBufferInfo modelsBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
-		DescriptorBuilder::Create(*layoutCache, *descAllocator)
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 			.BindBuffer(0, &modelsBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
 			.Build(renderContext, fd.ModelSet);
 		m_frameData.push_back(fd);
@@ -138,13 +134,11 @@ namespace vkmmc
 	void ShadowMapPipeline::RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
 	{
 		check(lightIndex < globals::MaxShadowMapAttachments);
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineHandle());
-
+		m_shader->UseProgram(cmd);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex;
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.GetPipelineLayoutHandle(),
-			0, 1, &m_frameData[frameIndex].DepthMVPSet, 1, &depthVPOffset);
+		m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
 
-		scene->Draw(cmd, m_pipeline.GetPipelineLayoutHandle(), 1, m_frameData[frameIndex].ModelSet);
+		scene->Draw(cmd, m_shader, 1, m_frameData[frameIndex].ModelSet);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -201,7 +195,7 @@ namespace vkmmc
 		{
 			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
 			// Configure frame data for shadowmap
-			m_shadowMapPipeline.AddFrameData(info.Context, uniformBuffer, info.Context.DescAllocator, info.Context.LayoutCache);
+			m_shadowMapPipeline.AddFrameData(info.Context, uniformBuffer);
 
 			uniformBuffer->AllocUniform(info.Context, UNIFORM_ID_LIGHT_VP, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
 
@@ -220,7 +214,7 @@ namespace vkmmc
 		}
 
 		// Init shadow map pipeline when render target is created
-		m_shadowMapPipeline.Init(info.Context, m_frameData[0].RenderTargetArray[0].GetRenderPass(), info.Context.DescAllocator, info.Context.LayoutCache);
+		m_shadowMapPipeline.Init(info.Context, &m_frameData[0].RenderTargetArray[0]);
 	}
 
 	void ShadowMapRenderer::Destroy(const RenderContext& renderContext)
@@ -396,8 +390,7 @@ namespace vkmmc
 		};
 
 		// This pipeline use dynamic descriptors, we have to initialize descriptor set layout manually.
-		VkDescriptorSetLayout layouts[3];
-		uint32_t layoutCount = sizeof(layouts) / sizeof(VkDescriptorSetLayout);
+		tArray<VkDescriptorSetLayout, 3> layouts;
 		// Per frame descriptor (camera, enviro...)
 		DescriptorSetLayoutBuilder::Create(*info.Context.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
@@ -411,17 +404,14 @@ namespace vkmmc
 			.Build(info.Context, &layouts[1]);
 		layouts[2] = MaterialRenderData::GetDescriptorSetLayout(info.Context, *info.Context.LayoutCache);
 
-		m_renderPipeline = RenderPipeline::Create(
-			info.Context,
-			m_frameData[0].RT.GetRenderPass(),
-			0, // subpass
-			shaderStageDescs,
-			sizeof(shaderStageDescs) / sizeof(ShaderDescription),
-			layouts, layoutCount, nullptr, 0,
-			VertexInputLayout::GetStaticMeshVertexLayout()
-		);
-
-		
+		ShaderProgramDescription shaderDesc;
+		shaderDesc.VertexShaderFile = globals::BasicVertexShader;
+		shaderDesc.FragmentShaderFile = globals::BasicFragmentShader;
+		shaderDesc.SetLayoutArray = layouts.data();
+		shaderDesc.SetLayoutCount = (uint32_t)layouts.size();
+		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+		shaderDesc.RenderTarget = &m_frameData[0].RT;
+		m_shader = ShaderProgram::Create(info.Context, shaderDesc);
 	}
 
 	void LightingRenderer::Destroy(const RenderContext& renderContext)
@@ -429,7 +419,6 @@ namespace vkmmc
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 			m_frameData[i].RT.Destroy(renderContext);
 		m_depthMapSampler.Destroy(renderContext);
-		m_renderPipeline.Destroy(renderContext);
 	}
 
 	void LightingRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
@@ -446,16 +435,14 @@ namespace vkmmc
 		m_frameData[renderFrameContext.FrameIndex].RT.BeginPass(cmd);
 
 		// Bind pipeline
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineHandle());
-
+		m_shader->UseProgram(cmd);
 		// Bind global descriptor sets
 		VkDescriptorSet sets[] = { m_frameData[renderFrameContext.FrameIndex].PerFrameSet };
 		uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderPipeline.GetPipelineLayoutHandle(), 0, setCount, sets, 0, nullptr);
-		++vkmmc_profiling::GRenderStats.SetBindingCount;
+		m_shader->BindDescriptorSets(cmd, sets, setCount, 0, nullptr, 0);
 
 		// DrawScene
-		renderFrameContext.Scene->Draw(cmd, m_renderPipeline.GetPipelineLayoutHandle(), 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);
+		renderFrameContext.Scene->Draw(cmd, m_shader, 2, 1, m_frameData[renderFrameContext.FrameIndex].ModelSet);
 
 		m_frameData[renderFrameContext.FrameIndex].RT.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);

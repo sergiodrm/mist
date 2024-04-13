@@ -8,6 +8,39 @@
 
 namespace vkmmc
 {
+	class RenderPipelineBuilder
+	{
+	public:
+		RenderPipelineBuilder(const RenderContext& renderContext);
+
+		const RenderContext& RContext;
+
+		// Layout configuration
+		VkPipelineLayoutCreateInfo LayoutInfo;
+
+		// Viewport configuration
+		VkViewport Viewport;
+		VkRect2D Scissor;
+
+		// Stages
+		std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
+		// Pipeline states
+		VkPipelineRasterizationStateCreateInfo Rasterizer;
+		VkPipelineMultisampleStateCreateInfo Multisampler;
+		VkPipelineDepthStencilStateCreateInfo DepthStencil;
+		// Color attachment
+		std::vector<VkPipelineColorBlendAttachmentState> ColorBlendAttachment;
+
+		// Vertex input. How the vertices are arranged in memory and how to bind them.
+		VertexInputLayout InputDescription;
+		// Input assembly type
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		// Subpass of renderpass
+		uint32_t SubpassIndex = 0;
+
+		void Build(VkRenderPass renderPass, VkPipeline& pipeline, VkPipelineLayout& layout);
+	};
+
 	RenderPipelineBuilder::RenderPipelineBuilder(const RenderContext& renderContext)
 		: RContext(renderContext)
 	{
@@ -28,11 +61,10 @@ namespace vkmmc
 		Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
 	}
 
-	RenderPipeline RenderPipelineBuilder::Build(VkRenderPass renderPass)
+	void RenderPipelineBuilder::Build(VkRenderPass renderPass, VkPipeline& pipeline, VkPipelineLayout& layout)
 	{
 		// Create VkPipelineLayout from LayoutInfo member
-		VkPipelineLayout pipelineLayout;
-		vkcheck(vkCreatePipelineLayout(RContext.Device, &LayoutInfo, nullptr, &pipelineLayout));
+		vkcheck(vkCreatePipelineLayout(RContext.Device, &LayoutInfo, nullptr, &layout));
 
 		// Create vertex input vulkan structures
 		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(Topology);
@@ -74,7 +106,7 @@ namespace vkmmc
 		pipelineInfo.pRasterizationState = &Rasterizer;
 		pipelineInfo.pMultisampleState = &Multisampler;
 		pipelineInfo.pColorBlendState = &colorBlending;
-		pipelineInfo.layout = pipelineLayout;
+		pipelineInfo.layout = layout;
 		pipelineInfo.renderPass = renderPass;
 		pipelineInfo.subpass = SubpassIndex;
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -83,143 +115,147 @@ namespace vkmmc
 		pipelineInfo.pDepthStencilState = &DepthStencil;
 
 		// Create pipeline and check it's all set up correctly
-		VkPipeline newPipeline;
-		if (vkCreateGraphicsPipelines(RContext.Device,
-			VK_NULL_HANDLE,
-			1, &pipelineInfo,
-			nullptr,
-			&newPipeline) == VK_SUCCESS)
+		vkcheck(vkCreateGraphicsPipelines(RContext.Device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline));
+	}
+
+	ShaderProgram::ShaderProgram()
+		: m_pipeline(VK_NULL_HANDLE)
+		, m_pipelineLayout(VK_NULL_HANDLE)
+	{	}
+
+	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const ShaderProgramDescription& description)
+	{
+		ShaderProgram* program = new ShaderProgram();
+		check(program->_Create(context, description));
+		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
+		db.AddShaderProgram(context, program);
+		return program;
+	}
+
+	bool ShaderProgram::_Create(const RenderContext& context, const ShaderProgramDescription& description)
+	{
+		check(!IsLoaded());
+		m_description = description;
+		return Reload(context);
+	}
+
+	void ShaderProgram::Destroy(const RenderContext& context)
+	{
+		check(IsLoaded());
+		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
+		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
+	}
+
+	bool ShaderProgram::Reload(const RenderContext& context)
+	{
+		check(!m_description.VertexShaderFile.empty() || !m_description.FragmentShaderFile.empty());
+		check(m_description.RenderTarget);
+		RenderPipelineBuilder builder(context);
+		// Input configuration
+		builder.InputDescription = m_description.InputLayout;
+		builder.SubpassIndex = m_description.SubpassIndex;
+		builder.Topology = m_description.Topology;
+		// Shader stages
+		ShaderCompiler compiler(context);
+		tArray<ShaderDescription, 2> descs;
+		descs[0] = { m_description.VertexShaderFile.c_str(), VK_SHADER_STAGE_VERTEX_BIT };
+		descs[1] = { m_description.FragmentShaderFile.c_str(), VK_SHADER_STAGE_FRAGMENT_BIT };
+		for (uint32_t i = 0; i < (uint32_t)descs.size(); ++i)
 		{
-			Log(LogLevel::Info, "New graphics pipeline created successfuly!\n");
+			if (!descs[i].Filepath.empty())
+			{
+				compiler.ProcessShaderFile(descs[i].Filepath.c_str(), descs[i].Stage);
+				VkShaderModule compiled = compiler.GetCompiledModule(descs[i].Stage);
+				builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(descs[i].Stage, compiled));
+			}
+		}
+		compiler.GenerateResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
+
+		// Blending info for color attachments
+		uint32_t colorAttachmentCount = m_description.RenderTarget->GetDescription().ColorAttachmentCount;
+		builder.ColorBlendAttachment.resize(colorAttachmentCount);
+		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
+		{
+			// Single blenc attachment without blending and writing RGBA
+			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
+		}
+
+		// Pass layout info
+		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
+		if (m_description.SetLayoutArray && m_description.SetLayoutCount)
+		{
+			builder.LayoutInfo.setLayoutCount = m_description.SetLayoutCount;
+			builder.LayoutInfo.pSetLayouts = m_description.SetLayoutArray;
 		}
 		else
 		{
-			Log(LogLevel::Error, "Failed to create graphics pipeline.\n");
-			newPipeline = VK_NULL_HANDLE;
+			builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
+			builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
 		}
-
-		RenderPipeline pipelineObject;
-		pipelineObject.SetupPipeline(newPipeline, pipelineLayout);
-		return pipelineObject;
-	}
-
-	RenderPipeline RenderPipeline::Create(const RenderContext& renderContext, 
-		const VkRenderPass& renderPass,
-		uint32_t subpassIndex,
-		const ShaderDescription* shaderStages,
-		uint32_t shaderStageCount,
-		const VertexInputLayout& inputDescription,
-		VkPrimitiveTopology topology, 
-		uint32_t colorAttachmentCount)
-	{
-		check(shaderStages && shaderStageCount > 0);
-		RenderPipelineBuilder builder(renderContext);
-		// Input configuration
-		builder.InputDescription = inputDescription;
-		builder.SubpassIndex = subpassIndex;
-		builder.Topology = topology;
-		// Shader stages
-		ShaderCompiler compiler(renderContext);
-		for (uint32_t i = 0; i < shaderStageCount; ++i)
+		if (m_description.PushConstantArray && m_description.PushConstantCount)
 		{
-			compiler.ProcessShaderFile(shaderStages[i].Filepath.c_str(), shaderStages[i].Stage);
-			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
-			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
+			builder.LayoutInfo.pushConstantRangeCount = m_description.PushConstantCount;
+			builder.LayoutInfo.pPushConstantRanges = m_description.PushConstantArray;
 		}
-		// TODO: remove singleton dependency
-		compiler.GenerateResources(IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetDescriptorSetLayoutCache());
-
-		// Blending info for color attachments
-		builder.ColorBlendAttachment.resize(colorAttachmentCount);
-		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
+		else
 		{
-			// Single blenc attachment without blending and writing RGBA
-			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
+			builder.LayoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
+			builder.LayoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
 		}
-		// Pass layout info
-		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
-		builder.LayoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
-		builder.LayoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
-		builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
-		builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
-		
+
 		// Build the new pipeline
-		RenderPipeline renderPipeline = builder.Build(renderPass);
+		builder.Build(m_description.RenderTarget->GetRenderPass(), m_pipeline, m_pipelineLayout);
 
 		// Free shader compiler cached data
 		compiler.ClearCachedData();
 
-		return renderPipeline;
-	}
-
-	RenderPipeline RenderPipeline::Create(
-		const RenderContext& renderContext,
-		const VkRenderPass& renderPass, 
-		uint32_t subpassIndex, 
-		const ShaderDescription* shaderStages, 
-		uint32_t shaderStageCount, 
-		const VkDescriptorSetLayout* layouts, 
-		uint32_t layoutCount, 
-		const VkPushConstantRange* pushConstants, 
-		uint32_t pushConstantCount, 
-		const VertexInputLayout& inputDescription, 
-		VkPrimitiveTopology topology,
-		uint32_t colorAttachmentCount)
-	{
-		check(shaderStages && shaderStageCount > 0);
-		RenderPipelineBuilder builder(renderContext);
-		// Input configuration
-		builder.InputDescription = inputDescription;
-		builder.SubpassIndex = subpassIndex;
-		builder.Topology = topology;
-		// Shader stages
-		ShaderCompiler compiler(renderContext);
-		for (uint32_t i = 0; i < shaderStageCount; ++i)
-		{
-			compiler.ProcessShaderFile(shaderStages[i].Filepath.c_str(), shaderStages[i].Stage);
-			VkShaderModule compiled = compiler.GetCompiledModule(shaderStages[i].Stage);
-			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(shaderStages[i].Stage, compiled));
-		}
-
-		// Blending info for color attachments
-		builder.ColorBlendAttachment.resize(colorAttachmentCount);
-		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
-		{
-			// Single blenc attachment without blending and writing RGBA
-			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
-		}
-
-		// Pass layout info
-		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
-		builder.LayoutInfo.pushConstantRangeCount = pushConstantCount;
-		builder.LayoutInfo.pPushConstantRanges = pushConstants;
-		builder.LayoutInfo.setLayoutCount = layoutCount;
-		builder.LayoutInfo.pSetLayouts = layouts;
-
-		// Build the new pipeline
-		RenderPipeline renderPipeline = builder.Build(renderPass);
-
-		// Free shader compiler cached data
-		compiler.ClearCachedData();
-
-		return renderPipeline;
-	}
-
-	bool RenderPipeline::SetupPipeline(VkPipeline pipeline, VkPipelineLayout layout)
-	{
-		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
-		m_pipeline = pipeline;
-		m_pipelineLayout = layout;
-		Log(LogLevel::Info, "Render pipeline setup success.\n");
 		return true;
 	}
 
-	void RenderPipeline::Destroy(const RenderContext& renderContext)
+	void ShaderProgram::UseProgram(VkCommandBuffer cmd)
 	{
-		Log(LogLevel::Info, "Destroy render pipeline.\n");
-		vkDestroyPipeline(renderContext.Device, m_pipeline, nullptr);
-		vkDestroyPipelineLayout(renderContext.Device, m_pipelineLayout, nullptr);
-		m_pipeline = VK_NULL_HANDLE;
-		m_pipelineLayout = VK_NULL_HANDLE;
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		++vkmmc_profiling::GRenderStats.ShaderProgramCount;
 	}
+
+	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount)
+	{
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
+		++vkmmc_profiling::GRenderStats.SetBindingCount;
+	}
+
+	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
+	{
+		const ShaderProgramDescription& description = program->GetDescription();
+		check(!FindShaderProgram(description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str()));
+
+		uint32_t index = (uint32_t)m_pipelineArray.size();
+		m_pipelineArray.push_back(program);
+		char key[512];
+		GenerateKey(key, description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str());
+		m_indexMap[key] = index;
+	}
+
+	ShaderProgram* ShaderFileDB::FindShaderProgram(const char* vertexFile, const char* fragmentFile) const
+	{
+		ShaderProgram* p = nullptr;
+		char key[512];
+		GenerateKey(key, vertexFile, fragmentFile);
+		if (m_indexMap.contains(key))
+			p = m_pipelineArray[m_indexMap.at(key)];
+		return p;
+	}
+
+	void ShaderFileDB::Destroy(const RenderContext& context)
+	{
+		for (uint32_t i = 0; i < (uint32_t)m_pipelineArray.size(); ++i)
+		{
+			m_pipelineArray[i]->Destroy(context);
+			delete m_pipelineArray[i];
+			m_pipelineArray[i] = nullptr;
+		}
+		m_pipelineArray.clear();
+		m_indexMap.clear();
+	}
+
 }

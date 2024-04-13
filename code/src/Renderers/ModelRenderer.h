@@ -30,10 +30,10 @@ namespace vkmmc
 		ShadowMapPipeline();
 		~ShadowMapPipeline();
 
-		void Init(const RenderContext& renderContext, VkRenderPass renderPass, DescriptorAllocator* descriptorAllocator, DescriptorLayoutCache* layoutCache);
+		void Init(const RenderContext& renderContext, const RenderTarget* renderTarget);
 		void Destroy(const RenderContext& renderContext);
 
-		void AddFrameData(const RenderContext& renderContext, UniformBuffer* buffer, DescriptorAllocator* descAllocator, DescriptorLayoutCache* layoutCache);
+		void AddFrameData(const RenderContext& renderContext, UniformBuffer* buffer);
 
 		void SetClip(float nearClip, float farClip);
 		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
@@ -49,7 +49,7 @@ namespace vkmmc
 		void ImGuiDraw(bool createWindow = false);
 	private:
 		// Shader shadowmap pipeline
-		RenderPipeline m_pipeline;
+		ShaderProgram* m_shader;
 		// Cache for save depth view projection data until flush to gpu buffer.
 		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
 		// Projection params
@@ -106,7 +106,7 @@ namespace vkmmc
 
 	protected:
 		// Render State
-		RenderPipeline m_renderPipeline;
+		ShaderProgram* m_shader;
 
 		tArray<FrameData, globals::MaxOverlappedFrames> m_frameData;
 		

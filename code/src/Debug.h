@@ -64,6 +64,7 @@ namespace vkmmc_profiling
 		uint32_t TrianglesCount{ 0 };
 		uint32_t DrawCalls{ 0 };
 		uint32_t SetBindingCount{ 0 };
+		uint32_t ShaderProgramCount{ 0 };
 		void Reset();
 	};
 

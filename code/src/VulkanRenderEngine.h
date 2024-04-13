@@ -73,7 +73,7 @@ namespace vkmmc
 		// Quad info
 		VertexBuffer VB;
 		IndexBuffer IB;
-		RenderPipeline Pipeline;
+		ShaderProgram* Shader;
 		tDynArray<RenderTarget> RenderTargetArray;
 		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> QuadSets;
 		int32_t QuadIndex = -1;
@@ -133,7 +133,6 @@ namespace vkmmc
 
 		Sampler m_quadSampler;
 		ScreenQuadPipeline m_screenPipeline;
-		
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
 		uint32_t m_frameCounter;
@@ -141,6 +140,7 @@ namespace vkmmc
 
 		DescriptorAllocator m_descriptorAllocator;
 		DescriptorLayoutCache m_descriptorLayoutCache;
+		ShaderFileDB m_shaderDb;
 
 		VkDescriptorSetLayout m_globalDescriptorLayout;
 

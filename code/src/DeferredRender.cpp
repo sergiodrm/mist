@@ -10,7 +10,7 @@
 #include "imgui_internal.h"
 #include "Renderers/DebugRenderer.h"
 
-#define GBUFFER_RT_FORMAT_POSITION FORMAT_R16G16B16A16_SFLOAT
+#define GBUFFER_RT_FORMAT_POSITION FORMAT_R32G32B32A32_SFLOAT
 #define GBUFFER_RT_FORMAT_NORMAL GBUFFER_RT_FORMAT_POSITION
 #define GBUFFER_RT_FORMAT_ALBEDO FORMAT_R8G8B8A8_UNORM
 #define GBUFFER_RT_FORMAT_DEPTH FORMAT_D32_SFLOAT
@@ -27,8 +27,6 @@
 
 #define ASSET_ROOT_PATH "../../assets/"
 #define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/compiled/"
-
-#define _USE_RT
 
 namespace vkmmc
 {
@@ -129,19 +127,18 @@ namespace vkmmc
 		// MRT
 		BeginGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
 		m_mrt.m_renderTarget.BeginPass(cmd);
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_mrt.m_pipeline.GetPipelineHandle());
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_mrt.m_pipeline.GetPipelineLayoutHandle(),
-			0, 1, &frameContext.CameraDescriptorSet, 0, nullptr);
-		frameContext.Scene->Draw(cmd, m_mrt.m_pipeline.GetPipelineLayoutHandle(), 2, 1, m_mrt.m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
+		m_mrt.m_shader->UseProgram(cmd);
+		m_mrt.m_shader->BindDescriptorSets(cmd, &frameContext.CameraDescriptorSet, 1);
+		frameContext.Scene->Draw(cmd, m_mrt.m_shader, 2, 1, m_mrt.m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
 		m_mrt.m_renderTarget.EndPass(frameContext.GraphicsCommand);
 		EndGPUEvent(renderContext, cmd);
 
 		// Composition
 		BeginGPUEvent(renderContext, cmd, "GBuffer_Composition", 0xff00ffff);
 		m_composition.m_renderTarget.BeginPass(cmd);
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_composition.m_pipeline.GetPipelineHandle());
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_composition.m_pipeline.GetPipelineLayoutHandle(),
-			0, 2, m_composition.m_frameData[frameContext.FrameIndex].DescriptorSetArray.data(), 0, nullptr);
+		m_composition.m_shader->UseProgram(cmd);
+		auto& sets = m_composition.m_frameData[frameContext.FrameIndex].DescriptorSetArray;
+		m_composition.m_shader->BindDescriptorSets(cmd, sets.data(), 2);
 		m_quadVB.Bind(cmd);
 		m_quadIB.Bind(cmd);
 		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
@@ -202,20 +199,23 @@ namespace vkmmc
 				{.Filepath = SHADER_ROOT_PATH "mrt.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 			};
 
-			m_mrt.m_pipeline = RenderPipeline::Create(renderContext, 
-				m_mrt.m_renderTarget.GetRenderPass(),
-				0,
-				descs, 2, layouts.data(), (uint32_t)layouts.size(),
-				nullptr, 0, VertexInputLayout::GetStaticMeshVertexLayout(),
-				VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 3);
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile = SHADER_ROOT_PATH "mrt.vert.spv";
+			shaderDesc.FragmentShaderFile = SHADER_ROOT_PATH "mrt.frag.spv";
+			shaderDesc.RenderTarget = &m_mrt.m_renderTarget;
+			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+			shaderDesc.SetLayoutArray = layouts.data();
+			shaderDesc.SetLayoutCount = (uint32_t)layouts.size();
+			m_mrt.m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
 
 		// Deferred pipeline
 		{
+#if 0
 			ShaderDescription descs[2] =
 			{
-				{ .Filepath = SHADER_ROOT_PATH "deferred.vert.spv", .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-				{ .Filepath = SHADER_ROOT_PATH "deferred.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
+				{.Filepath = SHADER_ROOT_PATH "deferred.vert.spv", .Stage = VK_SHADER_STAGE_VERTEX_BIT},
+				{.Filepath = SHADER_ROOT_PATH "deferred.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 			};
 
 			tArray<VkDescriptorSetLayout, 2> layouts;
@@ -228,11 +228,16 @@ namespace vkmmc
 				.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 				.AddBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 				.Build(renderContext, &layouts[1]);
+#endif // 0
+
 
 			// Empty input layout
-			VertexInputLayout inputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-			m_composition.m_pipeline = RenderPipeline::Create(renderContext, m_composition.m_renderTarget.GetRenderPass(),
-				0, descs, 2, layouts.data(), (uint32_t)layouts.size(), nullptr, 0, inputLayout);
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile = SHADER_ROOT_PATH "deferred.vert.spv";
+			shaderDesc.FragmentShaderFile = SHADER_ROOT_PATH "deferred.frag.spv";
+			shaderDesc.RenderTarget = &m_composition.m_renderTarget;
+			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+			m_composition.m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 
 			// init quad
 			float vertices[] =

@@ -27,7 +27,7 @@ namespace vkmmc
 			VkDescriptorSet SetUBO;
 		};
 	public:
-		void Init(const RenderContext& context, VkRenderPass renderPass);
+		void Init(const RenderContext& context, const RenderTarget* renderTarget);
 		void PushFrameData(const RenderContext& context, UniformBuffer* buffer);
 		void PrepareFrame(const RenderContext& context, UniformBuffer* buffer);
 		void Draw(const RenderContext& context, VkCommandBuffer cmd, uint32_t frameIndex);
@@ -35,13 +35,13 @@ namespace vkmmc
 		void ImGuiDraw();
 	private:
 		// Render State
-		RenderPipeline m_renderPipeline;
+		ShaderProgram* m_lineShader;
 		VertexBuffer m_lineVertexBuffer;
 
 		tDynArray<FrameData> m_frameSet;
 		VertexBuffer m_quadVertexBuffer;
 		IndexBuffer m_quadIndexBuffer;
-		RenderPipeline m_quadPipeline;
+		ShaderProgram* m_quadShader;
 		Sampler m_depthSampler;
 		bool m_debugDepthMap = true;
 	};
