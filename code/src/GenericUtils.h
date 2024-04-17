@@ -8,6 +8,8 @@ namespace vkmmc
 	namespace io
 	{
 		bool ReadFile(const char* filename, std::vector<uint32_t>& data);
+		bool ReadFile(const char* filename, uint32_t** data, size_t& size);
+		bool ReadFile(const char* filename, char** out, size_t& size);
 		void GetRootDir(const char* filepath, char* rootPath, size_t size);
 	}
 

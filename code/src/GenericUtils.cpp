@@ -32,6 +32,54 @@ namespace vkmmc
 		return true;
 	}
 
+	bool io::ReadFile(const char* filename, uint32_t** data, size_t& size)
+	{
+		// Open file with std::ios::ate -> with cursor at the end of the file
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		if (!file.is_open())
+		{
+			Logf(LogLevel::Error, "File not found: %s.\n", filename);
+			return false;
+		}
+		// Tell size (remember cursor at the end of the file)
+		size_t bytes = (size_t)file.tellg();
+		// SpirV expects a uint32 buffer
+		*data = (uint32_t*)malloc(bytes);
+		// Move cursor file to the beginning
+		file.seekg(0);
+		// Read the entire file to the buffer
+		file.read((char*)*data, bytes);
+		// Terminated with file stream
+		file.close();
+
+		size = bytes / sizeof(uint32_t);
+		return true;
+	}
+
+	bool io::ReadFile(const char* filename, char** out, size_t& size)
+	{
+		// Open file with std::ios::ate -> with cursor at the end of the file
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		if (!file.is_open())
+		{
+			Logf(LogLevel::Error, "File not found: %s.\n", filename);
+			return false;
+		}
+		// Tell size (remember cursor at the end of the file)
+		size = (size_t)file.tellg() + 1;
+		// SpirV expects a uint32 buffer
+		*out = new char[size];
+		(*out)[size - 1] = 0; // null terminated character
+		// Move cursor file to the beginning
+		file.seekg(0);
+		// Read the entire file to the buffer
+		file.read(*out, size);
+		// Terminated with file stream
+		file.close();
+
+		return true;
+	}
+
 	void io::GetRootDir(const char* filepath, char* rootPath, size_t size)
 	{
 		size_t len = strlen(filepath);
