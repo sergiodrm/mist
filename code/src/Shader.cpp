@@ -11,6 +11,124 @@
 #include "RenderDescriptor.h"
 #include "Logger.h"
 #include "RenderContext.h"
+#include "VulkanRenderEngine.h"
+
+
+
+
+#ifdef SHADER_RUNTIME_COMPILATION
+#include <glslang_c_interface.h>
+#include <glslang/Public/resource_limits_c.h>
+
+namespace glslang_api
+{
+	enum tShaderStage
+	{
+		STAGE_VERTEX,
+		STAGE_FRAGMENT
+	};
+
+	enum tAssembleResultType
+	{
+		ASSEMBLE_OK,
+		PREPROCESS_ERROR,
+		PARSE_ERROR,
+		LINK_ERROR,
+	};
+
+	typedef void(*PFN_Log)(const char* msg);
+
+	struct tAssembleShaderInfo
+	{
+		const char* Source;
+		tShaderStage Stage;
+
+		PFN_Log ErrorPFN;
+	};
+
+	glslang_stage_t GetGlslStage(tShaderStage stage)
+	{
+		switch (stage)
+		{
+		case glslang_api::STAGE_VERTEX: return GLSLANG_STAGE_VERTEX;
+		case glslang_api::STAGE_FRAGMENT: return GLSLANG_STAGE_FRAGMENT;
+		default:
+			check(false && "Unreachable code");
+		}
+		return GLSLANG_STAGE_COUNT;
+	}
+
+	void HandleError(glslang_shader_t* shader, const glslang_input_t* input)
+	{
+		const char* infoLog = glslang_shader_get_info_log(shader);
+		const char* debugLog = glslang_shader_get_info_debug_log(shader);
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Shader error info log: %s\n", infoLog);
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Shader error debug log: %s\n", debugLog);
+	}
+
+	void HandleError(glslang_program_t* program)
+	{
+		const char* infoLog = glslang_program_get_info_log(program);
+		const char* debugLog = glslang_program_get_info_debug_log(program);
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Debug error info log: %s\n", infoLog);
+		vkmmc::Logf(vkmmc::LogLevel::Error, "Debug error debug log: %s\n", debugLog);
+	}
+
+	tAssembleResultType Assemble(const tAssembleShaderInfo& info, uint32_t** assembleData, size_t* size)
+	{
+		const glslang_input_t input
+		{
+			.language = GLSLANG_SOURCE_GLSL,
+			.stage = GetGlslStage(info.Stage),
+			.client = GLSLANG_CLIENT_VULKAN,
+			.client_version = GLSLANG_TARGET_VULKAN_1_3,
+			.target_language = GLSLANG_TARGET_SPV,
+			.target_language_version = GLSLANG_TARGET_SPV_1_3,
+			.code = info.Source,
+			.default_version = 100,
+			.default_profile = GLSLANG_NO_PROFILE,
+			.force_default_version_and_profile = false,
+			.messages = GLSLANG_MSG_DEFAULT_BIT,
+			.resource = glslang_default_resource()
+		};
+		const glslang_input_t* pInput = &input;
+
+		glslang_initialize_process();
+
+		glslang_shader_t* shader = glslang_shader_create(pInput);
+		if (!glslang_shader_preprocess(shader, pInput))
+		{
+			HandleError(shader, pInput);
+			return PREPROCESS_ERROR;
+		}
+		if (!glslang_shader_parse(shader, pInput))
+		{
+			HandleError(shader, pInput);
+			return PARSE_ERROR;
+		}
+		glslang_program_t* shaderProgram = glslang_program_create();
+		glslang_program_add_shader(shaderProgram, shader);
+		int msgs = GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT;
+		if (!glslang_program_link(shaderProgram, msgs))
+		{
+			HandleError(shaderProgram);
+			return LINK_ERROR;
+		}
+		glslang_program_SPIRV_generate(shaderProgram, input.stage);
+		*size = glslang_program_SPIRV_get_size(shaderProgram);
+		*assembleData = (uint32_t*)malloc(*size * sizeof(uint32_t));
+		glslang_program_SPIRV_get(shaderProgram, *assembleData);
+		const char* messages = glslang_program_SPIRV_get_messages(shaderProgram);
+		if (messages)
+			printf("Spirv messages: %s\n", messages);
+		glslang_program_delete(shaderProgram);
+		glslang_shader_delete(shader);
+		glslang_finalize_process();
+		return ASSEMBLE_OK;
+	}
+}
+#endif // SHADER_RUNTIME_COMPILATION
+
 
 namespace vkutils
 {
@@ -26,13 +144,14 @@ namespace vkutils
 		return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
 	}
 
-	const char* GetVulkanShaderStageName(VkShaderStageFlagBits shaderStage)
+	const char* GetVulkanShaderStageName(VkShaderStageFlags shaderStage)
 	{
 		switch (shaderStage)
 		{
 		case VK_SHADER_STAGE_VERTEX_BIT: return "Vertex";
 		case VK_SHADER_STAGE_FRAGMENT_BIT: return "Fragment";
 		}
+		check(false && "Unreachable code");
 		return "Unknown";
 	}
 
@@ -66,6 +185,8 @@ namespace vkutils
 
 namespace vkmmc
 {
+
+
 	ShaderCompiler::ShaderCompiler(const RenderContext& renderContext) : m_renderContext(renderContext)
 	{}
 
@@ -76,11 +197,11 @@ namespace vkmmc
 
 	void ShaderCompiler::ClearCachedData()
 	{
-		for (auto it : m_cachedBinarySources)
+		for (auto it : m_modules)
 		{
-			vkDestroyShaderModule(m_renderContext.Device, it.second.CompiledModule, nullptr);
+			vkDestroyShaderModule(m_renderContext.Device, it.CompiledModule, nullptr);
 		}
-		m_cachedBinarySources.clear();
+		m_modules.clear();
 		m_cachedLayoutArray.clear();
 		m_cachedPushConstantArray.clear();
 	}
@@ -88,24 +209,47 @@ namespace vkmmc
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage)
 	{
 		Logf(LogLevel::Ok, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
-		check(!m_cachedBinarySources.contains(shaderStage));
-		CachedBinaryData data;
-		data.ShaderStage = shaderStage;
+
+		// integrity check: dont repeat shader stage and ensure correct file extension with shader stage.
+		check(GetCompiledModule(shaderStage) == VK_NULL_HANDLE);
 		check(CheckShaderFileExtension(filepath, shaderStage));
-		check(CacheSourceFromFile(filepath, data.BinarySource));
-		ProcessCachedSource(data);
-		data.CompiledModule = Compile(data.BinarySource, data.ShaderStage);
-		m_cachedBinarySources[shaderStage] = data;
+
+		// Read shader source and convert it to spirv binary
+		ShaderFileContent content;
+		check(CacheSourceFromFile(filepath, content));
+		check(AssembleShaderSource(content.Raw, content.RawSize, shaderStage, &content.Assembled, &content.AssembledSize));
+		// Create reflection info
+		ProcessReflection(shaderStage, content.Assembled, content.AssembledSize);
+		// Create vk module
+		CompiledShaderModule data;
+		data.ShaderStage = shaderStage;
+		data.CompiledModule = CompileShaderModule(m_renderContext, content.Assembled, content.AssembledSize, data.ShaderStage);
+		m_modules.push_back(data);
+
+		// release resources
+		delete[] content.Assembled;
+		delete[] content.Raw;
+
+
 		Logf(LogLevel::Ok, "Shader compiled and cached successfully: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 		return true;
 	}
 
-	VkShaderModule ShaderCompiler::GetCompiledModule(VkShaderStageFlagBits shaderStage) const
+	VkShaderModule ShaderCompiler::GetCompiledModule(VkShaderStageFlags shaderStage) const
 	{
-		return m_cachedBinarySources.contains(shaderStage) ? m_cachedBinarySources.at(shaderStage).CompiledModule : VK_NULL_HANDLE;
+		for (size_t i = 0; i < m_modules.size(); ++i)
+		{
+			if (m_modules[i].ShaderStage == shaderStage)
+			{
+				// Cached modules must be compiled
+				check(m_modules[i].CompiledModule != VK_NULL_HANDLE);
+				return m_modules[i].CompiledModule;
+			}
+		}
+		return VK_NULL_HANDLE;
 	}
 
-	bool ShaderCompiler::GenerateResources(DescriptorLayoutCache& layoutCache)
+	bool ShaderCompiler::GenerateReflectionResources(DescriptorLayoutCache& layoutCache)
 	{
 		check(m_cachedLayoutArray.empty() && m_cachedPushConstantArray.empty() && "Compiler already has cached data. Compile all shaders before generate resources.");
 		m_cachedLayoutArray.resize(m_reflectionProperties.DescriptorSetInfoArray.size());
@@ -120,26 +264,43 @@ namespace vkmmc
 		return true;
 	}
 
-	VkShaderModule ShaderCompiler::Compile(const std::vector<uint32_t>& binarySource, VkShaderStageFlagBits flag) const
+	VkShaderModule ShaderCompiler::CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binarySize, VkShaderStageFlags stage)
 	{
-		check(!binarySource.empty());
+		check(binaryData && binarySize);
 		VkShaderModuleCreateInfo info{ .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .pNext = nullptr };
-		info.codeSize = binarySource.size() * sizeof(uint32_t);
-		info.pCode = binarySource.data();
+		info.codeSize = binarySize * sizeof(uint32_t);
+		info.pCode = binaryData;
 		VkShaderModule shaderModule{ VK_NULL_HANDLE };
-		vkcheck(vkCreateShaderModule(m_renderContext.Device, &info, nullptr, &shaderModule));
+		vkcheck(vkCreateShaderModule(context.Device, &info, nullptr, &shaderModule));
 		return shaderModule;
 	}
 
-	bool ShaderCompiler::CacheSourceFromFile(const char* file, std::vector<uint32_t>& outCachedData)
+	bool ShaderCompiler::CacheSourceFromFile(const char* file, ShaderFileContent& content)
 	{
-		outCachedData.clear();
-		return io::ReadFile(file, outCachedData);
+#ifdef SHADER_RUNTIME_COMPILATION
+		return io::ReadFile(file, &content.Raw, content.RawSize);
+#else
+		return io::ReadFile(file, &content.Assembled, content.AssembledSize);
+#endif // SHADER_RUNTIME_COMPILATION
 	}
 
-	void ShaderCompiler::ProcessCachedSource(CachedBinaryData& cachedData)
+	bool ShaderCompiler::AssembleShaderSource(const char* source, size_t size, VkShaderStageFlags stage, uint32_t** assembled, size_t* assembledSize)
 	{
-		auto processSpirvResource = [this](const spirv_cross::CompilerGLSL& compiler, const spirv_cross::Resource& resource, VkShaderStageFlagBits shaderStage, VkDescriptorType descriptorType)
+#ifdef SHADER_RUNTIME_COMPILATION
+		check(source && *source && size);
+		glslang_api::tAssembleShaderInfo shaderAssembleInfo;
+		shaderAssembleInfo.Source = source;
+		shaderAssembleInfo.Stage = stage == VK_SHADER_STAGE_VERTEX_BIT ? glslang_api::STAGE_VERTEX : glslang_api::STAGE_FRAGMENT;
+		return glslang_api::Assemble(shaderAssembleInfo, assembled, assembledSize) == glslang_api::ASSEMBLE_OK;
+#else
+		return true;
+#endif // SHADER_RUNTIME_COMPILATION
+
+	}
+
+	void ShaderCompiler::ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t size)
+	{
+		auto processSpirvResource = [this](const spirv_cross::CompilerGLSL& compiler, const spirv_cross::Resource& resource, VkShaderStageFlags shaderStage, VkDescriptorType descriptorType)
 			{
 				ShaderBindingDescriptorInfo bufferInfo;
 				bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
@@ -170,34 +331,33 @@ namespace vkmmc
 				return setIndex;
 			};
 
-		const std::vector<uint32_t>& cachedSource = cachedData.BinarySource;
-		check(!cachedSource.empty() && "Invalid cached source.");
-		spirv_cross::CompilerGLSL compiler(cachedSource);
+		check(binaryData && size && "Invalid binary source.");
+		spirv_cross::CompilerGLSL compiler(binaryData, size);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		Log(LogLevel::Debug, "Processing shader reflection...\n");
-		
+
 		for (const spirv_cross::Resource& resource : resources.uniform_buffers)
-			processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 		for (const spirv_cross::Resource& resource : resources.storage_buffers)
-			processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 		for (const spirv_cross::Resource& resource : resources.sampled_images)
-			processSpirvResource(compiler, resource, cachedData.ShaderStage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
 		for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
 		{
-			check(!m_reflectionProperties.PushConstantMap.contains(cachedData.ShaderStage));
+			check(!m_reflectionProperties.PushConstantMap.contains(shaderStage));
 			ShaderPushConstantBufferInfo info;
 			info.Name = resource.name.c_str();
 			info.Offset = compiler.get_decoration(resource.id, spv::DecorationOffset);
 			const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
 			info.Size = (uint32_t)compiler.get_declared_struct_size(type);
-			info.ShaderStage = cachedData.ShaderStage;
-			m_reflectionProperties.PushConstantMap[cachedData.ShaderStage] = info;
+			info.ShaderStage = shaderStage;
+			m_reflectionProperties.PushConstantMap[shaderStage] = info;
 			Logf(LogLevel::Debug, "> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
-				vkutils::GetVulkanShaderStageName(cachedData.ShaderStage), info.Name.c_str(), info.Offset, info.Size);
+				vkutils::GetVulkanShaderStageName(shaderStage), info.Name.c_str(), info.Offset, info.Size);
 		}
 
 		Log(LogLevel::Debug, "End shader reflection.\n");
@@ -254,7 +414,7 @@ namespace vkmmc
 		return range;
 	}
 
-	bool ShaderCompiler::CheckShaderFileExtension(const char* filepath, VkShaderStageFlagBits shaderStage)
+	bool ShaderCompiler::CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage)
 	{
 		bool res = false;
 		if (filepath && *filepath)
@@ -262,8 +422,8 @@ namespace vkmmc
 			const char* desiredExt;
 			switch (shaderStage)
 			{
-			case VK_SHADER_STAGE_FRAGMENT_BIT: desiredExt = ".frag.spv"; break;
-			case VK_SHADER_STAGE_VERTEX_BIT: desiredExt = ".vert.spv"; break;
+			case VK_SHADER_STAGE_FRAGMENT_BIT: desiredExt = SHADER_FRAG_FILE_EXTENSION; break;
+			case VK_SHADER_STAGE_VERTEX_BIT: desiredExt = SHADER_VERTEX_FILE_EXTENSION; break;
 			default:
 				return res;
 			}
@@ -276,6 +436,275 @@ namespace vkmmc
 			}
 		}
 		return res;
+	}
+
+	class RenderPipelineBuilder
+	{
+	public:
+		RenderPipelineBuilder(const RenderContext& renderContext);
+
+		const RenderContext& RContext;
+
+		// Layout configuration
+		VkPipelineLayoutCreateInfo LayoutInfo;
+
+		// Viewport configuration
+		VkViewport Viewport;
+		VkRect2D Scissor;
+
+		// Stages
+		std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
+		// Pipeline states
+		VkPipelineRasterizationStateCreateInfo Rasterizer;
+		VkPipelineMultisampleStateCreateInfo Multisampler;
+		VkPipelineDepthStencilStateCreateInfo DepthStencil;
+		// Color attachment
+		std::vector<VkPipelineColorBlendAttachmentState> ColorBlendAttachment;
+
+		// Vertex input. How the vertices are arranged in memory and how to bind them.
+		VertexInputLayout InputDescription;
+		// Input assembly type
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		// Subpass of renderpass
+		uint32_t SubpassIndex = 0;
+
+		void Build(VkRenderPass renderPass, VkPipeline& pipeline, VkPipelineLayout& layout);
+	};
+
+	RenderPipelineBuilder::RenderPipelineBuilder(const RenderContext& renderContext)
+		: RContext(renderContext)
+	{
+		// Configure viewport settings.
+		Viewport.x = 0.f;
+		Viewport.y = 0.f;
+		Viewport.width = (float)renderContext.Window->Width;
+		Viewport.height = (float)renderContext.Window->Height;
+		Viewport.minDepth = 0.f;
+		Viewport.maxDepth = 1.f;
+		Scissor.offset = { 0, 0 };
+		Scissor.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
+		// Depth testing
+		DepthStencil = vkinit::PipelineDepthStencilCreateInfo(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+		// Rasterization: draw filled triangles
+		Rasterizer = vkinit::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL);
+		// Disable multisampling by default
+		Multisampler = vkinit::PipelineMultisampleStateCreateInfo();
+	}
+
+	void RenderPipelineBuilder::Build(VkRenderPass renderPass, VkPipeline& pipeline, VkPipelineLayout& layout)
+	{
+		// Create VkPipelineLayout from LayoutInfo member
+		vkcheck(vkCreatePipelineLayout(RContext.Device, &LayoutInfo, nullptr, &layout));
+
+		// Create vertex input vulkan structures
+		VkPipelineInputAssemblyStateCreateInfo assemblyInfo = vkinit::PipelineInputAssemblyCreateInfo(Topology);
+		VkPipelineVertexInputStateCreateInfo inputInfo = vkinit::PipelineVertexInputStageCreateInfo();
+		//check(InputDescription.Attributes.size() > 0);
+		inputInfo.pVertexAttributeDescriptions = InputDescription.Attributes.data();
+		inputInfo.vertexAttributeDescriptionCount = (uint32_t)InputDescription.Attributes.size();
+		inputInfo.pVertexBindingDescriptions = &InputDescription.Binding;
+		inputInfo.vertexBindingDescriptionCount = 1;
+
+		// Make viewport state from our stored viewport and scissor.
+		// At the moment we won't support multiple viewport and scissor.
+		VkPipelineViewportStateCreateInfo viewportStateInfo = {};
+		viewportStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		viewportStateInfo.pNext = nullptr;
+		viewportStateInfo.viewportCount = 1;
+		viewportStateInfo.pViewports = &Viewport;
+		viewportStateInfo.scissorCount = 1;
+		viewportStateInfo.pScissors = &Scissor;
+
+		// Blending info
+		VkPipelineColorBlendStateCreateInfo colorBlending = {};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		colorBlending.pNext = nullptr;
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY;
+		colorBlending.attachmentCount = (uint32_t)ColorBlendAttachment.size();
+		colorBlending.pAttachments = ColorBlendAttachment.data();
+
+		// Build the pipeline
+		VkGraphicsPipelineCreateInfo pipelineInfo = {};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.pNext = nullptr;
+		pipelineInfo.stageCount = (uint32_t)ShaderStages.size();
+		pipelineInfo.pStages = ShaderStages.data();
+		pipelineInfo.pVertexInputState = &inputInfo;
+		pipelineInfo.pInputAssemblyState = &assemblyInfo;
+		pipelineInfo.pViewportState = &viewportStateInfo;
+		pipelineInfo.pRasterizationState = &Rasterizer;
+		pipelineInfo.pMultisampleState = &Multisampler;
+		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.layout = layout;
+		pipelineInfo.renderPass = renderPass;
+		pipelineInfo.subpass = SubpassIndex;
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+		// Build depth buffer
+		pipelineInfo.pDepthStencilState = &DepthStencil;
+
+		// Create pipeline and check it's all set up correctly
+		vkcheck(vkCreateGraphicsPipelines(RContext.Device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline));
+	}
+
+	ShaderProgram::ShaderProgram()
+		: m_pipeline(VK_NULL_HANDLE)
+		, m_pipelineLayout(VK_NULL_HANDLE)
+	{	}
+
+	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const ShaderProgramDescription& description)
+	{
+		ShaderProgram* program = new ShaderProgram();
+		check(program->_Create(context, description));
+		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
+		db.AddShaderProgram(context, program);
+		return program;
+	}
+
+	bool ShaderProgram::_Create(const RenderContext& context, const ShaderProgramDescription& description)
+	{
+		check(!IsLoaded());
+		m_description = description;
+		return Reload(context);
+	}
+
+	void ShaderProgram::Destroy(const RenderContext& context)
+	{
+		check(IsLoaded());
+		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
+		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
+	}
+
+	bool ShaderProgram::Reload(const RenderContext& context)
+	{
+		check(!m_description.VertexShaderFile.empty() || !m_description.FragmentShaderFile.empty());
+		check(m_description.RenderTarget);
+		RenderPipelineBuilder builder(context);
+		// Input configuration
+		builder.InputDescription = m_description.InputLayout;
+		builder.SubpassIndex = m_description.SubpassIndex;
+		builder.Topology = m_description.Topology;
+		// Shader stages
+		tArray<ShaderDescription, 2> descs;
+		descs[0] = { m_description.VertexShaderFile.c_str(), VK_SHADER_STAGE_VERTEX_BIT };
+		descs[1] = { m_description.FragmentShaderFile.c_str(), VK_SHADER_STAGE_FRAGMENT_BIT };
+		ShaderCompiler compiler(context);
+		for (uint32_t i = 0; i < (uint32_t)descs.size(); ++i)
+		{
+			if (!descs[i].Filepath.empty())
+			{
+				compiler.ProcessShaderFile(descs[i].Filepath.c_str(), descs[i].Stage);
+				VkShaderModule compiled = compiler.GetCompiledModule(descs[i].Stage);
+				builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(descs[i].Stage, compiled));
+			}
+		}
+		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
+
+		// Blending info for color attachments
+		uint32_t colorAttachmentCount = m_description.RenderTarget->GetDescription().ColorAttachmentCount;
+		builder.ColorBlendAttachment.resize(colorAttachmentCount);
+		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
+		{
+			// Single blenc attachment without blending and writing RGBA
+			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
+		}
+
+		// Pass layout info
+		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
+		if (m_description.SetLayoutArray && m_description.SetLayoutCount)
+		{
+			builder.LayoutInfo.setLayoutCount = m_description.SetLayoutCount;
+			builder.LayoutInfo.pSetLayouts = m_description.SetLayoutArray;
+		}
+		else
+		{
+			builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
+			builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
+		}
+		if (m_description.PushConstantArray && m_description.PushConstantCount)
+		{
+			builder.LayoutInfo.pushConstantRangeCount = m_description.PushConstantCount;
+			builder.LayoutInfo.pPushConstantRanges = m_description.PushConstantArray;
+		}
+		else
+		{
+			builder.LayoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
+			builder.LayoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
+		}
+
+		// Build the new pipeline
+		builder.Build(m_description.RenderTarget->GetRenderPass(), m_pipeline, m_pipelineLayout);
+
+		// Free shader compiler cached data
+		compiler.ClearCachedData();
+
+		return true;
+	}
+
+	void ShaderProgram::UseProgram(VkCommandBuffer cmd)
+	{
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		++vkmmc_profiling::GRenderStats.ShaderProgramCount;
+	}
+
+	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount)
+	{
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
+		++vkmmc_profiling::GRenderStats.SetBindingCount;
+	}
+
+	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
+	{
+		const ShaderProgramDescription& description = program->GetDescription();
+		check(!FindShaderProgram(description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str()));
+
+		uint32_t index = (uint32_t)m_shaderArray.size();
+		m_shaderArray.push_back(program);
+		char key[512];
+		GenerateKey(key, description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str());
+		m_indexMap[key] = index;
+	}
+
+	ShaderProgram* ShaderFileDB::FindShaderProgram(const char* vertexFile, const char* fragmentFile) const
+	{
+		ShaderProgram* p = nullptr;
+		char key[512];
+		GenerateKey(key, vertexFile, fragmentFile);
+		if (m_indexMap.contains(key))
+			p = m_shaderArray[m_indexMap.at(key)];
+		return p;
+	}
+
+	void ShaderFileDB::ReloadFromFile(const RenderContext& context)
+	{
+		for (uint32_t i = 0; i < (uint32_t)m_shaderArray.size(); ++i)
+		{
+			m_shaderArray[i]->Destroy(context);
+			m_shaderArray[i]->Reload(context);
+		}
+	}
+
+	void ShaderFileDB::Init(const RenderContext& context)
+	{
+#ifdef SHADER_RUNTIME_COMPILATION
+		
+#endif // SHADER_RUNTIME_COMPILATION
+
+	}
+
+	void ShaderFileDB::Destroy(const RenderContext& context)
+	{
+		for (uint32_t i = 0; i < (uint32_t)m_shaderArray.size(); ++i)
+		{
+			m_shaderArray[i]->Destroy(context);
+			delete m_shaderArray[i];
+			m_shaderArray[i] = nullptr;
+		}
+		m_shaderArray.clear();
+		m_indexMap.clear();
+#ifdef SHADER_RUNTIME_COMPILATION
+#endif // SHADER_RUNTIME_COMPILATION
 	}
 
 }

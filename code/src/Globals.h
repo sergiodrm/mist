@@ -10,6 +10,23 @@
 #define UNIFORM_ID_CAMERA "Camera"
 
 
+#define ASSET_ROOT_PATH "../../assets/"
+
+#define SHADER_RUNTIME_COMPILATION
+#ifdef SHADER_RUNTIME_COMPILATION
+#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
+#define SHADER_ADDITIONAL_EXTENSION
+#else
+#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/compiled/"
+#define SHADER_ADDITIONAL_EXTENSION ".spv"
+#endif // SHADER_RUNTIME_COMPILATION
+
+
+#define SHADER_VERTEX_FILE_EXTENSION ".vert" SHADER_ADDITIONAL_EXTENSION
+#define SHADER_FRAG_FILE_EXTENSION ".frag" SHADER_ADDITIONAL_EXTENSION
+#define SHADER_FILEPATH(filepath) SHADER_ROOT_PATH filepath SHADER_ADDITIONAL_EXTENSION
+
+
 namespace vkmmc
 {
 	namespace globals
@@ -26,8 +43,8 @@ namespace vkmmc
 		extern const char* DepthQuadFragmentShader;
 		extern const char* PostProcessVertexShader;
 		extern const char* PostProcessFragmentShader;
-		constexpr uint32_t MaxOverlappedFrames = 2;
-		constexpr uint32_t MaxRenderObjects = 1000;
-		constexpr uint32_t MaxShadowMapAttachments = 3;
+		inline constexpr unsigned int MaxOverlappedFrames = 2;
+		inline constexpr unsigned int MaxRenderObjects = 1000;
+		inline constexpr unsigned int MaxShadowMapAttachments = 3;
 	}
 }

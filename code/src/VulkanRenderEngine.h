@@ -4,7 +4,7 @@
 #include "RenderEngine.h"
 #include "RenderPass.h"
 #include "RenderHandle.h"
-#include "RenderPipeline.h"
+#include "Shader.h"
 #include "RenderObject.h"
 #include "RenderContext.h"
 #include "RenderDescriptor.h"

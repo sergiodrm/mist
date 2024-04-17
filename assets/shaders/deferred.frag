@@ -141,10 +141,12 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, SpotLightData
 void main()
 {
 	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
-	vec3 fragNormal = texture(u_GBufferNormal, inTexCoords).rgb;
+	vec3 fragNormal = normalize(texture(u_GBufferNormal, inTexCoords).rgb);
 	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
 	vec3 viewPos = u_Env.ViewPos.xyz;
     outColor = fragColor;
+    //outColor = vec4(fragPos, 1.0);
+    //return;
     if (fragColor.a <= 0.1f)
         discard;
 

@@ -1,7 +1,7 @@
 // header file for vkmmc project 
 #pragma once
 #include "RenderPass.h"
-#include "RenderPipeline.h"
+#include "Shader.h"
 #include "RenderTypes.h"
 #include "RenderContext.h"
 #include "Globals.h"

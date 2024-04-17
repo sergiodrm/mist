@@ -25,9 +25,6 @@
 #define GBUFFER_COMPOSITION_LAYOUT IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL 
 
 
-#define ASSET_ROOT_PATH "../../assets/"
-#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/compiled/"
-
 namespace vkmmc
 {
 	void GBuffer::Init(const RenderContext& renderContext)
@@ -193,15 +190,9 @@ namespace vkmmc
 				.Build(renderContext, &layouts[1]);
 			layouts[2] = MaterialRenderData::GetDescriptorSetLayout(renderContext, *renderContext.LayoutCache);
 
-			ShaderDescription descs[2] =
-			{
-				{.Filepath = SHADER_ROOT_PATH "mrt.vert.spv", .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-				{.Filepath = SHADER_ROOT_PATH "mrt.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
-			};
-
 			ShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile = SHADER_ROOT_PATH "mrt.vert.spv";
-			shaderDesc.FragmentShaderFile = SHADER_ROOT_PATH "mrt.frag.spv";
+			shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");
+			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("mrt.frag");
 			shaderDesc.RenderTarget = &m_mrt.m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			shaderDesc.SetLayoutArray = layouts.data();
@@ -211,30 +202,10 @@ namespace vkmmc
 
 		// Deferred pipeline
 		{
-#if 0
-			ShaderDescription descs[2] =
-			{
-				{.Filepath = SHADER_ROOT_PATH "deferred.vert.spv", .Stage = VK_SHADER_STAGE_VERTEX_BIT},
-				{.Filepath = SHADER_ROOT_PATH "deferred.frag.spv", .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
-			};
-
-			tArray<VkDescriptorSetLayout, 2> layouts;
-			DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
-				.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-				.Build(renderContext, &layouts[0]);
-
-			DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
-				.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-				.AddBinding(1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-				.AddBinding(2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
-				.Build(renderContext, &layouts[1]);
-#endif // 0
-
-
 			// Empty input layout
 			ShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile = SHADER_ROOT_PATH "deferred.vert.spv";
-			shaderDesc.FragmentShaderFile = SHADER_ROOT_PATH "deferred.frag.spv";
+			shaderDesc.VertexShaderFile = SHADER_FILEPATH("deferred.vert");
+			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("deferred.frag");
 			shaderDesc.RenderTarget = &m_composition.m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
 			m_composition.m_shader = ShaderProgram::Create(renderContext, shaderDesc);

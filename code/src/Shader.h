@@ -5,11 +5,17 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include "RenderTypes.h"
+#include "VulkanBuffer.h"
 
 namespace vkmmc
 {
+	// Forward declarations
 	struct RenderContext;
 	class DescriptorLayoutCache;
+	class RenderPipeline;
+	class RenderTarget;
+
 
 	struct ShaderBindingDescriptorInfo
 	{
@@ -17,7 +23,7 @@ namespace vkmmc
 		uint32_t Size = 0;
 		uint32_t Binding = 0;
 		uint32_t ArrayCount = 0;
-		VkShaderStageFlagBits Stage{ VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM };
+		VkShaderStageFlags Stage{ VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM };
 		std::string Name;
 	};
 
@@ -32,22 +38,29 @@ namespace vkmmc
 		std::string Name;
 		uint32_t Offset = 0;
 		uint32_t Size = 0;
-		VkShaderStageFlagBits ShaderStage;
+		VkShaderStageFlags ShaderStage;
 	};
 
 	struct ShaderReflectionProperties
 	{
 		std::vector<ShaderDescriptorSetInfo> DescriptorSetInfoArray;
-		std::unordered_map<VkShaderStageFlagBits, ShaderPushConstantBufferInfo> PushConstantMap;
+		std::unordered_map<VkShaderStageFlags, ShaderPushConstantBufferInfo> PushConstantMap;
 	};
 
 	class ShaderCompiler
 	{
-		struct CachedBinaryData
+		struct CompiledShaderModule
 		{
-			VkShaderStageFlagBits ShaderStage;
-			std::vector<uint32_t> BinarySource;
+			VkShaderStageFlags ShaderStage;
 			VkShaderModule CompiledModule;
+		};
+
+		struct ShaderFileContent
+		{
+			char* Raw;
+			size_t RawSize;
+			uint32_t* Assembled;
+			size_t AssembledSize;
 		};
 	public:
 		ShaderCompiler(const RenderContext& renderContext);
@@ -55,8 +68,8 @@ namespace vkmmc
 
 		void ClearCachedData();
 		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage);
-		bool GenerateResources(DescriptorLayoutCache& layoutCache);
-		VkShaderModule GetCompiledModule(VkShaderStageFlagBits shaderStage) const;
+		bool GenerateReflectionResources(DescriptorLayoutCache& layoutCache);
+		VkShaderModule GetCompiledModule(VkShaderStageFlags shaderStage) const;
 		
 		// Obtain generated resources. These functions will return nullptr/0 until call GenerateResources().
 		const VkDescriptorSetLayout* GetDescriptorSetLayoutArray() const { return m_cachedLayoutArray.data(); };
@@ -72,12 +85,13 @@ namespace vkmmc
 		 * This will compile the shader code in the file.
 		 * @return VkShaderModule valid if the compilation terminated successfully. VK_NULL_HANDLE otherwise.
 		 */
-		VkShaderModule Compile(const std::vector<uint32_t>& binarySource, VkShaderStageFlagBits flag) const;
+		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binarySize, VkShaderStageFlags stage);
 
-		static bool CacheSourceFromFile(const char* file, std::vector<uint32_t>& outCachedData);
-		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlagBits shaderStage);
+		static bool CacheSourceFromFile(const char* file, ShaderFileContent& content);
+		static bool AssembleShaderSource(const char* source, size_t size, VkShaderStageFlags stage, uint32_t** assembled, size_t* assembledSize);
+		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage);
 	protected:
-		void ProcessCachedSource(CachedBinaryData& cachedData);
+		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t size);
 		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t set);
 		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t set) const;
 		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const;
@@ -85,9 +99,93 @@ namespace vkmmc
 
 	private:
 		const RenderContext& m_renderContext;
-		std::unordered_map<VkShaderStageFlagBits, CachedBinaryData> m_cachedBinarySources;
-		std::vector<VkDescriptorSetLayout> m_cachedLayoutArray;
-		std::vector<VkPushConstantRange> m_cachedPushConstantArray;
+		tDynArray<CompiledShaderModule> m_modules;
+		tDynArray<VkDescriptorSetLayout> m_cachedLayoutArray;
+		tDynArray<VkPushConstantRange> m_cachedPushConstantArray;
 		ShaderReflectionProperties m_reflectionProperties;
 	};
+
+	struct ShaderDescription
+	{
+		std::string Filepath;
+		VkShaderStageFlagBits Stage;
+	};
+
+	struct ShaderProgramDescription
+	{
+		/// Shader files
+		tString VertexShaderFile;
+		tString FragmentShaderFile;
+
+		uint32_t SubpassIndex = 0;
+		const RenderTarget* RenderTarget = nullptr;
+		VertexInputLayout InputLayout;
+		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+		/// Leave empty to run shader reflexion on shader file content.
+		/// Use to specify dynamic uniform buffers.
+		VkDescriptorSetLayout* SetLayoutArray = nullptr;
+		uint32_t SetLayoutCount = 0;
+
+		VkPushConstantRange* PushConstantArray = nullptr;
+		uint32_t PushConstantCount = 0;
+
+	};
+
+	class ShaderProgram
+	{
+	public:
+		ShaderProgram();
+
+		static ShaderProgram* Create(const RenderContext& context, const ShaderProgramDescription& description);
+
+		void Destroy(const RenderContext& context);
+		bool Reload(const RenderContext& context);
+		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
+
+		void UseProgram(VkCommandBuffer cmd);
+		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0);
+
+		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
+
+		const ShaderProgramDescription& GetDescription() const { return m_description; }
+
+	private:
+		bool _Create(const RenderContext& context, const ShaderProgramDescription& description);
+		ShaderProgramDescription m_description;
+		VkPipeline m_pipeline;
+		VkPipelineLayout m_pipelineLayout;
+	};
+
+
+	class ShaderFileDB
+	{
+	public:
+
+		template <size_t _KeySize>
+		static void GenerateKey(char(&key)[_KeySize], const char* vertexFile, const char* fragmentFile);
+
+		void Init(const RenderContext& context);
+		void Destroy(const RenderContext& context);
+		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
+		ShaderProgram* FindShaderProgram(const char* vertexFile, const char* fragmentFile) const;
+		void ReloadFromFile(const RenderContext& context);
+
+	private:
+		tDynArray<ShaderProgram*> m_shaderArray;
+		tMap<tString, uint32_t> m_indexMap;
+	};
+
+	template <size_t _KeySize>
+	void ShaderFileDB::GenerateKey(char(&key)[_KeySize], const char* vertexFile, const char* fragmentFile)
+	{
+		strcpy_s(key, vertexFile);
+		strcat_s(key, fragmentFile);
+		char* i = key;
+		while (*i)
+		{
+			*i = tolower(*i);
+			++i;
+		}
+	}
 }

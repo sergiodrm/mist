@@ -12,7 +12,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 
 add_compile_definitions(VKMMC_VULKAN)
-add_compile_definitions(VKMMC_MEM_MANAGEMENT)
+#add_compile_definitions(VKMMC_MEM_MANAGEMENT)
 
 add_subdirectory(thirdparty)
 add_subdirectory(code)

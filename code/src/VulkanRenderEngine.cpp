@@ -28,7 +28,7 @@
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
 
-#define VKMMC_CRASH_ON_VALIDATION_LAYER
+//#define VKMMC_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -168,6 +168,7 @@ namespace vkmmc
 		// Descriptor layout and allocator
 		m_descriptorLayoutCache.Init(m_renderContext);
 		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+		m_shaderDb.Init(m_renderContext);
 		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
 		m_renderContext.DescAllocator = &m_descriptorAllocator;
 		m_renderContext.ShaderDB = &m_shaderDb;
@@ -524,6 +525,9 @@ namespace vkmmc
 
 		ImGui::Begin("Engine");
 		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
+		if (ImGui::Button("Reload shaders"))
+		{
+		}
 		ImGui::End();
 	}
 

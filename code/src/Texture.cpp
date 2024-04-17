@@ -3,7 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #undef STB_IMAGE_IMPLEMENTATION
-#include "RenderPipeline.h"
+#include "Shader.h"
 #include "Debug.h"
 #include "Logger.h"
 #include "RenderTypes.h"

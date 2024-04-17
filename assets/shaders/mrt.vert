@@ -33,9 +33,9 @@ void main()
 
 	
 	// Normal in world space
-	mat3 mNormal = transpose(inverse(mat3(u_model.Model)));
-	outNormal = mNormal * normalize(inNormal);	
-	outTangent = mNormal * normalize(inTangent);
+	mat3 normalTransform = transpose(inverse(mat3(u_model.Model)));
+	outNormal = normalTransform * normalize(inNormal);	
+	outTangent = normalTransform * normalize(inTangent);
 	
 	// Currently just vertex color
 	outColor = inColor;

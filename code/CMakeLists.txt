@@ -38,6 +38,7 @@ target_include_directories(vkmmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vkmmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/vkmmc")
 target_include_directories(vkmmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_include_directories(vkmmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty")
+target_include_directories(vkmmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/glslang/glslang/Include")
 
 target_link_libraries(vkmmc PUBLIC
 	vma
@@ -48,6 +49,13 @@ target_link_libraries(vkmmc PUBLIC
 	SDL2::SDL2
 	vkbootstrap
 	spirv-cross-glsl
+	glslang
+	SPIRV
+	glslang-default-resource-limits
+	#$ENV{VULKAN_SDK}/Lib/glslang.lib
+	#$ENV{VULKAN_SDK}/Lib/shaderc.lib
+	#$ENV{VULKAN_SDK}/Lib/shaderc_util.lib
+	#$ENV{VULKAN_SDK}/Lib/SPIRV-Tools.lib
 )
 
 #add_custom_command(
