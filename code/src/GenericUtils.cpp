@@ -66,10 +66,9 @@ namespace vkmmc
 			return false;
 		}
 		// Tell size (remember cursor at the end of the file)
-		size = (size_t)file.tellg() + 1;
+		size = (size_t)file.tellg();
 		// SpirV expects a uint32 buffer
-		*out = new char[size];
-		(*out)[size - 1] = 0; // null terminated character
+		*out = (char*)malloc(size);
 		// Move cursor file to the beginning
 		file.seekg(0);
 		// Read the entire file to the buffer
