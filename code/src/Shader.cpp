@@ -2,7 +2,8 @@
 
 #include "Shader.h"
 
-#include <spirv-cross-main/spirv_glsl.hpp>
+//#include <spirv-cross-main/spirv_glsl.hpp>
+#include <spirv_cross/spirv_glsl.hpp>
 
 #include "RenderTypes.h"
 #include "GenericUtils.h"
@@ -16,117 +17,108 @@
 
 
 
+
 #ifdef SHADER_RUNTIME_COMPILATION
-#include <glslang_c_interface.h>
-#include <glslang/Public/resource_limits_c.h>
 
-namespace glslang_api
+#include <shaderc/shaderc.hpp>  
+
+
+namespace shader_compiler
 {
-	enum tShaderStage
+	struct tCompilationResult
 	{
-		STAGE_VERTEX,
-		STAGE_FRAGMENT
+		uint32_t* binary = nullptr;
+		size_t binaryCount = 0;
+
+		inline bool IsCompilationSucceed() const { return binary && binaryCount; }
 	};
 
-	enum tAssembleResultType
+	void FreeBinary(tCompilationResult& res)
 	{
-		ASSEMBLE_OK,
-		PREPROCESS_ERROR,
-		PARSE_ERROR,
-		LINK_ERROR,
-	};
-
-	typedef void(*PFN_Log)(const char* msg);
-
-	struct tAssembleShaderInfo
-	{
-		const char* Source;
-		tShaderStage Stage;
-
-		PFN_Log ErrorPFN;
-	};
-
-	glslang_stage_t GetGlslStage(tShaderStage stage)
-	{
-		switch (stage)
-		{
-		case glslang_api::STAGE_VERTEX: return GLSLANG_STAGE_VERTEX;
-		case glslang_api::STAGE_FRAGMENT: return GLSLANG_STAGE_FRAGMENT;
-		default:
-			check(false && "Unreachable code");
-		}
-		return GLSLANG_STAGE_COUNT;
+		delete[] res.binary;
+		res.binary = nullptr;
+		res.binaryCount = 0;
 	}
 
-	void HandleError(glslang_shader_t* shader, const glslang_input_t* input)
+	shaderc_shader_kind GetShaderType(VkShaderStageFlags flags)
 	{
-		const char* infoLog = glslang_shader_get_info_log(shader);
-		const char* debugLog = glslang_shader_get_info_debug_log(shader);
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Shader error info log: %s\n", infoLog);
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Shader error debug log: %s\n", debugLog);
+		switch (flags)
+		{
+		case VK_SHADER_STAGE_VERTEX_BIT: return shaderc_glsl_vertex_shader;
+		case VK_SHADER_STAGE_FRAGMENT_BIT: return shaderc_glsl_fragment_shader;
+		}
+		check(false && "Unreachable code");
+		return (shaderc_shader_kind)0;
 	}
 
-	void HandleError(glslang_program_t* program)
+	const char* GetShaderStatusStr(shaderc_compilation_status status)
 	{
-		const char* infoLog = glslang_program_get_info_log(program);
-		const char* debugLog = glslang_program_get_info_debug_log(program);
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Debug error info log: %s\n", infoLog);
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Debug error debug log: %s\n", debugLog);
+		switch (status)
+		{
+		case shaderc_compilation_status_success: return "success";
+		case shaderc_compilation_status_invalid_stage: return "invalid_stage";
+		case shaderc_compilation_status_compilation_error: return "compilation_error";
+		case shaderc_compilation_status_internal_error: return "internal_error";
+		case shaderc_compilation_status_null_result_object: return "null_result_object";
+		case shaderc_compilation_status_invalid_assembly: return "invalid_assembly";
+		case shaderc_compilation_status_validation_error: return "validation_error";
+		case shaderc_compilation_status_transformation_error: return "transformation_error";
+		case shaderc_compilation_status_configuration_error: return "configurarion_error";
+		}
+		return "unknown";
 	}
 
-	tAssembleResultType Assemble(const tAssembleShaderInfo& info, uint32_t** assembleData, size_t* size)
+	template<typename T>
+	bool HandleError(const shaderc::CompilationResult<T>& res, const char* compilationStage)
 	{
-		const glslang_input_t input
+		shaderc_compilation_status status = res.GetCompilationStatus();
+		vkmmc::LogLevel level = status == shaderc_compilation_status_success ? vkmmc::LogLevel::Ok : vkmmc::LogLevel::Error;
+		vkmmc::Logf(level, "-- Shader %s result (%s): %d warnings, %d errors --\n", compilationStage, GetShaderStatusStr(status), res.GetNumWarnings(), res.GetNumErrors());
+		if (status != shaderc_compilation_status_success)
 		{
-			.language = GLSLANG_SOURCE_GLSL,
-			.stage = GetGlslStage(info.Stage),
-			.client = GLSLANG_CLIENT_VULKAN,
-			.client_version = GLSLANG_TARGET_VULKAN_1_3,
-			.target_language = GLSLANG_TARGET_SPV,
-			.target_language_version = GLSLANG_TARGET_SPV_1_3,
-			.code = info.Source,
-			.default_version = 100,
-			.default_profile = GLSLANG_NO_PROFILE,
-			.force_default_version_and_profile = false,
-			.messages = GLSLANG_MSG_DEFAULT_BIT,
-			.resource = glslang_default_resource()
-		};
-		const glslang_input_t* pInput = &input;
+			vkmmc::Logf(vkmmc::LogLevel::Error, "Shader compilation error: %s\n", res.GetErrorMessage().c_str());
+			return false;
+		}
+		return true;
+	}
 
-		glslang_initialize_process();
+	tCompilationResult Compile(const char* filepath, VkShaderStageFlags stage)
+	{
+		char* source;
+		size_t s;
+		check(vkmmc::io::ReadFile(filepath, &source, s));
 
-		glslang_shader_t* shader = glslang_shader_create(pInput);
-		if (!glslang_shader_preprocess(shader, pInput))
-		{
-			HandleError(shader, pInput);
-			return PREPROCESS_ERROR;
-		}
-		if (!glslang_shader_parse(shader, pInput))
-		{
-			HandleError(shader, pInput);
-			return PARSE_ERROR;
-		}
-		glslang_program_t* shaderProgram = glslang_program_create();
-		glslang_program_add_shader(shaderProgram, shader);
-		int msgs = GLSLANG_MSG_SPV_RULES_BIT | GLSLANG_MSG_VULKAN_RULES_BIT;
-		if (!glslang_program_link(shaderProgram, msgs))
-		{
-			HandleError(shaderProgram);
-			return LINK_ERROR;
-		}
-		glslang_program_SPIRV_generate(shaderProgram, input.stage);
-		*size = glslang_program_SPIRV_get_size(shaderProgram);
-		*assembleData = (uint32_t*)malloc(*size * sizeof(uint32_t));
-		glslang_program_SPIRV_get(shaderProgram, *assembleData);
-		const char* messages = glslang_program_SPIRV_get_messages(shaderProgram);
-		if (messages)
-			printf("Spirv messages: %s\n", messages);
-		glslang_program_delete(shaderProgram);
-		glslang_shader_delete(shader);
-		glslang_finalize_process();
-		return ASSEMBLE_OK;
+		shaderc::Compiler compiler;
+		shaderc::CompileOptions options;
+
+		// Like -DMY_DEFINE=1
+		//options.AddMacroDefinition("MY_DEFINE", "1");
+		//options.SetOptimizationLevel(shaderc_optimization_level_size);
+		options.SetGenerateDebugInfo();
+		shaderc_shader_kind kind = GetShaderType(stage);
+
+
+		shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, filepath, options);
+		if (!HandleError(prepRes, "preprocess"))
+			return tCompilationResult();
+
+		vkmmc::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
+		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(),preprocessSource.size(), kind, filepath, "main", options);
+		if (!HandleError(result, "assembly"))
+			return tCompilationResult();
+		std::string assemble{ result.begin(), result.end() };
+		shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble);
+		if (!HandleError(spv, "assembly to spv"))
+			return tCompilationResult();
+
+		tCompilationResult compResult;
+		compResult.binaryCount = (spv.cend() - spv.cbegin())/sizeof(uint32_t);
+		compResult.binary = new uint32_t[compResult.binaryCount];
+		memcpy_s(compResult.binary, compResult.binaryCount * sizeof(uint32_t), spv.cbegin(), compResult.binaryCount * sizeof(uint32_t));
+		return compResult;
 	}
 }
+
 #endif // SHADER_RUNTIME_COMPILATION
 
 
@@ -214,22 +206,28 @@ namespace vkmmc
 		check(GetCompiledModule(shaderStage) == VK_NULL_HANDLE);
 		check(CheckShaderFileExtension(filepath, shaderStage));
 
+#ifdef SHADER_RUNTIME_COMPILATION
+		shader_compiler::tCompilationResult bin = shader_compiler::Compile(filepath, shaderStage);
+		ProcessReflection(shaderStage, bin.binary, bin.binaryCount);
+#else
 		// Read shader source and convert it to spirv binary
-		ShaderFileContent content;
+		ShaderFileContent bin;
 		check(CacheSourceFromFile(filepath, content));
 		check(AssembleShaderSource(content.Raw, content.RawSize, shaderStage, &content.Assembled, &content.AssembledSize));
 		// Create reflection info
 		ProcessReflection(shaderStage, content.Assembled, content.AssembledSize);
+#endif // SHADER_RUNTIME_COMPILATION
+
 		// Create vk module
 		CompiledShaderModule data;
 		data.ShaderStage = shaderStage;
-		data.CompiledModule = CompileShaderModule(m_renderContext, content.Assembled, content.AssembledSize, data.ShaderStage);
+		data.CompiledModule = CompileShaderModule(m_renderContext, bin.binary, bin.binaryCount, data.ShaderStage);
 		m_modules.push_back(data);
 
-		// release resources
-		delete[] content.Assembled;
-		delete[] content.Raw;
-
+#ifdef SHADER_RUNTIME_COMPILATION
+		// release resources  
+		shader_compiler::FreeBinary(bin);
+#endif // SHADER_RUNTIME_COMPILATION
 
 		Logf(LogLevel::Ok, "Shader compiled and cached successfully: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 		return true;
@@ -278,6 +276,7 @@ namespace vkmmc
 	bool ShaderCompiler::CacheSourceFromFile(const char* file, ShaderFileContent& content)
 	{
 #ifdef SHADER_RUNTIME_COMPILATION
+		return true;
 		return io::ReadFile(file, &content.Raw, content.RawSize);
 #else
 		return io::ReadFile(file, &content.Assembled, content.AssembledSize);
@@ -288,10 +287,7 @@ namespace vkmmc
 	{
 #ifdef SHADER_RUNTIME_COMPILATION
 		check(source && *source && size);
-		glslang_api::tAssembleShaderInfo shaderAssembleInfo;
-		shaderAssembleInfo.Source = source;
-		shaderAssembleInfo.Stage = stage == VK_SHADER_STAGE_VERTEX_BIT ? glslang_api::STAGE_VERTEX : glslang_api::STAGE_FRAGMENT;
-		return glslang_api::Assemble(shaderAssembleInfo, assembled, assembledSize) == glslang_api::ASSEMBLE_OK;
+		return true;
 #else
 		return true;
 #endif // SHADER_RUNTIME_COMPILATION
