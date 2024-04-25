@@ -169,7 +169,9 @@ namespace vkmmc
 		case LogLevel::Warn:
 		case LogLevel::Error:
 			printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
-			OutputDebugString(msg);
+			wchar_t wString[4096];
+			MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
+			OutputDebugString(wString);
 			GLogFile->Push(level, msg);
 #ifdef LOG_DEBUG_FLUSH
 			GLogFile->Flush();
