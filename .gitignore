@@ -1,5 +1,15 @@
 build/*
 bin/*
+obj/*
 *.html
 *.spv
 .vscode/*
+*.obj
+.vs/*
+*.sln
+*.vcxproj*
+*.log
+*.tlog
+*.lib
+*.pdb
+*.idb
