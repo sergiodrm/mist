@@ -77,6 +77,9 @@ workspace "Mist"
                 "%{libs.spirvcrossglsld}",
                 "%{libs.spirvcrossmsld}",
                 "%{libs.spirvcrossutild}",
+                "%{libs.glslangd}",
+                "%{libs.shadercd}",
+                "%{libs.shadercutild}",
             }
             
             filter "configurations:Release"
@@ -92,6 +95,9 @@ workspace "Mist"
                 "%{libs.spirvcrossglsl}",
                 "%{libs.spirvcrossmsl}",
                 "%{libs.spirvcrossutil}",
+                "%{libs.glslang}",
+                "%{libs.shaderc}",
+                "%{libs.shadercutil}",
             }
         
     

@@ -40,5 +40,11 @@ libs["spirvcrossmsl"] = "%{libdirs.vulkan}/spirv-cross-msl.lib"
 libs["spirvcrossmsld"] = "%{libdirs.vulkan}/spirv-cross-msld.lib"
 libs["spirvcrossutil"] = "%{libdirs.vulkan}/spirv-cross-util.lib"
 libs["spirvcrossutild"] = "%{libdirs.vulkan}/spirv-cross-utild.lib"
+libs["glslang"] = "%{libdirs.vulkan}/glslang.lib"
+libs["glslangd"] = "%{libdirs.vulkan}/glslangd.lib"
+libs["shaderc"] = "%{libdirs.vulkan}/shaderc_shared.lib"
+libs["shadercd"] = "%{libdirs.vulkan}/shaderc_sharedd.lib"
+libs["shadercutil"] = "%{libdirs.vulkan}/shaderc_util.lib"
+libs["shadercutild"] = "%{libdirs.vulkan}/shaderc_utild.lib"
 
 
