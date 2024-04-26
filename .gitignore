@@ -1,6 +1,6 @@
 build/*
-bin/*
-obj/*
+**/bin/*
+**/obj/*
 *.html
 *.spv
 .vscode/*
@@ -13,3 +13,4 @@ obj/*
 *.lib
 *.pdb
 *.idb
+*.ini
