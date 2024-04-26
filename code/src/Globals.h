@@ -10,7 +10,9 @@
 #define UNIFORM_ID_CAMERA "Camera"
 
 
-#define ASSET_ROOT_PATH "../../assets/"
+#define ASSET_ROOT_PATH "assets/"
+
+#define ASSET_PATH(path) ASSET_ROOT_PATH path
 
 #define SHADER_RUNTIME_COMPILATION
 #ifdef SHADER_RUNTIME_COMPILATION

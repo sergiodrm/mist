@@ -28,7 +28,7 @@
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
 
-//#define VKMMC_CRASH_ON_VALIDATION_LAYER
+#define VKMMC_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -380,7 +380,7 @@ namespace vkmmc
 	{
 		static RenderHandle texture;
 		if (!texture.IsValid())
-			texture = m_scene->LoadTexture("../../assets/textures/checkerboard.jpg");
+			texture = m_scene->LoadTexture(ASSET_PATH("textures/checkerboard.jpg"));
 		return texture;
 	}
 
