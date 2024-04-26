@@ -1,4 +1,4 @@
-// src file for vkmmc project 
+// src file for Mist project 
 #include "VulkanBuffer.h"
 #include "Debug.h"
 #include "InitVulkanTypes.h"
@@ -8,51 +8,51 @@
 
 namespace vkutils
 {
-	VkBufferUsageFlags GetVulkanBufferUsage(vkmmc::EBufferUsageBits usage)
+	VkBufferUsageFlags GetVulkanBufferUsage(Mist::EBufferUsageBits usage)
 	{
 		VkBufferUsageFlags flags = 0;
-		if (usage == vkmmc::BUFFER_USAGE_INVALID) return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
-		if (usage & vkmmc::BUFFER_USAGE_VERTEX) flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-		if (usage & vkmmc::BUFFER_USAGE_INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-		if (usage & vkmmc::BUFFER_USAGE_UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		if (usage & vkmmc::BUFFER_USAGE_STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		if (usage == Mist::BUFFER_USAGE_INVALID) return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+		if (usage & Mist::BUFFER_USAGE_VERTEX) flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+		if (usage & Mist::BUFFER_USAGE_INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+		if (usage & Mist::BUFFER_USAGE_UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		if (usage & Mist::BUFFER_USAGE_STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		return flags;
 	}
 
-	VkFormat GetAttributeVkFormat(vkmmc::EAttributeType type)
+	VkFormat GetAttributeVkFormat(Mist::EAttributeType type)
 	{
 		switch (type)
 		{
-		case vkmmc::EAttributeType::Float:	return VK_FORMAT_R32_SFLOAT;
-		case vkmmc::EAttributeType::Float2: return VK_FORMAT_R32G32_SFLOAT;
-		case vkmmc::EAttributeType::Float3: return VK_FORMAT_R32G32B32_SFLOAT;
-		case vkmmc::EAttributeType::Float4: return VK_FORMAT_R32G32B32A32_SFLOAT;
-		case vkmmc::EAttributeType::Int:	return VK_FORMAT_R32_SINT;
-		case vkmmc::EAttributeType::Int2:	return VK_FORMAT_R32G32_SINT;
-		case vkmmc::EAttributeType::Int3:	return VK_FORMAT_R32G32B32_SINT;
-		case vkmmc::EAttributeType::Int4:	return VK_FORMAT_R32G32B32A32_SINT;
+		case Mist::EAttributeType::Float:	return VK_FORMAT_R32_SFLOAT;
+		case Mist::EAttributeType::Float2: return VK_FORMAT_R32G32_SFLOAT;
+		case Mist::EAttributeType::Float3: return VK_FORMAT_R32G32B32_SFLOAT;
+		case Mist::EAttributeType::Float4: return VK_FORMAT_R32G32B32A32_SFLOAT;
+		case Mist::EAttributeType::Int:	return VK_FORMAT_R32_SINT;
+		case Mist::EAttributeType::Int2:	return VK_FORMAT_R32G32_SINT;
+		case Mist::EAttributeType::Int3:	return VK_FORMAT_R32G32B32_SINT;
+		case Mist::EAttributeType::Int4:	return VK_FORMAT_R32G32B32A32_SINT;
 		}
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Unknown attribute type for %d.\n", (int32_t)type);
+		Mist::Logf(Mist::LogLevel::Error, "Unknown attribute type for %d.\n", (int32_t)type);
 		return VK_FORMAT_UNDEFINED;
 	}
 
 }
 
-namespace vkmmc
+namespace Mist
 {
 
 	uint32_t AttributeType::GetAttributeSize(EAttributeType type)
 	{
 		switch (type)
 		{
-		case vkmmc::EAttributeType::Float:
-		case vkmmc::EAttributeType::Float2:
-		case vkmmc::EAttributeType::Float3:
-		case vkmmc::EAttributeType::Float4: return sizeof(float) * GetAttributeCount(type);
-		case vkmmc::EAttributeType::Int:
-		case vkmmc::EAttributeType::Int2:
-		case vkmmc::EAttributeType::Int3:
-		case vkmmc::EAttributeType::Int4: return sizeof(int32_t) * GetAttributeCount(type);
+		case Mist::EAttributeType::Float:
+		case Mist::EAttributeType::Float2:
+		case Mist::EAttributeType::Float3:
+		case Mist::EAttributeType::Float4: return sizeof(float) * GetAttributeCount(type);
+		case Mist::EAttributeType::Int:
+		case Mist::EAttributeType::Int2:
+		case Mist::EAttributeType::Int3:
+		case Mist::EAttributeType::Int4: return sizeof(int32_t) * GetAttributeCount(type);
 		}
 		Logf(LogLevel::Error, "Unknown attribute type for %d.", (int32_t)type);
 		return 0;
@@ -62,14 +62,14 @@ namespace vkmmc
 	{
 		switch (type)
 		{
-		case vkmmc::EAttributeType::Float: return 1;
-		case vkmmc::EAttributeType::Float2: return 2;
-		case vkmmc::EAttributeType::Float3: return 3;
-		case vkmmc::EAttributeType::Float4: return 4;
-		case vkmmc::EAttributeType::Int: return 1;
-		case vkmmc::EAttributeType::Int2: return 2;
-		case vkmmc::EAttributeType::Int3: return 3;
-		case vkmmc::EAttributeType::Int4: return 4;
+		case Mist::EAttributeType::Float: return 1;
+		case Mist::EAttributeType::Float2: return 2;
+		case Mist::EAttributeType::Float3: return 3;
+		case Mist::EAttributeType::Float4: return 4;
+		case Mist::EAttributeType::Int: return 1;
+		case Mist::EAttributeType::Int2: return 2;
+		case Mist::EAttributeType::Int3: return 3;
+		case Mist::EAttributeType::Int4: return 4;
 		}
 		Logf(LogLevel::Error, "Unknown attribute type for %d.", (int32_t)type);
 		return 0;
@@ -106,7 +106,7 @@ namespace vkmmc
 		static VertexInputLayout layout;
 		if (layout.Attributes.empty())
 		{
-			// Use vkmmc::Vertex struct
+			// Use Mist::Vertex struct
 			layout = BuildVertexInputLayout(
 				{
 					EAttributeType::Float3, // Position

@@ -1,7 +1,7 @@
 #pragma once
 
 
-namespace vkmmc
+namespace Mist
 {
 	typedef long tTimePoint;
 	tTimePoint GetTimePoint();

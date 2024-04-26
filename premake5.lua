@@ -40,11 +40,11 @@ workspace "Mist"
 
         targetdir "%{outputdir}"
 
-        defines { "VKMMC_VULKAN" }
+        defines { "MIST_VULKAN" }
         files { "code/**.h", "code/**.cpp"}
 
         includedirs {
-            "%{includes.mist}/vkmmc",
+            "%{includes.mist}/mist",
             "%{includes.mistsrc}",
             "%{includes.generic}",
             "%{includes.glm}",

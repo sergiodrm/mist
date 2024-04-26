@@ -9,7 +9,7 @@
 #include "Logger.h"
 #include "Debug.h"
 
-namespace vkmmc
+namespace Mist
 {
 	Camera::Camera()
 		: m_position(0.f, 7.f, 10.f),

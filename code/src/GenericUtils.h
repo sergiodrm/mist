@@ -3,7 +3,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-namespace vkmmc
+namespace Mist
 {
 	namespace io
 	{

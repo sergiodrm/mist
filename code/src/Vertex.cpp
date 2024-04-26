@@ -1,7 +1,7 @@
 #include "Vertex.h"
 #include "RenderTypes.h"
 
-namespace vkmmc
+namespace Mist
 {
 	
 }

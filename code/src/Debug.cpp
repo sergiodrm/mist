@@ -1,4 +1,4 @@
-// src file for vkmmc project 
+// src file for Mist project 
 #include "Debug.h"
 #include "Logger.h"
 
@@ -61,7 +61,7 @@ namespace win
 
 		SymInitialize(process, NULL, TRUE); //load symbols
 
-		vkmmc::Log(vkmmc::LogLevel::Debug, "\n\n=================================================\n\n");
+		Mist::Log(Mist::LogLevel::Debug, "\n\n=================================================\n\n");
 
 		for (frame = 0; ; frame++)
 		{
@@ -97,12 +97,12 @@ namespace win
 			//try to get line
 			if (SymGetLineFromAddr64(process, stack.AddrPC.Offset, &disp, line))
 			{
-				vkmmc::Logf(vkmmc::LogLevel::Debug, "%s(%lu) in %s : address: 0x%0X\n", line->FileName, line->LineNumber, pSymbol->Name, pSymbol->Address);
+				Mist::Logf(Mist::LogLevel::Debug, "%s(%lu) in %s : address: 0x%0X\n", line->FileName, line->LineNumber, pSymbol->Name, pSymbol->Address);
 			}
 			else
 			{
 				//failed to get line
-				vkmmc::Logf(vkmmc::LogLevel::Debug, "%s, address 0x%0X.", pSymbol->Name, pSymbol->Address);
+				Mist::Logf(Mist::LogLevel::Debug, "%s, address 0x%0X.", pSymbol->Name, pSymbol->Address);
 				hModule = NULL;
 				lstrcpyA(module, "");
 				GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
@@ -117,71 +117,71 @@ namespace win
 			free(line);
 			line = NULL;
 		}
-		vkmmc::Log(vkmmc::LogLevel::Debug, "\n=================================================\n\n");
+		Mist::Log(Mist::LogLevel::Debug, "\n=================================================\n\n");
 	}
 }
 
-void vkmmc_debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
+void Mist_debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
-	vkmmc_debug::PrintCallstack();
-	vkmmc::Log(vkmmc::LogLevel::Error, "============================================================\n\n");
-	vkmmc::Logf(vkmmc::LogLevel::Error, "Check failed: %s\n\n", txt);
-	vkmmc::Logf(vkmmc::LogLevel::Error, "File: %s\n", file);
-	vkmmc::Logf(vkmmc::LogLevel::Error, "Function: %s\n", fn);
-	vkmmc::Logf(vkmmc::LogLevel::Error, "Line: %d\n\n", line);
-	vkmmc::Log(vkmmc::LogLevel::Error, "============================================================\n\n");
+	Mist_debug::PrintCallstack();
+	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
+	Mist::Logf(Mist::LogLevel::Error, "Check failed: %s\n\n", txt);
+	Mist::Logf(Mist::LogLevel::Error, "File: %s\n", file);
+	Mist::Logf(Mist::LogLevel::Error, "Function: %s\n", fn);
+	Mist::Logf(Mist::LogLevel::Error, "Line: %d\n\n", line);
+	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
 
 	char buff[1024];
 	sprintf_s(buff, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\nLine: %d\n", txt, file, fn, line);
 	ErrorMessage(buff);
 	__debugbreak();
-	vkmmc_debug::ExitError();
+	Mist_debug::ExitError();
 }
 
-void vkmmc_debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
+void Mist_debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
 {
 	VkResult vkres = (VkResult)res;
-	const char* vkstr = vkmmc::VkResultToStr(vkres);
-	vkmmc::Logf(vkmmc::LogLevel::Error, "VkCheck failed. VkResult %d: %s\n", res, vkstr);
+	const char* vkstr = Mist::VkResultToStr(vkres);
+	Mist::Logf(Mist::LogLevel::Error, "VkCheck failed. VkResult %d: %s\n", res, vkstr);
 	DebugCheck(txt, file, fn, line);
 }
 
-void vkmmc_debug::PrintCallstack(size_t count, size_t offset)
+void Mist_debug::PrintCallstack(size_t count, size_t offset)
 {
 #ifdef _WIN32
 	win::WriteStackDump();
 #endif
 }
 
-void vkmmc_debug::ExitError()
+void Mist_debug::ExitError()
 {
-	vkmmc::TerminateLog();
+	Mist::TerminateLog();
 	exit(EXIT_FAILURE);
 }
 
-void vkmmc_debug::InfoMessage(const char* text)
+void Mist_debug::InfoMessage(const char* text)
 {
 	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONINFORMATION);
 }
 
-void vkmmc_debug::WarningMessage(const char* text)
+void Mist_debug::WarningMessage(const char* text)
 {
 	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONWARNING);
 }
 
-void vkmmc_debug::ErrorMessage(const char* text)
+void Mist_debug::ErrorMessage(const char* text)
 {
 	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONERROR);
 }
 
 #define PROFILING_AVERAGE_DATA_COUNT 64
 
-namespace vkmmc_debug
+namespace Mist_debug
 {
 	extern uint32_t GVulkanLayerValidationErrors;
 }
 
-namespace vkmmc_profiling
+namespace Mist_profiling
 {
 	sRenderStats GRenderStats;
 
@@ -348,8 +348,8 @@ namespace vkmmc_profiling
 		ImGui::Text("%u", GRenderStats.SetBindingCount);
 		ImGui::NextColumn();
 		ImGui::Columns();
-		if (vkmmc_debug::GVulkanLayerValidationErrors)
-			ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", vkmmc_debug::GVulkanLayerValidationErrors);
+		if (Mist_debug::GVulkanLayerValidationErrors)
+			ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", Mist_debug::GVulkanLayerValidationErrors);
 		ImGui::End();
 		ImGui::PopStyleColor();
 	}

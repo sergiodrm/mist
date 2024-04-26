@@ -1,4 +1,4 @@
-// header file for vkmmc project 
+// header file for Mist project 
 
 #pragma once
 
@@ -7,7 +7,7 @@
 #include <functional>
 #include "RenderTypes.h"
 
-namespace vkmmc
+namespace Mist
 {
 
 	enum class EAttributeType

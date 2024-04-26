@@ -4,7 +4,7 @@
 #include <VulkanRenderEngine.h>
 #include <Logger.h>
 
-namespace vkmmc
+namespace Mist
 {
 	bool Swapchain::Init(const RenderContext& renderContext, const SwapchainInitializationSpec& spec)
 	{

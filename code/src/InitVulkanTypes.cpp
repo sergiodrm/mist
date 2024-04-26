@@ -1,6 +1,6 @@
 #include "InitVulkanTypes.h"
 
-namespace vkmmc
+namespace Mist
 {
 	namespace vkinit
 	{

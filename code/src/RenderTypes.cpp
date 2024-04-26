@@ -49,15 +49,15 @@
 	_X_(VK_RESULT_MAX_ENUM)
 
 template <>
-struct std::hash<vkmmc::RenderHandle>
+struct std::hash<Mist::RenderHandle>
 {
-	std::size_t operator()(const vkmmc::RenderHandle& key) const
+	std::size_t operator()(const Mist::RenderHandle& key) const
 	{
 		return hash<uint32_t>()(key.Handle);
 	}
 };
 
-namespace vkmmc
+namespace Mist
 {
 	const Color Color::Red = 0xff0000ff;
 	const Color Color::Green = 0x00ff00ff;

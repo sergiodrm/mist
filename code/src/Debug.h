@@ -1,4 +1,4 @@
-// header file for vkmmc project 
+// header file for Mist project 
 #pragma once
 
 #include <cassert>
@@ -14,20 +14,20 @@ do \
 { \
 	if (!expand(expr)) \
 	{ \
-		vkmmc_debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__); \
+		Mist_debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__); \
 	} \
 } while(0)
 
 #define vkcheck(expr) \
 do { \
 VkResult __vkres = expand(expr); \
-if (__vkres != VK_SUCCESS) { vkmmc_debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__); } \
+if (__vkres != VK_SUCCESS) { Mist_debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__); } \
 } while(0)
 
 
-#define CPU_PROFILE_SCOPE(name) vkmmc_profiling::sScopedTimer __timer##name(#name)
+#define CPU_PROFILE_SCOPE(name) Mist_profiling::sScopedTimer __timer##name(#name)
 
-namespace vkmmc_debug
+namespace Mist_debug
 {
 	void DebugCheck(const char* txt, const char* file, const char* fn, int line);
 	void DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line);
@@ -39,7 +39,7 @@ namespace vkmmc_debug
 	void ErrorMessage(const char* text);
 }
 
-namespace vkmmc_profiling
+namespace Mist_profiling
 {
 #ifdef _USE_CHRONO_PROFILING
 	typedef std::chrono::high_resolution_clock::time_point tTimePoint;

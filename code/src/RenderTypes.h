@@ -16,11 +16,15 @@
 #error SO not supported.
 #endif
 
-#define DEFINE_FLAG_BITS_TYPE(flagName) typedef vkmmc::tFlagBits flagName
+#ifndef MIST_VULKAN
+#error Only support vulkan
+#endif
+
+#define DEFINE_FLAG_BITS_TYPE(flagName) typedef Mist::tFlagBits flagName
 #define DEFINE_ENUM_BIT_OPERATORS(enumType) DEFINE_ENUM_FLAG_OPERATORS(enumType)
 #define BIT_N(n) (1 << n)
 
-namespace vkmmc
+namespace Mist
 {
 	struct RenderContext;
 
@@ -33,12 +37,12 @@ namespace vkmmc
 	using tString = std::string;
 
 	typedef uint32_t tFlagBits;
-#ifdef VKMMC_VULKAN
+#ifdef MIST_VULKAN
 	typedef VkExtent3D tExtent3D;
 	typedef VkExtent2D tExtent2D;
 	typedef VkRect2D tRect2D;
 	typedef VkClearValue tClearValue;
-#endif // VKMMC_VULKAN
+#endif // MIST_VULKAN
 
 	class Color
 	{
@@ -419,7 +423,7 @@ namespace vkmmc
 	};
 	DEFINE_FLAG_BITS_TYPE(ESampleCount);
 
-#ifdef VKMMC_VULKAN
+#ifdef MIST_VULKAN
 
 	const char* VkResultToStr(VkResult res);
 
@@ -448,6 +452,6 @@ namespace vkmmc
 	{
 		void CmdSubmitTransfer(const RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback);
 	}
-#endif // VKMMC_VULKAN
+#endif // MIST_VULKAN
 
 }

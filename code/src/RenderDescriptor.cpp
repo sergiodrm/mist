@@ -6,7 +6,7 @@
 #include <algorithm>
 #include "Shader.h"
 
-namespace vkmmc
+namespace Mist
 {
 	const DescriptorPoolSizes& DescriptorPoolSizes::GetDefault()
 	{

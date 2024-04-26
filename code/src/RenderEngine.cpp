@@ -1,7 +1,7 @@
 
 #include "VulkanRenderEngine.h"
 
-namespace vkmmc
+namespace Mist
 {
 	static IRenderEngine* GRenderEngine = nullptr;
 

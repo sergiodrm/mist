@@ -4,7 +4,7 @@
 #include "InitVulkanTypes.h"
 #include "Logger.h"
 
-namespace vkmmc
+namespace Mist
 {
 	VkAttachmentDescription GetVkDescription(const RenderTargetAttachmentDescription& desc)
 	{
@@ -23,10 +23,10 @@ namespace vkmmc
 
 	RenderTarget::RenderTarget()
 		:
-#ifdef VKMMC_VULKAN
+#ifdef MIST_VULKAN
 		m_renderPass(VK_NULL_HANDLE),
 		m_framebuffer(VK_NULL_HANDLE)
-#endif // VKMMC_VULKAN
+#endif // MIST_VULKAN
 	{
 	}
 

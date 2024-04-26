@@ -4,7 +4,7 @@
 #include "RenderHandle.h"
 #include <vector>
 
-namespace vkmmc
+namespace Mist
 {
 	class RenderResource
 	{

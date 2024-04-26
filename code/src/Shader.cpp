@@ -1,4 +1,4 @@
-// src file for vkmmc project 
+// src file for Mist project 
 
 #include "Shader.h"
 
@@ -72,11 +72,11 @@ namespace shader_compiler
 	bool HandleError(const shaderc::CompilationResult<T>& res, const char* compilationStage)
 	{
 		shaderc_compilation_status status = res.GetCompilationStatus();
-		vkmmc::LogLevel level = status == shaderc_compilation_status_success ? vkmmc::LogLevel::Ok : vkmmc::LogLevel::Error;
-		vkmmc::Logf(level, "-- Shader %s result (%s): %d warnings, %d errors --\n", compilationStage, GetShaderStatusStr(status), res.GetNumWarnings(), res.GetNumErrors());
+		Mist::LogLevel level = status == shaderc_compilation_status_success ? Mist::LogLevel::Ok : Mist::LogLevel::Error;
+		Mist::Logf(level, "-- Shader %s result (%s): %d warnings, %d errors --\n", compilationStage, GetShaderStatusStr(status), res.GetNumWarnings(), res.GetNumErrors());
 		if (status != shaderc_compilation_status_success)
 		{
-			vkmmc::Logf(vkmmc::LogLevel::Error, "Shader compilation error: %s\n", res.GetErrorMessage().c_str());
+			Mist::Logf(Mist::LogLevel::Error, "Shader compilation error: %s\n", res.GetErrorMessage().c_str());
 			return false;
 		}
 		return true;
@@ -86,7 +86,7 @@ namespace shader_compiler
 	{
 		char* source;
 		size_t s;
-		check(vkmmc::io::ReadFile(filepath, &source, s));
+		check(Mist::io::ReadFile(filepath, &source, s));
 
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
@@ -102,7 +102,7 @@ namespace shader_compiler
 		if (!HandleError(prepRes, "preprocess"))
 			return tCompilationResult();
 
-		vkmmc::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
+		Mist::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
 		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(),preprocessSource.size(), kind, filepath, "main", options);
 		if (!HandleError(result, "assembly"))
 			return tCompilationResult();
@@ -176,7 +176,7 @@ namespace vkutils
 	}
 }
 
-namespace vkmmc
+namespace Mist
 {
 
 
@@ -626,13 +626,13 @@ namespace vkmmc
 	void ShaderProgram::UseProgram(VkCommandBuffer cmd)
 	{
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-		++vkmmc_profiling::GRenderStats.ShaderProgramCount;
+		++Mist_profiling::GRenderStats.ShaderProgramCount;
 	}
 
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount)
 	{
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
-		++vkmmc_profiling::GRenderStats.SetBindingCount;
+		++Mist_profiling::GRenderStats.SetBindingCount;
 	}
 
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)

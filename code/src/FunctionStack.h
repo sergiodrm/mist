@@ -3,7 +3,7 @@
 #include <stack>
 #include <functional>
 
-namespace vkmmc
+namespace Mist
 {
 	class FunctionStack
 	{

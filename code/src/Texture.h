@@ -1,10 +1,10 @@
-// header file for vkmmc project 
+// header file for Mist project 
 
 #pragma once
 
 #include "RenderTypes.h"
 
-namespace vkmmc
+namespace Mist
 {
 	namespace io
 	{

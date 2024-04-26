@@ -28,7 +28,7 @@
 #include "Globals.h"
 #include "DeferredRender.h"
 
-namespace vkmmc
+namespace Mist
 {
 	class Framebuffer;
 	class IRendererBase;

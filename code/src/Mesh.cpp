@@ -2,7 +2,7 @@
 #include "Mesh.h"
 #include "Debug.h"
 
-namespace vkmmc
+namespace Mist
 {
 	void RenderResource::SetHandle(RenderHandle handle)
 	{

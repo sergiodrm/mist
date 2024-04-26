@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 
-namespace vkmmc
+namespace Mist
 {
 	struct Vertex
 	{

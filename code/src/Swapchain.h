@@ -3,7 +3,7 @@
 #include <RenderTypes.h>
 #include <vector>
 
-namespace vkmmc
+namespace Mist
 {
 	struct RenderContext;
 

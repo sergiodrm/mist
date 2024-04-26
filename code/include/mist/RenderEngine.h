@@ -4,7 +4,7 @@
 #include <functional>
 #include <glm/glm.hpp>
 
-namespace vkmmc
+namespace Mist
 {
 	class IScene;
 	class Mesh;

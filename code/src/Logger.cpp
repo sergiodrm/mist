@@ -32,17 +32,17 @@
 
 //#define LOG_DEBUG_FLUSH
 
-namespace vkmmc
+namespace Mist
 {
 	const char* LogLevelFormat(LogLevel level)
 	{
 		switch (level)
 		{
-		case vkmmc::LogLevel::Info: return ANSI_COLOR_WHITE;
-		case vkmmc::LogLevel::Debug: return ANSI_COLOR_MAGENTA;
-		case vkmmc::LogLevel::Ok: return ANSI_COLOR_GREEN;
-		case vkmmc::LogLevel::Warn: return ANSI_COLOR_YELLOW;
-		case vkmmc::LogLevel::Error: return ANSI_COLOR_RED;
+		case Mist::LogLevel::Info: return ANSI_COLOR_WHITE;
+		case Mist::LogLevel::Debug: return ANSI_COLOR_MAGENTA;
+		case Mist::LogLevel::Ok: return ANSI_COLOR_GREEN;
+		case Mist::LogLevel::Warn: return ANSI_COLOR_YELLOW;
+		case Mist::LogLevel::Error: return ANSI_COLOR_RED;
 		}
 		return ANSI_RESET_ALL;
 	}

@@ -25,7 +25,7 @@
 #define GBUFFER_COMPOSITION_LAYOUT IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL 
 
 
-namespace vkmmc
+namespace Mist
 {
 	void GBuffer::Init(const RenderContext& renderContext)
 	{

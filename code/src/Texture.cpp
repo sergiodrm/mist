@@ -1,4 +1,4 @@
-// src file for vkmmc project 
+// src file for Mist project 
 #include "Texture.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -12,19 +12,19 @@
 
 namespace vkutils
 {
-	vkmmc::EFormat GetImageFormatFromChannels(uint32_t channels)
+	Mist::EFormat GetImageFormatFromChannels(uint32_t channels)
 	{
 		switch (channels)
 		{
-		case 3: return vkmmc::FORMAT_R8G8B8_SRGB;
-		case 4: return vkmmc::FORMAT_R8G8B8A8_SRGB;
+		case 3: return Mist::FORMAT_R8G8B8_SRGB;
+		case 4: return Mist::FORMAT_R8G8B8A8_SRGB;
 		}
-		vkmmc::Logf(vkmmc::LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
-		return vkmmc::FORMAT_UNDEFINED;
+		Mist::Logf(Mist::LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
+		return Mist::FORMAT_UNDEFINED;
 	}
 }
 
-namespace vkmmc
+namespace Mist
 {
 
 	bool io::LoadTexture(const char* path, TextureRaw& out)

@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "RenderTypes.h"
 
-namespace vkmmc
+namespace Mist
 {
 	struct RenderContext;
 

@@ -1,1 +1,1 @@
-// src file for vkmmc project 
+// src file for Mist project 

@@ -1,7 +1,7 @@
 #include "TimeUtils.h"
 #include <ctime>
 
-namespace vkmmc
+namespace Mist
 {
 	tTimePoint GetTimePoint()
 	{

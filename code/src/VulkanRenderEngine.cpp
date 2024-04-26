@@ -28,12 +28,12 @@
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
 
-#define VKMMC_CRASH_ON_VALIDATION_LAYER
+#define Mist_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
 
-namespace vkmmc_debug
+namespace Mist_debug
 {
 	uint32_t GVulkanLayerValidationErrors = 0;
 
@@ -42,20 +42,20 @@ namespace vkmmc_debug
 		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
 		void* userData)
 	{
-		vkmmc::LogLevel level = vkmmc::LogLevel::Info;
+		Mist::LogLevel level = Mist::LogLevel::Info;
 		switch (severity)
 		{
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = vkmmc::LogLevel::Error; ++GVulkanLayerValidationErrors; break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = vkmmc::LogLevel::Debug; break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = vkmmc::LogLevel::Warn; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = Mist::LogLevel::Error; ++GVulkanLayerValidationErrors; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = Mist::LogLevel::Debug; break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = Mist::LogLevel::Warn; break;
 		}
 		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
-		if (level == vkmmc::LogLevel::Error)
+		if (level == Mist::LogLevel::Error)
 		{
 #if defined(_DEBUG)
 			PrintCallstack();
 #endif
-#ifdef VKMMC_CRASH_ON_VALIDATION_LAYER
+#ifdef Mist_CRASH_ON_VALIDATION_LAYER
 			check(false && "Validation layer error");
 #endif
 		}
@@ -63,7 +63,7 @@ namespace vkmmc_debug
 	}
 }
 
-namespace vkmmc
+namespace Mist
 {
 	RenderHandle GenerateRenderHandle()
 	{
@@ -274,7 +274,7 @@ namespace vkmmc
 #endif // 0
 
 
-		AddImGuiCallback(&vkmmc_profiling::ImGuiDraw);
+		AddImGuiCallback(&Mist_profiling::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
 		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(true); });
 
@@ -311,7 +311,7 @@ namespace vkmmc
 		BeginFrame();
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
-		vkmmc_profiling::GRenderStats.Reset();
+		Mist_profiling::GRenderStats.Reset();
 		Draw();
 		return res;
 	}
@@ -344,8 +344,8 @@ namespace vkmmc
 		SDL_DestroyWindow(m_window.WindowInstance);
 
 		Log(LogLevel::Ok, "Render engine terminated.\n");
-		Logf(vkmmc_debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
-			"Total vulkan layer validation errors: %u.\n", vkmmc_debug::GVulkanLayerValidationErrors);
+		Logf(Mist_debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
+			"Total vulkan layer validation errors: %u.\n", Mist_debug::GVulkanLayerValidationErrors);
 		TerminateLog();
 	}
 
@@ -560,11 +560,11 @@ namespace vkmmc
 
 			VkInstance instance;
 			VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pNext = nullptr };
-			appInfo.pApplicationName = "VkMMC";
+			appInfo.pApplicationName = "Mist";
 			appInfo.applicationVersion = VK_API_VERSION_1_1;
 			appInfo.apiVersion = VK_API_VERSION_1_1;
 			appInfo.engineVersion = VK_API_VERSION_1_1;
-			appInfo.pEngineName = "VkMMC";
+			appInfo.pEngineName = "Mist";
 
 			tDynArray<const char*> extensions;
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
@@ -583,7 +583,7 @@ namespace vkmmc
 			.request_validation_layers(true)
 			.require_api_version(1, 1, 0)
 			//.use_default_debug_messenger()
-			.set_debug_callback(&vkmmc_debug::DebugVulkanCallback)
+			.set_debug_callback(&Mist_debug::DebugVulkanCallback)
 			.build();
 		check(instanceReturn.has_value());
 		//check(instanceReturn.full_error().vk_result == VK_SUCCESS);

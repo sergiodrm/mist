@@ -1,4 +1,4 @@
-// header file for vkmmc project 
+// header file for Mist project 
 #pragma once
 #include "RenderPass.h"
 #include "Shader.h"
@@ -6,7 +6,7 @@
 #include "RenderContext.h"
 #include "Globals.h"
 
-namespace vkmmc
+namespace Mist
 {
 	class Model;
 	class DescriptorLayoutCache;

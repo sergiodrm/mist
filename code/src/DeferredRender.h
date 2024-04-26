@@ -5,7 +5,7 @@
 #include "Texture.h"
 #include "RenderTarget.h"
 
-namespace vkmmc
+namespace Mist
 {
 	struct RenderContext;
 

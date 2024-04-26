@@ -7,7 +7,7 @@
 #include "glm/fwd.hpp"
 #include "glm/gtx/quaternion.hpp"
 
-namespace vkmmc
+namespace Mist
 {
 	bool io::ReadFile(const char* filename, std::vector<uint32_t>& data)
 	{

@@ -1,4 +1,4 @@
-// header file for vkmmc project 
+// header file for Mist project 
 #pragma once
 
 #include <vulkan/vulkan.h>
@@ -8,7 +8,7 @@
 #include "RenderTypes.h"
 #include "VulkanBuffer.h"
 
-namespace vkmmc
+namespace Mist
 {
 	// Forward declarations
 	struct RenderContext;

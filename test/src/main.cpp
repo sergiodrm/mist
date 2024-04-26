@@ -1,15 +1,15 @@
 #include <cstdint>
 
-#include <vkmmc/RenderEngine.h>
-#include <vkmmc/RenderObject.h>
-#include <vkmmc/Mesh.h>
-#include <vkmmc/Scene.h>
+#include <Mist/RenderEngine.h>
+#include <Mist/RenderObject.h>
+#include <Mist/Mesh.h>
+#include <Mist/Scene.h>
 
 #include <chrono>
 #include <corecrt_math_defines.h>
 
 #include <imgui/imgui.h>
-#include "vkmmc/Camera.h"
+#include "Mist/Camera.h"
 #include "glm/gtx/transform.hpp"
 
 class Timer
@@ -58,11 +58,11 @@ public:
 	virtual ~Test() {};
 	void Init()
 	{
-		vkmmc::InitializationSpecs spec
+		Mist::InitializationSpecs spec
 		{
-			1920, 1080, "VkMMC Engine"
+			1920, 1080, "MistEngine"
 		};
-		m_engine = vkmmc::IRenderEngine::MakeInstance();
+		m_engine = Mist::IRenderEngine::MakeInstance();
 		m_engine->Init(spec);
 
 		m_engine->AddImGuiCallback([this]() { m_camera.ImGuiDraw(); });
@@ -88,7 +88,7 @@ public:
 	{
 		UnloadTest();
 		m_engine->Shutdown();
-		vkmmc::IRenderEngine::FreeRenderEngine();
+		Mist::IRenderEngine::FreeRenderEngine();
 	}
 
 protected:
@@ -98,8 +98,8 @@ protected:
 	virtual void ProcessEvent(void* eventData) {}
 
 protected:
-	vkmmc::IRenderEngine* m_engine = nullptr;
-	vkmmc::CameraController m_camera;
+	Mist::IRenderEngine* m_engine = nullptr;
+	Mist::CameraController m_camera;
 	Timer m_timer;
 };
 
@@ -108,7 +108,7 @@ class SponzaTest : public Test
 protected:
 	virtual void LoadTest()
 	{
-		vkmmc::IScene* scene = vkmmc::IScene::LoadScene(m_engine, "assets/models/sponza/Sponza.gltf");
+		Mist::IScene* scene = Mist::IScene::LoadScene(m_engine, "assets/models/sponza/Sponza.gltf");
 		scene->LoadModel("assets/models/vulkanscene_shadow.gltf");
 		m_engine->SetScene(scene);
 	}

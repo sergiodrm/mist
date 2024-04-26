@@ -5,7 +5,7 @@
 #include <xhash>
 
 
-namespace vkmmc
+namespace Mist
 {
 	enum { InvalidRenderHandle = UINT32_MAX };
 	struct RenderHandle

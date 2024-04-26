@@ -2,7 +2,7 @@
 
 #include "Mesh.h"
 
-namespace vkmmc
+namespace Mist
 {
 	struct RenderObject
 	{

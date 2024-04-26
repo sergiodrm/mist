@@ -7,7 +7,7 @@
 #define MAX_RENDER_TARGET_COLOR_ATTACHMENTS 4
 #define MAX_RENDER_TARGET_ATTACHMENTS MAX_RENDER_TARGET_COLOR_ATTACHMENTS + 1 // Color + Depth
 
-namespace vkmmc
+namespace Mist
 {
 	struct RenderContext;
 
@@ -27,9 +27,9 @@ namespace vkmmc
 		tArray<RenderTargetAttachmentDescription, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> ColorAttachmentDescriptions;
 		uint32_t ColorAttachmentCount = 0;
 		RenderTargetAttachmentDescription DepthAttachmentDescription;
-#ifdef VKMMC_VULKAN
+#ifdef MIST_VULKAN
 		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> ExternalAttachments;
-#endif // VKMMC_VULKAN
+#endif // MIST_VULKAN
 		uint32_t ExternalAttachmentCount = 0;
 
 		RenderTargetDescription()
@@ -68,9 +68,9 @@ namespace vkmmc
 	struct RenderTargetAttachment
 	{
 		AllocatedImage Image;
-#ifdef VKMMC_VULKAN
+#ifdef MIST_VULKAN
 		VkImageView View;
-#endif // VKMMC_VULKAN
+#endif // MIST_VULKAN
 
 		void Destroy(const RenderContext& renderContext);
 	};
@@ -107,11 +107,11 @@ namespace vkmmc
 		void CreateFramebuffer(const RenderContext& renderContext, const VkImageView* views, uint32_t viewCount);
 		void CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const;
 	private:
-#ifdef VKMMC_VULKAN
+#ifdef MIST_VULKAN
 		VkRenderPass m_renderPass;
 		VkFramebuffer m_framebuffer;
 		tArray<tClearValue, MAX_RENDER_TARGET_ATTACHMENTS> m_clearValues;
-#endif // VKMMC_VULKAN
+#endif // MIST_VULKAN
 		RenderTargetDescription m_description;
 		tArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;
 	};

@@ -2,7 +2,7 @@
 
 #include <glm/gtx/transform.hpp>
 
-namespace vkmmc
+namespace Mist
 {
 	glm::mat4 CalculateTransform(const RenderObjectTransform& objectTransform)
 	{

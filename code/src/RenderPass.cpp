@@ -4,7 +4,7 @@
 #include "Logger.h"
 #include "InitVulkanTypes.h"
 
-namespace vkmmc
+namespace Mist
 {
 
 	void RenderPass::BeginPass(VkCommandBuffer cmd, VkFramebuffer framebuffer) const
