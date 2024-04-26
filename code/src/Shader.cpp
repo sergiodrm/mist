@@ -112,8 +112,8 @@ namespace shader_compiler
 			return tCompilationResult();
 
 		tCompilationResult compResult;
-		compResult.binaryCount = (spv.cend() - spv.cbegin())/sizeof(uint32_t);
-		compResult.binary = new uint32_t[compResult.binaryCount];
+		compResult.binaryCount = (spv.cend() - spv.cbegin());
+		compResult.binary = (uint32_t*)malloc(compResult.binaryCount * sizeof(uint32_t));
 		memcpy_s(compResult.binary, compResult.binaryCount * sizeof(uint32_t), spv.cbegin(), compResult.binaryCount * sizeof(uint32_t));
 		return compResult;
 	}
@@ -208,7 +208,8 @@ namespace vkmmc
 
 #ifdef SHADER_RUNTIME_COMPILATION
 		shader_compiler::tCompilationResult bin = shader_compiler::Compile(filepath, shaderStage);
-		ProcessReflection(shaderStage, bin.binary, bin.binaryCount);
+		if (!bin.IsCompilationSucceed())
+			return false;
 #else
 		// Read shader source and convert it to spirv binary
 		ShaderFileContent bin;
@@ -223,6 +224,7 @@ namespace vkmmc
 		data.ShaderStage = shaderStage;
 		data.CompiledModule = CompileShaderModule(m_renderContext, bin.binary, bin.binaryCount, data.ShaderStage);
 		m_modules.push_back(data);
+		ProcessReflection(shaderStage, bin.binary, bin.binaryCount);
 
 #ifdef SHADER_RUNTIME_COMPILATION
 		// release resources  
@@ -262,39 +264,18 @@ namespace vkmmc
 		return true;
 	}
 
-	VkShaderModule ShaderCompiler::CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binarySize, VkShaderStageFlags stage)
+	VkShaderModule ShaderCompiler::CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage)
 	{
-		check(binaryData && binarySize);
+		check(binaryData && binaryCount);
 		VkShaderModuleCreateInfo info{ .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .pNext = nullptr };
-		info.codeSize = binarySize * sizeof(uint32_t);
+		info.codeSize = binaryCount * sizeof(uint32_t);
 		info.pCode = binaryData;
 		VkShaderModule shaderModule{ VK_NULL_HANDLE };
 		vkcheck(vkCreateShaderModule(context.Device, &info, nullptr, &shaderModule));
 		return shaderModule;
 	}
 
-	bool ShaderCompiler::CacheSourceFromFile(const char* file, ShaderFileContent& content)
-	{
-#ifdef SHADER_RUNTIME_COMPILATION
-		return true;
-		return io::ReadFile(file, &content.Raw, content.RawSize);
-#else
-		return io::ReadFile(file, &content.Assembled, content.AssembledSize);
-#endif // SHADER_RUNTIME_COMPILATION
-	}
-
-	bool ShaderCompiler::AssembleShaderSource(const char* source, size_t size, VkShaderStageFlags stage, uint32_t** assembled, size_t* assembledSize)
-	{
-#ifdef SHADER_RUNTIME_COMPILATION
-		check(source && *source && size);
-		return true;
-#else
-		return true;
-#endif // SHADER_RUNTIME_COMPILATION
-
-	}
-
-	void ShaderCompiler::ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t size)
+	void ShaderCompiler::ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount)
 	{
 		auto processSpirvResource = [this](const spirv_cross::CompilerGLSL& compiler, const spirv_cross::Resource& resource, VkShaderStageFlags shaderStage, VkDescriptorType descriptorType)
 			{
@@ -327,8 +308,8 @@ namespace vkmmc
 				return setIndex;
 			};
 
-		check(binaryData && size && "Invalid binary source.");
-		spirv_cross::CompilerGLSL compiler(binaryData, size);
+		check(binaryData && binaryCount && "Invalid binary source.");
+		spirv_cross::CompilerGLSL compiler(binaryData, binaryCount);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
 		Log(LogLevel::Debug, "Processing shader reflection...\n");

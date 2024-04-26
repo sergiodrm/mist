@@ -54,14 +54,6 @@ namespace vkmmc
 			VkShaderStageFlags ShaderStage;
 			VkShaderModule CompiledModule;
 		};
-
-		struct ShaderFileContent
-		{
-			char* Raw;
-			size_t RawSize;
-			uint32_t* Assembled;
-			size_t AssembledSize;
-		};
 	public:
 		ShaderCompiler(const RenderContext& renderContext);
 		~ShaderCompiler();
@@ -83,15 +75,13 @@ namespace vkmmc
 		/**
 		 * Create VkShaderModule from a cached source file.
 		 * This will compile the shader code in the file.
+		 * @binarySize bytes count.
 		 * @return VkShaderModule valid if the compilation terminated successfully. VK_NULL_HANDLE otherwise.
 		 */
-		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binarySize, VkShaderStageFlags stage);
-
-		static bool CacheSourceFromFile(const char* file, ShaderFileContent& content);
-		static bool AssembleShaderSource(const char* source, size_t size, VkShaderStageFlags stage, uint32_t** assembled, size_t* assembledSize);
+		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage);
 		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage);
 	protected:
-		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t size);
+		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount);
 		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t set);
 		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t set) const;
 		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const;
