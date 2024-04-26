@@ -14,7 +14,7 @@
 #include "RenderContext.h"
 #include "VulkanRenderEngine.h"
 
-
+#include "TimeUtils.h"
 
 
 
@@ -122,6 +122,7 @@ namespace shader_compiler
 #endif // SHADER_RUNTIME_COMPILATION
 
 
+
 namespace vkutils
 {
 	VkBufferUsageFlags GetVulkanBufferUsage(VkDescriptorType type)
@@ -200,7 +201,8 @@ namespace vkmmc
 
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage)
 	{
-		Logf(LogLevel::Ok, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+		tTimePoint start = GetTimePoint();
+		Logf(LogLevel::Info, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 
 		// integrity check: dont repeat shader stage and ensure correct file extension with shader stage.
 		check(GetCompiledModule(shaderStage) == VK_NULL_HANDLE);
@@ -231,7 +233,9 @@ namespace vkmmc
 		shader_compiler::FreeBinary(bin);
 #endif // SHADER_RUNTIME_COMPILATION
 
-		Logf(LogLevel::Ok, "Shader compiled and cached successfully: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+		tTimePoint end = GetTimePoint();
+		float ms = GetMiliseconds(end - start);
+		Logf(LogLevel::Ok, "Shader compiled successfully (%s: %s) [time lapsed: %f ms]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath, ms);
 		return true;
 	}
 
