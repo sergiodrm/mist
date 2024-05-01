@@ -3,7 +3,7 @@
 
 namespace Mist
 {
-	typedef long tTimePoint;
+	typedef long long tTimePoint;
 	tTimePoint GetTimePoint();
 	float GetMiliseconds(tTimePoint point);
 }
