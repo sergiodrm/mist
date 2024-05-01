@@ -20,6 +20,9 @@
 
 #ifdef SHADER_RUNTIME_COMPILATION
 
+//#define SHADER_FORCE_COMPILATION
+#define SHADER_BINARY_FILE_EXTENSION ".spv"
+
 #include <shaderc/shaderc.hpp>  
 
 
@@ -103,7 +106,7 @@ namespace shader_compiler
 			return tCompilationResult();
 
 		Mist::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
-		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(),preprocessSource.size(), kind, filepath, "main", options);
+		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, filepath, "main", options);
 		if (!HandleError(result, "assembly"))
 			return tCompilationResult();
 		std::string assemble{ result.begin(), result.end() };
@@ -129,7 +132,7 @@ namespace vkutils
 	{
 		switch (type)
 		{
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: 
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -199,7 +202,7 @@ namespace Mist
 		m_cachedPushConstantArray.clear();
 	}
 
-	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage)
+	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, bool forceCompilation)
 	{
 		tTimePoint start = GetTimePoint();
 		Logf(LogLevel::Info, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
@@ -209,9 +212,29 @@ namespace Mist
 		check(CheckShaderFileExtension(filepath, shaderStage));
 
 #ifdef SHADER_RUNTIME_COMPILATION
-		shader_compiler::tCompilationResult bin = shader_compiler::Compile(filepath, shaderStage);
-		if (!bin.IsCompilationSucceed())
-			return false;
+		shader_compiler::tCompilationResult bin;
+		if (
+#ifndef SHADER_FORCE_COMPILATION
+			!forceCompilation
+#else
+			false
+#endif // !SHADER_FORCE_COMPILATION
+			&& GetSpvBinaryFromFile(filepath, &bin.binary, &bin.binaryCount))
+		{
+			Logf(LogLevel::Info, "Loading shader binary from compiled file: %s.spv\n", filepath);
+		}
+		else
+		{
+			Logf(LogLevel::Warn, "Compiled binary not found for: %s\n", filepath);
+			bin = shader_compiler::Compile(filepath, shaderStage);
+			if (!bin.IsCompilationSucceed())
+				return false;
+			tTimePoint wStart = GetTimePoint();
+			GenerateCompiledFile(filepath, bin.binary, bin.binaryCount);
+			tTimePoint wEnd = GetTimePoint();
+			float wMs = GetMiliseconds(wEnd - wStart);
+			Logf(LogLevel::Debug, "Shader binary file written [%f ms]\n", wMs);
+		}
 #else
 		// Read shader source and convert it to spirv binary
 		ShaderFileContent bin;
@@ -417,6 +440,56 @@ namespace Mist
 			}
 		}
 		return res;
+	}
+
+	bool ShaderCompiler::GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount)
+	{
+		check(shaderFilepath && *shaderFilepath && binaryData && binaryCount);
+		FILE* f;
+		char compiledName[256];
+		sprintf_s(compiledName, "%s" SHADER_BINARY_FILE_EXTENSION, shaderFilepath);
+
+		errno_t err = fopen_s(&f, compiledName, "wb");
+		if (err)
+		{
+			Logf(LogLevel::Error, "Failed to create compiled file for shader: %s\n", shaderFilepath);
+			return false;
+		}
+		//size_t writtenCount = fwrite(&binaryCount, sizeof(size_t), 1, f);
+		//check(writtenCount == 1);
+		size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
+		check(writtenCount == binaryCount);
+		fclose(f);
+		Logf(LogLevel::Ok, "Shader binary compiled written: %s [%u bytes]\n", compiledName, writtenCount * sizeof(uint32_t));
+	}
+
+	bool ShaderCompiler::GetSpvBinaryFromFile(const char* shaderFilepath, uint32_t** binaryData, size_t* binaryCount)
+	{
+		check(shaderFilepath && *shaderFilepath && binaryData && binaryCount);
+
+		char compiledFile[256];
+		sprintf_s(compiledFile, "%s" SHADER_BINARY_FILE_EXTENSION, shaderFilepath);
+		// Binary file is older than source file
+		struct stat attrFile;
+		stat(shaderFilepath, &attrFile);
+		struct stat attrCompiled;
+		stat(compiledFile, &attrCompiled);
+		if (attrFile.st_mtime > attrCompiled.st_mtime)
+			return false;
+
+		// Binary file is created after last file modification, valid binary
+		FILE* f;
+		errno_t err = fopen_s(&f, compiledFile, "rb");
+		check(err == 0 && f);
+		fseek(f, 0L, SEEK_END);
+		size_t numbytes = ftell(f);
+		fseek(f, 0L, SEEK_SET);
+		*binaryCount = numbytes / sizeof(uint32_t);
+		*binaryData = (uint32_t*)malloc(numbytes);
+		size_t contentRead = fread_s(*binaryData, numbytes, 1, numbytes, f);
+		check(contentRead == numbytes);
+		fclose(f);
+		return true;
 	}
 
 	class RenderPipelineBuilder
@@ -669,7 +742,7 @@ namespace Mist
 	void ShaderFileDB::Init(const RenderContext& context)
 	{
 #ifdef SHADER_RUNTIME_COMPILATION
-		
+
 #endif // SHADER_RUNTIME_COMPILATION
 
 	}

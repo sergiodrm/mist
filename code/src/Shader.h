@@ -59,7 +59,7 @@ namespace Mist
 		~ShaderCompiler();
 
 		void ClearCachedData();
-		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage);
+		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, bool forceCompilation = false);
 		bool GenerateReflectionResources(DescriptorLayoutCache& layoutCache);
 		VkShaderModule GetCompiledModule(VkShaderStageFlags shaderStage) const;
 		
@@ -80,8 +80,11 @@ namespace Mist
 		 */
 		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage);
 		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage);
+		static bool GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount);
+		static bool GetSpvBinaryFromFile(const char* shaderFilepath, uint32_t** binaryData, size_t* binaryCount);
 	protected:
 		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount);
+		
 		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t set);
 		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t set) const;
 		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const;
@@ -160,6 +163,9 @@ namespace Mist
 		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
 		ShaderProgram* FindShaderProgram(const char* vertexFile, const char* fragmentFile) const;
 		void ReloadFromFile(const RenderContext& context);
+
+		ShaderProgram** GetShaderArray() { return m_shaderArray.data(); }
+		uint32_t GetShaderCount() const { return (uint32_t)m_shaderArray.size(); }
 
 	private:
 		tDynArray<ShaderProgram*> m_shaderArray;
