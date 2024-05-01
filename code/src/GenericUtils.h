@@ -11,7 +11,13 @@ namespace Mist
 		bool ReadFile(const char* filename, uint32_t** data, size_t& size);
 		// returns non null terminated data!
 		bool ReadFile(const char* filename, char** out, size_t& size);
-		void GetRootDir(const char* filepath, char* rootPath, size_t size);
+		void GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size);
+		void GetDirectoryFromFilepath(const char* filepath, size_t filepathSize, char* dir, size_t size);
+		template <size_t N>
+		void GetDirectoryFromFilepath(const char(filepath)[N], char* dir, size_t size)
+		{
+			GetDirectoryFromFilepath(filepath, N, dir, size);
+		}
 	}
 
 	// Math

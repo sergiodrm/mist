@@ -506,7 +506,7 @@ namespace Mist
 	{
 		cgltf_data* data = gltf_api::ParseFile(filepath);
 		char rootAssetPath[512];
-		io::GetRootDir(filepath, rootAssetPath, 512);
+		io::GetDirectoryFromFilepath(filepath, rootAssetPath, 512);
 		if (!data)
 		{
 			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", filepath);

@@ -79,16 +79,21 @@ namespace Mist
 		return true;
 	}
 
-	void io::GetRootDir(const char* filepath, char* rootPath, size_t size)
+	void io::GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size)
 	{
 		size_t len = strlen(filepath);
-		check(size >= len);
-		for (size_t i = len - 1; i < len; --i)
+		GetDirectoryFromFilepath(filepath, len, dir, size);
+	}
+
+	void io::GetDirectoryFromFilepath(const char* filepath, size_t filepathSize, char* dir, size_t size)
+	{
+		check(size >= filepathSize);
+		for (size_t i = filepathSize - 1; i < filepathSize; --i)
 		{
 			if (filepath[i] == '/' || filepath[i] == '\\')
 			{
-				strncpy_s(rootPath, size, filepath, i + 1);
-				rootPath[i + 2] = '\0';
+				strncpy_s(dir, size, filepath, i + 1);
+				dir[i + 2] = '\0';
 				break;
 			}
 		}
