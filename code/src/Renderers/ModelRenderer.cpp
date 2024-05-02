@@ -39,24 +39,22 @@ namespace Mist
 
 	void ShadowMapPipeline::Init(const RenderContext& renderContext, const RenderTarget* renderTarget)
 	{
+		ShaderProgramDescription shaderDesc;
+		shaderDesc.SetLayoutArray.resize(2);
 		// Depth pipeline
-		tArray<VkDescriptorSetLayout, 2> depthShaderInput;
 		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(renderContext, &depthShaderInput[0]);
+			.Build(renderContext, &shaderDesc.SetLayoutArray[0]);
 		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(renderContext, &depthShaderInput[1]);
+			.Build(renderContext, &shaderDesc.SetLayoutArray[1]);
 
 		// CreatePipeline
 		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
 		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 
-		ShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = globals::DepthVertexShader;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-		shaderDesc.SetLayoutArray = depthShaderInput.data();
-		shaderDesc.SetLayoutCount = (uint32_t)depthShaderInput.size();
 		shaderDesc.RenderTarget = renderTarget;
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 	}
@@ -389,26 +387,24 @@ namespace Mist
 			{.Filepath = globals::BasicFragmentShader, .Stage = VK_SHADER_STAGE_FRAGMENT_BIT}
 		};
 
+		ShaderProgramDescription shaderDesc;
 		// This pipeline use dynamic descriptors, we have to initialize descriptor set layout manually.
-		tArray<VkDescriptorSetLayout, 3> layouts;
+		shaderDesc.SetLayoutArray.resize(3);
 		// Per frame descriptor (camera, enviro...)
 		DescriptorSetLayoutBuilder::Create(*info.Context.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 			.AddBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, globals::MaxShadowMapAttachments)
-			.Build(info.Context, &layouts[0]);
+			.Build(info.Context, &shaderDesc.SetLayoutArray[0]);
 		// Per draw descriptor (model, material...)
 		DescriptorSetLayoutBuilder::Create(*info.Context.LayoutCache)
 			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(info.Context, &layouts[1]);
-		layouts[2] = MaterialRenderData::GetDescriptorSetLayout(info.Context, *info.Context.LayoutCache);
+			.Build(info.Context, &shaderDesc.SetLayoutArray[1]);
+		shaderDesc.SetLayoutArray[2] = MaterialRenderData::GetDescriptorSetLayout(info.Context, *info.Context.LayoutCache);
 
-		ShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = globals::BasicVertexShader;
 		shaderDesc.FragmentShaderFile = globals::BasicFragmentShader;
-		shaderDesc.SetLayoutArray = layouts.data();
-		shaderDesc.SetLayoutCount = (uint32_t)layouts.size();
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = &m_frameData[0].RT;
 		m_shader = ShaderProgram::Create(info.Context, shaderDesc);

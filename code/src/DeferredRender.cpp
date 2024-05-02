@@ -179,24 +179,22 @@ namespace Mist
 	{
 		// MRT pipeline
 		{
-			tArray<VkDescriptorSetLayout, 3> layouts;
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.SetLayoutArray.resize(3);
 			// Set Layout for per frame data (camera proj etc...)
 			DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
 				.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
-				.Build(renderContext, &layouts[0]);
+				.Build(renderContext, &shaderDesc.SetLayoutArray[0]);
 			// Set Layout for per mesh data (model mat, textures...)
 			DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
 				.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-				.Build(renderContext, &layouts[1]);
-			layouts[2] = MaterialRenderData::GetDescriptorSetLayout(renderContext, *renderContext.LayoutCache);
+				.Build(renderContext, &shaderDesc.SetLayoutArray[1]);
+			shaderDesc.SetLayoutArray[2] = MaterialRenderData::GetDescriptorSetLayout(renderContext, *renderContext.LayoutCache);
 
-			ShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");
 			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("mrt.frag");
 			shaderDesc.RenderTarget = &m_mrt.m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.SetLayoutArray = layouts.data();
-			shaderDesc.SetLayoutCount = (uint32_t)layouts.size();
 			m_mrt.m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
 

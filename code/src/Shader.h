@@ -117,11 +117,8 @@ namespace Mist
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
-		VkDescriptorSetLayout* SetLayoutArray = nullptr;
-		uint32_t SetLayoutCount = 0;
-
-		VkPushConstantRange* PushConstantArray = nullptr;
-		uint32_t PushConstantCount = 0;
+		tDynArray<VkDescriptorSetLayout> SetLayoutArray;
+		tDynArray<VkPushConstantRange> PushConstantArray;
 
 	};
 

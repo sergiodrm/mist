@@ -525,9 +525,27 @@ namespace Mist
 
 		ImGui::Begin("Engine");
 		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
-		if (ImGui::Button("Reload shaders"))
+		ImGui::Separator();
+		ImGui::Columns(3);
+		ShaderProgram** shaderArray = m_shaderDb.GetShaderArray();
+		uint32_t shaderCount = m_shaderDb.GetShaderCount();
+		for (uint32_t i = 0; i < shaderCount; ++i)
 		{
+			char label[32];
+			sprintf_s(label, "Reload_%d", i);
+			if (ImGui::Button(label))
+			{
+				shaderArray[i]->Destroy(m_renderContext);
+				shaderArray[i]->Reload(m_renderContext);
+			}
+			ImGui::NextColumn();
+			const ShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
+			ImGui::Text("%s", shaderDesc.VertexShaderFile.c_str());
+			ImGui::NextColumn();
+			ImGui::Text("%s", shaderDesc.FragmentShaderFile.c_str());
+			ImGui::NextColumn();
 		}
+		ImGui::Columns();
 		ImGui::End();
 	}
 

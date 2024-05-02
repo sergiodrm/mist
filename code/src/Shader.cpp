@@ -109,7 +109,7 @@ namespace shader_compiler
 		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, filepath, "main", options);
 		if (!HandleError(result, "assembly"))
 			return tCompilationResult();
-		std::string assemble{ result.begin(), result.end() };
+		Mist::tString assemble{ result.begin(), result.end() };
 		shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble);
 		if (!HandleError(spv, "assembly to spv"))
 			return tCompilationResult();
@@ -204,7 +204,7 @@ namespace Mist
 
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, bool forceCompilation)
 	{
-		tTimePoint start = GetTimePoint();
+		PROFILE_SCOPE_LOG(ProcessShaderFile, "Shader file process");
 		Logf(LogLevel::Info, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 
 		// integrity check: dont repeat shader stage and ensure correct file extension with shader stage.
@@ -225,15 +225,12 @@ namespace Mist
 		}
 		else
 		{
+			PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
 			Logf(LogLevel::Warn, "Compiled binary not found for: %s\n", filepath);
 			bin = shader_compiler::Compile(filepath, shaderStage);
 			if (!bin.IsCompilationSucceed())
 				return false;
-			tTimePoint wStart = GetTimePoint();
 			GenerateCompiledFile(filepath, bin.binary, bin.binaryCount);
-			tTimePoint wEnd = GetTimePoint();
-			float wMs = GetMiliseconds(wEnd - wStart);
-			Logf(LogLevel::Debug, "Shader binary file written [%f ms]\n", wMs);
 		}
 #else
 		// Read shader source and convert it to spirv binary
@@ -256,9 +253,7 @@ namespace Mist
 		shader_compiler::FreeBinary(bin);
 #endif // SHADER_RUNTIME_COMPILATION
 
-		tTimePoint end = GetTimePoint();
-		float ms = GetMiliseconds(end - start);
-		Logf(LogLevel::Ok, "Shader compiled successfully (%s: %s) [time lapsed: %f ms]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath, ms);
+		Logf(LogLevel::Ok, "Shader compiled successfully (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 		return true;
 	}
 
@@ -444,23 +439,18 @@ namespace Mist
 
 	bool ShaderCompiler::GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount)
 	{
+		PROFILE_SCOPE_LOG(WriteShader, "Write file with binary spv shader");
 		check(shaderFilepath && *shaderFilepath && binaryData && binaryCount);
 		FILE* f;
 		char compiledName[256];
 		sprintf_s(compiledName, "%s" SHADER_BINARY_FILE_EXTENSION, shaderFilepath);
-
 		errno_t err = fopen_s(&f, compiledName, "wb");
-		if (err)
-		{
-			Logf(LogLevel::Error, "Failed to create compiled file for shader: %s\n", shaderFilepath);
-			return false;
-		}
-		//size_t writtenCount = fwrite(&binaryCount, sizeof(size_t), 1, f);
-		//check(writtenCount == 1);
+		check(err == 0 && f);
 		size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
 		check(writtenCount == binaryCount);
 		fclose(f);
 		Logf(LogLevel::Ok, "Shader binary compiled written: %s [%u bytes]\n", compiledName, writtenCount * sizeof(uint32_t));
+		return true;
 	}
 
 	bool ShaderCompiler::GetSpvBinaryFromFile(const char* shaderFilepath, uint32_t** binaryData, size_t* binaryCount)
@@ -477,6 +467,7 @@ namespace Mist
 		if (attrFile.st_mtime > attrCompiled.st_mtime)
 			return false;
 
+		PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
 		// Binary file is created after last file modification, valid binary
 		FILE* f;
 		errno_t err = fopen_s(&f, compiledFile, "rb");
@@ -628,10 +619,13 @@ namespace Mist
 		check(IsLoaded());
 		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
 		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
+		m_pipeline = VK_NULL_HANDLE;
+		m_pipelineLayout = VK_NULL_HANDLE;
 	}
 
 	bool ShaderProgram::Reload(const RenderContext& context)
 	{
+		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
 		check(!m_description.VertexShaderFile.empty() || !m_description.FragmentShaderFile.empty());
 		check(m_description.RenderTarget);
 		RenderPipelineBuilder builder(context);
@@ -666,20 +660,20 @@ namespace Mist
 
 		// Pass layout info
 		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
-		if (m_description.SetLayoutArray && m_description.SetLayoutCount)
+		if (!m_description.SetLayoutArray.empty())
 		{
-			builder.LayoutInfo.setLayoutCount = m_description.SetLayoutCount;
-			builder.LayoutInfo.pSetLayouts = m_description.SetLayoutArray;
+			builder.LayoutInfo.setLayoutCount = (uint32_t)m_description.SetLayoutArray.size();
+			builder.LayoutInfo.pSetLayouts = m_description.SetLayoutArray.data();
 		}
 		else
 		{
 			builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
 			builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
 		}
-		if (m_description.PushConstantArray && m_description.PushConstantCount)
+		if (m_description.PushConstantArray.empty())
 		{
-			builder.LayoutInfo.pushConstantRangeCount = m_description.PushConstantCount;
-			builder.LayoutInfo.pPushConstantRanges = m_description.PushConstantArray;
+			builder.LayoutInfo.pushConstantRangeCount = (uint32_t)m_description.PushConstantArray.size();
+			builder.LayoutInfo.pPushConstantRanges = m_description.PushConstantArray.data();
 		}
 		else
 		{
