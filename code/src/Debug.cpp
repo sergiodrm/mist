@@ -119,11 +119,35 @@ namespace win
 		}
 		Mist::Log(Mist::LogLevel::Debug, "\n=================================================\n\n");
 	}
+
+	UINT GetButtonType(MistDebug::eDialogButtonType type)
+	{
+		switch (type)
+		{
+		case MistDebug::DIALOG_BUTTON_YESNO: return MB_YESNO;
+		case MistDebug::DIALOG_BUTTON_YESNOCANCEL: return MB_YESNOCANCEL;
+		case MistDebug::DIALOG_BUTTON_OK:return MB_OK;
+		case MistDebug::DIALOG_BUTTON_OKCANCEL: return MB_OKCANCEL;
+		}
+		return 0;
+	}
+
+	MistDebug::eDialogMessageResult GetResult(int res)
+	{
+		switch (res)
+		{
+		case IDCANCEL: return MistDebug::DIALOG_MESSAGE_RESULT_CANCEL;
+		case IDOK: return MistDebug::DIALOG_MESSAGE_RESULT_OK;
+		case IDYES: return MistDebug::DIALOG_MESSAGE_RESULT_YES;
+		case IDNO: return MistDebug::DIALOG_MESSAGE_RESULT_NO;
+		}
+		return MistDebug::DIALOG_MESSAGE_RESULT_NO;
+	}
 }
 
-void Mist_debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
+void MistDebug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
-	Mist_debug::PrintCallstack();
+	MistDebug::PrintCallstack();
 	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
 	Mist::Logf(Mist::LogLevel::Error, "Check failed: %s\n\n", txt);
 	Mist::Logf(Mist::LogLevel::Error, "File: %s\n", file);
@@ -131,14 +155,13 @@ void Mist_debug::DebugCheck(const char* txt, const char* file, const char* fn, i
 	Mist::Logf(Mist::LogLevel::Error, "Line: %d\n\n", line);
 	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
 
-	char buff[1024];
-	sprintf_s(buff, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\nLine: %d\n", txt, file, fn, line);
-	ErrorMessage(buff);
-	__debugbreak();
-	Mist_debug::ExitError();
+	eDialogMessageResult res = DialogMsgErrorF(DIALOG_BUTTON_YESNO, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\n\nLine: %d\n\nDebug program?", txt, file, fn, line);
+	if (res == DIALOG_MESSAGE_RESULT_YES)
+		__debugbreak();
+	MistDebug::ExitError();
 }
 
-void Mist_debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
+void MistDebug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
 {
 	VkResult vkres = (VkResult)res;
 	const char* vkstr = Mist::VkResultToStr(vkres);
@@ -146,37 +169,73 @@ void Mist_debug::DebugVkCheck(int res, const char* txt, const char* file, const 
 	DebugCheck(txt, file, fn, line);
 }
 
-void Mist_debug::PrintCallstack(size_t count, size_t offset)
+void MistDebug::PrintCallstack(size_t count, size_t offset)
 {
 #ifdef _WIN32
 	win::WriteStackDump();
 #endif
 }
 
-void Mist_debug::ExitError()
+void MistDebug::ExitError()
 {
 	Mist::TerminateLog();
 	exit(EXIT_FAILURE);
 }
 
-void Mist_debug::InfoMessage(const char* text)
+MistDebug::eDialogMessageResult MistDebug::DialogMsgInfo(eDialogButtonType type, const char* msg)
 {
-	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONINFORMATION);
+	UINT button = win::GetButtonType(type);
+	int res = MessageBoxA(NULL, msg, "Info message", button | MB_ICONINFORMATION);
+	return win::GetResult(res);
 }
 
-void Mist_debug::WarningMessage(const char* text)
+MistDebug::eDialogMessageResult MistDebug::DialogMsgInfoF(eDialogButtonType type, const char* msg, ...)
 {
-	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONWARNING);
+	char buff[2048];
+	va_list lst;
+	va_start(lst, msg);
+	vsprintf_s(buff, msg, lst);
+	va_end(lst);
+	return DialogMsgInfo(type, buff);
 }
 
-void Mist_debug::ErrorMessage(const char* text)
+MistDebug::eDialogMessageResult MistDebug::DialogMsgWarning(eDialogButtonType type, const char* msg)
 {
-	MessageBoxA(NULL, text, "Info message", MB_OK | MB_ICONERROR);
+	UINT button = win::GetButtonType(type);
+	int res = MessageBoxA(NULL, msg, "Warning message", button | MB_ICONWARNING);
+	return win::GetResult(res);
+}
+
+MistDebug::eDialogMessageResult MistDebug::DialogMsgWarningF(eDialogButtonType type, const char* msg, ...)
+{
+	char buff[2048];
+	va_list lst;
+	va_start(lst, msg);
+	vsprintf_s(buff, msg, lst);
+	va_end(lst);
+	return DialogMsgWarning(type, buff);
+}
+
+MistDebug::eDialogMessageResult MistDebug::DialogMsgError(eDialogButtonType type, const char* msg)
+{
+	UINT button = win::GetButtonType(type);
+	int res = MessageBoxA(NULL, msg, "Error message", button | MB_ICONERROR);
+	return win::GetResult(res);
+}
+
+MistDebug::eDialogMessageResult MistDebug::DialogMsgErrorF(eDialogButtonType type, const char* msg, ...)
+{
+	char buff[2048];
+	va_list lst;
+	va_start(lst, msg);
+	vsprintf_s(buff, msg, lst);
+	va_end(lst);
+	return DialogMsgError(type, buff);
 }
 
 #define PROFILING_AVERAGE_DATA_COUNT 64
 
-namespace Mist_debug
+namespace MistDebug
 {
 	extern uint32_t GVulkanLayerValidationErrors;
 }
@@ -348,8 +407,8 @@ namespace Mist_profiling
 		ImGui::Text("%u", GRenderStats.SetBindingCount);
 		ImGui::NextColumn();
 		ImGui::Columns();
-		if (Mist_debug::GVulkanLayerValidationErrors)
-			ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", Mist_debug::GVulkanLayerValidationErrors);
+		if (MistDebug::GVulkanLayerValidationErrors)
+			ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", MistDebug::GVulkanLayerValidationErrors);
 		ImGui::End();
 		ImGui::PopStyleColor();
 	}

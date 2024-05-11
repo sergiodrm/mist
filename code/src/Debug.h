@@ -14,29 +14,48 @@ do \
 { \
 	if (!expand(expr)) \
 	{ \
-		Mist_debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__); \
+		MistDebug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__); \
 	} \
 } while(0)
 
 #define vkcheck(expr) \
 do { \
 VkResult __vkres = expand(expr); \
-if (__vkres != VK_SUCCESS) { Mist_debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__); } \
+if (__vkres != VK_SUCCESS) { MistDebug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__); } \
 } while(0)
 
 
 #define CPU_PROFILE_SCOPE(name) Mist_profiling::sScopedTimer __timer##name(#name)
 
-namespace Mist_debug
+namespace MistDebug
 {
+	enum eDialogButtonType
+	{
+		DIALOG_BUTTON_YESNO,
+		DIALOG_BUTTON_YESNOCANCEL,
+		DIALOG_BUTTON_OK,
+		DIALOG_BUTTON_OKCANCEL,
+	};
+
+	enum eDialogMessageResult
+	{
+		DIALOG_MESSAGE_RESULT_OK,
+		DIALOG_MESSAGE_RESULT_CANCEL,
+		DIALOG_MESSAGE_RESULT_YES,
+		DIALOG_MESSAGE_RESULT_NO,
+	};
+
 	void DebugCheck(const char* txt, const char* file, const char* fn, int line);
 	void DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line);
 	void PrintCallstack(size_t count = 0, size_t offset = 0);
 	void ExitError();
 
-	void InfoMessage(const char* text);
-	void WarningMessage(const char* text);
-	void ErrorMessage(const char* text);
+	eDialogMessageResult DialogMsgInfo(eDialogButtonType type, const char* msg);
+	eDialogMessageResult DialogMsgInfoF(eDialogButtonType type, const char* msg, ...);
+	eDialogMessageResult DialogMsgWarning(eDialogButtonType type, const char* msg);
+	eDialogMessageResult DialogMsgWarningF(eDialogButtonType type, const char* msg, ...);
+	eDialogMessageResult DialogMsgError(eDialogButtonType type, const char* msg);
+	eDialogMessageResult DialogMsgErrorF(eDialogButtonType type, const char* msg, ...);
 }
 
 namespace Mist_profiling
