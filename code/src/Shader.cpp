@@ -445,7 +445,7 @@ namespace Mist
 		char compiledName[256];
 		sprintf_s(compiledName, "%s" SHADER_BINARY_FILE_EXTENSION, shaderFilepath);
 		errno_t err = fopen_s(&f, compiledName, "wb");
-		check(err == 0 && f);
+		check(!err && f && "Failed to write shader compiled file");
 		size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
 		check(writtenCount == binaryCount);
 		fclose(f);
@@ -471,7 +471,7 @@ namespace Mist
 		// Binary file is created after last file modification, valid binary
 		FILE* f;
 		errno_t err = fopen_s(&f, compiledFile, "rb");
-		check(err == 0 && f);
+		check(!err && f && "Failed to open shader compiled file");
 		fseek(f, 0L, SEEK_END);
 		size_t numbytes = ftell(f);
 		fseek(f, 0L, SEEK_SET);
