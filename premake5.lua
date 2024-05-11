@@ -5,7 +5,17 @@ include "Dependencies.lua"
 includes["mist"] = "%{wks.location}/code/include"
 includes["mistsrc"] = "%{wks.location}/code/src"
 
-outputdir = "%{wks.location}/bin/%{cfg.buildcfg}_%{cfg.architecture}"
+outputdir = "%{wks.location}/bin/"
+temporaldir = "%{wks.location}/temp/%{cfg.buildcfg}_%{cfg.architecture}"
+
+newaction {
+    trigger = "clean",
+    description = "clear project files",
+    execute = function()
+        os.execute("del /s *.vcxproj*")
+        os.execute("del /s *.sln")
+    end
+}
 
 workspace "Mist"
     configurations {"Debug", "Release"}
@@ -39,6 +49,8 @@ workspace "Mist"
         cppdialect "C++20"
 
         targetdir "%{outputdir}"
+        objdir "%{temporaldir}"
+        location "%{wks.location}/code"
 
         defines { "MIST_VULKAN" }
         files { "code/**.h", "code/**.cpp"}
@@ -81,6 +93,7 @@ workspace "Mist"
                 "%{libs.shadercd}",
                 "%{libs.shadercutild}",
             }
+            targetname "Mist_dbg"
             
             filter "configurations:Release"
             links {
@@ -99,6 +112,7 @@ workspace "Mist"
                 "%{libs.shaderc}",
                 "%{libs.shadercutil}",
             }
+            targetname "Mist"
         
     
     group "Test"
@@ -108,6 +122,8 @@ workspace "Mist"
         cppdialect "C++20"
         
         targetdir "%{outputdir}"
+        objdir "%{temporaldir}"
+        location "%{wks.location}/test"
         
         links { "MistEngine" }
         files { "test/**.h", "test/**.cpp"}
@@ -117,5 +133,10 @@ workspace "Mist"
             "%{includes.glm}",
             "%{includes.generic}",
         }
+
+        filter "configurations:Debug"
+        targetname "MistTest_dbg"
+        filter "configurations:Release"
+        targetname "MistTest"
 
 
