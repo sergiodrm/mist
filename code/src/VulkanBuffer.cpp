@@ -135,6 +135,16 @@ namespace Mist
 		return layout;
 	}
 
+	VertexInputLayout VertexInputLayout::GetScreenQuadVertexLayout()
+	{
+		static VertexInputLayout layout;
+		if (layout.Attributes.empty())
+		{
+			layout = BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		}
+		return layout;
+	}
+
 	void GPUBuffer::SubmitBufferToGpu(GPUBuffer gpuBuffer, const void* cpuData, uint32_t size)
 	{
 		check(gpuBuffer.m_size >= size);

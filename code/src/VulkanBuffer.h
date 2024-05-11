@@ -36,6 +36,7 @@ namespace Mist
 
 		static VertexInputLayout GetStaticMeshVertexLayout();
 		static VertexInputLayout GetBasicVertexLayout();
+		static VertexInputLayout GetScreenQuadVertexLayout();
 	};
 
 	enum EBufferUsageBits
