@@ -100,6 +100,7 @@ namespace Mist
 		const RenderTargetAttachment& GetAttachment(uint32_t index) const;
 		const RenderTargetDescription& GetDescription() const;
 		inline bool HasDepthBufferAttachment() const { return m_description.DepthAttachmentDescription.IsValidAttachment(); }
+		static bool ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description);
 	protected:
 		void CreateResources(const RenderContext& renderContext);
 		void CreateRenderPass(const RenderContext& renderContext);

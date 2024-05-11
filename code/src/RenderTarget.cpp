@@ -38,13 +38,7 @@ namespace Mist
 
 	void RenderTarget::Create(const RenderContext& renderContext, const RenderTargetDescription& desc)
 	{
-		if (desc.DepthAttachmentDescription.IsValidAttachment())
-		{
-			VkFormatProperties formatProperties;
-			VkFormat depthFormat = tovk::GetFormat(desc.DepthAttachmentDescription.Format);
-			vkGetPhysicalDeviceFormatProperties(renderContext.GPUDevice, depthFormat, &formatProperties);
-			check(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-		}
+		check(ExecuteFormatValidation(renderContext, desc));
 		m_description = desc;
 		for (uint32_t i = 0; i < desc.ColorAttachmentCount; ++i)
 			m_clearValues[i] = desc.ColorAttachmentDescriptions[i].ClearValue;
@@ -142,6 +136,7 @@ namespace Mist
 		{
 			// Fill attachment info
 			attachments[i] = GetVkDescription(m_description.ColorAttachmentDescriptions[i]);
+
 			// References
 			attachmentReferences[i].attachment = i;
 			attachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -255,6 +250,7 @@ namespace Mist
 		passCreateInfo.pSubpasses = &subpass;
 		passCreateInfo.dependencyCount = dependencyCount;
 		passCreateInfo.pDependencies = dependencies.data();
+
 		vkcheck(vkCreateRenderPass(renderContext.Device, &passCreateInfo, nullptr, &m_renderPass));
 		static int c = 0;
 		char buff[64];
@@ -320,6 +316,33 @@ namespace Mist
 		sprintf_s(buff, "RT_ImageView_%d", c++);
 		SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 	}
+
+	bool RenderTarget::ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description) 
+	{
+		bool res = true;
+		for (uint32_t i = 0; i < description.ColorAttachmentCount; ++i)
+		{
+			VkFormatProperties prop;
+			vkGetPhysicalDeviceFormatProperties(renderContext.GPUDevice, tovk::GetFormat(description.ColorAttachmentDescriptions[i].Format), &prop);
+			if (!(prop.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
+			{
+				Logf(LogLevel::Error, "Color Attachment %d with format %s has an invalid format (not supported by VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)\n", i, FormatToStr(description.ColorAttachmentDescriptions[i].Format));
+				res = false;
+			}
+		}
+		if (description.DepthAttachmentDescription.IsValidAttachment())
+		{
+			VkFormatProperties prop;
+			vkGetPhysicalDeviceFormatProperties(renderContext.GPUDevice, tovk::GetFormat(description.DepthAttachmentDescription.Format), &prop);
+			if (!(prop.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+			{
+				Logf(LogLevel::Error, "Depth Attachment with format %s has an invalid format (not supported by VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)\n", FormatToStr(description.DepthAttachmentDescription.Format));
+				res = false;
+			}
+		}
+		return res;
+	}
+
 
 	VkImageView RenderTarget::GetDepthBuffer() const
 	{
