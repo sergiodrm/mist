@@ -27,9 +27,9 @@ layout (std140, set = 0, binding = 0) uniform Environment
 } u_Env;
 
 // GBuffer textures
-layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
-layout(set = 1, binding = 1) uniform sampler2D u_GBufferNormal;
-layout(set = 1, binding = 2) uniform sampler2D u_GBufferAlbedo;
+layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
+layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
+layout(set = 0, binding = 3) uniform sampler2D u_GBufferAlbedo;
 
 float LinearizeDepth(float z, float n, float f)
 {

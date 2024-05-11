@@ -10,19 +10,6 @@
 #include "RenderContext.h"
 #include "InitVulkanTypes.h"
 
-namespace vkutils
-{
-	Mist::EFormat GetImageFormatFromChannels(uint32_t channels)
-	{
-		switch (channels)
-		{
-		case 3: return Mist::FORMAT_R8G8B8_SRGB;
-		case 4: return Mist::FORMAT_R8G8B8A8_SRGB;
-		}
-		Mist::Logf(Mist::LogLevel::Error, "Unsupported number of channels #%d.\n", channels);
-		return Mist::FORMAT_UNDEFINED;
-	}
-}
 
 namespace Mist
 {
@@ -57,25 +44,29 @@ namespace Mist
 		stbi_image_free(data);
 	}
 
-	void Texture::Init(const RenderContext& renderContext, const io::TextureRaw& textureRaw)
+	void Texture::Init(const RenderContext& renderContext, const TextureCreateInfo& textureInfo)
 	{
 		check(!m_image.IsAllocated());
-		check(textureRaw.Pixels && textureRaw.Width && textureRaw.Height);
-		check(textureRaw.Channels == 4 || textureRaw.Channels == 3);
+		check(textureInfo.Pixels && textureInfo.Width && textureInfo.Height && textureInfo.Depth);
+		//check(textureRaw.Channels == 4 || textureRaw.Channels == 3);
+		VkImageFormatProperties imageFormatProperties;
+		vkcheck(vkGetPhysicalDeviceImageFormatProperties(renderContext.GPUDevice, tovk::GetFormat(textureInfo.Format),
+			VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+			0, &imageFormatProperties));
 
 		// Create transit buffer
-		VkDeviceSize size = textureRaw.Width * textureRaw.Height * textureRaw.Channels;
-		EFormat imageFormat = vkutils::GetImageFormatFromChannels(textureRaw.Channels);
+		VkDeviceSize size = utils::GetPixelSizeFromFormat(textureInfo.Format) * (VkDeviceSize)textureInfo.PixelCount;
+		//check(size == textureInfo.PixelCount);
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(renderContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
-		Memory::MemCopy(renderContext.Allocator, stageBuffer, textureRaw.Pixels, size);
+		Memory::MemCopy(renderContext.Allocator, stageBuffer, textureInfo.Pixels, size);
 
 		// Prepare image creation
 		VkExtent3D extent;
-		extent.width = textureRaw.Width;
-		extent.height = textureRaw.Height;
-		extent.depth = 1;
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(imageFormat, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
+		extent.width = textureInfo.Width;
+		extent.height = textureInfo.Height;
+		extent.depth = textureInfo.Depth;
+		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(textureInfo.Format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, extent);
 		m_image = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 
 		utils::CmdSubmitTransfer(renderContext, 
@@ -136,7 +127,7 @@ namespace Mist
 			.pNext = nullptr,
 			.image = m_image.Image,
 			.viewType = VK_IMAGE_VIEW_TYPE_2D,
-			.format = tovk::GetFormat(imageFormat),
+			.format = tovk::GetFormat(textureInfo.Format),
 		};
 		viewInfo.subresourceRange.baseMipLevel = 0;
 		viewInfo.subresourceRange.levelCount = 1;
@@ -176,7 +167,6 @@ namespace Mist
 		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
-
 	void Sampler::Destroy(const RenderContext& renderContext)
 	{
 		check(m_sampler != VK_NULL_HANDLE);
@@ -188,6 +178,10 @@ namespace Mist
 		VkSampler sampler;
 		VkSamplerCreateInfo info = vkinit::SamplerCreateInfo(MinFilter, AddressMode.AddressMode.U);
 		vkcheck(vkCreateSampler(renderContext.Device, &info, nullptr, &sampler));
+		static int x = 0;
+		char buff[32];
+		sprintf_s(buff, "Sampler_%d", x++);
+		SetVkObjectName(renderContext, &sampler, VK_OBJECT_TYPE_SAMPLER, buff);
 		return Sampler(sampler);
 	}
 }

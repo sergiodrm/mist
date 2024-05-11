@@ -19,6 +19,7 @@
 #include "Scene.h"
 #include "Renderers/DebugRenderer.h"
 #include "Renderers/UIRenderer.h"
+#include "SSAO.h"
 
 #include <cstdio>
 #include <SDL.h>
@@ -146,8 +147,10 @@ namespace Mist
 
 		std::vector<IRendererBase*> m_renderers[RENDER_PASS_COUNT];
 		GBuffer m_gbuffer;
+		DeferredLighting m_deferredLighting;
+		SSAO m_ssao;
 
-		Scene* m_scene;
+		Scene* m_scene = nullptr;
 		CameraData m_cameraData;
 
 		FunctionStack m_shutdownStack;

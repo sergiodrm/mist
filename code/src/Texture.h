@@ -19,10 +19,21 @@ namespace Mist
 		void FreeTexture(unsigned char* data);
 	}
 
+	struct TextureCreateInfo
+	{
+		EFormat Format;
+		uint32_t Width = 0;
+		uint32_t Height = 0;
+		uint32_t Depth = 1;
+
+		void* Pixels = nullptr;
+		uint32_t PixelCount = 0;
+	};
+
 	class Texture
 	{
 	public:
-		void Init(const RenderContext& renderContext, const io::TextureRaw& textureRaw);
+		void Init(const RenderContext& renderContext, const TextureCreateInfo& textureInfo);
 		void Destroy(const RenderContext& renderContext);
 
 		VkImageView GetImageView() const { return m_imageView; }
@@ -51,7 +62,7 @@ namespace Mist
 	{
 	public:
 		EFilterType MinFilter = FILTER_LINEAR;
-		EFilterType MaxFilter = FILTER_LINEAR;
+		EFilterType MagFilter = FILTER_LINEAR;
 		union
 		{
 			struct  

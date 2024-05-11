@@ -28,12 +28,12 @@
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
 
-#define Mist_CRASH_ON_VALIDATION_LAYER
+//#define Mist_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
 
-namespace Mist_debug
+namespace MistDebug
 {
 	uint32_t GVulkanLayerValidationErrors = 0;
 
@@ -213,28 +213,33 @@ namespace Mist
 		rendererCreateInfo.ConstantRangeCount = 0;
 
 		LightingRenderer* lightingRenderer = new LightingRenderer();
-		//UIRenderer* uiRenderer = new UIRenderer();
-
 		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
 		m_renderers[RENDER_PASS_LIGHTING].push_back(lightingRenderer);
-		//m_renderers[RENDER_PASS_POST_PROCESS].push_back(uiRenderer);
-		//m_renderers[RENDER_PASS_POST_PROCESS].push_back(new QuadRenderer());
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
-			//rendererCreateInfo.Pass = m_renderTargetArray[0][i].GetRenderPass();
 			for (IRendererBase* renderer : m_renderers[i])
 				renderer->Init(rendererCreateInfo);
 		}
 
 		m_gbuffer.Init(m_renderContext);
+		m_deferredLighting.Init(m_renderContext);
+		m_ssao.Init(m_renderContext);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-			m_gbuffer.InitFrameData(m_renderContext, &m_frameContextArray[i].GlobalBuffer, i);
+		{
+			UniformBuffer* buffer = &m_frameContextArray[i].GlobalBuffer;
+			m_gbuffer.InitFrameData(m_renderContext, buffer, i);
+			m_deferredLighting.InitFrameData(m_renderContext, buffer, i, m_gbuffer);
+			m_ssao.InitFrameData(m_renderContext, buffer, i, m_gbuffer);
+		}
 		m_shutdownStack.Add([this] { m_gbuffer.Destroy(m_renderContext); });
+		m_shutdownStack.Add([this] { m_deferredLighting.Destroy(m_renderContext); });
+		m_shutdownStack.Add([this] { m_ssao.Destroy(m_renderContext); });
 
 		m_screenPipeline.Init(m_renderContext, m_swapchain);
 		m_shutdownStack.Add([this] { m_screenPipeline.Destroy(m_renderContext); });
 
 #if 1
+		const RenderTarget& gbufferRT = m_gbuffer.GetRenderTarget();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			tArray<VkDescriptorImageInfo, MAX_RT_SCREEN> quadImageInfoArray;
@@ -245,16 +250,17 @@ namespace Mist
 			quadImageInfoArray[1].imageView = lightingRenderer->GetDepthBuffer(i, 0);
 			quadImageInfoArray[1].sampler = m_quadSampler.GetSampler();
 			quadImageInfoArray[2].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray[2].imageView = m_gbuffer.GetRenderTarget(GBuffer::RT_POSITION);
+			quadImageInfoArray[2].imageView = gbufferRT.GetRenderTarget(GBuffer::RT_POSITION);
 			quadImageInfoArray[2].sampler = m_quadSampler.GetSampler();
 			quadImageInfoArray[3].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray[3].imageView = m_gbuffer.GetRenderTarget(GBuffer::RT_NORMAL);
+			quadImageInfoArray[3].imageView = gbufferRT.GetRenderTarget(GBuffer::RT_NORMAL);
 			quadImageInfoArray[3].sampler = m_quadSampler.GetSampler();
 			quadImageInfoArray[4].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray[4].imageView = m_gbuffer.GetRenderTarget(GBuffer::RT_ALBEDO);
+			//quadImageInfoArray[4].imageView = gbufferRT.GetRenderTarget(GBuffer::RT_ALBEDO);
+			quadImageInfoArray[4].imageView = m_ssao.GetRenderTarget().GetRenderTarget(0);
 			quadImageInfoArray[4].sampler = m_quadSampler.GetSampler();
 			quadImageInfoArray[5].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray[5].imageView = m_gbuffer.GetComposition();
+			quadImageInfoArray[5].imageView = m_deferredLighting.GetRenderTarget().GetRenderTarget(0);
 			quadImageInfoArray[5].sampler = m_quadSampler.GetSampler();
 
 			UniformBuffer& buffer = m_frameContextArray[i].GlobalBuffer;
@@ -344,8 +350,8 @@ namespace Mist
 		SDL_DestroyWindow(m_window.WindowInstance);
 
 		Log(LogLevel::Ok, "Render engine terminated.\n");
-		Logf(Mist_debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
-			"Total vulkan layer validation errors: %u.\n", Mist_debug::GVulkanLayerValidationErrors);
+		Logf(MistDebug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
+			"Total vulkan layer validation errors: %u.\n", MistDebug::GVulkanLayerValidationErrors);
 		TerminateLog();
 	}
 
@@ -449,6 +455,8 @@ namespace Mist
 
 		{
 			m_gbuffer.DrawPass(m_renderContext, frameContext);
+			m_ssao.DrawPass(m_renderContext, frameContext);
+			m_deferredLighting.DrawPass(m_renderContext, frameContext);
 
 			uint32_t frameIndex = GetFrameIndex();
 			render::DrawQuadTexture(m_screenPipeline.QuadSets[frameIndex]);
@@ -601,7 +609,7 @@ namespace Mist
 			.request_validation_layers(true)
 			.require_api_version(1, 1, 0)
 			//.use_default_debug_messenger()
-			.set_debug_callback(&Mist_debug::DebugVulkanCallback)
+			.set_debug_callback(&MistDebug::DebugVulkanCallback)
 			.build();
 		check(instanceReturn.has_value());
 		//check(instanceReturn.full_error().vk_result == VK_SUCCESS);
