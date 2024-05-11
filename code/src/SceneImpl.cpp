@@ -443,6 +443,8 @@ namespace Mist
 
 	void Scene::Destroy()
 	{
+		if (m_engine->GetScene() == this)
+			m_engine->SetScene(nullptr);
 		m_localTransforms.clear();
 		m_globalTransforms.clear();
 		m_hierarchy.clear();
@@ -768,8 +770,15 @@ namespace Mist
 		}
 
 		// Create gpu buffer with texture specifications
+		TextureCreateInfo texInfo;
+		texInfo.Width = texData.Width;
+		texInfo.Height = texData.Height;
+		texInfo.Depth = 1;
+		texInfo.Format = utils::GetImageFormatFromChannels(texData.Channels);
+		texInfo.Pixels = texData.Pixels;
+		texInfo.PixelCount = texData.Width * texData.Height * /*texData.Channels*/1; // depth
 		Texture texture;
-		texture.Init(m_engine->GetContext(), texData);
+		texture.Init(m_engine->GetContext(), texInfo);
 		RenderHandle h = GenerateRenderHandle();
 		m_renderData.Textures[h] = texture;
 
