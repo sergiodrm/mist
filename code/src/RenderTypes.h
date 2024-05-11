@@ -426,6 +426,7 @@ namespace Mist
 #ifdef MIST_VULKAN
 
 	const char* VkResultToStr(VkResult res);
+	const char* FormatToStr(EFormat format);
 
 	namespace tovk
 	{
@@ -451,6 +452,8 @@ namespace Mist
 	namespace utils
 	{
 		void CmdSubmitTransfer(const RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback);
+		EFormat GetImageFormatFromChannels(uint32_t channels);
+		size_t GetPixelSizeFromFormat(EFormat format);
 	}
 #endif // MIST_VULKAN
 
