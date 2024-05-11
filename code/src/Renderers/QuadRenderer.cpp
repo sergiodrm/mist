@@ -30,7 +30,7 @@ namespace Mist
 		ShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = globals::PostProcessVertexShader;
 		shaderDesc.FragmentShaderFile = globals::PostProcessFragmentShader;
-		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 		shaderDesc.RenderTarget = &m_frameData[0].RT;
 		m_shader = ShaderProgram::Create(info.Context, shaderDesc);
 
