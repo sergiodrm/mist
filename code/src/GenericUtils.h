@@ -18,16 +18,35 @@ namespace Mist
 		{
 			GetDirectoryFromFilepath(filepath, N, dir, size);
 		}
+
+		class File
+		{
+		public:
+			File();
+			~File();
+
+			bool Open(const char* filepath, const char* mode, bool asAssetPath = true);
+			void Close();
+
+			uint32_t Read(void* out, uint32_t bufferSize, uint32_t elementSize, uint32_t elementCount);
+			uint32_t Write(const void* data, uint32_t bufferSize);
+			uint32_t GetContentSize() const;
+		private:
+			void* m_file;
+		};
 	}
 
 	// Math
 	namespace math
 	{
+		inline float Lerp(float a, float b, float f) { return a + f * (b - a); }
 		glm::vec3 ToRot(const glm::vec3& direction);
 		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
 		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
 
 		glm::vec3 GetDir(const glm::mat4& transform);
 		glm::vec3 GetPos(const glm::mat4& transform);
+
+
 	}
 }

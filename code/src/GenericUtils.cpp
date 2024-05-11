@@ -99,6 +99,59 @@ namespace Mist
 		}
 	}
 
+	Mist::io::File::File()
+		: m_file(nullptr)
+	{	}
+
+	Mist::io::File::~File()
+	{
+		check(m_file == nullptr);
+	}
+
+	bool Mist::io::File::Open(const char* filepath, const char* mode, bool asAssetPath)
+	{
+		check(m_file == nullptr);
+		FILE* f;
+		errno_t err = fopen_s(&f, filepath, mode);
+		m_file = f;
+		return err == 0 && m_file;
+	}
+
+	void Mist::io::File::Close()
+	{
+		check(m_file);
+		FILE* f = (FILE*)m_file;
+		fclose(f);
+		m_file = nullptr;
+	}
+
+	uint32_t Mist::io::File::Read(void* out, uint32_t bufferSize, uint32_t elementSize, uint32_t elementCount)
+	{
+		check(m_file);
+		FILE* f = (FILE*)m_file;
+		return (uint32_t)fread_s(out, bufferSize, elementSize, elementCount, f);
+	}
+
+	uint32_t Mist::io::File::Write(const void* data, uint32_t bufferSize)
+	{
+		check(m_file);
+		FILE* f = (FILE*)m_file;
+		return (uint32_t)fwrite(data, 1, bufferSize, f);
+	}
+
+	uint32_t Mist::io::File::GetContentSize() const
+	{
+		check(m_file);
+		FILE* f = (FILE*)m_file;
+		size_t c = ftell(f);
+		fseek(f, 0L, SEEK_END);
+		uint32_t s = (uint32_t)ftell(f);
+		fseek(f, 0L, (int)c);
+		check(ftell(f) == c);
+		return s;
+	}
+
+
 	glm::vec3 math::ToRot(const glm::vec3& direction)
 	{
 		return glm::vec3(asin(-direction.y), atan2(direction.x, direction.z), 0.f);
