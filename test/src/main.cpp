@@ -10,6 +10,7 @@
 
 #include <imgui/imgui.h>
 #include "Mist/Camera.h"
+#include "Mist/Logger.h"
 #include "glm/gtx/transform.hpp"
 
 class Timer
@@ -56,7 +57,7 @@ class Test
 {
 public:
 	virtual ~Test() {};
-	void Init()
+	bool Init()
 	{
 		Mist::InitializationSpecs spec
 		{
@@ -68,7 +69,7 @@ public:
 		m_engine->AddImGuiCallback([this]() { m_camera.ImGuiDraw(); });
 		m_engine->SetAppEventCallback([this](void* d) { m_camera.ProcessEvent(d); ProcessEvent(d); });
 
-		LoadTest();
+		return LoadTest();
 	}
 
 	void RunLoop()
@@ -92,7 +93,7 @@ public:
 	}
 
 protected:
-	virtual void LoadTest() {}
+	virtual bool LoadTest() { return true; }
 	virtual void ProcessLogic(float timeDiff) {}
 	virtual void UnloadTest() {}
 	virtual void ProcessEvent(void* eventData) {}
@@ -106,11 +107,14 @@ protected:
 class SponzaTest : public Test
 {
 protected:
-	virtual void LoadTest()
+	virtual bool LoadTest()
 	{
-		Mist::IScene* scene = Mist::IScene::LoadScene(m_engine, "assets/models/sponza/Sponza.gltf");
-		scene->LoadModel("assets/models/vulkanscene_shadow.gltf");
-		m_engine->SetScene(scene);
+		const char* scenePath = "../assets/models/sponza/Sponza.gltf";
+		Mist::IScene* scene = Mist::IScene::LoadScene(m_engine, scenePath);
+		//scene->LoadModel("assets/models/vulkanscene_shadow.gltf");
+		if (!scene)
+			Mist::Logf(Mist::LogLevel::Error, "Error loading test scene: %s\n", scenePath);
+		return scene;
 	}
 };
 
@@ -124,8 +128,10 @@ Test* CreateTest(int32_t argc, char** argv)
 int main(int32_t argc, char** argv)
 {
 	Test* test = CreateTest(argc, argv);
-	test->Init();
-	test->RunLoop();
+	if (test->Init())
+	{
+		test->RunLoop();
+	}
 	test->Destroy();
 	delete test;
 	return 0;
