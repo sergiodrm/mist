@@ -228,8 +228,7 @@ namespace Mist
 			PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
 			Logf(LogLevel::Warn, "Compiled binary not found for: %s\n", filepath);
 			bin = shader_compiler::Compile(filepath, shaderStage);
-			if (!bin.IsCompilationSucceed())
-				return false;
+			check(bin.IsCompilationSucceed());
 			GenerateCompiledFile(filepath, bin.binary, bin.binaryCount);
 		}
 #else
