@@ -41,10 +41,13 @@ float linearDepth(float depth, float near, float far)
 
 void main()
 {
-	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).xyz;
-    //vec3 fragPos = GetPosVSFromDepth(inTexCoords, inverse(u_ssao.Projection));
+	//vec3 fragPos = texture(u_GBufferPosition, inTexCoords).xyz;
+    vec3 fragPos = GetPosVSFromDepth(inTexCoords, inverse(u_ssao.Projection));
     vec3 normal = normalize(texture(u_GBufferNormal, inTexCoords).xyz);
-    vec3 randomVec = texture(u_SSAONoise, inTexCoords * u_ssao.NoiseScale.xy).rgb;
+    ivec2 texDim = textureSize(u_GBufferNormal, 0); 
+	ivec2 noiseDim = textureSize(u_SSAONoise, 0);
+    vec2 noiseScale = vec2(texDim.x/noiseDim.x, texDim.y/noiseDim.y);
+    vec3 randomVec = texture(u_SSAONoise, inTexCoords * noiseScale).rgb;
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
     //tangent = vec3(normal.x, -normal.z, normal.y);
     vec3 bitangent = cross(normal, tangent);
@@ -63,7 +66,8 @@ void main()
         offset = u_ssao.Projection * offset; // view to clip space
         offset.xyz /= offset.w;
         offset.xyz = offset.xyz * 0.5f + 0.5f;
-        float sampleDepth = texture(u_GBufferPosition, offset.xy).b;
+        //float sampleDepth = texture(u_GBufferPosition, offset.xy).b;
+        float sampleDepth = GetPosVSFromDepth(offset.xy, inverse(u_ssao.Projection)).z;
         float rangeCheck = smoothstep(0.f, 1.f, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.f : 0.f) * rangeCheck;
     }
