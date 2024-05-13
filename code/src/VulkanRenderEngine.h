@@ -113,8 +113,9 @@ namespace Mist
 		void BeginFrame();
 		void Draw();
 		void ImGuiDraw();
-		void WaitFence(VkFence fence, uint64_t timeoutSeconds = 1e9);
+		void WaitFences(VkFence* fence, uint32_t fenceCount, uint64_t timeoutSeconds = 1e9, bool waitAll = true);
 		RenderFrameContext& GetFrameContext();
+
 
 		// Initializations
 		bool InitVulkan();
@@ -125,6 +126,8 @@ namespace Mist
 		bool InitPipeline();
 
 		void DrawPass(VkCommandBuffer cmd, uint32_t frameIndex, ERenderPassType passType);
+
+		void ForceSync();
 
 	private:
 

@@ -27,8 +27,9 @@
 #include "GenericUtils.h"
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
+#include "TimeUtils.h"
 
-//#define Mist_CRASH_ON_VALIDATION_LAYER
+//#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -55,7 +56,7 @@ namespace MistDebug
 #if defined(_DEBUG)
 			PrintCallstack();
 #endif
-#ifdef Mist_CRASH_ON_VALIDATION_LAYER
+#ifdef MIST_CRASH_ON_VALIDATION_LAYER
 			check(false && "Validation layer error");
 #endif
 		}
@@ -326,8 +327,7 @@ namespace Mist
 	{
 		Log(LogLevel::Info, "Shutdown render engine.\n");
 
-		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-			WaitFence(m_frameContextArray[i].RenderFence);
+		ForceSync();
 
 		if (m_scene)
 			IScene::DestroyScene(m_scene);
@@ -415,6 +415,7 @@ namespace Mist
 		}
 
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
+		m_ssao.PrepareFrame(m_renderContext, frameContext);
 
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
@@ -425,7 +426,11 @@ namespace Mist
 		CPU_PROFILE_SCOPE(Draw);
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
-		WaitFence(frameContext.RenderFence);
+		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_FENCE_READY))
+		{
+			WaitFences(&frameContext.RenderFence, 1);
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_FENCE_READY;
+		}
 
 		{
 			CPU_PROFILE_SCOPE(UpdateBuffers);
@@ -451,6 +456,7 @@ namespace Mist
 			// Begin command buffer
 			vkcheck(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
 			BeginGPUEvent(m_renderContext, cmd, "Begin CMD", 0xff0000ff);
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE;
 		}
 
 		{
@@ -484,6 +490,7 @@ namespace Mist
 		// Terminate command buffer
 		vkcheck(vkEndCommandBuffer(cmd));
 		EndGPUEvent(m_renderContext, cmd);
+		frameContext.StatusFlags &= ~(FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE | FRAME_CONTEXT_FLAG_FENCE_READY);
 
 
 		{
@@ -543,6 +550,7 @@ namespace Mist
 			sprintf_s(label, "Reload_%d", i);
 			if (ImGui::Button(label))
 			{
+				ForceSync();
 				shaderArray[i]->Destroy(m_renderContext);
 				shaderArray[i]->Reload(m_renderContext);
 			}
@@ -557,10 +565,10 @@ namespace Mist
 		ImGui::End();
 	}
 
-	void VulkanRenderEngine::WaitFence(VkFence fence, uint64_t timeoutSeconds)
+	void VulkanRenderEngine::WaitFences(VkFence* fences, uint32_t fenceCount, uint64_t timeoutSeconds, bool waitAll)
 	{
-		vkcheck(vkWaitForFences(m_renderContext.Device, 1, &fence, false, timeoutSeconds));
-		vkcheck(vkResetFences(m_renderContext.Device, 1, &fence));
+		vkcheck(vkWaitForFences(m_renderContext.Device, fenceCount, fences, waitAll, timeoutSeconds));
+		vkcheck(vkResetFences(m_renderContext.Device, fenceCount, fences));
 	}
 
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
@@ -920,6 +928,25 @@ namespace Mist
 		for (IRendererBase* it : renderers)
 			it->RecordCmd(m_renderContext, GetFrameContext(), 0);
 		//rt.EndPass(cmd);
+	}
+
+	void VulkanRenderEngine::ForceSync()
+	{
+		PROFILE_SCOPE_LOG(ForceSync, "Force sync operation");
+		VkFence fences[globals::MaxOverlappedFrames];
+		uint32_t count = 0;
+		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			check(!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
+			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_FENCE_READY))
+			{
+				fences[i] = m_frameContextArray[i].RenderFence;
+				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_FENCE_READY;
+				++count;
+			}
+		}
+		if (count > 0)
+			WaitFences(fences, count);
 	}
 
 	void RenderPassAttachment::Destroy(const RenderContext& renderContext)

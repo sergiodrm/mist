@@ -9,6 +9,9 @@
 
 struct SDL_Window;
 
+#define FRAME_CONTEXT_FLAG_FENCE_READY 0x1
+#define FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE 0x2
+
 namespace Mist
 {
 	class DescriptorLayoutCache;
@@ -48,6 +51,7 @@ namespace Mist
 
 	struct RenderFrameContext
 	{
+		uint8_t StatusFlags = 0;
 		// Sync vars
 		VkFence RenderFence{};
 		VkSemaphore RenderSemaphore{};
