@@ -18,22 +18,23 @@ namespace Mist
 		{
 			float scl = (float)i / (float)SSAO_KERNEL_SAMPLES;
 			scl = math::Lerp(0.1f, 1.f, scl * scl);
-			m_uboData.KernelSamples[i] = glm::normalize(glm::vec3{ randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, randomFloat(generator) });
+			glm::vec3 kernel = glm::normalize(glm::vec3{ randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, randomFloat(generator) });
+			m_uboData.KernelSamples[i] = glm::vec4(kernel, 1.f);
 			m_uboData.KernelSamples[i] *= randomFloat(generator);
 			m_uboData.KernelSamples[i] *= scl;
 		}
-		m_uboData.NoiseScale = { (float)renderContext.Window->Width * 0.25f, (float)renderContext.Window->Height * 0.25f };
+		m_uboData.NoiseScale = { (float)renderContext.Window->Width * 0.25f, (float)renderContext.Window->Height * 0.25f, 0.f};
 		m_uboData.Radius = 0.25f;
 
-		glm::vec3 ssaoNoise[SSAO_NOISE_SAMPLES];
+		glm::vec4 ssaoNoise[SSAO_NOISE_SAMPLES];
 		for (uint32_t i = 0; i < SSAO_NOISE_SAMPLES; ++i)
-			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f };
+			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
 		TextureCreateInfo texInfo;
 		texInfo.Width = 4;
 		texInfo.Height = 4;
 		texInfo.Depth = 1;
-		texInfo.Format = FORMAT_R16G16B16A16_SFLOAT;
-		texInfo.PixelCount = 4 * 4 * 3;
+		texInfo.Format = FORMAT_R32G32B32A32_SFLOAT;
+		texInfo.PixelCount = 4 * 4;
 		texInfo.Pixels = &ssaoNoise[0];
 		m_noiseTexture.Init(renderContext, texInfo);
 
@@ -91,7 +92,7 @@ namespace Mist
 		buffer->AllocUniform(context, "SSAOUBO", sizeof(SSAOUBO));
 		VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("SSAOUBO");
 
-		VkDescriptorImageInfo imageInfo[4];
+		VkDescriptorImageInfo imageInfo[5];
 		imageInfo[0].sampler = m_noiseSampler.GetSampler();
 		imageInfo[0].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().ColorAttachmentDescriptions[GBuffer::EGBufferTarget::RT_POSITION].Layout);
 		imageInfo[0].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_POSITION);
@@ -102,17 +103,17 @@ namespace Mist
 		imageInfo[2].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().ColorAttachmentDescriptions[GBuffer::EGBufferTarget::RT_ALBEDO].Layout);
 		imageInfo[2].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_ALBEDO);
 		imageInfo[3].sampler = m_noiseSampler.GetSampler();
-		imageInfo[3].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		imageInfo[3].imageView = m_noiseTexture.GetImageView();
+		imageInfo[3].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().DepthAttachmentDescription.Layout);
+		imageInfo[3].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_DEPTH);
+		imageInfo[4].sampler = m_noiseSampler.GetSampler();
+		imageInfo[4].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		imageInfo[4].imageView = m_noiseTexture.GetImageView();
 
-		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-			.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(1, &imageInfo[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(2, &imageInfo[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(3, &imageInfo[2], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(4, &imageInfo[3], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, m_frameData[frameIndex].SSAOSet);
-
+		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
+		builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+		for (uint32_t i = 0; i < sizeof(imageInfo) / sizeof(VkDescriptorImageInfo); ++i)
+			builder.BindImage(i + 1, &imageInfo[i], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+		builder.Build(context, m_frameData[frameIndex].SSAOSet);
 	}
 
 	void SSAO::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& frameContext)

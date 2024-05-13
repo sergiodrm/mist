@@ -28,12 +28,13 @@ void main()
 	// Vertex position in world space
 	outWorldPos = vec3(u_model.Model * inPos);
 	gl_Position = u_camera.ViewProjection * vec4(outWorldPos, 1.f);
+	outWorldPos = vec3(u_camera.View * vec4(outWorldPos, 1.f));
 	
 	outUV = inUV;
 
 	
 	// Normal in world space
-	mat3 normalTransform = transpose(inverse(mat3(u_model.Model)));
+	mat3 normalTransform = transpose(inverse(mat3(u_camera.View * u_model.Model)));
 	outNormal = normalTransform * normalize(inNormal);	
 	outTangent = normalTransform * normalize(inTangent);
 	

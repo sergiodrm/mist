@@ -19,9 +19,9 @@ namespace Mist
 	{
 		struct SSAOUBO
 		{
-			glm::vec2 NoiseScale;
+			glm::vec3 NoiseScale;
 			float Radius;
-			glm::vec3 KernelSamples[SSAO_KERNEL_SAMPLES];
+			glm::vec4 KernelSamples[SSAO_KERNEL_SAMPLES];
 			glm::mat4 Projection;
 		};
 
@@ -41,7 +41,6 @@ namespace Mist
 	private:
 		ShaderProgram* m_ssaoShader;
 		RenderTarget m_rt;
-		glm::vec3 m_ssaoKernel[SSAO_KERNEL_SAMPLES];
 		Texture m_noiseTexture;
 		Sampler m_noiseSampler;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
