@@ -365,6 +365,12 @@ namespace Mist
 				shadowMapDescInfo[j].sampler = m_depthMapSampler.GetSampler();
 			}
 
+			const RenderTarget& rt = *(const RenderTarget*)info.AdditionalData;
+			VkDescriptorImageInfo ssaoImageInfo;
+			ssaoImageInfo.imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[0].Layout);
+			ssaoImageInfo.imageView = rt.GetRenderTarget(0);
+			ssaoImageInfo.sampler = m_depthMapSampler.GetSampler();
+
 			// Materials have its own descriptor set (right now).
 
 			DescriptorBuilder::Create(*info.Context.LayoutCache, *info.Context.DescAllocator)
@@ -372,6 +378,7 @@ namespace Mist
 				.BindBuffer(1, &lightMatrixDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.BindBuffer(2, &enviroDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.BindImage(3, shadowMapDescInfo, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindImage(4, &ssaoImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(info.Context, m_frameData[i].PerFrameSet);
 			DescriptorBuilder::Create(*info.Context.LayoutCache, *info.Context.DescAllocator)
 				.BindBuffer(0, &modelsDescInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
@@ -396,6 +403,7 @@ namespace Mist
 			.AddBinding(1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
 			.AddBinding(2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 			.AddBinding(3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, globals::MaxShadowMapAttachments)
+			.AddBinding(4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 			.Build(info.Context, &shaderDesc.SetLayoutArray[0]);
 		// Per draw descriptor (model, material...)
 		DescriptorSetLayoutBuilder::Create(*info.Context.LayoutCache)

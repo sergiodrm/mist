@@ -77,6 +77,7 @@ namespace Mist
 		ShaderProgram* Shader;
 		tDynArray<RenderTarget> RenderTargetArray;
 		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> QuadSets;
+		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> PresentTexSets;
 		int32_t QuadIndex = -1;
 
 		void Init(const RenderContext& context, const Swapchain& swapchain);

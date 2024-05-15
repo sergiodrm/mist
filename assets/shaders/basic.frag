@@ -34,6 +34,7 @@ layout (std140, set = 0, binding = 2) uniform Environment
 
 const int MaxShadowMap = 3;
 layout (set = 0, binding = 3) uniform sampler2D u_ShadowMap[MaxShadowMap];
+layout (set = 0, binding = 4) uniform sampler2D u_SSAOTex;
 
 // Per draw data
 layout(std140, set = 1, binding = 1) uniform Material 
@@ -153,46 +154,49 @@ void main()
     if (outColor.a <= 0.1f)
         discard;
     vec3 lightColor = vec3(1.f, 1.f, 1.f);
-    //if (PushConstants.EnableLighting != 0)
+    
+    // Shadows
+
+    // Point lights (no shadows)
+    int numPointLights = int(u_Env.ViewPos.w);
+    vec3 pointLightsColor = vec3(0.f);
+    for (int i = 0; i < numPointLights; ++i)
+        pointLightsColor += ProcessPointLight(u_Env.Lights[i]);
+
+    // Spot lights
+    int numSpotLights = int(u_Env.AmbientColor.w);
+    vec3 spotLightsColor = vec3(0.f);
+    float spotLightShadow = 0.f;
+    for (int i = 0; i < numSpotLights; ++i)
     {
-        // Shadows
-
-        // Point lights (no shadows)
-        int numPointLights = int(u_Env.ViewPos.w);
-        vec3 pointLightsColor = vec3(0.f);
-        for (int i = 0; i < numPointLights; ++i)
-            pointLightsColor += ProcessPointLight(u_Env.Lights[i]);
-
-        // Spot lights
-        int numSpotLights = int(u_Env.AmbientColor.w);
-        vec3 spotLightsColor = vec3(0.f);
-        float spotLightShadow = 0.f;
-        for (int i = 0; i < numSpotLights; ++i)
+        vec3 spotLightColor = ProcessSpotLight(u_Env.SpotLights[i]);
+        if (u_Env.SpotLights[i].Color.w >= 0.f)
         {
-            vec3 spotLightColor = ProcessSpotLight(u_Env.SpotLights[i]);
-            if (u_Env.SpotLights[i].Color.w >= 0.f)
-            {
-                int shadowIndex = int(u_Env.SpotLights[i].Color.w);
-                float shadow = CalculateShadow(shadowIndex);
-                spotLightColor *= (1.f-shadow);
-            }
-            spotLightsColor += spotLightColor;
-        }
-        spotLightsColor *= (1.f-spotLightShadow);
-        // Directional light
-        vec3 directionalLightColor = ProcessDirectionalLight(u_Env.DirectionalLight);
-        if (u_Env.DirectionalLight.Pos.w >= 0.f)
-        {
-            int shadowIndex = int(u_Env.DirectionalLight.Pos.w);
+            int shadowIndex = int(u_Env.SpotLights[i].Color.w);
             float shadow = CalculateShadow(shadowIndex);
-            directionalLightColor *= (1.f - shadow);
+            spotLightColor *= (1.f-shadow);
         }
-
-        lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
-        // Mix
-        lightColor = vec3(u_Env.AmbientColor) + lightColor;
-        //lightColor = vec3(shadow);
-        //lightColor = vec3(shadowCoord);
+        spotLightsColor += spotLightColor;
     }
+    spotLightsColor *= (1.f-spotLightShadow);
+    // Directional light
+    vec3 directionalLightColor = ProcessDirectionalLight(u_Env.DirectionalLight);
+    if (u_Env.DirectionalLight.Pos.w >= 0.f)
+    {
+        int shadowIndex = int(u_Env.DirectionalLight.Pos.w);
+        float shadow = CalculateShadow(shadowIndex);
+        directionalLightColor *= (1.f - shadow);
+    }
+
+    lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
+    // Mix
+    vec2 texSize = textureSize(u_SSAOTex, 0);
+    vec2 uv = gl_FragCoord.xy / texSize;
+    vec3 ambientColor = vec3(u_Env.AmbientColor) * texture(u_SSAOTex, uv).r;
+    //vec3 ambientColor = vec3(u_Env.AmbientColor);
+    lightColor = ambientColor + lightColor;
+    //lightColor = vec3(shadow);
+    //lightColor = vec3(shadowCoord);
     outColor = vec4(lightColor, 1.f) * outColor;
+    //outColor = vec4(texture(u_SSAOTex, uv).r, 0, 0, 1);
 }

@@ -74,6 +74,11 @@ namespace Mist
 		struct CameraData* CameraData;
 		// Frame
 		uint32_t FrameIndex;
+
+		// Final tex to present
+		// TODO: remove mutable and const
+		mutable VkDescriptorSet PresentTex = VK_NULL_HANDLE;
+		mutable uint32_t PostProcessFlags = 0;
 	};
 
 

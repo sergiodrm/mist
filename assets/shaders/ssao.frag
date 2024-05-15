@@ -10,11 +10,13 @@ int KernelSize = KERNEL_SIZE;
 // GBuffer textures
 layout(set = 0, binding = 0) uniform SSAOUniform
 {
-    vec3 NoiseScale;
-    float Radius;
-    vec4 Samples[KERNEL_SIZE];
+    vec4 Params;
     mat4 Projection;
+    vec4 Samples[KERNEL_SIZE];
 } u_ssao;
+
+#define ssao_radius u_ssao.Params.x
+#define ssao_bias   u_ssao.Params.y
 
 layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
 layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
@@ -49,14 +51,12 @@ void main()
     vec2 noiseScale = vec2(texDim.x/noiseDim.x, texDim.y/noiseDim.y);
     vec3 randomVec = texture(u_SSAONoise, inTexCoords * noiseScale).rgb;
     vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
-    //tangent = vec3(normal.x, -normal.z, normal.y);
     vec3 bitangent = cross(normal, tangent);
     mat3 TBN = mat3(tangent, bitangent, normal);
 
     float occlusion = 0.f;
-    float bias = 0.025;
-    //float radius = u_ssao.Radius;
-    float radius = 0.5f;
+    float bias = ssao_bias;
+    float radius = ssao_radius;
     for (int i = 0; i < KernelSize; ++i)
     {
         vec3 samplePos = TBN * u_ssao.Samples[i].xyz;

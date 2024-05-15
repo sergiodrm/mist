@@ -1,5 +1,6 @@
 #include "SSAO.h"
 #include <random>
+#include <imgui/imgui.h>
 #include <glm/geometric.hpp>
 #include "GenericUtils.h"
 #include "RenderContext.h"
@@ -23,8 +24,8 @@ namespace Mist
 			m_uboData.KernelSamples[i] *= randomFloat(generator);
 			m_uboData.KernelSamples[i] *= scl;
 		}
-		m_uboData.NoiseScale = { (float)renderContext.Window->Width * 0.25f, (float)renderContext.Window->Height * 0.25f, 0.f};
-		m_uboData.Radius = 0.25f;
+		m_uboData.Radius = 0.5f;
+		m_uboData.Bias = 0.025f;
 
 		glm::vec4 ssaoNoise[SSAO_NOISE_SAMPLES];
 		for (uint32_t i = 0; i < SSAO_NOISE_SAMPLES; ++i)
@@ -76,6 +77,20 @@ namespace Mist
 		bufferInfo.Data = indices;
 		bufferInfo.Size = sizeof(indices);
 		m_screenQuadIB.Init(renderContext, bufferInfo);
+
+		// Blur RT
+		RenderTargetDescription blurRtDesc;
+		blurRtDesc.AddColorAttachment(FORMAT_R8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, value);
+		blurRtDesc.RenderArea = rtDesc.RenderArea;
+		m_blurRT.Create(renderContext, blurRtDesc);
+
+		// Blur shader
+		ShaderProgramDescription blurShaderDesc;
+		blurShaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
+		blurShaderDesc.FragmentShaderFile = SHADER_FILEPATH("ssaoblur.frag");
+		blurShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+		blurShaderDesc.RenderTarget = &m_blurRT;
+		m_blurShader = ShaderProgram::Create(renderContext, blurShaderDesc);
 	}
 
 	void SSAO::Destroy(const RenderContext& renderContext)
@@ -85,6 +100,7 @@ namespace Mist
 		m_noiseTexture.Destroy(renderContext);
 		m_noiseSampler.Destroy(renderContext);
 		m_rt.Destroy(renderContext);
+		m_blurRT.Destroy(renderContext);
 	}
 
 	void SSAO::InitFrameData(const RenderContext& context, UniformBuffer* buffer, uint32_t frameIndex, const GBuffer& gbuffer)
@@ -114,12 +130,35 @@ namespace Mist
 		for (uint32_t i = 0; i < sizeof(imageInfo) / sizeof(VkDescriptorImageInfo); ++i)
 			builder.BindImage(i + 1, &imageInfo[i], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 		builder.Build(context, m_frameData[frameIndex].SSAOSet);
+
+		VkDescriptorImageInfo ssaoImageInfo;
+		ssaoImageInfo.sampler = m_noiseSampler.GetSampler();
+		ssaoImageInfo.imageLayout = tovk::GetImageLayout(m_rt.GetDescription().ColorAttachmentDescriptions[0].Layout);
+		ssaoImageInfo.imageView = m_rt.GetRenderTarget(0);
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindImage(0, &ssaoImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, m_frameData[frameIndex].SSAOBlurSet);
+
+		VkDescriptorImageInfo ssaoBlurImageInfo;
+		ssaoBlurImageInfo.sampler = m_noiseSampler.GetSampler();
+		ssaoBlurImageInfo.imageLayout = tovk::GetImageLayout(m_blurRT.GetDescription().ColorAttachmentDescriptions[0].Layout);
+		ssaoBlurImageInfo.imageView = m_blurRT.GetRenderTarget(0);
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindImage(0, &ssaoBlurImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, m_frameData[frameIndex].SSAOBlurTex);
+		m_frameData[frameIndex].SSAOTex = m_frameData[frameIndex].SSAOBlurSet;
 	}
 
 	void SSAO::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
 		m_uboData.Projection = frameContext.CameraData->Projection;
 		frameContext.GlobalBuffer.SetUniform(renderContext, "SSAOUBO", &m_uboData, sizeof(SSAOUBO));
+		switch (m_debugTex)
+		{
+		case 0: break;
+		case 1: frameContext.PresentTex = m_frameData[frameContext.FrameIndex].SSAOTex; break;
+		case 2: frameContext.PresentTex = m_frameData[frameContext.FrameIndex].SSAOBlurTex; break;
+		}
 	}
 
 	void SSAO::DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -134,6 +173,34 @@ namespace Mist
 		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 		m_rt.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
+
+		BeginGPUEvent(renderContext, cmd, "SSAOBlur");
+		m_blurRT.BeginPass(cmd);
+		m_blurShader->UseProgram(cmd);
+		m_blurShader->BindDescriptorSets(cmd, &m_frameData[frameContext.FrameIndex].SSAOBlurSet, 1);
+		m_screenQuadIB.Bind(cmd);
+		m_screenQuadVB.Bind(cmd);
+		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+		m_blurRT.EndPass(cmd);
+		EndGPUEvent(renderContext, cmd);
+	}
+
+	void SSAO::ImGuiDraw()
+	{
+		ImGui::Begin("SSAO");
+		ImGui::DragFloat("Radius", &m_uboData.Radius, 0.02f, 0.f, 5.f);
+		ImGui::DragFloat("Bias", &m_uboData.Bias, 0.001f, 0.f, 0.05f);
+		static const char* debugModes[] = { "None", "SSAO", "SSAO Blur" };
+		if (ImGui::BeginCombo("Debug texture", debugModes[m_debugTex]))
+		{
+			for (uint32_t i = 0; i < 3; ++i)
+			{
+				if (ImGui::Selectable(debugModes[i], i == m_debugTex))
+					m_debugTex = i;
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::End();
 	}
 
 }

@@ -21,6 +21,8 @@ namespace Mist
 
 		VkPushConstantRange* ConstantRange = nullptr;
 		uint32_t ConstantRangeCount = 0;
+
+		const void* AdditionalData = nullptr;
 	};
 
 	class IRendererBase

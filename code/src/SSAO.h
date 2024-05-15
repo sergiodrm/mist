@@ -19,15 +19,20 @@ namespace Mist
 	{
 		struct SSAOUBO
 		{
-			glm::vec3 NoiseScale;
 			float Radius;
-			glm::vec4 KernelSamples[SSAO_KERNEL_SAMPLES];
+			float Bias;
+			float __padding[2];
 			glm::mat4 Projection;
+			glm::vec4 KernelSamples[SSAO_KERNEL_SAMPLES];
 		};
 
 		struct FrameData
 		{
 			VkDescriptorSet SSAOSet;
+			VkDescriptorSet SSAOBlurSet;
+
+			VkDescriptorSet SSAOTex;
+			VkDescriptorSet SSAOBlurTex;
 		};
 	public:
 	
@@ -36,7 +41,8 @@ namespace Mist
 		void InitFrameData(const RenderContext& context, UniformBuffer* buffer, uint32_t frameIndex, const GBuffer& gbuffer);
 		void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& frameContext);
 		void DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext);
-		const RenderTarget& GetRenderTarget() const { return m_rt; }
+		const RenderTarget& GetRenderTarget() const { return m_blurRT; }
+		void ImGuiDraw();
 
 	private:
 		ShaderProgram* m_ssaoShader;
@@ -47,6 +53,11 @@ namespace Mist
 		SSAOUBO m_uboData;
 		VertexBuffer m_screenQuadVB;
 		IndexBuffer m_screenQuadIB;
+
+		ShaderProgram* m_blurShader;
+		RenderTarget m_blurRT;
+
+		uint32_t m_debugTex = 0;
 	};
 
 }
