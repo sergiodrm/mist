@@ -36,11 +36,6 @@ const int MaxShadowMap = 3;
 layout (set = 0, binding = 3) uniform sampler2D u_ShadowMap[MaxShadowMap];
 layout (set = 0, binding = 4) uniform sampler2D u_SSAOTex;
 
-// Per draw data
-layout(std140, set = 1, binding = 1) uniform Material 
-{
-    float Shininess;
-} u_Material;
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[3];
 
 float LinearizeDepth(float z, float n, float f)

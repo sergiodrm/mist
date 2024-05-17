@@ -246,7 +246,6 @@ namespace Mist
 		data.CompiledModule = CompileShaderModule(m_renderContext, bin.binary, bin.binaryCount, data.ShaderStage);
 		m_modules.push_back(data);
 		ProcessReflection(shaderStage, bin.binary, bin.binaryCount);
-
 #ifdef SHADER_RUNTIME_COMPILATION
 		// release resources  
 		shader_compiler::FreeBinary(bin);
@@ -273,16 +272,41 @@ namespace Mist
 	bool ShaderCompiler::GenerateReflectionResources(DescriptorLayoutCache& layoutCache)
 	{
 		check(m_cachedLayoutArray.empty() && m_cachedPushConstantArray.empty() && "Compiler already has cached data. Compile all shaders before generate resources.");
-		m_cachedLayoutArray.resize(m_reflectionProperties.DescriptorSetInfoArray.size());
-		for (uint32_t i = 0; i < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+		uint32_t size = (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size();
+		m_cachedLayoutArray.resize(size);
+		for (uint32_t i = 0; i < size; ++i)
 		{
+			check(m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex < size);
 			VkDescriptorSetLayout layout = GenerateDescriptorSetLayout(m_reflectionProperties.DescriptorSetInfoArray[i], layoutCache);
-			m_cachedLayoutArray[i] = layout;
+			m_cachedLayoutArray[m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex] = layout;
 		}
 		for (const auto& it : m_reflectionProperties.PushConstantMap)
 			m_cachedPushConstantArray.push_back(GeneratePushConstantInfo(it.second));
 
 		return true;
+	}
+
+	void ShaderCompiler::SetUniformBufferAsDynamic(const char* uniformBufferName)
+	{
+		check(uniformBufferName && *uniformBufferName);
+		for (uint32_t i = 0; i < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+		{
+			for (uint32_t j = 0; j < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray.size(); ++j)
+			{
+				ShaderBindingDescriptorInfo& bindingInfo = m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[j];
+				if (!strcmp(bindingInfo.Name.c_str(), uniformBufferName))
+				{
+					switch (bindingInfo.Type)
+					{
+					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: bindingInfo.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; return;
+					case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: bindingInfo.Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; return;
+					default:
+						Logf(LogLevel::Error, "Trying to set as uniform dynamic an invalid Descriptor [%s]\n", uniformBufferName);
+					}
+				}
+			}
+		}
+		check(false);
 	}
 
 	VkShaderModule ShaderCompiler::CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage)
@@ -302,7 +326,14 @@ namespace Mist
 			{
 				ShaderBindingDescriptorInfo bufferInfo;
 				bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
-				bufferInfo.Name = resource.name.c_str();
+
+				// spirv cross get naming heuristic for uniform buffers. 
+				// (https://github.com/KhronosGroup/SPIRV-Cross/wiki/Reflection-API-user-guide#a-note-on-names)
+				// case: layout (set, binding) uniform UBO {} u_ubo;
+				// To get the name of the struct UBO use resource.name.c_str()
+				// To get the name of the instance use compiler.get_name(resource.id)
+				//bufferInfo.Name = resource.name.c_str();
+				bufferInfo.Name = compiler.get_name(resource.id);
 				if (descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
 				{
 					const spirv_cross::SPIRType& bufferType = compiler.get_type(resource.base_type_id);
@@ -632,7 +663,7 @@ namespace Mist
 		builder.InputDescription = m_description.InputLayout;
 		builder.SubpassIndex = m_description.SubpassIndex;
 		builder.Topology = m_description.Topology;
-		// Shader stages
+		// Generate shader module stages
 		tArray<ShaderDescription, 2> descs;
 		descs[0] = { m_description.VertexShaderFile.c_str(), VK_SHADER_STAGE_VERTEX_BIT };
 		descs[1] = { m_description.FragmentShaderFile.c_str(), VK_SHADER_STAGE_FRAGMENT_BIT };
@@ -646,6 +677,10 @@ namespace Mist
 				builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(descs[i].Stage, compiled));
 			}
 		}
+		// Generate shader reflection data
+		// Override with external info
+		for (const tString& dynBuffer : m_description.DynamicBuffers)
+			compiler.SetUniformBufferAsDynamic(dynBuffer.c_str());
 		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
 
 		// Blending info for color attachments
@@ -659,16 +694,8 @@ namespace Mist
 
 		// Pass layout info
 		builder.LayoutInfo = vkinit::PipelineLayoutCreateInfo();
-		if (!m_description.SetLayoutArray.empty())
-		{
-			builder.LayoutInfo.setLayoutCount = (uint32_t)m_description.SetLayoutArray.size();
-			builder.LayoutInfo.pSetLayouts = m_description.SetLayoutArray.data();
-		}
-		else
-		{
-			builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
-			builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
-		}
+		builder.LayoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
+		builder.LayoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
 		if (m_description.PushConstantArray.empty())
 		{
 			builder.LayoutInfo.pushConstantRangeCount = (uint32_t)m_description.PushConstantArray.size();

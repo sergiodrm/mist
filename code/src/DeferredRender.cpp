@@ -86,17 +86,7 @@ namespace Mist
 	{
 		// MRT pipeline
 		ShaderProgramDescription shaderDesc;
-		shaderDesc.SetLayoutArray.resize(3);
-		// Set Layout for per frame data (camera proj etc...)
-		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(renderContext, &shaderDesc.SetLayoutArray[0]);
-		// Set Layout for per mesh data (model mat, textures...)
-		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT, 1)
-			.Build(renderContext, &shaderDesc.SetLayoutArray[1]);
-		shaderDesc.SetLayoutArray[2] = MaterialRenderData::GetDescriptorSetLayout(renderContext, *renderContext.LayoutCache);
-
+		shaderDesc.DynamicBuffers.push_back("u_model");
 		shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");
 		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("mrt.frag");
 		shaderDesc.RenderTarget = &m_renderTarget;

@@ -61,6 +61,7 @@ namespace Mist
 		void ClearCachedData();
 		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, bool forceCompilation = false);
 		bool GenerateReflectionResources(DescriptorLayoutCache& layoutCache);
+		void SetUniformBufferAsDynamic(const char* uniformBufferName);
 		VkShaderModule GetCompiledModule(VkShaderStageFlags shaderStage) const;
 		
 		// Obtain generated resources. These functions will return nullptr/0 until call GenerateResources().
@@ -117,9 +118,8 @@ namespace Mist
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
-		tDynArray<VkDescriptorSetLayout> SetLayoutArray;
 		tDynArray<VkPushConstantRange> PushConstantArray;
-
+		tDynArray<tString> DynamicBuffers;
 	};
 
 	class ShaderProgram
