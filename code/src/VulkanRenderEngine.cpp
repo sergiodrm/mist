@@ -174,21 +174,9 @@ namespace Mist
 		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
 		m_renderContext.DescAllocator = &m_descriptorAllocator;
 		m_renderContext.ShaderDB = &m_shaderDb;
-		m_shutdownStack.Add([this]() mutable
-			{
-				m_descriptorAllocator.Destroy();
-				m_descriptorLayoutCache.Destroy();
-				m_shaderDb.Destroy(m_renderContext);
-			});
 
 		// Swapchain
 		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
-		m_shutdownStack.Add(
-			[this]()
-			{
-				m_swapchain.Destroy(m_renderContext);
-			}
-		);
 
 		// Commands
 		check(InitCommands());
@@ -202,10 +190,8 @@ namespace Mist
 		check(InitSync());
 
 		m_screenPipeline.Init(m_renderContext, m_swapchain);
-		m_shutdownStack.Add([this] { m_screenPipeline.Destroy(m_renderContext); });
 		// Initialize render processes after instantiate render context
 		m_renderer.Init(m_renderContext, m_frameContextArray, sizeof(m_frameContextArray) / sizeof(RenderFrameContext));
-		m_shutdownStack.Add([this] { m_renderer.Destroy(m_renderContext); });
 #if 0
 
 		RendererCreateInfo rendererCreateInfo;
@@ -337,14 +323,35 @@ namespace Mist
 		}
 #endif // 0
 
+		m_renderer.Destroy(m_renderContext);
+		m_screenPipeline.Destroy(m_renderContext);
 
-		m_shutdownStack.Flush();
+		m_quadSampler.Destroy(m_renderContext);
+		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
+		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			m_frameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
+
+			vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
+			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
+			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
+			vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
+		}
+
+		m_swapchain.Destroy(m_renderContext);
+		m_shaderDb.Destroy(m_renderContext);
+		m_descriptorAllocator.Destroy();
+		m_descriptorLayoutCache.Destroy();
+
+		Memory::Destroy(m_renderContext.Allocator);
 		vkDestroyDevice(m_renderContext.Device, nullptr);
 		vkDestroySurfaceKHR(m_renderContext.Instance, m_renderContext.Surface, nullptr);
 		vkb::destroy_debug_utils_messenger(m_renderContext.Instance,
 			m_renderContext.DebugMessenger);
 		vkDestroyInstance(m_renderContext.Instance, nullptr);
 		SDL_DestroyWindow(m_window.WindowInstance);
+
 
 		Log(LogLevel::Ok, "Render engine terminated.\n");
 		Logf(MistDebug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
@@ -690,10 +697,6 @@ namespace Mist
 
 		// Init memory allocator
 		Memory::Init(m_renderContext.Allocator, m_renderContext.Instance, m_renderContext.Device, m_renderContext.GPUDevice);
-		m_shutdownStack.Add([this]()
-			{
-				Memory::Destroy(m_renderContext.Allocator);
-			});
 		Log(LogLevel::Ok, "Vulkan memory allocator instance created...\n");
 
 		// Load external pfn
@@ -716,20 +719,11 @@ namespace Mist
 			vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &frameContext.GraphicsCommandPool));
 			VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
 			vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
-			m_shutdownStack.Add([this, i]()
-				{
-					vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
-				}
-			);
 		}
 
 		vkcheck(vkCreateCommandPool(m_renderContext.Device, &poolInfo, nullptr, &m_renderContext.TransferContext.CommandPool));
 		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_renderContext.TransferContext.CommandPool, 1);
 		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_renderContext.TransferContext.CommandBuffer));
-		m_shutdownStack.Add([this]()
-			{
-				vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
-			});
 		return true;
 	}
 
@@ -865,20 +859,10 @@ namespace Mist
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
 			// Present semaphore
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
-			m_shutdownStack.Add([this, i]()
-				{
-					vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
-					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
-					vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
-				});
 		}
 
 		VkFenceCreateInfo info = vkinit::FenceCreateInfo();
 		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_renderContext.TransferContext.Fence));
-		m_shutdownStack.Add([this]()
-			{
-				vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
-			});
 		return true;
 	}
 
@@ -886,7 +870,6 @@ namespace Mist
 	{
 		SamplerBuilder builder;
 		m_quadSampler = builder.Build(m_renderContext);
-		m_shutdownStack.Add([this]() { m_quadSampler.Destroy(m_renderContext); });
 
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
@@ -896,11 +879,6 @@ namespace Mist
 			// Size for uniform frame buffer
 			uint32_t size = 1024 * 1024; // 1MB
 			frameContext.GlobalBuffer.Init(m_renderContext, size, BUFFER_USAGE_UNIFORM);
-
-			m_shutdownStack.Add([this, &frameContext]()
-				{
-					frameContext.GlobalBuffer.Destroy(m_renderContext);
-				});
 
 			// Update global descriptors
 			uint32_t cameraBufferSize = sizeof(CameraData);

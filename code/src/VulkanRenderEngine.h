@@ -152,7 +152,6 @@ namespace Mist
 		Scene* m_scene = nullptr;
 		CameraData m_cameraData;
 
-		FunctionStack m_shutdownStack;
 		typedef std::function<void()> ImGuiCallback;
 		std::vector<ImGuiCallback> m_imguiCallbackArray;
 		typedef std::function<void(void*)> EventCallback;
