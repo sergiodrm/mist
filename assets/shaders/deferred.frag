@@ -30,6 +30,8 @@ layout (std140, set = 0, binding = 0) uniform Environment
 layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
 layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
 layout(set = 0, binding = 3) uniform sampler2D u_GBufferAlbedo;
+// SSAO texture
+layout(set = 0, binding = 4) uniform sampler2D u_ssao;
 
 float LinearizeDepth(float z, float n, float f)
 {
@@ -192,7 +194,8 @@ void main()
 
         lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
         // Mix
-        lightColor = vec3(u_Env.AmbientColor) + lightColor;
+        vec3 ambientColor = vec3(u_Env.AmbientColor) * texture(u_ssao, inTexCoords).r;
+        lightColor = ambientColor + lightColor;
         //lightColor = vec3(shadow);
         //lightColor = vec3(shadowCoord);
     }

@@ -79,6 +79,7 @@ namespace Mist
 		// Composition
 		VkDescriptorBufferInfo info = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
 
+		// GBuffer textures binding
 		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
 		const RenderTarget& rt = *gbuffer->GetRenderTarget();
 		GBuffer::EGBufferTarget rts[3] = { GBuffer::EGBufferTarget::RT_POSITION, GBuffer::EGBufferTarget::RT_NORMAL, GBuffer::EGBufferTarget::RT_ALBEDO };
@@ -89,11 +90,20 @@ namespace Mist
 			infoArray[i].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[rts[i]].Layout);
 			infoArray[i].imageView = rt.GetRenderTarget(rts[i]);
 		}
+
+		// SSAO texture binding
+		const RenderProcess* ssao = renderer.GetRenderProcess(RENDERPROCESS_SSAO);
+		VkDescriptorImageInfo ssaoInfo;
+		ssaoInfo.sampler = m_sampler.GetSampler();
+		ssaoInfo.imageLayout = tovk::GetImageLayout(ssao->GetRenderTarget()->GetDescription().ColorAttachmentDescriptions[0].Layout);
+		ssaoInfo.imageView = ssao->GetRenderTarget()->GetRenderTarget(0);
+
 		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindImage(1, &infoArray[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindImage(2, &infoArray[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindImage(3, &infoArray[2], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.BindImage(4, &ssaoInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_frameData[frameIndex].Set);
 	}
 
