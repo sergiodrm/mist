@@ -8,6 +8,7 @@
 
 namespace Mist
 {
+#if 0
 	class ImGuiInstance
 	{
 	public:
@@ -40,4 +41,6 @@ namespace Mist
 		tArray<FrameData, globals::MaxOverlappedFrames> m_frameData;
 		DebugPipeline m_debugPipeline;
 	};
+#endif // 0
+
 }

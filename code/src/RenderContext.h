@@ -63,7 +63,7 @@ namespace Mist
 
 		// Descriptors
 		VkDescriptorSet CameraDescriptorSet{};
-		UniformBuffer GlobalBuffer{};
+		UniformBufferMemoryPool GlobalBuffer{};
 
 		// Push constants
 		const void* PushConstantData{ nullptr };

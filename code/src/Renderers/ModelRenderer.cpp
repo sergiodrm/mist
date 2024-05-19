@@ -18,6 +18,7 @@
 
 namespace Mist
 {
+#if 0
 	bool GUseCameraForShadowMapping = false;
 
 	// TODO: share render targets between renderers... do something
@@ -299,7 +300,7 @@ namespace Mist
 		static int shadowMapDebugIndex = 0;
 		if (debugShadows)
 		{
-			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments-1);
+			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments - 1);
 			debugrender::SetDebugTexture(m_frameData[0].DebugShadowMapTextureSet[shadowMapDebugIndex]);
 		}
 		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
@@ -317,7 +318,10 @@ namespace Mist
 	{
 		return m_frameData[currentFrameIndex].RenderTargetArray[attachmentIndex].GetDepthBuffer();
 	}
+#endif // 0
 
+
+#if 0
 	LightingRenderer::LightingRenderer() : IRendererBase()
 	{
 	}
@@ -340,7 +344,7 @@ namespace Mist
 			// Create render target
 			m_frameData[i].RT.Create(info.Context, rtDesc);
 
-			UniformBuffer* uniformBuffer = info.FrameUniformBufferArray[i];
+			UniformBufferMemoryPool* uniformBuffer = info.FrameUniformBufferArray[i];
 
 			// Configure per frame DescriptorSet.
 			// Color pass
@@ -405,7 +409,7 @@ namespace Mist
 
 	void LightingRenderer::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
-		
+
 	}
 
 	void LightingRenderer::RecordCmd(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext, uint32_t attachmentIndex)
@@ -443,5 +447,7 @@ namespace Mist
 	{
 		return m_frameData[currentFrameIndex].RT.GetDepthBuffer();
 	}
+
+#endif // 0
 
 }

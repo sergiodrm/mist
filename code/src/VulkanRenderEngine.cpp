@@ -27,9 +27,10 @@
 #include "GenericUtils.h"
 #include "Renderers/QuadRenderer.h"
 #include "RenderTarget.h"
+#include "RenderProcesses/RenderProcess.h"
 #include "TimeUtils.h"
 
-#define MIST_CRASH_ON_VALIDATION_LAYER
+//#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -191,16 +192,21 @@ namespace Mist
 
 		// Commands
 		check(InitCommands());
-
 		// RenderPass
 		check(InitRenderPass());
 		// Framebuffers
 		check(InitFramebuffers());
 		// Pipelines
 		check(InitPipeline());
-
 		// Init sync vars
 		check(InitSync());
+
+		m_screenPipeline.Init(m_renderContext, m_swapchain);
+		m_shutdownStack.Add([this] { m_screenPipeline.Destroy(m_renderContext); });
+		// Initialize render processes after instantiate render context
+		m_renderer.Init(m_renderContext, m_frameContextArray, sizeof(m_frameContextArray) / sizeof(RenderFrameContext));
+		m_shutdownStack.Add([this] { m_renderer.Destroy(m_renderContext); });
+#if 0
 
 		RendererCreateInfo rendererCreateInfo;
 		rendererCreateInfo.Context = m_renderContext;
@@ -218,7 +224,7 @@ namespace Mist
 		m_ssao.Init(m_renderContext);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			UniformBuffer* buffer = &m_frameContextArray[i].GlobalBuffer;
+			UniformBufferMemoryPool* buffer = &m_frameContextArray[i].GlobalBuffer;
 			m_gbuffer.InitFrameData(m_renderContext, buffer, i);
 			m_deferredLighting.InitFrameData(m_renderContext, buffer, i, m_gbuffer);
 			m_ssao.InitFrameData(m_renderContext, buffer, i, m_gbuffer);
@@ -227,8 +233,6 @@ namespace Mist
 		m_shutdownStack.Add([this] { m_deferredLighting.Destroy(m_renderContext); });
 		m_shutdownStack.Add([this] { m_ssao.Destroy(m_renderContext); });
 
-		m_screenPipeline.Init(m_renderContext, m_swapchain);
-		m_shutdownStack.Add([this] { m_screenPipeline.Destroy(m_renderContext); });
 
 		rendererCreateInfo.AdditionalData = &m_ssao.GetRenderTarget();
 
@@ -242,11 +246,14 @@ namespace Mist
 		}
 
 
+#endif // 0
+
 #if 1
-		const RenderTarget& gbufferRT = m_gbuffer.GetRenderTarget();
+		const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
+		const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
-			UniformBuffer& buffer = m_frameContextArray[i].GlobalBuffer;
+			UniformBufferMemoryPool& buffer = m_frameContextArray[i].GlobalBuffer;
 			buffer.AllocUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, sizeof(int));
 			buffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(int));
 			VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCREEN_QUAD_INDEX);
@@ -257,7 +264,7 @@ namespace Mist
 
 			VkDescriptorImageInfo quadImageInfoArray;
 			quadImageInfoArray.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray.imageView = lightingRenderer->GetRenderTarget(i, 0);
+			quadImageInfoArray.imageView = lightingRT.GetRenderTarget(0);
 			quadImageInfoArray.sampler = m_quadSampler.GetSampler();
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindImage(0, &quadImageInfoArray, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -319,6 +326,7 @@ namespace Mist
 		if (m_scene)
 			IScene::DestroyScene(m_scene);
 
+#if 0
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
 		{
 			for (IRendererBase* it : m_renderers[i])
@@ -327,6 +335,8 @@ namespace Mist
 				delete it;
 			}
 		}
+#endif // 0
+
 
 		m_shutdownStack.Flush();
 		vkDestroyDevice(m_renderContext.Device, nullptr);
@@ -394,19 +404,25 @@ namespace Mist
 		frameContext.PresentTex = m_screenPipeline.PresentTexSets[GetFrameIndex()];
 		glm::vec3 cameraPos = math::GetPos(glm::inverse(frameContext.CameraData->View));
 		frameContext.Scene->UpdateRenderData(m_renderContext, &frameContext.GlobalBuffer, cameraPos);
+		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
+		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
+		m_renderer.UpdateRenderData(m_renderContext, frameContext);
 
+#if 0
 		// Renderers do your things...
 		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
 		{
 			for (IRendererBase* it : m_renderers[i])
 				it->PrepareFrame(m_renderContext, GetFrameContext());
 		}
+#endif // 0
 
-		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
 
-		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
-		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
+#if 0
 		m_ssao.PrepareFrame(m_renderContext, frameContext);
+#endif // 0
+
 	}
 
 	void VulkanRenderEngine::Draw()
@@ -449,13 +465,19 @@ namespace Mist
 		}
 
 		{
+#if 0
 			m_gbuffer.DrawPass(m_renderContext, frameContext);
 			m_ssao.DrawPass(m_renderContext, frameContext);
 			m_deferredLighting.DrawPass(m_renderContext, frameContext);
+#endif // 0
+			m_renderer.Draw(m_renderContext, frameContext);
 
 			//render::DrawQuadTexture(m_screenPipeline.QuadSets[frameIndex]);
+#if 0
 			for (uint32_t pass = RENDER_PASS_SHADOW_MAP; pass < RENDER_PASS_COUNT; ++pass)
 				DrawPass(cmd, frameIndex, (ERenderPassType)pass);
+#endif // 0
+
 
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
@@ -520,6 +542,7 @@ namespace Mist
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
+#if 0
 		for (uint32_t passIndex = 0; passIndex < RENDER_PASS_COUNT; ++passIndex)
 		{
 			for (uint32_t i = 0; i < (uint32_t)m_renderers[passIndex].size(); ++i)
@@ -527,6 +550,9 @@ namespace Mist
 		}
 		m_gbuffer.ImGuiDraw();
 		m_ssao.ImGuiDraw();
+#endif // 0
+		m_renderer.ImGuiDraw();
+
 
 		ImGui::Begin("Engine");
 		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
@@ -911,13 +937,16 @@ namespace Mist
 
 	void VulkanRenderEngine::DrawPass(VkCommandBuffer cmd, uint32_t frameIndex, ERenderPassType passType)
 	{
+#if 0
 		//RenderTarget& rt = m_renderTargetArray[frameIndex][passType];
 
 		std::vector<IRendererBase*>& renderers = m_renderers[passType];
 		//rt.BeginPass(cmd);
 		for (IRendererBase* it : renderers)
 			it->RecordCmd(m_renderContext, GetFrameContext(), 0);
-		//rt.EndPass(cmd);
+		//rt.EndPass(cmd);  
+#endif // 0
+
 	}
 
 	void VulkanRenderEngine::ForceSync()

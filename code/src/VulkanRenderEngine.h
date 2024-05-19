@@ -17,9 +17,8 @@
 #include "FunctionStack.h"
 #include "Framebuffer.h"
 #include "Scene.h"
-#include "Renderers/DebugRenderer.h"
-#include "Renderers/UIRenderer.h"
-#include "SSAO.h"
+#include "RendererBase.h"
+#include "RenderProcesses/UIProcess.h"
 
 #include <cstdio>
 #include <SDL.h>
@@ -138,6 +137,7 @@ namespace Mist
 
 		Sampler m_quadSampler;
 		ScreenQuadPipeline m_screenPipeline;
+		Renderer m_renderer;
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
 		uint32_t m_frameCounter;
@@ -148,11 +148,6 @@ namespace Mist
 		ShaderFileDB m_shaderDb;
 
 		VkDescriptorSetLayout m_globalDescriptorLayout;
-
-		std::vector<IRendererBase*> m_renderers[RENDER_PASS_COUNT];
-		GBuffer m_gbuffer;
-		DeferredLighting m_deferredLighting;
-		SSAO m_ssao;
 
 		Scene* m_scene = nullptr;
 		CameraData m_cameraData;

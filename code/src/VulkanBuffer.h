@@ -87,7 +87,7 @@ namespace Mist
 		void Bind(VkCommandBuffer cmd) const;
 	};
 
-	class UniformBuffer
+	class UniformBufferMemoryPool
 	{
 	public:
 		struct ItemMapInfo

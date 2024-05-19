@@ -1,9 +1,9 @@
-#include "RenderPass.h"
+#include "Lighting.h"
 #include <vector>
 #include "VulkanRenderEngine.h"
 #include "Logger.h"
 #include "InitVulkanTypes.h"
-#include "DeferredRender.h"
+#include "GBuffer.h"
 #include "SceneImpl.h"
 #include "VulkanBuffer.h"
 #include "RenderDescriptor.h"
@@ -27,74 +27,6 @@
 
 namespace Mist
 {
-#if 0
-	void GBuffer::Init(const RenderContext& renderContext)
-	{
-		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 1.f} };
-		RenderTargetDescription description;
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_POSITION, GBUFFER_RT_LAYOUT_POSITION, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_NORMAL, GBUFFER_RT_LAYOUT_NORMAL, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_ALBEDO, GBUFFER_RT_LAYOUT_ALBEDO, SAMPLE_COUNT_1_BIT, clearValue);
-		description.DepthAttachmentDescription.Format = GBUFFER_RT_FORMAT_DEPTH;
-		description.DepthAttachmentDescription.Layout = GBUFFER_RT_LAYOUT_DEPTH;
-		description.DepthAttachmentDescription.MultisampledBit = SAMPLE_COUNT_1_BIT;
-		clearValue.depthStencil.depth = 1.f;
-		description.DepthAttachmentDescription.ClearValue = clearValue;
-		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
-		description.RenderArea.offset = { .x = 0, .y = 0 };
-		m_renderTarget.Create(renderContext, description);
-		InitPipeline(renderContext);
-	}
-
-	void GBuffer::Destroy(const RenderContext& renderContext)
-	{
-		m_renderTarget.Destroy(renderContext);
-	}
-
-	void GBuffer::InitFrameData(const RenderContext& renderContext, UniformBuffer* buffer, uint32_t frameIndex)
-	{
-		// MRT
-		VkDescriptorBufferInfo modelSetInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &modelSetInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-			.Build(renderContext, m_frameData[frameIndex].DescriptorSetArray[0]);
-	}
-
-	void GBuffer::DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext)
-	{
-		VkCommandBuffer cmd = frameContext.GraphicsCommand;
-
-		// MRT
-		BeginGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
-		m_renderTarget.BeginPass(cmd);
-		m_shader->UseProgram(cmd);
-		m_shader->BindDescriptorSets(cmd, &frameContext.CameraDescriptorSet, 1);
-		frameContext.Scene->Draw(cmd, m_shader, 2, 1, m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
-		m_renderTarget.EndPass(frameContext.GraphicsCommand);
-		EndGPUEvent(renderContext, cmd);
-	}
-
-	void GBuffer::ImGuiDraw()
-	{
-	}
-
-	const RenderTarget& GBuffer::GetRenderTarget() const
-	{
-		return m_renderTarget;
-	}
-
-	void GBuffer::InitPipeline(const RenderContext& renderContext)
-	{
-		// MRT pipeline
-		ShaderProgramDescription shaderDesc;
-		shaderDesc.DynamicBuffers.push_back("u_model");
-		shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");
-		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("mrt.frag");
-		shaderDesc.RenderTarget = &m_renderTarget;
-		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
-	}
-
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 1.f} };
@@ -142,19 +74,20 @@ namespace Mist
 		m_sampler.Destroy(renderContext);
 	}
 
-	void DeferredLighting::InitFrameData(const RenderContext& renderContext, UniformBuffer* buffer, uint32_t frameIndex, const GBuffer& gbuffer)
+	void DeferredLighting::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
 		// Composition
-		VkDescriptorBufferInfo info = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
+		VkDescriptorBufferInfo info = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
 
-
+		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
+		const RenderTarget& rt = *gbuffer->GetRenderTarget();
 		GBuffer::EGBufferTarget rts[3] = { GBuffer::EGBufferTarget::RT_POSITION, GBuffer::EGBufferTarget::RT_NORMAL, GBuffer::EGBufferTarget::RT_ALBEDO };
 		tArray<VkDescriptorImageInfo, 3> infoArray;
 		for (uint32_t i = 0; i < 3; ++i)
 		{
 			infoArray[i].sampler = m_sampler.GetSampler();
-			infoArray[i].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().ColorAttachmentDescriptions[rts[i]].Layout);
-			infoArray[i].imageView = gbuffer.GetRenderTarget().GetRenderTarget(rts[i]);
+			infoArray[i].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[rts[i]].Layout);
+			infoArray[i].imageView = rt.GetRenderTarget(rts[i]);
 		}
 		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -164,7 +97,7 @@ namespace Mist
 			.Build(renderContext, m_frameData[frameIndex].Set);
 	}
 
-	void DeferredLighting::DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext)
+	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		// Composition
@@ -178,6 +111,4 @@ namespace Mist
 		m_renderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 	}
-#endif // 0
-
 }

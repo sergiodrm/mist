@@ -151,7 +151,7 @@ namespace Mist
 		const MaterialRenderData& GetMaterialRenderData(RenderHandle handle) const;
 		MaterialRenderData& GetMaterialRenderData(RenderHandle handle);
 
-		void UpdateRenderData(const RenderContext& renderContext, UniformBuffer* buffer, const glm::vec3& viewPosition);
+		void UpdateRenderData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer, const glm::vec3& viewPosition);
 		inline const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
 		inline EnvironmentData& GetEnvironmentData() { return m_environmentData; }
 

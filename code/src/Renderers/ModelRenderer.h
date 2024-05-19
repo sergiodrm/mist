@@ -10,8 +10,9 @@
 namespace Mist
 {
 	class Scene;
+#if 0
 
-	
+
 
 	class ShadowMapPipeline
 	{
@@ -82,7 +83,10 @@ namespace Mist
 		FrameData m_frameData[globals::MaxOverlappedFrames];
 		uint32_t m_attachmentIndexBits;
 	};
+#endif // 0
 
+
+#if 0
 	class LightingRenderer : public IRendererBase
 	{
 		struct FrameData
@@ -109,8 +113,10 @@ namespace Mist
 		ShaderProgram* m_shader;
 
 		tArray<FrameData, globals::MaxOverlappedFrames> m_frameData;
-		
+
 		Sampler m_depthMapSampler;
 		bool m_debugCameraDepthMapping;
 	};
+#endif // 0
+
 }

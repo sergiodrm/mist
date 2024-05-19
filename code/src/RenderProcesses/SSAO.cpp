@@ -5,6 +5,7 @@
 #include "GenericUtils.h"
 #include "RenderContext.h"
 #include "VulkanRenderEngine.h"
+#include "GBuffer.h"
 
 
 #define SSAO_NOISE_SAMPLES 16
@@ -103,24 +104,26 @@ namespace Mist
 		m_blurRT.Destroy(renderContext);
 	}
 
-	void SSAO::InitFrameData(const RenderContext& context, UniformBuffer* buffer, uint32_t frameIndex, const GBuffer& gbuffer)
+	void SSAO::InitFrameData(const RenderContext& context, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
-		buffer->AllocUniform(context, "SSAOUBO", sizeof(SSAOUBO));
-		VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("SSAOUBO");
+		buffer.AllocUniform(context, "SSAOUBO", sizeof(SSAOUBO));
+		VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("SSAOUBO");
 
+		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
+		const RenderTarget& rt = *gbuffer->GetRenderTarget();
 		VkDescriptorImageInfo imageInfo[5];
 		imageInfo[0].sampler = m_noiseSampler.GetSampler();
-		imageInfo[0].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().ColorAttachmentDescriptions[GBuffer::EGBufferTarget::RT_POSITION].Layout);
-		imageInfo[0].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_POSITION);
+		imageInfo[0].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[GBuffer::RT_POSITION].Layout);
+		imageInfo[0].imageView = rt.GetRenderTarget(GBuffer::RT_POSITION);
 		imageInfo[1].sampler = m_noiseSampler.GetSampler();
-		imageInfo[1].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().ColorAttachmentDescriptions[GBuffer::EGBufferTarget::RT_NORMAL].Layout);
-		imageInfo[1].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_NORMAL);
+		imageInfo[1].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[GBuffer::RT_NORMAL].Layout);
+		imageInfo[1].imageView = rt.GetRenderTarget(GBuffer::RT_NORMAL);
 		imageInfo[2].sampler = m_noiseSampler.GetSampler();
-		imageInfo[2].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().ColorAttachmentDescriptions[GBuffer::EGBufferTarget::RT_ALBEDO].Layout);
-		imageInfo[2].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_ALBEDO);
+		imageInfo[2].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[GBuffer::RT_ALBEDO].Layout);
+		imageInfo[2].imageView = rt.GetRenderTarget(GBuffer::RT_ALBEDO);
 		imageInfo[3].sampler = m_noiseSampler.GetSampler();
-		imageInfo[3].imageLayout = tovk::GetImageLayout(gbuffer.GetRenderTarget().GetDescription().DepthAttachmentDescription.Layout);
-		imageInfo[3].imageView = gbuffer.GetRenderTarget().GetRenderTarget(GBuffer::EGBufferTarget::RT_DEPTH);
+		imageInfo[3].imageLayout = tovk::GetImageLayout(rt.GetDescription().DepthAttachmentDescription.Layout);
+		imageInfo[3].imageView = rt.GetRenderTarget(GBuffer::RT_DEPTH);
 		imageInfo[4].sampler = m_noiseSampler.GetSampler();
 		imageInfo[4].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		imageInfo[4].imageView = m_noiseTexture.GetImageView();
@@ -149,7 +152,7 @@ namespace Mist
 		m_frameData[frameIndex].SSAOTex = m_frameData[frameIndex].SSAOBlurSet;
 	}
 
-	void SSAO::PrepareFrame(const RenderContext& renderContext, RenderFrameContext& frameContext)
+	void SSAO::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
 		m_uboData.Projection = frameContext.CameraData->Projection;
 		frameContext.GlobalBuffer.SetUniform(renderContext, "SSAOUBO", &m_uboData, sizeof(SSAOUBO));
@@ -161,7 +164,7 @@ namespace Mist
 		}
 	}
 
-	void SSAO::DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext)
+	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		BeginGPUEvent(renderContext, cmd, "SSAO");

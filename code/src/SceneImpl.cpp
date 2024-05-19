@@ -385,7 +385,7 @@ namespace Mist
 		ViewPosition(0.f),
 		ActiveLightsCount(0.f)
 	{
-		DirectionalLight.Color = { 0.05f, 0.01f, 0.1f };
+		DirectionalLight.Color = { 0.01f, 0.01f, 0.1f };
 		DirectionalLight.Position = { 0.f, 0.f, 1.f };
 		DirectionalLight.ShadowMapIndex = -1.f;
 		DirectionalLight.Compression = 0.5f;
@@ -395,7 +395,7 @@ namespace Mist
 			Lights[i].Radius = 50.f;
 			SpotLights[i].Direction = { 1.f, 0.f, 0.f };
 			SpotLights[i].Position = { 0.f, 0.f, 0.f };
-			SpotLights[i].Color = { 1.f, 0.f, 0.f };
+			SpotLights[i].Color = { 1.f, 1.f, 1.f };
 			SpotLights[i].InnerCutoff = 1.f;
 			SpotLights[i].OuterCutoff = 0.5f;
 			SpotLights[i].ShadowMapIndex = -1.f;
@@ -1068,13 +1068,16 @@ namespace Mist
 			ImGui::End();
 	}
 
-	void Scene::UpdateRenderData(const RenderContext& renderContext, UniformBuffer* buffer, const glm::vec3& viewPosition)
+	void Scene::UpdateRenderData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer, const glm::vec3& viewPosition)
 	{
 		ProcessEnvironmentData(viewPosition);
 		RecalculateTransforms();
 
+		//glm::mat4* mats = new glm::mat4[GetRenderObjectCount()];
+		//memset(mats, 0xfafafafa, sizeof(glm::mat4) * GetRenderObjectCount());
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
+		//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, mats, GetRenderObjectCount() * sizeof(glm::mat4)));
 	}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const

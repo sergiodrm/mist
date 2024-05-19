@@ -4,6 +4,7 @@
 #include "Shader.h"
 #include "RenderTypes.h"
 #include "RenderContext.h"
+#include "RenderProcesses/RenderProcess.h"
 #include "Globals.h"
 
 namespace Mist
@@ -17,7 +18,7 @@ namespace Mist
 	{
 		RenderContext Context;
 
-		UniformBuffer* FrameUniformBufferArray[globals::MaxOverlappedFrames];
+		UniformBufferMemoryPool* FrameUniformBufferArray[globals::MaxOverlappedFrames];
 
 		VkPushConstantRange* ConstantRange = nullptr;
 		uint32_t ConstantRangeCount = 0;
@@ -43,5 +44,22 @@ namespace Mist
 
 		// Debug
 		virtual void ImGuiDraw() {}
+	};
+
+	class Renderer
+	{
+	public:
+
+		void Init(const RenderContext& context, RenderFrameContext* frameContextArray, uint32_t frameContextCount);
+		void Destroy(const RenderContext& context);
+		void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext);
+		void Draw(const RenderContext& context, const RenderFrameContext& frameContext);
+		void ImGuiDraw();
+
+		const RenderProcess* GetRenderProcess(RenderProcessType type) const;
+		RenderProcess* GetRenderProcess(RenderProcessType type);
+
+	private:
+		class RenderProcess* m_processArray[RENDERPROCESS_COUNT];
 	};
 }

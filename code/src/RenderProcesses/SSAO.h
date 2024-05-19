@@ -6,16 +6,17 @@
 #include <glm/glm.hpp>
 #include "Globals.h"
 #include "RenderContext.h"
+#include "RenderProcess.h"
 
 #define SSAO_KERNEL_SAMPLES 64
 
 namespace Mist
 {
 	class ShaderProgram;
-	class UniformBuffer;
+	class UniformBufferMemoryPool;
 	class GBuffer;
 
-	class SSAO
+	class SSAO : public RenderProcess
 	{
 		struct SSAOUBO
 		{
@@ -35,15 +36,14 @@ namespace Mist
 			VkDescriptorSet SSAOBlurTex;
 		};
 	public:
-	
-		void Init(const RenderContext& renderContext);
-		void Destroy(const RenderContext& renderContext);
-		void InitFrameData(const RenderContext& context, UniformBuffer* buffer, uint32_t frameIndex, const GBuffer& gbuffer);
-		void PrepareFrame(const RenderContext& renderContext, RenderFrameContext& frameContext);
-		void DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext);
-		const RenderTarget& GetRenderTarget() const { return m_blurRT; }
-		void ImGuiDraw();
-
+		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_SSAO; }
+		virtual void Init(const RenderContext& renderContext) override;
+		virtual void Destroy(const RenderContext& renderContext) override;
+		virtual void InitFrameData(const RenderContext& context, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
+		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) override;
+		virtual void Draw(const RenderContext& context, const RenderFrameContext& frameContext) override;
+		virtual void ImGuiDraw() override;
+		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override { return &m_blurRT; }
 	private:
 		ShaderProgram* m_ssaoShader;
 		RenderTarget m_rt;

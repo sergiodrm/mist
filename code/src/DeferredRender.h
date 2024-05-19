@@ -7,6 +7,7 @@
 
 namespace Mist
 {
+#if 0
 	struct RenderContext;
 
 
@@ -31,7 +32,7 @@ namespace Mist
 		void Destroy(const RenderContext& renderContext);
 		void InitFrameData(const RenderContext& renderContext, UniformBuffer* buffer, uint32_t frameIndex);
 
-		void DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext);		
+		void DrawPass(const RenderContext& renderContext, const RenderFrameContext& frameContext);
 		void ImGuiDraw();
 
 		const RenderTarget& GetRenderTarget() const;
@@ -65,4 +66,6 @@ namespace Mist
 		IndexBuffer m_quadIB;
 		Sampler m_sampler;
 	};
+#endif // 0
+
 }

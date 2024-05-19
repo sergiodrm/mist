@@ -217,7 +217,7 @@ namespace Mist
 		vkCmdBindIndexBuffer(cmd, m_buffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
 	}
 
-	void UniformBuffer::Init(const RenderContext& renderContext, uint32_t bufferSize, EBufferUsageBits usage)
+	void UniformBufferMemoryPool::Init(const RenderContext& renderContext, uint32_t bufferSize, EBufferUsageBits usage)
 	{
 		check(!m_buffer.IsAllocated());
 
@@ -225,16 +225,20 @@ namespace Mist
 		VkBufferUsageFlags usageFlags = vkutils::GetVulkanBufferUsage(usage);
 		m_buffer = Memory::CreateBuffer(renderContext.Allocator, bufferSize, usageFlags, MEMORY_USAGE_CPU_TO_GPU);
 		m_maxMemoryAllocated = bufferSize;
+		static int c = 0;
+		char buff[64];
+		sprintf_s(buff, "UniformBufferMemoryPool_%d", c++);
+		SetVkObjectName(renderContext, &m_buffer.Buffer, VK_OBJECT_TYPE_BUFFER, buff);
 	}
 
-	void UniformBuffer::Destroy(const RenderContext& renderContext)
+	void UniformBufferMemoryPool::Destroy(const RenderContext& renderContext)
 	{
 		check(m_buffer.IsAllocated());
 		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
 		m_infoMap.clear();
 	}
 
-	uint32_t UniformBuffer::AllocUniform(const RenderContext& renderContext, const char* name, uint32_t size)
+	uint32_t UniformBufferMemoryPool::AllocUniform(const RenderContext& renderContext, const char* name, uint32_t size)
 	{
 		check(m_buffer.IsAllocated());
 		check(m_maxMemoryAllocated > 0 && size > 0);
@@ -252,7 +256,7 @@ namespace Mist
 		return UINT32_MAX;
 	}
 
-	void UniformBuffer::DestroyUniform(const char* name)
+	void UniformBufferMemoryPool::DestroyUniform(const char* name)
 	{
 		if (m_infoMap.contains(name))
 		{
@@ -260,7 +264,7 @@ namespace Mist
 		}
 	}
 
-	bool UniformBuffer::SetUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t dstOffset)
+	bool UniformBufferMemoryPool::SetUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t dstOffset)
 	{
 		if (m_infoMap.contains(name))
 		{
@@ -272,14 +276,14 @@ namespace Mist
 		return false;
 	}
 
-	UniformBuffer::ItemMapInfo UniformBuffer::GetLocationInfo(const char* name) const
+	UniformBufferMemoryPool::ItemMapInfo UniformBufferMemoryPool::GetLocationInfo(const char* name) const
 	{
 		if (m_infoMap.contains(name))
 			return m_infoMap.at(name);
 		return ItemMapInfo();
 	}
 
-	VkDescriptorBufferInfo UniformBuffer::GenerateDescriptorBufferInfo(const char* name) const
+	VkDescriptorBufferInfo UniformBufferMemoryPool::GenerateDescriptorBufferInfo(const char* name) const
 	{
 		check(m_infoMap.contains(name) && m_buffer.IsAllocated());
 		VkDescriptorBufferInfo descInfo;
