@@ -3,6 +3,7 @@
 #include "RenderContext.h"
 #include "VulkanRenderEngine.h"
 #include "SceneImpl.h"
+#include <imgui/imgui.h>
 
 
 #define GBUFFER_RT_FORMAT_POSITION FORMAT_R32G32B32A32_SFLOAT
@@ -38,10 +39,32 @@ namespace Mist
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		m_renderTarget.Create(renderContext, description);
 		InitPipeline(renderContext);
+
+
+		SamplerBuilder builder;
+		m_sampler = builder.Build(renderContext);
+		for (uint32_t i = 0; i < 3; ++i)
+		{
+			VkDescriptorImageInfo info;
+			info.imageLayout = tovk::GetImageLayout(description.ColorAttachmentDescriptions[i].Layout);
+			info.imageView = m_renderTarget.GetRenderTarget(i);
+			info.sampler = m_sampler.GetSampler();
+			DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+				.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(renderContext, m_debugTexDescriptors[i]);
+		}
+		VkDescriptorImageInfo info;
+		info.imageLayout = tovk::GetImageLayout(description.DepthAttachmentDescription.Layout);
+		info.imageView = m_renderTarget.GetDepthBuffer();
+		info.sampler = m_sampler.GetSampler();
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+			.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(renderContext, m_debugTexDescriptors[3]);
 	}
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
+		m_sampler.Destroy(renderContext);
 		m_renderTarget.Destroy(renderContext);
 	}
 
@@ -56,6 +79,22 @@ namespace Mist
 		char buff[64];
 		sprintf_s(buff, "DescriptorSet_GBuffer_%d", c++);
 		SetVkObjectName(renderContext, &m_frameData[frameIndex].DescriptorSetArray[0], VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
+	}
+
+	void GBuffer::UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext)
+	{
+		switch (m_debugTex)
+		{
+		case RT_POSITION: 
+		case RT_NORMAL:
+		case RT_ALBEDO:
+		case RT_DEPTH:
+			frameContext.PresentTex = m_debugTexDescriptors[m_debugTex]; 
+				break;
+		default:
+			break;
+
+		}
 	}
 
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -74,6 +113,22 @@ namespace Mist
 
 	void GBuffer::ImGuiDraw()
 	{
+		ImGui::Begin("GBuffer");
+		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth" };
+		static int index = 0;
+		if (ImGui::BeginCombo("GBuffer tex", rts[index]))
+		{
+			for (uint32_t i = 0; i < 5; ++i)
+			{
+				if (ImGui::Selectable(rts[i], i == index))
+				{
+					index = i;
+					m_debugTex = (EGBufferTarget)(index ? (index - 1) : -1);
+				}
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::End();
 	}
 
 	const RenderTarget* GBuffer::GetRenderTarget(uint32_t index) const

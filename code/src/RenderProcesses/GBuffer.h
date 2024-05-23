@@ -3,6 +3,7 @@
 #include "RenderProcess.h"
 #include "RenderTarget.h"
 #include "Globals.h"
+#include "Texture.h"
 
 namespace Mist
 {
@@ -31,7 +32,7 @@ namespace Mist
 		virtual void Init(const RenderContext& renderContext) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
 		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
-		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) override {}
+		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
 		virtual void ImGuiDraw() override;
 		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override;
@@ -42,5 +43,8 @@ namespace Mist
 		RenderTarget m_renderTarget;
 		ShaderProgram* m_shader;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
+		EGBufferTarget m_debugTex = (EGBufferTarget)-1;
+		tArray<VkDescriptorSet, 4> m_debugTexDescriptors;
+		Sampler m_sampler;
 	};
 }
