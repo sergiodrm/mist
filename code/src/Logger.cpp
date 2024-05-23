@@ -6,6 +6,8 @@
 #include <Windows.h>
 #include <debugapi.h>
 
+#define LOG_MSG_MAX_SIZE 1024*3
+
 #define ANSI_RESET_ALL          "\x1b[0m"
 
 #define ANSI_COLOR_BLACK        "\x1b[30m"
@@ -80,7 +82,7 @@ namespace Mist
 		struct LogEntry
 		{
 			LogLevel Level;
-			char Msg[2048];
+			char Msg[LOG_MSG_MAX_SIZE];
 		};
 	public:
 		LogHtmlFile(const char* filepath)
@@ -169,7 +171,7 @@ namespace Mist
 		case LogLevel::Warn:
 		case LogLevel::Error:
 			printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
-			wchar_t wString[4096];
+			wchar_t wString[LOG_MSG_MAX_SIZE];
 			MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
 			OutputDebugString(wString);
 			GLogFile->Push(level, msg);
@@ -191,7 +193,7 @@ namespace Mist
 		case LogLevel::Ok:
 		case LogLevel::Warn:
 		case LogLevel::Error:
-			char buff[2048];
+			char buff[LOG_MSG_MAX_SIZE];
 			va_list lst;
 			va_start(lst, fmt);
 			vsprintf_s(buff, fmt, lst);
