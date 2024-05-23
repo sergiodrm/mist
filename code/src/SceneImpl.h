@@ -11,6 +11,7 @@
 namespace Mist
 {
 	struct RenderContext;
+	struct RenderFrameContext;
 	class IRenderEngine;
 	class ShaderProgram;
 	class DescriptorLayoutCache;
@@ -151,7 +152,7 @@ namespace Mist
 		const MaterialRenderData& GetMaterialRenderData(RenderHandle handle) const;
 		MaterialRenderData& GetMaterialRenderData(RenderHandle handle);
 
-		void UpdateRenderData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer, const glm::vec3& viewPosition);
+		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
 		inline const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
 		inline EnvironmentData& GetEnvironmentData() { return m_environmentData; }
 
@@ -163,7 +164,7 @@ namespace Mist
 		void ImGuiDraw(bool createWindow = false);
 
 	protected:
-		void ProcessEnvironmentData(const glm::vec3& view);
+		void ProcessEnvironmentData(const glm::mat4& viewMatrix);
 		void RecalculateTransforms();
 
 	private:

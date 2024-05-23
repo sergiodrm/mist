@@ -145,7 +145,7 @@ void main()
 	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
 	vec3 fragNormal = normalize(texture(u_GBufferNormal, inTexCoords).rgb);
 	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
-	vec3 viewPos = u_Env.ViewPos.xyz;
+	vec3 viewPos = vec3(0.f);//u_Env.ViewPos.xyz;
     outColor = fragColor;
     //outColor = vec4(fragPos, 1.0);
     //return;

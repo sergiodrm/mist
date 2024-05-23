@@ -409,8 +409,7 @@ namespace Mist
 		// Update scene graph data
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.PresentTex = m_screenPipeline.PresentTexSets[GetFrameIndex()];
-		glm::vec3 cameraPos = math::GetPos(glm::inverse(frameContext.CameraData->View));
-		frameContext.Scene->UpdateRenderData(m_renderContext, &frameContext.GlobalBuffer, cameraPos);
+		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));

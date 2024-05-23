@@ -1068,14 +1068,34 @@ namespace Mist
 			ImGui::End();
 	}
 
-	void Scene::UpdateRenderData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer, const glm::vec3& viewPosition)
+	void Scene::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
-		ProcessEnvironmentData(viewPosition);
+		const glm::mat4& viewMat = frameContext.CameraData->View;
+		ProcessEnvironmentData(viewMat);
 		RecalculateTransforms();
 
+		// Calculate environment data positions from view space. TODO: cache results to avoid doing it each frame.
+		EnvironmentData renderData = m_environmentData;
+		for (uint32_t i = 0; i < renderData.ActiveLightsCount; ++i)
+			renderData.Lights[i].Position = glm::vec3(viewMat * glm::vec4(renderData.Lights[i].Position, 1.f));
+		for (uint32_t i = 0; i < renderData.ActiveSpotLightsCount; ++i)
+		{
+			glm::mat4 t = math::ToMat4(renderData.SpotLights[i].Position, renderData.SpotLights[i].Direction, glm::vec3(1.f));
+			t = viewMat * t;
+			renderData.SpotLights[i].Position = math::GetPos(t);
+			renderData.SpotLights[i].Direction = math::GetDir(t);
+		}
+		// Directional lights
+		{
+			glm::mat4 t = math::ToMat4(glm::vec3(0.f), renderData.DirectionalLight.Direction, glm::vec3(1.f));
+			t = viewMat * t;
+			renderData.DirectionalLight.Direction = math::GetDir(t);
+		}
+
+		UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 		//glm::mat4* mats = new glm::mat4[GetRenderObjectCount()];
 		//memset(mats, 0xfafafafa, sizeof(glm::mat4) * GetRenderObjectCount());
-		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
+		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 		//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, mats, GetRenderObjectCount() * sizeof(glm::mat4)));
 	}
@@ -1088,9 +1108,9 @@ namespace Mist
 		return m_globalTransforms.data();
 	}
 
-	void Scene::ProcessEnvironmentData(const glm::vec3& view)
+	void Scene::ProcessEnvironmentData(const glm::mat4& viewSpace)
 	{
-		m_environmentData.ViewPosition = view;
+		m_environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
 #if 0
 		m_environmentData.ActiveLightsCount = 0.f;
 		m_environmentData.ActiveSpotLightsCount = 0.f;
