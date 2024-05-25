@@ -184,10 +184,6 @@ namespace Mist
 		rtDesc.SetDepthAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
 		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
 
-		// Debug shadow mapping texture
-		SamplerBuilder builder;
-		m_debugSampler = builder.Build(context);
-
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
 			m_shadowMapTargetArray[i].Create(context, rtDesc);
 
@@ -203,7 +199,7 @@ namespace Mist
 		buffer.AllocUniform(renderContext, UNIFORM_ID_LIGHT_VP, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
 
 		VkDescriptorImageInfo imageInfo;
-		imageInfo.sampler = m_debugSampler.GetSampler();
+		imageInfo.sampler = CreateSampler(renderContext);
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 		{
@@ -220,7 +216,6 @@ namespace Mist
 		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 			m_shadowMapTargetArray[j].Destroy(renderContext);
 		m_shadowMapPipeline.Destroy(renderContext);
-		m_debugSampler.Destroy(renderContext);
 	}
 
 	void ShadowMapProcess::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)

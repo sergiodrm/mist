@@ -150,9 +150,6 @@ namespace Mist
 			shaderDesc.RenderTarget = renderTarget;
 			m_quadShader = ShaderProgram::Create(context, shaderDesc);
 		}
-
-		SamplerBuilder builder;
-		m_depthSampler = builder.Build(context);
 	}
 
 	void DebugPipeline::PushFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer)
@@ -216,7 +213,6 @@ namespace Mist
 	{
 		m_quadVertexBuffer.Destroy(context);
 		m_quadIndexBuffer.Destroy(context);
-		m_depthSampler.Destroy(context);
 		m_lineVertexBuffer.Destroy(context);
 	}
 

@@ -82,7 +82,6 @@ namespace Mist
 	private:
 		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
-		Sampler m_debugSampler;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
 		uint32_t m_attachmentIndexBits;
 	};

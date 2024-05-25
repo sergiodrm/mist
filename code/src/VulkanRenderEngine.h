@@ -135,7 +135,6 @@ namespace Mist
 		RenderContext m_renderContext;
 		Swapchain m_swapchain;
 
-		Sampler m_quadSampler;
 		ScreenQuadPipeline m_screenPipeline;
 		Renderer m_renderer;
 

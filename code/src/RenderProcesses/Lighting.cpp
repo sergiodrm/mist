@@ -44,9 +44,6 @@ namespace Mist
 		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 
-		SamplerBuilder builder;
-		m_sampler = builder.Build(renderContext);
-
 		// init quad
 		float vertices[] =
 		{
@@ -71,13 +68,15 @@ namespace Mist
 		m_renderTarget.Destroy(renderContext);
 		m_quadIB.Destroy(renderContext);
 		m_quadVB.Destroy(renderContext);
-		m_sampler.Destroy(renderContext);
 	}
 
 	void DeferredLighting::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
 		// Composition
 		VkDescriptorBufferInfo info = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
+
+		// image sampler
+		Sampler sampler = CreateSampler(renderContext);
 
 		// GBuffer textures binding
 		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
@@ -86,7 +85,7 @@ namespace Mist
 		tArray<VkDescriptorImageInfo, 3> infoArray;
 		for (uint32_t i = 0; i < 3; ++i)
 		{
-			infoArray[i].sampler = m_sampler.GetSampler();
+			infoArray[i].sampler = sampler;
 			infoArray[i].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[rts[i]].Layout);
 			infoArray[i].imageView = rt.GetRenderTarget(rts[i]);
 		}
@@ -94,7 +93,7 @@ namespace Mist
 		// SSAO texture binding
 		const RenderProcess* ssao = renderer.GetRenderProcess(RENDERPROCESS_SSAO);
 		VkDescriptorImageInfo ssaoInfo;
-		ssaoInfo.sampler = m_sampler.GetSampler();
+		ssaoInfo.sampler = sampler;
 		ssaoInfo.imageLayout = tovk::GetImageLayout(ssao->GetRenderTarget()->GetDescription().ColorAttachmentDescriptions[0].Layout);
 		ssaoInfo.imageView = ssao->GetRenderTarget()->GetRenderTarget(0);
 

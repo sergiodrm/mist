@@ -43,38 +43,24 @@ namespace Mist
 		VkImageView m_imageView;
 	};
 
-	
-
-	class Sampler
+	struct SamplerDescription
 	{
-	public:
-		Sampler() : m_sampler(VK_NULL_HANDLE) {}
-		Sampler(VkSampler sampler) : m_sampler(sampler) {}
-		Sampler(const Sampler& other) : m_sampler(other.m_sampler) {}
-		Sampler& operator=(const Sampler& other) { m_sampler = other.m_sampler; return *this; }
-		void Destroy(const RenderContext& renderContext);
-		VkSampler GetSampler() const { return m_sampler; }
-	private:
-		VkSampler m_sampler;
-	};
-
-	class SamplerBuilder
-	{
-	public:
 		EFilterType MinFilter = FILTER_LINEAR;
 		EFilterType MagFilter = FILTER_LINEAR;
-		union
-		{
-			struct  
-			{
-				ESamplerAddressMode U;
-				ESamplerAddressMode V;
-				ESamplerAddressMode W;
-			} AddressMode;
-			ESamplerAddressMode AddresModeUVW[3];
-		} AddressMode = { SAMPLER_ADDRESS_MODE_REPEAT, SAMPLER_ADDRESS_MODE_REPEAT, SAMPLER_ADDRESS_MODE_REPEAT };
-
-		SamplerBuilder() = default;
-		Sampler Build(const RenderContext& renderContext) const;
+		ESamplerAddressMode AddressModeU = SAMPLER_ADDRESS_MODE_REPEAT;
+		ESamplerAddressMode AddressModeV = SAMPLER_ADDRESS_MODE_REPEAT;
+		ESamplerAddressMode AddressModeW = SAMPLER_ADDRESS_MODE_REPEAT;
 	};
+
+	typedef VkSampler Sampler;
+
+	Sampler CreateSampler(const RenderContext& renderContext, const SamplerDescription& description);
+	Sampler CreateSampler(const RenderContext& renderContext, 
+		EFilterType minFilter = FILTER_LINEAR, 
+		EFilterType magFilter = FILTER_LINEAR, 
+		ESamplerAddressMode modeU = SAMPLER_ADDRESS_MODE_REPEAT, 
+		ESamplerAddressMode modeV = SAMPLER_ADDRESS_MODE_REPEAT, 
+		ESamplerAddressMode modeW = SAMPLER_ADDRESS_MODE_REPEAT);
+	uint32_t GetSamplerPackedDescription(const SamplerDescription& desc);
+	void DestroySamplers(const RenderContext& renderContext);
 }

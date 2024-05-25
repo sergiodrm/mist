@@ -78,7 +78,6 @@ namespace Mist
 		VertexBuffer m_quadVertexBuffer;
 		IndexBuffer m_quadIndexBuffer;
 		ShaderProgram* m_quadShader;
-		Sampler m_depthSampler;
 		bool m_debugDepthMap = true;
 	};
 }

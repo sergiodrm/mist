@@ -40,11 +40,6 @@ namespace Mist
 		texInfo.Pixels = &ssaoNoise[0];
 		m_noiseTexture.Init(renderContext, texInfo);
 
-		SamplerBuilder builder;
-		builder.MinFilter = FILTER_NEAREST;
-		builder.MagFilter = FILTER_NEAREST;
-		m_noiseSampler = builder.Build(renderContext);
-
 		// Render target
 		RenderTargetDescription rtDesc;
 		tClearValue value = { .color = {1.f, 0.f, 0.f, 1.f} };
@@ -99,7 +94,6 @@ namespace Mist
 		m_screenQuadIB.Destroy(renderContext);
 		m_screenQuadVB.Destroy(renderContext);
 		m_noiseTexture.Destroy(renderContext);
-		m_noiseSampler.Destroy(renderContext);
 		m_rt.Destroy(renderContext);
 		m_blurRT.Destroy(renderContext);
 	}
@@ -109,22 +103,24 @@ namespace Mist
 		buffer.AllocUniform(context, "SSAOUBO", sizeof(SSAOUBO));
 		VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("SSAOUBO");
 
+		Sampler sampler = CreateSampler(context, FILTER_NEAREST, FILTER_NEAREST);
+
 		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
 		const RenderTarget& rt = *gbuffer->GetRenderTarget();
 		VkDescriptorImageInfo imageInfo[5];
-		imageInfo[0].sampler = m_noiseSampler.GetSampler();
+		imageInfo[0].sampler = sampler;
 		imageInfo[0].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[GBuffer::RT_POSITION].Layout);
 		imageInfo[0].imageView = rt.GetRenderTarget(GBuffer::RT_POSITION);
-		imageInfo[1].sampler = m_noiseSampler.GetSampler();
+		imageInfo[1].sampler = sampler;
 		imageInfo[1].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[GBuffer::RT_NORMAL].Layout);
 		imageInfo[1].imageView = rt.GetRenderTarget(GBuffer::RT_NORMAL);
-		imageInfo[2].sampler = m_noiseSampler.GetSampler();
+		imageInfo[2].sampler = sampler;
 		imageInfo[2].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[GBuffer::RT_ALBEDO].Layout);
 		imageInfo[2].imageView = rt.GetRenderTarget(GBuffer::RT_ALBEDO);
-		imageInfo[3].sampler = m_noiseSampler.GetSampler();
+		imageInfo[3].sampler = sampler;
 		imageInfo[3].imageLayout = tovk::GetImageLayout(rt.GetDescription().DepthAttachmentDescription.Layout);
 		imageInfo[3].imageView = rt.GetRenderTarget(GBuffer::RT_DEPTH);
-		imageInfo[4].sampler = m_noiseSampler.GetSampler();
+		imageInfo[4].sampler = sampler;
 		imageInfo[4].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		imageInfo[4].imageView = m_noiseTexture.GetImageView();
 
@@ -135,7 +131,7 @@ namespace Mist
 		builder.Build(context, m_frameData[frameIndex].SSAOSet);
 
 		VkDescriptorImageInfo ssaoImageInfo;
-		ssaoImageInfo.sampler = m_noiseSampler.GetSampler();
+		ssaoImageInfo.sampler = sampler;
 		ssaoImageInfo.imageLayout = tovk::GetImageLayout(m_rt.GetDescription().ColorAttachmentDescriptions[0].Layout);
 		ssaoImageInfo.imageView = m_rt.GetRenderTarget(0);
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
@@ -143,7 +139,7 @@ namespace Mist
 			.Build(context, m_frameData[frameIndex].SSAOBlurSet);
 
 		VkDescriptorImageInfo ssaoBlurImageInfo;
-		ssaoBlurImageInfo.sampler = m_noiseSampler.GetSampler();
+		ssaoBlurImageInfo.sampler = sampler;
 		ssaoBlurImageInfo.imageLayout = tovk::GetImageLayout(m_blurRT.GetDescription().ColorAttachmentDescriptions[0].Layout);
 		ssaoBlurImageInfo.imageView = m_blurRT.GetRenderTarget(0);
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)

@@ -45,6 +45,5 @@ namespace Mist
 		FrameData m_frameData[globals::MaxOverlappedFrames];
 		EGBufferTarget m_debugTex = (EGBufferTarget)-1;
 		tArray<VkDescriptorSet, 4> m_debugTexDescriptors;
-		Sampler m_sampler;
 	};
 }

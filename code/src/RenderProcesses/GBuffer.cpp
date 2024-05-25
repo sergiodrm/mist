@@ -40,15 +40,14 @@ namespace Mist
 		m_renderTarget.Create(renderContext, description);
 		InitPipeline(renderContext);
 
+		Sampler sampler = CreateSampler(renderContext);
 
-		SamplerBuilder builder;
-		m_sampler = builder.Build(renderContext);
 		for (uint32_t i = 0; i < 3; ++i)
 		{
 			VkDescriptorImageInfo info;
 			info.imageLayout = tovk::GetImageLayout(description.ColorAttachmentDescriptions[i].Layout);
 			info.imageView = m_renderTarget.GetRenderTarget(i);
-			info.sampler = m_sampler.GetSampler();
+			info.sampler = sampler;
 			DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 				.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(renderContext, m_debugTexDescriptors[i]);
@@ -56,7 +55,7 @@ namespace Mist
 		VkDescriptorImageInfo info;
 		info.imageLayout = tovk::GetImageLayout(description.DepthAttachmentDescription.Layout);
 		info.imageView = m_renderTarget.GetDepthBuffer();
-		info.sampler = m_sampler.GetSampler();
+		info.sampler = sampler;
 		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 			.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_debugTexDescriptors[3]);
@@ -64,7 +63,6 @@ namespace Mist
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
-		m_sampler.Destroy(renderContext);
 		m_renderTarget.Destroy(renderContext);
 	}
 

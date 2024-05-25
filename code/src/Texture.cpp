@@ -167,21 +167,55 @@ namespace Mist
 		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
-	void Sampler::Destroy(const RenderContext& renderContext)
+
+	tMap<uint32_t, Sampler> g_Samplers;
+
+	Sampler CreateSampler(const RenderContext& renderContext, const SamplerDescription& description)
 	{
-		check(m_sampler != VK_NULL_HANDLE);
-		vkDestroySampler(renderContext.Device, m_sampler, nullptr);
+		uint32_t descId = GetSamplerPackedDescription(description);
+		// Already created?
+		if (g_Samplers.contains(descId))
+		{
+			check(g_Samplers[descId] != VK_NULL_HANDLE);
+			return g_Samplers[descId];
+		}
+
+		// Create and stored
+		VkSamplerCreateInfo createInfo{ .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO, .pNext = nullptr };
+		createInfo.addressModeU = tovk::GetSamplerAddressMode(description.AddressModeU);
+		createInfo.addressModeV = tovk::GetSamplerAddressMode(description.AddressModeV);
+		createInfo.addressModeW = tovk::GetSamplerAddressMode(description.AddressModeW);
+		createInfo.minFilter = tovk::GetFilter(description.MinFilter);
+		createInfo.magFilter = tovk::GetFilter(description.MagFilter);
+		Sampler sampler;
+		vkcheck(vkCreateSampler(renderContext.Device, &createInfo, nullptr, &sampler));
+		g_Samplers[descId] = sampler;
+		return sampler;
 	}
 
-	Sampler SamplerBuilder::Build(const RenderContext& renderContext) const
+	Sampler CreateSampler(const RenderContext& renderContext, EFilterType minFilter, EFilterType magFilter, ESamplerAddressMode modeU, ESamplerAddressMode modeV, ESamplerAddressMode modeW)
 	{
-		VkSampler sampler;
-		VkSamplerCreateInfo info = vkinit::SamplerCreateInfo(MinFilter, AddressMode.AddressMode.U);
-		vkcheck(vkCreateSampler(renderContext.Device, &info, nullptr, &sampler));
-		static int x = 0;
-		char buff[32];
-		sprintf_s(buff, "Sampler_%d", x++);
-		SetVkObjectName(renderContext, &sampler, VK_OBJECT_TYPE_SAMPLER, buff);
-		return Sampler(sampler);
+		return CreateSampler(renderContext, {minFilter, magFilter, modeU, modeV, modeW});
+	}
+
+	uint32_t GetSamplerPackedDescription(const SamplerDescription& desc)
+	{
+		uint32_t res = (1 << desc.MinFilter) 
+			| (1 << (desc.MagFilter + 3))
+			| (1 << (desc.AddressModeU + 6))
+			| (1 << (desc.AddressModeV + 11))
+			| (1 << (desc.AddressModeW + 16));
+		return res;
+	}
+
+	void DestroySamplers(const RenderContext& renderContext)
+	{
+		for (tMap<uint32_t, Sampler>::iterator it = g_Samplers.begin();
+			it != g_Samplers.end(); ++it)
+		{
+			check(it->second != VK_NULL_HANDLE);
+			vkDestroySampler(renderContext.Device, it->second, nullptr);
+		}
+		g_Samplers.clear();
 	}
 }

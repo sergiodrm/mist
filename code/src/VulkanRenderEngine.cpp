@@ -251,7 +251,7 @@ namespace Mist
 			VkDescriptorImageInfo quadImageInfoArray;
 			quadImageInfoArray.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			quadImageInfoArray.imageView = lightingRT.GetRenderTarget(0);
-			quadImageInfoArray.sampler = m_quadSampler.GetSampler();
+			quadImageInfoArray.sampler = CreateSampler(m_renderContext);
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
 				.BindImage(0, &quadImageInfoArray, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(m_renderContext, m_screenPipeline.PresentTexSets[i]);
@@ -326,7 +326,7 @@ namespace Mist
 		m_renderer.Destroy(m_renderContext);
 		m_screenPipeline.Destroy(m_renderContext);
 
-		m_quadSampler.Destroy(m_renderContext);
+		DestroySamplers(m_renderContext);
 		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
@@ -867,9 +867,6 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitPipeline()
 	{
-		SamplerBuilder builder;
-		m_quadSampler = builder.Build(m_renderContext);
-
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
