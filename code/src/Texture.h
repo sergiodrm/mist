@@ -3,6 +3,7 @@
 #pragma once
 
 #include "RenderTypes.h"
+#include "RenderAPI.h"
 
 namespace Mist
 {
@@ -30,6 +31,13 @@ namespace Mist
 		uint32_t PixelCount = 0;
 	};
 
+	struct TextureDescriptor
+	{
+		ImageView View;
+		EImageLayout Layout;
+		Sampler Sampler;
+	};
+
 	class Texture
 	{
 	public:
@@ -40,8 +48,11 @@ namespace Mist
 		void Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex = 0) const;
 	private:
 		AllocatedImage m_image;
-		VkImageView m_imageView;
+		ImageView m_imageView;
 	};
+
+
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture);
 
 	struct SamplerDescription
 	{
@@ -52,7 +63,6 @@ namespace Mist
 		ESamplerAddressMode AddressModeW = SAMPLER_ADDRESS_MODE_REPEAT;
 	};
 
-	typedef VkSampler Sampler;
 
 	Sampler CreateSampler(const RenderContext& renderContext, const SamplerDescription& description);
 	Sampler CreateSampler(const RenderContext& renderContext, 

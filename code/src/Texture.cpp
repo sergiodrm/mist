@@ -167,8 +167,32 @@ namespace Mist
 		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture)
+	{
+		// Load texture from file
+		io::TextureRaw texData;
+		if (!io::LoadTexture(filepath, texData))
+		{
+			Logf(LogLevel::Error, "Failed to load texture from %s.\n", filepath);
+			return false;
+		}
+
+		// Create gpu buffer with texture specifications
+		TextureCreateInfo texInfo;
+		texInfo.Width = texData.Width;
+		texInfo.Height = texData.Height;
+		texInfo.Depth = 1;
+		texInfo.Format = utils::GetImageFormatFromChannels(texData.Channels);
+		texInfo.Pixels = texData.Pixels;
+		texInfo.PixelCount = texData.Width * texData.Height * /*texData.Channels*/1; // depth
+		texture.Init(context, texInfo);
+		// Free raw texture data
+		io::FreeTexture(texData.Pixels);
+		return true;
+	}
 
 	tMap<uint32_t, Sampler> g_Samplers;
+
 
 	Sampler CreateSampler(const RenderContext& renderContext, const SamplerDescription& description)
 	{
