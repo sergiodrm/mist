@@ -133,8 +133,8 @@ namespace Mist
 		bool Reload(const RenderContext& context);
 		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
 
-		void UseProgram(VkCommandBuffer cmd);
-		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0);
+		void UseProgram(VkCommandBuffer cmd) const;
+		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
 
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 

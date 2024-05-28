@@ -251,6 +251,10 @@ namespace Mist
 		shader_compiler::FreeBinary(bin);
 #endif // SHADER_RUNTIME_COMPILATION
 
+		char buff[256];
+		sprintf_s(buff, "ShaderModule_(%s)", filepath);
+		SetVkObjectName(m_renderContext, &data.CompiledModule, VK_OBJECT_TYPE_SHADER_MODULE, buff);
+
 		Logf(LogLevel::Ok, "Shader compiled successfully (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 		return true;
 	}
@@ -713,16 +717,22 @@ namespace Mist
 		// Free shader compiler cached data
 		compiler.ClearCachedData();
 
+		char buff[256];
+		sprintf_s(buff, "Pipeline_(%s)(%s)", m_description.VertexShaderFile.c_str(), m_description.FragmentShaderFile.c_str());
+		SetVkObjectName(context, &m_pipeline, VK_OBJECT_TYPE_PIPELINE, buff);
+		sprintf_s(buff, "PipelineLayout_(%s)(%s)", m_description.VertexShaderFile.c_str(), m_description.FragmentShaderFile.c_str());
+		SetVkObjectName(context, &m_pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, buff);
+
 		return true;
 	}
 
-	void ShaderProgram::UseProgram(VkCommandBuffer cmd)
+	void ShaderProgram::UseProgram(VkCommandBuffer cmd) const
 	{
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 		++Mist_profiling::GRenderStats.ShaderProgramCount;
 	}
 
-	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount)
+	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
 		++Mist_profiling::GRenderStats.SetBindingCount;
