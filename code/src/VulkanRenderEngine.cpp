@@ -192,6 +192,7 @@ namespace Mist
 		m_screenPipeline.Init(m_renderContext, m_swapchain);
 		// Initialize render processes after instantiate render context
 		m_renderer.Init(m_renderContext, m_frameContextArray, sizeof(m_frameContextArray) / sizeof(RenderFrameContext));
+		DebugRender::Init(m_renderContext);
 #if 0
 
 		RendererCreateInfo rendererCreateInfo;
@@ -323,6 +324,7 @@ namespace Mist
 		}
 #endif // 0
 
+		DebugRender::Destroy(m_renderContext);
 		m_renderer.Destroy(m_renderContext);
 		m_screenPipeline.Destroy(m_renderContext);
 
