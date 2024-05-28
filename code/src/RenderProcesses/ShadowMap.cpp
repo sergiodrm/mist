@@ -54,6 +54,7 @@ namespace Mist
 		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
 		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 
+		shaderDesc.DynamicBuffers.push_back("u_ubo");
 		shaderDesc.DynamicBuffers.push_back("u_model");
 		shaderDesc.VertexShaderFile = globals::DepthVertexShader;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
@@ -88,7 +89,7 @@ namespace Mist
 	{
 		m_clip[0] = nearClip;
 		m_clip[1] = farClip;
-		debugrender::SetDebugClipParams(nearClip, farClip);
+		DebugRender::SetDebugClipParams(nearClip, farClip);
 	}
 
 	glm::mat4 ShadowMapPipeline::GetProjection(EShadowMapProjectionType projType) const
@@ -164,7 +165,7 @@ namespace Mist
 		if (createWindow)
 			ImGui::Begin("ShadowMap proj params");
 		if (ImGui::DragFloat("Near clip", &m_clip[0], 1.f) | ImGui::DragFloat("Far clip", &m_clip[1], 1.f))
-			debugrender::SetDebugClipParams(m_clip[0], m_clip[1]);
+			DebugRender::SetDebugClipParams(m_clip[0], m_clip[1]);
 		ImGui::DragFloat("FOV", &m_perspectiveParams[0], 0.01f);
 		ImGui::DragFloat("Aspect ratio", &m_perspectiveParams[1], 0.01f);
 		ImGui::DragFloat2("Ortho x", &m_orthoParams[0]);
@@ -265,7 +266,7 @@ namespace Mist
 		glm::mat4 lightMatrix[globals::MaxShadowMapAttachments];
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-			lightMatrix[i] = depthBias * m_shadowMapPipeline.GetDepthVP(i);
+			lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
 		}
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
 	}
@@ -298,7 +299,7 @@ namespace Mist
 		if (debugShadows)
 		{
 			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments - 1);
-			debugrender::SetDebugTexture(m_frameData[0].DebugShadowMapTextureSet[shadowMapDebugIndex]);
+			//DebugRender::SetDebugTexture(m_frameData[0].DebugShadowMapTextureSet[shadowMapDebugIndex]);
 		}
 		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
 		ImGui::Separator();

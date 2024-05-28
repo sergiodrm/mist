@@ -32,6 +32,13 @@ layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
 layout(set = 0, binding = 3) uniform sampler2D u_GBufferAlbedo;
 // SSAO texture
 layout(set = 0, binding = 4) uniform sampler2D u_ssao;
+// Shadow map textures
+#define MAX_SHADOW_MAPS 3
+layout(set = 0, binding = 5) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
+layout(set = 0, binding = 6) uniform ShadowMapInfo
+{
+    mat4 LightViewMat[MAX_SHADOW_MAPS];
+} u_ShadowMapInfo;
 
 float LinearizeDepth(float z, float n, float f)
 {
@@ -56,21 +63,15 @@ vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDi
     return diffuse + specular;
 }
 
-#if 0
-vec4 GetLightSpaceCoords(int lightIndex)
+#if 1
+vec4 GetLightSpaceCoords(vec4 fragWorldPos, int lightIndex)
 {
-    if (lightIndex == 0)
-        return inLightSpaceFragPos_0;
-    if (lightIndex == 1)
-        return inLightSpaceFragPos_1;
-    if (lightIndex == 2)
-        return inLightSpaceFragPos_2;
+    return u_ShadowMapInfo.LightViewMat[lightIndex] * fragWorldPos;
 }
 
-
-float CalculateShadow(int shadowMapIndex)
+float CalculateShadow(vec4 fragWorldPos, int shadowMapIndex)
 {
-    vec4 lightSpaceCoord = GetLightSpaceCoords(shadowMapIndex);
+    vec4 lightSpaceCoord = GetLightSpaceCoords(fragWorldPos, shadowMapIndex);
     vec4 shadowCoord = lightSpaceCoord / lightSpaceCoord.w;
 #if 1
     // PCF
@@ -170,11 +171,11 @@ void main()
         for (int i = 0; i < numSpotLights; ++i)
         {
             vec3 spotLightColor = ProcessSpotLight(fragPos, fragNormal, viewPos, u_Env.SpotLights[i]);
-#if 0
+#if 1
             if (u_Env.SpotLights[i].Color.w >= 0.f)
             {
                 int shadowIndex = int(u_Env.SpotLights[i].Color.w);
-                float shadow = CalculateShadow(shadowIndex);
+                float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
                 spotLightColor *= (1.f-shadow);
             }
 #endif
