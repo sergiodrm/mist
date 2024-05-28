@@ -41,6 +41,8 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 			m_processArray[i]->UpdateRenderData(context, frameContext);
+		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
+			m_processArray[i]->DebugDraw(context);
 	}
 
 	void Renderer::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
