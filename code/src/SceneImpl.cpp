@@ -761,29 +761,10 @@ namespace Mist
 
 	RenderHandle Scene::LoadTexture(const char* texturePath)
 	{
-		// Load texture from file
-		io::TextureRaw texData;
-		if (!io::LoadTexture(texturePath, texData))
-		{
-			Logf(LogLevel::Error, "Failed to load texture from %s.\n", texturePath);
-			return InvalidRenderHandle;
-		}
-
-		// Create gpu buffer with texture specifications
-		TextureCreateInfo texInfo;
-		texInfo.Width = texData.Width;
-		texInfo.Height = texData.Height;
-		texInfo.Depth = 1;
-		texInfo.Format = utils::GetImageFormatFromChannels(texData.Channels);
-		texInfo.Pixels = texData.Pixels;
-		texInfo.PixelCount = texData.Width * texData.Height * /*texData.Channels*/1; // depth
-		Texture texture;
-		texture.Init(m_engine->GetContext(), texInfo);
+		Texture tex;
+		check(LoadTextureFromFile(m_engine->GetContext(), texturePath, tex));
 		RenderHandle h = GenerateRenderHandle();
-		m_renderData.Textures[h] = texture;
-
-		// Free raw texture data
-		io::FreeTexture(texData.Pixels);
+		m_renderData.Textures[h] = tex;
 		return h;
 	}
 
@@ -1006,7 +987,7 @@ namespace Mist
 			utilShadowCheckbox("Project shadows", shadowIdLabel++, m_environmentData.DirectionalLight.ShadowMapIndex);
 			utilDragFloat("Direction", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Direction[0], 3, false, 0.02f, -1.f, 1.f);
 			utilDragFloat("Color", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Color[0], 3, true);
-			debugrender::DrawLine3D(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
+			DebugRender::DrawLine3D(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
 		}
 		if (ImGui::CollapsingHeader("Point lights"))
 		{
@@ -1024,8 +1005,8 @@ namespace Mist
 					utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, false, 0.5f, 0.f, FLT_MAX);
 					utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, false, 0.5f, 0.5f, FLT_MAX);
 
-					debugrender::DrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-					debugrender::DrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
+					DebugRender::DrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
+					DebugRender::DrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
 				}
 			}
 		}
@@ -1060,7 +1041,7 @@ namespace Mist
 					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
 
 					constexpr float scl = 1.f; // meters
-					debugrender::DrawAxis(data.Position, pyr, glm::vec3(scl));
+					DebugRender::DrawAxis(data.Position, pyr, glm::vec3(scl));
 				}
 			}
 		}
@@ -1093,11 +1074,8 @@ namespace Mist
 		}
 
 		UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
-		//glm::mat4* mats = new glm::mat4[GetRenderObjectCount()];
-		//memset(mats, 0xfafafafa, sizeof(glm::mat4) * GetRenderObjectCount());
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
-		//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, mats, GetRenderObjectCount() * sizeof(glm::mat4)));
 	}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
