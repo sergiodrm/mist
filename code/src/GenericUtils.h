@@ -40,6 +40,8 @@ namespace Mist
 	namespace math
 	{
 		inline float Lerp(float a, float b, float f) { return a + f * (b - a); }
+		template <typename T>
+		inline T Clamp(const T& v, const T& _min, const T& _max) { return v > _max ? _max : (v < _min ? _min : v); }
 		glm::vec3 ToRot(const glm::vec3& direction);
 		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
 		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
