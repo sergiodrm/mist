@@ -151,7 +151,7 @@ namespace Mist
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		CPU_PROFILE_SCOPE(Init);
-		InitLog("../../log.html");
+		InitLog("log.html");
 #ifdef _DEBUG
 		Log(LogLevel::Info, "Running app in DEBUG mode.\n");
 #else
