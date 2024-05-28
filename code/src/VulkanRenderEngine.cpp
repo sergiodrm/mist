@@ -661,6 +661,8 @@ namespace Mist
 		vkb::PhysicalDevice physicalDevice = selector
 			.set_minimum_version(1, 1)
 			.set_surface(m_renderContext.Surface)
+			.allow_any_gpu_device_type(false)
+			.prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
 			.select()
 			.value();
 		vkb::DeviceBuilder deviceBuilder{ physicalDevice };
