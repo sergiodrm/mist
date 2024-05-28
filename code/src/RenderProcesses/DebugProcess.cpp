@@ -10,16 +10,36 @@
 #include "glm/gtx/transform.hpp"
 #include <corecrt_math_defines.h>
 #include "imgui_internal.h"
+#include "GenericUtils.h"
+#include "RenderAPI.h"
+#include "Texture.h"
 
 
 namespace Mist
 {
-	namespace debugrender
+	namespace DebugRender
 	{
+		Texture DefaultTexture;
+
+		constexpr glm::vec2 QuadVertexUVs[4] =
+		{
+			{0.f, 0.f},
+			{1.f, 0.f},
+			{0.f, 1.f},
+			{1.f, 1.f}
+		};
+
 		struct LineVertex
 		{
 			glm::vec4 Position;
 			glm::vec4 Color;
+		};
+
+		struct QuadVertex
+		{
+			glm::vec2 ScreenPosition;
+			glm::vec2 TexCoords;
+			uint32_t TexIndex;
 		};
 
 		struct LineBatch
@@ -29,9 +49,44 @@ namespace Mist
 			uint32_t Index = 0;
 		} GLineBatch;
 
-		VkDescriptorSet DebugTexture = VK_NULL_HANDLE;
+		struct QuadBatch
+		{
+			static constexpr uint32_t MaxQuads = 100;
+			static constexpr uint32_t MaxQuadVertices = MaxQuads * 4;
+			static constexpr uint32_t MaxQuadIndices = MaxQuads * 6;
+			static constexpr int32_t MaxViews = 8;
+			QuadVertex QuadArray[MaxQuads*4];
+			uint32_t Index;
+			TextureDescriptor TexDescriptors[MaxViews];
+			int32_t ViewIndex = 0;
+		} GQuadBatch;
+
+		
 		float NearClip = 1.f;
 		float FarClip = 100.f;
+
+		int32_t SubmitQuadTexture(QuadBatch& batch, const TextureDescriptor& texDescriptor)
+		{
+			for (int32_t i = 0; i < batch.ViewIndex; ++i)
+			{
+				if (texDescriptor.View == batch.TexDescriptors[i].View)
+				{
+					check(texDescriptor.Layout == batch.TexDescriptors[i].Layout);
+					return i;
+				}
+			}
+			int32_t index = -1;
+			if (batch.ViewIndex < batch.MaxViews)
+			{
+				batch.TexDescriptors[batch.ViewIndex] = texDescriptor;
+				index = batch.ViewIndex++;
+			}
+			else
+			{
+				Logf(LogLevel::Error, "DebugRender Quad overflow. Increase QuadBatch (Current %u).\n", QuadBatch::MaxQuads);
+			}
+			return index;
+		}
 
 		void PushLineVertex(LineBatch& batch, const glm::vec3& pos, const glm::vec3& color)
 		{
@@ -47,6 +102,22 @@ namespace Mist
 		{
 			PushLineVertex(batch, init, color);
 			PushLineVertex(batch, end, color);
+		}
+
+		void Init(const RenderContext& context)
+		{
+			check(LoadTextureFromFile(context, ASSET_PATH("textures/checkerboard.jpg"), DefaultTexture));
+			TextureDescriptor texDescriptor;
+			texDescriptor.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			texDescriptor.Sampler = CreateSampler(context);
+			texDescriptor.View = DefaultTexture.GetImageView();
+			for (uint32_t i = 0; i < QuadBatch::MaxViews; ++i)
+				GQuadBatch.TexDescriptors[i] = texDescriptor;
+		}
+
+		void Destroy(const RenderContext& context)
+		{
+			DefaultTexture.Destroy(context);
 		}
 
 		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
@@ -90,15 +161,84 @@ namespace Mist
 			}
 		}
 
-		void SetDebugTexture(VkDescriptorSet descriptor)
-		{
-			DebugTexture = descriptor;
-		}
-
 		void SetDebugClipParams(float nearClip, float farClip)
 		{
 			NearClip = nearClip;
 			FarClip = farClip;
+		}
+
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const TextureDescriptor& texDescriptor)
+		{
+			if (GQuadBatch.Index < QuadBatch::MaxQuads)
+			{
+				int32_t viewIndex = SubmitQuadTexture(GQuadBatch, texDescriptor);
+				if (viewIndex != -1)
+				{
+					glm::vec2 diffs[4] = { {0.f, 0.f}, {size.x, 0.f}, {0.f, size.y}, {size.x, size.y} };
+					for (uint32_t i = 0; i < 4; ++i)
+					{
+						QuadVertex& vertex = GQuadBatch.QuadArray[GQuadBatch.Index * 4 + i];
+						vertex.ScreenPosition = { screenPos.x + diffs[i].x, screenPos.y + diffs[i].y };
+						vertex.TexCoords = QuadVertexUVs[i];
+						vertex.TexIndex = viewIndex;
+					}
+					++GQuadBatch.Index;
+				}
+			}
+			else
+				Logf(LogLevel::Error, "DebugRender Quad overflow. Increate QuadBatch size (Current %u)\n", QuadBatch::MaxQuads);
+		}
+
+		void UpdateQuadTexDescriptorSet(const RenderContext& context, const QuadBatch& batch, VkDescriptorSet set, bool updateAll = false)
+		{
+			static Sampler defSampler = CreateSampler(context);
+			uint32_t size = updateAll ? QuadBatch::MaxViews : GQuadBatch.ViewIndex;
+			check(size > 0 && size <= QuadBatch::MaxViews);
+			VkDescriptorImageInfo info[QuadBatch::MaxViews];
+			for (uint32_t i = 0; i < size; ++i)
+			{
+				info[i].sampler = GQuadBatch.TexDescriptors[i].Sampler ? GQuadBatch.TexDescriptors[i].Sampler : defSampler;
+				info[i].imageLayout = tovk::GetImageLayout(GQuadBatch.TexDescriptors[i].Layout);
+				info[i].imageView = GQuadBatch.TexDescriptors[i].View;
+			}
+			VkWriteDescriptorSet writeInfo;
+			writeInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writeInfo.pNext = nullptr;
+			writeInfo.descriptorCount = size;
+			writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			writeInfo.dstArrayElement = 0;
+			writeInfo.dstBinding = 0;
+			writeInfo.dstSet = set;
+			writeInfo.pImageInfo = info;
+			vkUpdateDescriptorSets(context.Device, 1, &writeInfo, 0, VK_NULL_HANDLE);
+		}
+
+		void BuildDescriptorSetQuadTex(const RenderContext& context, const QuadBatch& batch, VkDescriptorSet& set)
+		{
+			DescriptorLayoutCache& layoutCache = *context.LayoutCache;
+			DescriptorAllocator& descriptorAllocator = *context.DescAllocator;
+			VkDescriptorSetLayoutBinding binding;
+			binding.binding = 0;
+			binding.pImmutableSamplers = nullptr;
+			binding.descriptorCount = QuadBatch::MaxViews;
+			binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+			VkDescriptorSetLayoutCreateInfo layoutInfo = vkinit::DescriptorSetLayoutCreateInfo(&binding, 1);
+			VkDescriptorSetLayout layout = layoutCache.CreateLayout(layoutInfo);
+			check(descriptorAllocator.Allocate(&set, layout));
+			DebugRender::UpdateQuadTexDescriptorSet(context, batch, set, true);
+		}
+
+		void FlushQuadBatch(const RenderContext& context, CommandBuffer cmd, QuadBatch& batch, const ShaderProgram& shader, const VertexBuffer& vb, const IndexBuffer& ib, VkDescriptorSet sets[2])
+		{
+			GPUBuffer::SubmitBufferToGpu(vb, &DebugRender::GQuadBatch.QuadArray, sizeof(DebugRender::QuadVertex) * DebugRender::GQuadBatch.Index * 4);
+			DebugRender::UpdateQuadTexDescriptorSet(context, batch, sets[1]);
+			shader.UseProgram(cmd);
+			shader.BindDescriptorSets(cmd, sets, 2);
+			vb.Bind(cmd);
+			ib.Bind(cmd);
+			RenderAPI::CmdDrawIndexed(cmd, DebugRender::GQuadBatch.Index * 6, 1, 0, 0, 0);
+			DebugRender::GQuadBatch.Index = 0;
 		}
 	}
 
@@ -120,9 +260,10 @@ namespace Mist
 
 		// VertexBuffer
 		BufferCreateInfo vbInfo;
-		vbInfo.Size = sizeof(debugrender::LineVertex) * debugrender::LineBatch::MaxLines;
+		vbInfo.Size = sizeof(DebugRender::LineVertex) * DebugRender::LineBatch::MaxLines;
 		vbInfo.Data = nullptr;
 		m_lineVertexBuffer.Init(context, vbInfo);
+#if 0
 
 		float vertices[] =
 		{
@@ -131,22 +272,33 @@ namespace Mist
 			1.f, -0.5f, 0.f, 1.f, 1.f,
 			0.5f, -0.5f, 0.f, 0.f, 1.f,
 		};
-		uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
+#endif // 0
+
 		BufferCreateInfo quadInfo;
-		quadInfo.Size = sizeof(vertices);
-		quadInfo.Data = vertices;
+		quadInfo.Size = sizeof(DebugRender::QuadVertex) * DebugRender::QuadBatch::MaxQuads;
+		quadInfo.Data = nullptr;
 		m_quadVertexBuffer.Init(context, quadInfo);
 
-		quadInfo.Size = sizeof(uint32_t) * 6;
-		quadInfo.Data = indices;
+		constexpr uint32_t indicesPerQuad = 6;
+		constexpr uint32_t indices[] = { 0, 2, 1, 1, 2, 3 };
+		uint32_t indexBuffer[DebugRender::QuadBatch::MaxQuads * 6];
+		uint32_t vertexOffset = 0;
+		for (uint32_t i = 0; i < DebugRender::QuadBatch::MaxQuads; ++i)
+		{
+			for (uint32_t j = 0; j < indicesPerQuad; ++j)
+				indexBuffer[(i * indicesPerQuad) + j] = indices[j] + vertexOffset;
+			vertexOffset += 4;
+		}
+		quadInfo.Size = sizeof(uint32_t) * DebugRender::QuadBatch::MaxQuads * indicesPerQuad;
+		quadInfo.Data = indexBuffer;
 		m_quadIndexBuffer.Init(context, quadInfo);
 
 		// Quad pipeline
 		{
 			ShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile = globals::QuadVertexShader;
-			shaderDesc.FragmentShaderFile = globals::DepthQuadFragmentShader;
-			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+			shaderDesc.VertexShaderFile = SHADER_FILEPATH("screenquad.vert");
+			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("screenquad.frag");
+			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Int });
 			shaderDesc.RenderTarget = renderTarget;
 			m_quadShader = ShaderProgram::Create(context, shaderDesc);
 		}
@@ -169,12 +321,22 @@ namespace Mist
 			.BindBuffer(0, &cameraBI, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 			.Build(context, fd.CameraSet);
 
+		buffer->AllocUniform(context, "OrthoProjection", sizeof(glm::mat4));
+		VkDescriptorBufferInfo orthoInfo = buffer->GenerateDescriptorBufferInfo("OrthoProjection");
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindBuffer(0, &orthoInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+			.Build(context, fd.QuadSet[0]);
+		glm::mat4 orthoproj = glm::ortho(0.f, (float)context.Window->Width, 0.f, (float)context.Window->Height, -10.f, 10.f);
+		buffer->SetUniform(context, "OrthoProjection", &orthoproj, sizeof(glm::mat4));
+
+		DebugRender::BuildDescriptorSetQuadTex(context, DebugRender::GQuadBatch, fd.QuadSet[1]);
+		
 		m_frameSet.push_back(fd);
 	}
 
 	void DebugPipeline::PrepareFrame(const RenderContext& context, UniformBufferMemoryPool* buffer)
 	{
-		float ubo[2] = { debugrender::NearClip, debugrender::FarClip };
+		float ubo[2] = { DebugRender::NearClip, DebugRender::FarClip };
 		buffer->SetUniform(context, "QuadUBO", ubo, sizeof(float) * 2);
 	}
 
@@ -182,29 +344,22 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(DebugPass);
 		BeginGPUEvent(context, cmd, "DebugRenderer");
-		if (debugrender::GLineBatch.Index > 0)
+		if (DebugRender::GLineBatch.Index > 0)
 		{
 			// Flush lines to vertex buffer
-			GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &debugrender::GLineBatch.LineArray, sizeof(debugrender::LineVertex) * debugrender::GLineBatch.Index);
-
+			GPUBuffer::SubmitBufferToGpu(m_lineVertexBuffer, &DebugRender::GLineBatch.LineArray, sizeof(DebugRender::LineVertex) * DebugRender::GLineBatch.Index);
 			m_lineShader->UseProgram(cmd);
 			VkDescriptorSet sets[] = { m_frameSet[frameIndex].CameraSet };
 			uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 			m_lineShader->BindDescriptorSets(cmd, sets, setCount);
 			m_lineVertexBuffer.Bind(cmd);
-			vkCmdDraw(cmd, debugrender::GLineBatch.Index, 1, 0, 0);
-			debugrender::GLineBatch.Index = 0;
-			++Mist_profiling::GRenderStats.DrawCalls;
+			RenderAPI::CmdDraw(cmd, DebugRender::GLineBatch.Index, 1, 0, 0);
+			DebugRender::GLineBatch.Index = 0;
 		}
 
-		if (m_debugDepthMap && debugrender::DebugTexture != VK_NULL_HANDLE)
+		if (DebugRender::GQuadBatch.Index > 0)
 		{
-			m_quadShader->UseProgram(cmd);
-			VkDescriptorSet sets[2] = { m_frameSet[frameIndex].SetUBO, debugrender::DebugTexture };
-			m_quadShader->BindDescriptorSets(cmd, sets, 2);
-			m_quadVertexBuffer.Bind(cmd);
-			m_quadIndexBuffer.Bind(cmd);
-			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+			DebugRender::FlushQuadBatch(context, cmd, DebugRender::GQuadBatch, *m_quadShader, m_quadVertexBuffer, m_quadIndexBuffer, m_frameSet[frameIndex].QuadSet);
 		}
 		EndGPUEvent(context, cmd);
 	}
@@ -219,14 +374,6 @@ namespace Mist
 	void DebugPipeline::ImGuiDraw()
 	{
 		ImGui::Begin("debug");
-		ImGui::Checkbox("DebugMap", &m_debugDepthMap);
-		if (m_debugDepthMap)
-		{
-			if (debugrender::DebugTexture != VK_NULL_HANDLE)
-				ImGui::TextColored(ImVec4(0.2f, 0.5f, 0.1f, 1.f), "Texture bound.");
-			else
-				ImGui::TextColored(ImVec4(0.5f, 0.1f, 0.1f, 1.f), "Texture NOT bound.");
-		}
 		ImGui::End();
 	}
 

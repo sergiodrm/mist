@@ -6,6 +6,7 @@
 #include "Texture.h"
 #include <glm/glm.hpp>
 #include "Globals.h"
+#include "RenderAPI.h"
 #include "RenderContext.h"
 
 #define SSAO_KERNEL_SAMPLES 64
@@ -14,15 +15,25 @@ namespace Mist
 {
 	class ShaderProgram;
 
-	namespace debugrender
+	namespace DebugRender
 	{
+		void Init(const RenderContext& context);
+		void Destroy(const RenderContext& context);
+
 		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color);
 		void DrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
 		void DrawAxis(const glm::mat4& transform);
 		void DrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const TextureDescriptor& texDescriptor);
 
-		void SetDebugTexture(VkDescriptorSet descriptor);
 		void SetDebugClipParams(float nearClip, float farClip);
+
+		struct QuadRenderData
+		{
+			VertexBuffer VB;
+			IndexBuffer IB;
+			tArray<VkDescriptorSet[2], globals::MaxOverlappedFrames> DescriptorSets;
+		};
 	}
 
 
@@ -30,8 +41,12 @@ namespace Mist
 	{
 		struct FrameData
 		{
+			// line
 			VkDescriptorSet CameraSet;
 			VkDescriptorSet SetUBO;
+
+			// quads
+			VkDescriptorSet QuadSet[2];
 		};
 	public:
 		void Init(const RenderContext& context, const RenderTarget* renderTarget);
@@ -49,16 +64,19 @@ namespace Mist
 		VertexBuffer m_quadVertexBuffer;
 		IndexBuffer m_quadIndexBuffer;
 		ShaderProgram* m_quadShader;
-		Sampler m_depthSampler;
-		bool m_debugDepthMap = true;
 	};
 
 	class DebugProcess : public RenderProcess
 	{
 		struct FrameData
 		{
+			// line
 			VkDescriptorSet CameraSet;
 			VkDescriptorSet SetUBO;
+
+			// quads
+			VkDescriptorSet QuadUBO;
+			VkDescriptorSet QuadTex;
 		};
 	public:
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_DEBUG; }
