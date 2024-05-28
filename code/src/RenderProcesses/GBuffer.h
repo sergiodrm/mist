@@ -18,6 +18,16 @@ namespace Mist
 			tArray<VkDescriptorSet, 4> DescriptorSetArray;
 		};
 
+		enum EDebugMode
+		{
+			DEBUG_NONE,
+			DEBUG_POSITION,
+			DEBUG_NORMAL,
+			DEBUG_ALBEDO,
+			DEBUG_DEPTH,
+			DEBUG_ALL
+		};
+
 	public:
 
 		enum EGBufferTarget
@@ -39,11 +49,12 @@ namespace Mist
 
 	private:
 		void InitPipeline(const RenderContext& renderContext);
+		void DebugDraw();
 	public:
 		RenderTarget m_renderTarget;
 		ShaderProgram* m_shader;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
-		EGBufferTarget m_debugTex = (EGBufferTarget)-1;
+		EDebugMode m_debugMode = DEBUG_NONE;
 		tArray<VkDescriptorSet, 4> m_debugTexDescriptors;
 	};
 }

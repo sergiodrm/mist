@@ -81,18 +81,7 @@ namespace Mist
 
 	void GBuffer::UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext)
 	{
-		switch (m_debugTex)
-		{
-		case RT_POSITION: 
-		case RT_NORMAL:
-		case RT_ALBEDO:
-		case RT_DEPTH:
-			frameContext.PresentTex = m_debugTexDescriptors[m_debugTex]; 
-				break;
-		default:
-			break;
-
-		}
+		DebugDraw();
 	}
 
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -112,16 +101,16 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth" };
+		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth", "All"};
 		static int index = 0;
-		if (ImGui::BeginCombo("GBuffer tex", rts[index]))
+		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
-			for (uint32_t i = 0; i < 5; ++i)
+			for (uint32_t i = 0; i < 6; ++i)
 			{
 				if (ImGui::Selectable(rts[i], i == index))
 				{
 					index = i;
-					m_debugTex = (EGBufferTarget)(index ? (index - 1) : -1);
+					m_debugMode = (EDebugMode)i;
 				}
 			}
 			ImGui::EndCombo();
@@ -132,6 +121,78 @@ namespace Mist
 	const RenderTarget* GBuffer::GetRenderTarget(uint32_t index) const
 	{
 		return &m_renderTarget;
+	}
+
+	void GBuffer::DebugDraw()
+	{
+		float w = 1920.f;
+		float h = 1080.f;
+		float factor = 0.5f;
+		glm::vec2 pos = { w * factor, 0.f };
+		glm::vec2 size = glm::vec2{ w, h } *factor;
+		TextureDescriptor tex;
+		switch (m_debugMode)
+		{
+		case DEBUG_NONE:
+			break;
+		case DEBUG_ALL:
+		{
+			float x = w * 0.75f;
+			float y = 0.f;
+			float ydiff = h * 0.25f;
+			pos = { x, y };
+			size = { w * 0.25f, h * 0.25f };
+			for (uint32_t i = RT_POSITION; i < RT_DEPTH; ++i)
+			{
+				tex.View = GetRenderTarget()->GetRenderTarget(i);
+				tex.Layout = GetRenderTarget()->GetDescription().ColorAttachmentDescriptions[i].Layout;
+				tex.Sampler = nullptr;
+				DebugRender::DrawScreenQuad(pos, size, tex);
+				pos.y += ydiff;
+			}
+			tex.View = GetRenderTarget()->GetRenderTarget(RT_DEPTH);
+			tex.Layout = GetRenderTarget()->GetDescription().DepthAttachmentDescription.Layout;
+			tex.Sampler = nullptr;
+			DebugRender::DrawScreenQuad(pos, size, tex);
+			pos.y += ydiff;
+		}
+			break;
+		case DEBUG_POSITION:
+		{
+			tex.View = GetRenderTarget()->GetRenderTarget(RT_POSITION);
+			tex.Layout = GBUFFER_RT_LAYOUT_POSITION;
+			tex.Sampler = nullptr;
+			DebugRender::DrawScreenQuad(pos, size, tex);
+		}
+			break;
+		case DEBUG_NORMAL:
+		{
+			tex.View = GetRenderTarget()->GetRenderTarget(RT_NORMAL);
+			tex.Layout = GBUFFER_RT_LAYOUT_NORMAL;
+			tex.Sampler = nullptr;
+			DebugRender::DrawScreenQuad(pos, size, tex);
+		}
+			break;
+		case DEBUG_ALBEDO:
+		{
+			tex.View = GetRenderTarget()->GetRenderTarget(RT_ALBEDO);
+			tex.Layout = GBUFFER_RT_LAYOUT_ALBEDO;
+			tex.Sampler = nullptr;
+			DebugRender::DrawScreenQuad(pos, size, tex);
+		}
+			break;
+		case DEBUG_DEPTH:
+		{
+			tex.View = GetRenderTarget()->GetRenderTarget(RT_DEPTH);
+			tex.Layout = GBUFFER_RT_LAYOUT_DEPTH;
+			tex.Sampler = nullptr;
+			DebugRender::DrawScreenQuad(pos, size, tex);
+		}
+			break;
+		default:
+			break;
+
+		}
 	}
 
 	void GBuffer::InitPipeline(const RenderContext& renderContext)
