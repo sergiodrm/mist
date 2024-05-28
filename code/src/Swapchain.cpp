@@ -17,7 +17,7 @@ namespace Mist
 			renderContext.Surface 
 		};
 		vkb::Swapchain swapchain = swapchainBuilder.use_default_format_selection()
-			.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR) // To limit FPS to monitor frequency.
+			.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR) // To limit FPS to monitor frequency.
 			.set_desired_extent(spec.ImageWidth, spec.ImageHeight)
 			.build().value();
 		m_swapchain = swapchain.swapchain;
