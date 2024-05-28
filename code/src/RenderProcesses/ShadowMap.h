@@ -69,6 +69,12 @@ namespace Mist
 		{
 			VkDescriptorSet DebugShadowMapTextureSet[globals::MaxShadowMapAttachments];
 		};
+		enum EDebugMode
+		{
+			DEBUG_NONE,
+			DEBUG_SINGLE_RT,
+			DEBUG_ALL
+		};
 	public:
 		ShadowMapProcess();
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_SHADOWMAP; }
@@ -80,9 +86,13 @@ namespace Mist
 		virtual void ImGuiDraw() override;
 		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override;
 	private:
+		virtual void DebugDraw(const RenderContext& context) override;
+	private:
 		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
 		uint32_t m_attachmentIndexBits;
+		EDebugMode m_debugMode = DEBUG_NONE;
+		uint32_t m_debugIndex = 0;
 	};
 }

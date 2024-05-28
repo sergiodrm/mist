@@ -189,6 +189,11 @@ namespace Mist
 				Logf(LogLevel::Error, "DebugRender Quad overflow. Increate QuadBatch size (Current %u)\n", QuadBatch::MaxQuads);
 		}
 
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, ImageView view, EImageLayout layout, Sampler sampler)
+		{
+			DrawScreenQuad(screenPos, size, TextureDescriptor{.View = view, .Layout = layout, .Sampler = sampler});
+		}
+
 		void UpdateQuadTexDescriptorSet(const RenderContext& context, const QuadBatch& batch, VkDescriptorSet set, bool updateAll = false)
 		{
 			static Sampler defSampler = CreateSampler(context);

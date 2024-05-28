@@ -49,7 +49,7 @@ namespace Mist
 
 	private:
 		void InitPipeline(const RenderContext& renderContext);
-		void DebugDraw();
+		virtual void DebugDraw(const RenderContext& context) override;
 	public:
 		RenderTarget m_renderTarget;
 		ShaderProgram* m_shader;

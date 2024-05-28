@@ -81,7 +81,6 @@ namespace Mist
 
 	void GBuffer::UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext)
 	{
-		DebugDraw();
 	}
 
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -123,7 +122,7 @@ namespace Mist
 		return &m_renderTarget;
 	}
 
-	void GBuffer::DebugDraw()
+	void GBuffer::DebugDraw(const RenderContext& context)
 	{
 		float w = 1920.f;
 		float h = 1080.f;

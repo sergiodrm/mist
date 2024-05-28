@@ -38,7 +38,8 @@ namespace Mist
 
 		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) = 0;
 		virtual void Draw(const RenderContext& context, const RenderFrameContext& frameContext) = 0;
-		virtual void ImGuiDraw() = 0;
+		virtual void ImGuiDraw() {}
+		virtual void DebugDraw(const RenderContext& context) {}
 
 		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const = 0;
 	};

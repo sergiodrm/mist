@@ -13,20 +13,8 @@
 #include "glm/matrix.hpp"
 #include "GenericUtils.h"
 
-#define GBUFFER_RT_FORMAT_POSITION FORMAT_R32G32B32A32_SFLOAT
-#define GBUFFER_RT_FORMAT_NORMAL GBUFFER_RT_FORMAT_POSITION
-#define GBUFFER_RT_FORMAT_ALBEDO FORMAT_R8G8B8A8_UNORM
-#define GBUFFER_RT_FORMAT_DEPTH FORMAT_D32_SFLOAT
-
-
-#define GBUFFER_RT_LAYOUT_POSITION IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-#define GBUFFER_RT_LAYOUT_NORMAL GBUFFER_RT_LAYOUT_POSITION
-#define GBUFFER_RT_LAYOUT_ALBEDO GBUFFER_RT_LAYOUT_POSITION
-#define GBUFFER_RT_LAYOUT_DEPTH IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-
-#define GBUFFER_COMPOSITION_FORMAT FORMAT_R8G8B8A8_UNORM
-#define GBUFFER_COMPOSITION_LAYOUT IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL 
-
+#define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
+#define SHADOW_MAP_RT_LAYOUT IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
 
 namespace Mist
 {
@@ -182,7 +170,7 @@ namespace Mist
 	{
 		// RenderTarget description
 		RenderTargetDescription rtDesc;
-		rtDesc.SetDepthAttachment(FORMAT_D32_SFLOAT, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
+		rtDesc.SetDepthAttachment(SHADOW_MAP_RT_FORMAT, SHADOW_MAP_RT_LAYOUT, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
 		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
 
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
@@ -201,7 +189,7 @@ namespace Mist
 
 		VkDescriptorImageInfo imageInfo;
 		imageInfo.sampler = CreateSampler(renderContext);
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+		imageInfo.imageLayout = tovk::GetImageLayout(SHADOW_MAP_RT_LAYOUT);
 		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 		{
 			// Shadow map descriptors for debug
@@ -293,13 +281,21 @@ namespace Mist
 	void ShadowMapProcess::ImGuiDraw()
 	{
 		ImGui::Begin("Shadow mapping");
-		static bool debugShadows = false;
-		ImGui::Checkbox("Debug shadow mapping", &debugShadows);
-		static int shadowMapDebugIndex = 0;
-		if (debugShadows)
+		static const char* modes[] = { "None", "Single tex", "All" };
+		static const uint32_t modesSize = sizeof(modes) / sizeof(const char*);
+		if (ImGui::BeginCombo("Debug mode", modes[m_debugMode]))
 		{
-			ImGui::SliderInt("ShadowMap index", &shadowMapDebugIndex, 0, globals::MaxShadowMapAttachments - 1);
-			//DebugRender::SetDebugTexture(m_frameData[0].DebugShadowMapTextureSet[shadowMapDebugIndex]);
+			for (uint32_t i = 0; i < modesSize; ++i)
+			{
+				if (ImGui::Selectable(modes[i], i == m_debugMode))
+					m_debugMode = (EDebugMode)i;
+			}
+			ImGui::EndCombo();
+		}
+		if (m_debugMode == DEBUG_SINGLE_RT)
+		{
+			ImGui::InputInt("ShadowMap index", (int*)&m_debugIndex);
+			m_debugIndex = math::Clamp(m_debugIndex, 0u, globals::MaxShadowMapAttachments - 1);
 		}
 		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
 		ImGui::Separator();
@@ -311,5 +307,28 @@ namespace Mist
 	{
 		check(index < globals::MaxShadowMapAttachments);
 		return &m_shadowMapTargetArray[index];
+	}
+
+	void ShadowMapProcess::DebugDraw(const RenderContext& context)
+	{
+		switch (m_debugMode)
+		{
+		case DEBUG_NONE:
+			break;
+		case DEBUG_SINGLE_RT:
+			DebugRender::DrawScreenQuad({ 1920.f * 0.75f, 0.f }, { 1920.f * 0.25f, 1080.f * 0.25f }, m_shadowMapTargetArray[m_debugIndex].GetDepthBuffer(), SHADOW_MAP_RT_LAYOUT);
+			break;
+		case DEBUG_ALL:
+			glm::vec2 screenSize = { 1920.f, 1080.f };
+			float factor = 1.f / (float)globals::MaxShadowMapAttachments;
+			glm::vec2 pos = { screenSize.x * (1.f - factor), 0.f };
+			glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };
+			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+			{
+				DebugRender::DrawScreenQuad(pos, size, m_shadowMapTargetArray[i].GetDepthBuffer(), SHADOW_MAP_RT_LAYOUT);
+				pos.y += size.y;
+			}
+			break;
+		}
 	}
 }
