@@ -88,6 +88,7 @@ namespace Mist_profiling
 	};
 
 	void AddProfilerEntry(const char* key, double timeDiff);
+	void ShowFps(float fps);
 	void ImGuiDraw();
 
 	extern sRenderStats GRenderStats;

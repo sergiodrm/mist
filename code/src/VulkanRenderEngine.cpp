@@ -272,6 +272,12 @@ namespace Mist
 	bool VulkanRenderEngine::RenderProcess()
 	{
 		CPU_PROFILE_SCOPE(Process);
+		static tTimePoint point = GetTimePoint();
+		tTimePoint now = GetTimePoint();
+		float ms = GetMiliseconds(now - point);
+		point = now;
+		Mist_profiling::ShowFps(1000.f / (ms));
+
 		bool res = true;
 		SDL_Event e;
 		while (SDL_PollEvent(&e))

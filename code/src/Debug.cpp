@@ -303,6 +303,7 @@ namespace Mist_profiling
 
 	struct sProfiler
 	{
+		float FPS = 0.f;
 		std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 	} GProfiler;
 
@@ -352,6 +353,11 @@ namespace Mist_profiling
 		entry.Min = __min(timeDiff, entry.Min);
 	}
 
+	void ShowFps(float fps)
+	{
+		GProfiler.FPS = fps;
+	}
+
 	void ImGuiDraw()
 	{
 		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
@@ -365,6 +371,7 @@ namespace Mist_profiling
 		ImGui::SetNextWindowPos({ 0.f, 0.f });
 		ImGui::SetNextWindowSize({ 400.f, 300.f });
 		ImGui::Begin("Render stats", nullptr, flags);
+		ImGui::Text("%.4f fps", GProfiler.FPS);
 		ImGui::Columns(5);
 		ImGui::Text("ID");
 		ImGui::NextColumn();
