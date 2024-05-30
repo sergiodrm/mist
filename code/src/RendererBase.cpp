@@ -30,10 +30,10 @@ namespace Mist
 	void Renderer::Destroy(const RenderContext& context)
 	{
 		// reverse order
-		for (uint32_t i = RENDERPROCESS_COUNT - 1; i < RENDERPROCESS_COUNT/*overflow*/; --i)
+		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 		{
-			m_processArray[i]->Destroy(context);
-			delete m_processArray[i];
+			m_processArray[RENDERPROCESS_COUNT - 1 - i]->Destroy(context);
+			delete m_processArray[RENDERPROCESS_COUNT - 1 - i];
 		}
 	}
 

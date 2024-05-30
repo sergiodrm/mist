@@ -126,10 +126,10 @@ namespace Mist
 		virtual void SetMesh(RenderObject renderObject, const Mesh& mesh) override;
 		virtual const char* GetRenderObjectName(RenderObject object) const override;
 		virtual void SetRenderObjectName(RenderObject renderObject, const char* name) override;
-		virtual const glm::mat4& GetTransform(RenderObject renderObject) const override;
-		virtual void SetTransform(RenderObject renderObject, const glm::mat4& transform) override;
-		virtual const Light* GetLight(RenderObject renderObject) const override;
-		virtual void SetLight(RenderObject renderObject, const Light& light) override;
+		virtual const TransformComponent& GetTransform(RenderObject renderObject) const override;
+		virtual void SetTransform(RenderObject renderObject, const TransformComponent& transform) override;
+		virtual const LightComponent* GetLight(RenderObject renderObject) const override;
+		virtual void SetLight(RenderObject renderObject, const LightComponent& light) override;
 		virtual void SubmitMesh(Mesh& mesh) override;
 		virtual void SubmitMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
@@ -141,7 +141,7 @@ namespace Mist
 		const Mesh* GetMeshArray() const;
 		uint32_t GetMeshCount() const;
 
-		const Light* GetLightArray() const;
+		const LightComponent* GetLightArray() const;
 		uint32_t GetLightCount() const;
 
 		const Material* GetMaterialArray() const;
@@ -162,14 +162,15 @@ namespace Mist
 		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 
 		void ImGuiDraw(bool createWindow = false);
-
+		bool IsDirty() const;
 	protected:
-		void ProcessEnvironmentData(const glm::mat4& viewMatrix);
+		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
 
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr uint32_t MaxNodeLevel = 16;
+		std::vector<TransformComponent> m_transformComponents;
 		std::vector<glm::mat4> m_localTransforms;
 		std::vector<glm::mat4> m_globalTransforms;
 		std::vector<Hierarchy> m_hierarchy;
@@ -178,7 +179,7 @@ namespace Mist
 		std::unordered_map<uint32_t, RenderObjectComponents> m_componentMap;
 		std::vector<Mesh> m_meshArray;
 		std::vector<Material> m_materialArray;
-		std::vector<Light> m_lightArray;
+		std::vector<LightComponent> m_lightArray;
 
 		std::vector<int32_t> m_dirtyNodes[MaxNodeLevel];
 

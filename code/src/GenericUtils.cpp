@@ -6,6 +6,8 @@
 #include "Debug.h"
 #include "glm/fwd.hpp"
 #include "glm/gtx/quaternion.hpp"
+#include "glm/gtx/euler_angles.inl"
+#include "glm/gtx/matrix_decompose.hpp"
 
 namespace Mist
 {
@@ -159,7 +161,7 @@ namespace Mist
 
 	glm::mat4 math::PitchYawRollToMat4(const glm::vec3& pyr)
 	{
-		return glm::toMat4(glm::quat(pyr));;
+		return glm::eulerAngleXYZ(pyr.x, pyr.y, pyr.z);
 	}
 
 	glm::mat4 math::ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
@@ -178,5 +180,22 @@ namespace Mist
 	glm::vec3 math::GetPos(const glm::mat4& transform)
 	{
 		return transform[3];
+	}
+
+	glm::vec3 math::GetRot(const glm::mat4& transform)
+	{
+		glm::vec3 rot;
+		glm::extractEulerAngleXYZ(transform, rot.x, rot.y, rot.z);
+		return rot;
+	}
+
+	void math::DecomposeMatrix(const glm::mat4& transform, glm::vec3& pos, glm::vec3& rot, glm::vec3& scale)
+	{
+		glm::quat q;
+		glm::vec3 skew;
+		glm::vec4 pers;
+		check(glm::decompose(transform, scale, q, pos, skew, pers));
+		q = glm::conjugate(q);
+		rot = glm::eulerAngles(q);
 	}
 }

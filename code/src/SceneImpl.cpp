@@ -17,6 +17,7 @@
 
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/euler_angles.hpp>
 #include <glm/fwd.hpp>
 #include "Mesh.h"
 #include "GenericUtils.h"
@@ -400,6 +401,8 @@ namespace Mist
 			SpotLights[i].OuterCutoff = 0.5f;
 			SpotLights[i].ShadowMapIndex = -1.f;
 		}
+		//memset(this, 0, sizeof(*this));
+		ZeroMemory(this, sizeof(*this));
 	}
 
 
@@ -474,6 +477,7 @@ namespace Mist
 	{
 		// Generate new node in all basics structures
 		RenderObject node = (uint32_t)m_hierarchy.size();
+		m_transformComponents.push_back({ .Position = glm::vec3(0.f), .Rotation = glm::vec3(0.f), .Scale = glm::vec3(1.f) });
 		m_localTransforms.push_back(glm::mat4(1.f));
 		m_globalTransforms.push_back(glm::mat4(1.f));
 		char buff[64];
@@ -546,7 +550,9 @@ namespace Mist
 			// Process transform
 			glm::mat4 localTransform(1.f);
 			gltf_api::ReadNodeLocalTransform(node, localTransform);
-			SetTransform(renderObject, localTransform);
+			TransformComponent t;
+			math::DecomposeMatrix(localTransform, t.Position, t.Rotation, t.Scale);
+			SetTransform(renderObject, t);
 
 			// Process mesh
 			if (node.mesh)
@@ -606,8 +612,8 @@ namespace Mist
 		if (m_componentMap.contains(renderObject))
 		{
 			uint32_t index = m_componentMap.at(renderObject).MeshIndex;
-			check(index < (uint32_t)m_meshArray.size());
-			mesh = &m_meshArray.at(index);
+			if (index < (uint32_t)m_meshArray.size())
+				mesh = &m_meshArray.at(index);
 		}
 		return mesh;
 	}
@@ -662,29 +668,33 @@ namespace Mist
 		m_names[renderObject] = name;
 	}
 
-	const glm::mat4& Scene::GetTransform(RenderObject renderObject) const
+	const TransformComponent& Scene::GetTransform(RenderObject renderObject) const
 	{
 		check(IsValid(renderObject));
-		return m_localTransforms[renderObject.Id];
+		return m_transformComponents[renderObject];
 	}
 
-	void Scene::SetTransform(RenderObject renderObject, const glm::mat4& transform)
+	void Scene::SetTransform(RenderObject renderObject, const TransformComponent& transform)
 	{
 		check(IsValid(renderObject));
-		m_localTransforms[renderObject] = transform;
+		m_transformComponents[renderObject] = transform;
 		MarkAsDirty(renderObject);
 	}
 
-	const Light* Scene::GetLight(RenderObject renderObject) const
+	const LightComponent* Scene::GetLight(RenderObject renderObject) const
 	{
 		check(IsValid(renderObject));
-		check(m_componentMap.contains(renderObject));
-		uint32_t index = m_componentMap.at(renderObject).LightIndex;
-		check(index < (uint32_t)m_lightArray.size());
-		return &m_lightArray[index];
+		const LightComponent* light = nullptr;
+		if (m_componentMap.contains(renderObject))
+		{
+			uint32_t index = m_componentMap.at(renderObject).LightIndex;
+			if (index < (uint32_t)m_lightArray.size())
+				light = &m_lightArray[index];
+		}
+		return light;
 	}
 
-	void Scene::SetLight(RenderObject renderObject, const Light& light)
+	void Scene::SetLight(RenderObject renderObject, const LightComponent& light)
 	{
 		check(IsValid(renderObject));
 		if (m_componentMap.contains(renderObject))
@@ -779,6 +789,9 @@ namespace Mist
 
 	void Scene::RecalculateTransforms()
 	{
+		check(m_localTransforms.size() == m_transformComponents.size());
+		check(m_globalTransforms.size() == m_transformComponents.size());
+		TransformComponentToMatrix(m_transformComponents.data(), m_localTransforms.data(), (uint32_t)m_transformComponents.size());
 		// Process root level first
 		if (!m_dirtyNodes[0].empty())
 		{
@@ -812,7 +825,7 @@ namespace Mist
 		return (uint32_t)m_meshArray.size();
 	}
 
-	const Light* Scene::GetLightArray() const
+	const LightComponent* Scene::GetLightArray() const
 	{
 		return m_lightArray.data();
 	}
@@ -948,6 +961,73 @@ namespace Mist
 	{
 		if (createWindow)
 			ImGui::Begin("SceneGraph");
+
+		float posStep = 0.5f;
+		float rotStep = 0.1f;
+		float sclStep = 0.5f;
+
+		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
+		{
+			char treeId[2];
+			sprintf(treeId, "%u", i);
+			if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
+			{
+				const Hierarchy& node = m_hierarchy[i];
+				ImGui::Text("Parent: %s", node.Parent != RenderObject::InvalidId ? GetRenderObjectName(node.Parent) : "None");
+				char buff[32];
+				sprintf_s(buff, "##TransformComponent%u", i);
+				if (ImGui::TreeNode(buff, "Transform component"))
+				{
+					TransformComponent& t = m_transformComponents[i];
+					ImGui::Columns(2);
+					ImGui::Text("Position");
+					ImGui::NextColumn();
+					sprintf_s(buff, "##TransformPos%d", i);
+					bool dirty = ImGui::DragFloat3(buff, &t.Position[0], posStep);
+					ImGui::NextColumn();
+					ImGui::Text("Rotation");
+					ImGui::NextColumn();
+					sprintf_s(buff, "##TransformRot%d", i);
+					dirty |= ImGui::DragFloat3(buff, &t.Rotation[0], rotStep);
+					ImGui::NextColumn();
+					ImGui::Text("Scale");
+					ImGui::NextColumn();
+					sprintf_s(buff, "##TransformScl%d", i);
+					dirty |= ImGui::DragFloat3(buff, &t.Scale[0], sclStep);
+					ImGui::Columns();
+					ImGui::TreePop();
+
+					if (dirty)
+						MarkAsDirty(i);
+				}
+				sprintf_s(buff, "##LightComponent%u", i);
+				if (m_componentMap[i].LightIndex != UINT32_MAX)
+				{
+					if (ImGui::TreeNode(buff, "Light component"))
+					{
+						LightComponent& light = m_lightArray[m_componentMap[i].LightIndex];
+						ImGui::Columns(2);
+						ImGui::Text("Color");
+						ImGui::NextColumn();
+						sprintf_s(buff, "##LightColor%u", i);
+						ImGui::ColorEdit3(buff, &light.Color[0]);
+						ImGui::NextColumn();
+						ImGui::Text("Radius");
+						ImGui::NextColumn();
+						sprintf_s(buff, "##LightRadius%u", i);
+						ImGui::DragFloat(buff, &light.Radius, 0.5f, 0.f, FLT_MAX);
+						ImGui::NextColumn();
+
+						ImGui::Columns();
+						ImGui::TreePop();
+					}
+				}
+
+				ImGui::TreePop();
+			}
+		}
+
+#if 0
 		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
 			{
 				ImGui::Columns(2);
@@ -1029,7 +1109,7 @@ namespace Mist
 
 					// dir vector to roll pitch yaw (x:pitch, y:yaw, z:roll)
 					glm::vec3 pyr = math::ToRot(data.Direction);
-					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f, -(float)M_PI, (float)M_PI))
+					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f))
 					{
 						// Transform to rot matrix
 						glm::mat4 m = math::PitchYawRollToMat4(pyr);
@@ -1045,18 +1125,32 @@ namespace Mist
 				}
 			}
 		}
+#endif // 0
+
 		if (createWindow)
 			ImGui::End();
 	}
 
+	bool Scene::IsDirty() const
+	{
+		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
+		{
+			if (!m_dirtyNodes[i].empty())
+				return true;
+		}
+		return false;
+	}
+
 	void Scene::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
-		const glm::mat4& viewMat = frameContext.CameraData->View;
-		ProcessEnvironmentData(viewMat);
 		RecalculateTransforms();
+		check(!IsDirty());
+		const glm::mat4& viewMat = frameContext.CameraData->View;
+		EnvironmentData renderData;
+		ProcessEnvironmentData(viewMat, renderData);
 
 		// Calculate environment data positions from view space. TODO: cache results to avoid doing it each frame.
-		EnvironmentData renderData = m_environmentData;
+		//EnvironmentData renderData = m_environmentData;
 		for (uint32_t i = 0; i < renderData.ActiveLightsCount; ++i)
 			renderData.Lights[i].Position = glm::vec3(viewMat * glm::vec4(renderData.Lights[i].Position, 1.f));
 		for (uint32_t i = 0; i < renderData.ActiveSpotLightsCount; ++i)
@@ -1080,18 +1174,16 @@ namespace Mist
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
 	{
-		// Dirty check, must be clean
-		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
-			check(m_dirtyNodes[i].empty());
+		check(!IsDirty());
 		return m_globalTransforms.data();
 	}
 
-	void Scene::ProcessEnvironmentData(const glm::mat4& viewSpace)
+	void Scene::ProcessEnvironmentData(const glm::mat4& viewSpace, EnvironmentData& environmentData)
 	{
-		m_environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
-#if 0
-		m_environmentData.ActiveLightsCount = 0.f;
-		m_environmentData.ActiveSpotLightsCount = 0.f;
+		environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
+#if 1
+		environmentData.ActiveLightsCount = 0.f;
+		environmentData.ActiveSpotLightsCount = 0.f;
 		for (auto& it : m_componentMap)
 		{
 			const RenderObjectComponents& comp = it.second;
@@ -1099,30 +1191,30 @@ namespace Mist
 			{
 				check(it.first < GetRenderObjectCount());
 				check(comp.LightIndex < GetLightCount());
-				const Light& light = GetLightArray()[comp.LightIndex];
-				const glm::mat4& transform = GetRawGlobalTransforms()[it.first];
-				const glm::vec3 pos = math::GetPos(transform);
-				const glm::vec3 dir = math::GetDir(transform);
+				const glm::mat4& mat = m_globalTransforms[it.first];
+				const glm::vec3 pos = math::GetPos(viewSpace * mat);
+				const glm::vec3 dir = math::GetDir(viewSpace * mat);
+				const LightComponent& light = GetLightArray()[comp.LightIndex];
 				switch (light.Type)
 				{
 				case ELightType::Point:
-					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Color = light.Color;
-					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Compression = light.Compression;
-					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Position = pos;
-					m_environmentData.Lights[(uint32_t)m_environmentData.ActiveLightsCount].Radius = light.Radius;
-					++m_environmentData.ActiveLightsCount;
+					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Color = light.Color;
+					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Compression = light.Compression;
+					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Position = pos;
+					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Radius = light.Radius;
+					++environmentData.ActiveLightsCount;
 					break;
 				case ELightType::Directional:
-					m_environmentData.DirectionalLight.Color = light.Color;
-					m_environmentData.DirectionalLight.Direction = dir;
+					environmentData.DirectionalLight.Color = light.Color;
+					environmentData.DirectionalLight.Direction = dir;
 					break;
 				case ELightType::Spot:
-					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].Color = light.Color;
-					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].Position = pos;
-					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].Direction = dir;
-					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].InnerCutoff = light.InnerCutoff;
-					m_environmentData.SpotLights[(uint32_t)m_environmentData.ActiveSpotLightsCount].OuterCutoff = light.OuterCutoff;
-					++m_environmentData.ActiveSpotLightsCount;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Color = light.Color;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Position = pos;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Direction = dir;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].InnerCutoff = light.InnerCutoff;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].OuterCutoff = light.OuterCutoff;
+					++environmentData.ActiveSpotLightsCount;
 					break;
 				}
 			}

@@ -62,6 +62,7 @@ public:
 		Mist::InitializationSpecs spec
 		{
 			1920, 1080, "MistEngine"
+			//1080, 720, "MistEngine"
 		};
 		m_engine = Mist::IRenderEngine::MakeInstance();
 		m_engine->Init(spec);
@@ -109,11 +110,24 @@ class SponzaTest : public Test
 protected:
 	virtual bool LoadTest()
 	{
+		//const char* scenePath = "../assets/models/vulkanscene_shadow.gltf";
 		const char* scenePath = "../assets/models/sponza/Sponza.gltf";
 		Mist::IScene* scene = Mist::IScene::LoadScene(m_engine, scenePath);
 		//scene->LoadModel("assets/models/vulkanscene_shadow.gltf");
 		if (!scene)
+		{
 			Mist::Logf(Mist::LogLevel::Error, "Error loading test scene: %s\n", scenePath);
+			return false;
+		}
+
+		Mist::RenderObject obj = scene->CreateRenderObject(scene->GetRoot());
+		Mist::LightComponent light;
+		light.Type = Mist::ELightType::Spot;
+		light.Color = { 1.f, 0.f, 0.f };
+		light.InnerCutoff = 1.f;
+		light.OuterCutoff = 0.5f;
+		scene->SetLight(obj, light);
+		scene->SetRenderObjectName(obj, "Light");
 		return scene;
 	}
 };

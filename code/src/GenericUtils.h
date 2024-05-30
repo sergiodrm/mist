@@ -48,6 +48,8 @@ namespace Mist
 
 		glm::vec3 GetDir(const glm::mat4& transform);
 		glm::vec3 GetPos(const glm::mat4& transform);
+		glm::vec3 GetRot(const glm::mat4& transform);
+		void DecomposeMatrix(const glm::mat4& transform, glm::vec3& pos, glm::vec3& rot, glm::vec3& scale);
 
 
 	}

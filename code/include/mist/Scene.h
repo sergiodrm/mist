@@ -21,7 +21,7 @@ namespace Mist
 		Spot
 	};
 
-	struct Light
+	struct LightComponent
 	{
 		ELightType Type;
 		glm::vec3 Color;
@@ -29,6 +29,7 @@ namespace Mist
 		float Compression;
 		float InnerCutoff;
 		float OuterCutoff;
+		bool ProjectShadows;
 	};
 	
 	struct Hierarchy
@@ -38,6 +39,15 @@ namespace Mist
 		RenderObject Child;
 		int32_t Level = 0;
 	};
+
+	struct TransformComponent
+	{
+		glm::vec3 Position;
+		glm::vec3 Rotation;
+		glm::vec3 Scale;
+	};
+
+	void TransformComponentToMatrix(const TransformComponent* transforms, glm::mat4* matrices, uint32_t count);
 
 	class IScene
 	{
@@ -67,10 +77,10 @@ namespace Mist
 		// Render object components
 		virtual const Mesh* GetMesh(RenderObject object) const = 0;
 		virtual void SetMesh(RenderObject object, const Mesh& mesh) = 0;
-		virtual const glm::mat4& GetTransform(RenderObject object) const = 0;
-		virtual void SetTransform(RenderObject object, const glm::mat4& transform) = 0;
-		virtual const Light* GetLight(RenderObject object) const = 0;
-		virtual void SetLight(RenderObject object, const Light& light) = 0;
+		virtual const TransformComponent& GetTransform(RenderObject object) const = 0;
+		virtual void SetTransform(RenderObject object, const TransformComponent& transform) = 0;
+		virtual const LightComponent* GetLight(RenderObject object) const = 0;
+		virtual void SetLight(RenderObject object, const LightComponent& light) = 0;
 
 		// Create render data of meshes and materials
 		virtual void SubmitMesh(Mesh& mesh) = 0;
