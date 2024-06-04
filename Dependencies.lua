@@ -13,6 +13,7 @@ includes["stbimage"] = "%{wks.location}/thirdparty/stb_image"
 includes["vkbootstrap"] = "%{wks.location}/thirdparty/vkbootstrap"
 includes["vma"] = "%{wks.location}/thirdparty/vma"
 includes["vulkan"] = "%{VulkanSdk}/Include"
+includes["yaml"] = "%{wks.location}/thirdparty/yaml-cpp/include"
 
 libdirs = {}
 libdirs["vulkan"] = "%{VulkanSdk}/lib"

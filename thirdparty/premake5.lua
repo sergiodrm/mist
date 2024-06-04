@@ -21,3 +21,10 @@ project "VkBootstrap"
     includedirs { "%{includes.vkbootstrap}", "%{includes.vulkan}" }
     targetdir "%{dependenciesTargetDir}"
 
+project "YamlCpp"
+    kind "StaticLib"
+    cppdialect "C++20"
+    files { "yaml-cpp/include/**.h", "yaml-cpp/src/**.h", "yaml-cpp/src/**.cpp"}
+    includedirs { "%{includes.yaml}" }
+    targetdir "%{dependenciesTargetDir}"
+    defines { "YAML_CPP_STATIC_DEFINE" }

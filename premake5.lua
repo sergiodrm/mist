@@ -52,8 +52,13 @@ workspace "Mist"
         objdir "%{temporaldir}"
         location "%{wks.location}/code"
 
-        defines { "MIST_VULKAN" }
-        files { "code/**.h", "code/**.cpp"}
+        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE" }
+        files { 
+            "code/**.h", "code/**.cpp",
+            "thirdparty/yaml-cpp/include/**.h",
+            "thirdparty/yaml-cpp/src/**.h",
+            "thirdparty/yaml-cpp/src/**.cpp",
+        }
 
         includedirs {
             "%{includes.mist}/mist",
@@ -67,11 +72,13 @@ workspace "Mist"
             "%{includes.vma}",
             "%{includes.vkbootstrap}",
             "%{includes.vulkan}",
+            "%{includes.yaml}",
         }
         links {
             "glm",
             "ImGui",
             "VkBootstrap",
+            --"YamlCpp",
             "%{libs.vulkan}",
             "%{libs.sdl}",
         }
