@@ -209,10 +209,8 @@ namespace Mist
 
 	void ShadowMapProcess::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
-		Scene* scene = renderFrameContext.Scene;
-		EnvironmentData& envData = scene->GetEnvironmentData();
-		m_attachmentIndexBits = 0;
-
+		Scene& scene = *renderFrameContext.Scene;
+		
 		// Update shadow map matrix
 		if (GUseCameraForShadowMapping)
 		{
@@ -221,6 +219,22 @@ namespace Mist
 		else
 		{
 			float shadowMapIndex = 0.f;
+
+			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
+			uint32_t count = scene.GetRenderObjectCount();
+			m_lightCount = 0;
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				const LightComponent* light = scene.GetLight(i);
+				if (light && light->Type != ELightType::Point)
+				{
+					const TransformComponent& t = scene.GetTransform(i);
+					m_shadowMapPipeline.SetupLight(m_lightCount++, t.Position, t.Rotation,
+						light->Type == ELightType::Directional ? ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC : ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+				}
+			}
+
+#if 0
 			if (envData.DirectionalLight.ShadowMapIndex >= 0.f)
 			{
 				m_attachmentIndexBits |= 1 << (uint32_t)shadowMapIndex;
@@ -240,7 +254,9 @@ namespace Mist
 						break;
 				}
 			}
+#endif // 0
 		}
+
 		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
 
 		// Update light VP matrix for lighting pass
@@ -264,12 +280,12 @@ namespace Mist
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
 		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
 
+		check(m_lightCount < globals::MaxShadowMapAttachments);
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
 			m_shadowMapTargetArray[i].BeginPass(cmd);
-			if (m_attachmentIndexBits & (1 << i))
+			if (i < m_lightCount)
 			{
-				const EnvironmentData& envData = renderFrameContext.Scene->GetEnvironmentData();
 				m_shadowMapPipeline.RenderShadowMap(cmd, renderFrameContext.Scene, renderFrameContext.FrameIndex, i);
 			}
 			m_shadowMapTargetArray[i].EndPass(cmd);

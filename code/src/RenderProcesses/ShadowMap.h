@@ -91,7 +91,7 @@ namespace Mist
 		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
-		uint32_t m_attachmentIndexBits;
+		uint32_t m_lightCount;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;
 	};
