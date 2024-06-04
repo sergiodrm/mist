@@ -8,6 +8,7 @@
 #include "glm/gtx/quaternion.hpp"
 #include "glm/gtx/euler_angles.inl"
 #include "glm/gtx/matrix_decompose.hpp"
+#include "Globals.h"
 
 namespace Mist
 {
@@ -113,8 +114,15 @@ namespace Mist
 	bool Mist::io::File::Open(const char* filepath, const char* mode, bool asAssetPath)
 	{
 		check(m_file == nullptr);
+		const char* file = filepath;
+		char buff[512];
+		if (asAssetPath)
+		{
+			sprintf_s(buff, "%s%s", ASSET_ROOT_PATH, filepath);
+			file = buff;
+		}
 		FILE* f;
-		errno_t err = fopen_s(&f, filepath, mode);
+		errno_t err = fopen_s(&f, file, mode);
 		m_file = f;
 		return err == 0 && m_file;
 	}
