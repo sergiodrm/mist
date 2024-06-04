@@ -3,6 +3,7 @@
 #include "Vertex.h"
 #include "RenderHandle.h"
 #include <vector>
+#include <string>
 
 namespace Mist
 {
@@ -16,8 +17,11 @@ namespace Mist
 		const void* GetInternalData() const { return m_internalData; }
 		void SetInternalData(void* internalData) { m_internalData = internalData; }
 		void FreeInternalData();
+		inline const char* GetName() const { return m_name.c_str(); }
+		inline void SetName(const char* str) { m_name = str; }
 	private:
 		RenderHandle m_handle;
+		std::string m_name;
 	protected:
 		void* m_internalData{ nullptr };
 	};
