@@ -41,7 +41,7 @@ namespace Mist
 		VertexBuffer VertexBuffer;
 		IndexBuffer IndexBuffer;
 		uint32_t IndexCount;
-		std::vector<PrimitiveMeshData> PrimitiveArray;
+		tDynArray<PrimitiveMeshData> PrimitiveArray;
 
 		void BindBuffers(VkCommandBuffer cmd) const;
 	};
@@ -97,11 +97,6 @@ namespace Mist
 
 	class Scene : public IScene
 	{
-		struct RenderObjectComponents
-		{
-			uint32_t MeshIndex = UINT32_MAX;
-			uint32_t LightIndex = UINT32_MAX;
-		};
 	protected:
 		Scene(const Scene&) = delete;
 		Scene(Scene&&) = delete;
@@ -115,6 +110,8 @@ namespace Mist
 		virtual void Destroy() override;
 
 		virtual bool LoadModel(const char* filepath) override;
+		void LoadScene(const char* filepath);
+		void SaveScene(const char* filepath);
 
 		virtual RenderObject CreateRenderObject(RenderObject parent) override;
 		virtual void DestroyRenderObject(RenderObject object) override;
@@ -122,16 +119,16 @@ namespace Mist
 		virtual uint32_t GetRenderObjectCount() const override;
 
 		virtual RenderObject GetRoot() const override;
-		virtual const Mesh* GetMesh(RenderObject renderObject) const override;
-		virtual void SetMesh(RenderObject renderObject, const Mesh& mesh) override;
+		virtual const MeshComponent* GetMesh(RenderObject renderObject) const override;
+		virtual void SetMesh(RenderObject renderObject, const MeshComponent& meshComponent) override;
 		virtual const char* GetRenderObjectName(RenderObject object) const override;
 		virtual void SetRenderObjectName(RenderObject renderObject, const char* name) override;
 		virtual const TransformComponent& GetTransform(RenderObject renderObject) const override;
 		virtual void SetTransform(RenderObject renderObject, const TransformComponent& transform) override;
 		virtual const LightComponent* GetLight(RenderObject renderObject) const override;
 		virtual void SetLight(RenderObject renderObject, const LightComponent& light) override;
-		virtual void SubmitMesh(Mesh& mesh) override;
-		virtual void SubmitMaterial(Material& material) override;
+		virtual uint32_t SubmitMesh(Mesh& mesh) override;
+		virtual uint32_t SubmitMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
 
 		void MarkAsDirty(RenderObject renderObject);
@@ -140,9 +137,6 @@ namespace Mist
 
 		const Mesh* GetMeshArray() const;
 		uint32_t GetMeshCount() const;
-
-		const LightComponent* GetLightArray() const;
-		uint32_t GetLightCount() const;
 
 		const Material* GetMaterialArray() const;
 		uint32_t GetMaterialCount() const;
@@ -153,37 +147,39 @@ namespace Mist
 		MaterialRenderData& GetMaterialRenderData(RenderHandle handle);
 
 		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
-		inline const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
-		inline EnvironmentData& GetEnvironmentData() { return m_environmentData; }
 
 		// Draw with materials
 		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 		// Draw without materials
 		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 
-		void ImGuiDraw(bool createWindow = false);
+		void ImGuiDraw();
 		bool IsDirty() const;
 	protected:
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
+		bool LoadMeshesFromFile(const char* filepath);
 
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr uint32_t MaxNodeLevel = 16;
-		std::vector<TransformComponent> m_transformComponents;
-		std::vector<glm::mat4> m_localTransforms;
-		std::vector<glm::mat4> m_globalTransforms;
-		std::vector<Hierarchy> m_hierarchy;
-		std::vector<std::string> m_names;
-		std::vector<std::string> m_materialNames;
-		std::unordered_map<uint32_t, RenderObjectComponents> m_componentMap;
-		std::vector<Mesh> m_meshArray;
-		std::vector<Material> m_materialArray;
-		std::vector<LightComponent> m_lightArray;
+		tDynArray<tString> m_names;
+		tDynArray<tString> m_materialNames;
+		tDynArray<Hierarchy> m_hierarchy;
+		tDynArray<TransformComponent> m_transformComponents;
+		tMap<uint32_t, MeshComponent> m_meshComponentMap;
+		tMap<uint32_t, LightComponent> m_lightComponentMap;
+		tDynArray<Material> m_materialArray;
+		tDynArray<Mesh> m_meshArray;
 
-		std::vector<int32_t> m_dirtyNodes[MaxNodeLevel];
+		tDynArray<glm::mat4> m_localTransforms;
+		tDynArray<glm::mat4> m_globalTransforms;
+		
+		tDynArray<int32_t> m_dirtyNodes[MaxNodeLevel];
 
 		RenderDataContainer m_renderData;
-		EnvironmentData m_environmentData;
+		glm::vec3 m_ambientColor = {0.05f, 0.05f, 0.05f};
+
+		tMap<tString, tDynArray<uint32_t>> m_meshNameIndexMap;
 	};
 }

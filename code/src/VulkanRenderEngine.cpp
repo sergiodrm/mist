@@ -264,7 +264,7 @@ namespace Mist
 
 		AddImGuiCallback(&Mist_profiling::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
-		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(true); });
+		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(); });
 
 		return true;
 	}

@@ -110,16 +110,23 @@ class SponzaTest : public Test
 protected:
 	virtual bool LoadTest()
 	{
+#define TEST_LOAD
+#ifdef TEST_LOAD
+		Mist::IScene* scene = Mist::IScene::CreateScene(m_engine);
+#else
 		//const char* scenePath = "../assets/models/vulkanscene_shadow.gltf";
-		const char* scenePath = "../assets/models/sponza/Sponza.gltf";
+		const char* scenePath = "../assets/models/sponza/sponzatest/Sponzatest.gltf";
 		Mist::IScene* scene = Mist::IScene::LoadScene(m_engine, scenePath);
-		//scene->LoadModel("assets/models/vulkanscene_shadow.gltf");
+		//scene->LoadModel("assets/models/vulkanscene_shadow.gltf");  
 		if (!scene)
 		{
 			Mist::Logf(Mist::LogLevel::Error, "Error loading test scene: %s\n", scenePath);
 			return false;
 		}
+#endif // TEST_LOAD
 
+
+#ifndef TEST_LOAD
 		Mist::RenderObject obj = scene->CreateRenderObject(scene->GetRoot());
 		Mist::LightComponent light;
 		light.Type = Mist::ELightType::Spot;
@@ -128,6 +135,8 @@ protected:
 		light.OuterCutoff = 0.5f;
 		scene->SetLight(obj, light);
 		scene->SetRenderObjectName(obj, "Light");
+#endif // TEST_LOAD
+
 		return scene;
 	}
 };

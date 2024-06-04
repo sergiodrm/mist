@@ -21,15 +21,27 @@ namespace Mist
 		Spot
 	};
 
+	const char* LightTypeToStr(ELightType);
+	ELightType StrToLightType(const char* str);
+
 	struct LightComponent
 	{
-		ELightType Type;
-		glm::vec3 Color;
-		float Radius;
-		float Compression;
-		float InnerCutoff;
-		float OuterCutoff;
-		bool ProjectShadows;
+		ELightType Type = ELightType::Point;
+		glm::vec3 Color = {1.f, 1.f, 1.f};
+		float Radius = 10.f;
+		float Compression = 1.f;
+		float InnerCutoff = 1.f;
+		float OuterCutoff = 0.5f;
+		bool ProjectShadows = false;
+	};
+
+	struct MeshComponent
+	{
+		char MeshAssetPath[256];
+		std::string MeshName;
+		uint32_t MeshIndex;
+
+		MeshComponent() : MeshIndex(UINT32_MAX) { *MeshAssetPath = 0; }
 	};
 	
 	struct Hierarchy
@@ -75,16 +87,16 @@ namespace Mist
 		virtual const char* GetRenderObjectName(RenderObject object) const = 0;
 		virtual void SetRenderObjectName(RenderObject object, const char* name) = 0;
 		// Render object components
-		virtual const Mesh* GetMesh(RenderObject object) const = 0;
-		virtual void SetMesh(RenderObject object, const Mesh& mesh) = 0;
+		virtual const MeshComponent* GetMesh(RenderObject object) const = 0;
+		virtual void SetMesh(RenderObject object, const MeshComponent& meshComponent) = 0;
 		virtual const TransformComponent& GetTransform(RenderObject object) const = 0;
 		virtual void SetTransform(RenderObject object, const TransformComponent& transform) = 0;
 		virtual const LightComponent* GetLight(RenderObject object) const = 0;
 		virtual void SetLight(RenderObject object, const LightComponent& light) = 0;
 
 		// Create render data of meshes and materials
-		virtual void SubmitMesh(Mesh& mesh) = 0;
-		virtual void SubmitMaterial(Material& material) = 0;
+		virtual uint32_t SubmitMesh(Mesh& mesh) = 0;
+		virtual uint32_t SubmitMaterial(Material& material) = 0;
 		virtual RenderHandle LoadTexture(const char* texturePath) = 0;
 	};
 }

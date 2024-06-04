@@ -26,7 +26,79 @@
 #include <imgui.h>
 #include "Renderers/DebugRenderer.h"
 
+#define SCENE_LOAD_YAML
+#ifdef SCENE_LOAD_YAML
+
+#include <yaml-cpp/yaml.h>
+
+#endif // SCENE_LOAD_YAML
+#include <fstream>
+
 //#define Mist_ENABLE_LOADER_LOG
+
+#ifdef SCENE_LOAD_YAML
+YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec3& v)
+{
+	e << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
+	return e;
+}
+
+YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec4& v)
+{
+	e << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
+	return e;
+}
+
+namespace YAML
+{
+	template<>
+	struct convert<glm::vec2>
+	{
+		static Node encode(const glm::vec2& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec2& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 2)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::vec3>
+	{
+		static Node encode(const glm::vec3& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec3& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 3)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			return true;
+		}
+	};
+}
+
+#endif
 
 namespace gltf_api
 {
@@ -291,6 +363,8 @@ namespace gltf_api
 
 	void LoadMaterial(Mist::Scene* scene, const char* rootAssetPath, Mist::Material& material, const cgltf_material& mtl)
 	{
+		check(mtl.name);
+		material.SetName(mtl.name);
 		if (mtl.pbr_metallic_roughness.base_color_texture.texture)
 		{
 			Mist::RenderHandle diffHandle = LoadTexture(scene,
@@ -328,6 +402,37 @@ namespace gltf_api
 		else
 			Mist::Log(Mist::LogLevel::Warn, "Normal material texture not found.\n");
 #endif // Mist_ENABLE_LOADER_LOG
+	}
+
+	void LoadGeometry(Mist::Mesh& mesh, Mist::tDynArray<Mist::PrimitiveMeshData>& primitives, const std::unordered_map<cgltf_material*, uint32_t>& materialMap, const cgltf_node& node, const cgltf_data& scene)
+	{
+		check(node.mesh && node.mesh->name);
+		mesh.SetName(node.mesh->name);
+
+		Mist::tDynArray<Mist::Vertex> vertices;
+		Mist::tDynArray<uint32_t> indices;
+		primitives.resize(node.mesh->primitives_count);
+
+		for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
+		{
+			const cgltf_primitive& primitive = node.mesh->primitives[j];
+			uint32_t vertexOffset = (uint32_t)vertices.size();
+			primitives[j].FirstIndex = (uint32_t)indices.size();
+			gltf_api::LoadIndices(indices, &primitive, vertexOffset);
+			gltf_api::LoadVertices(vertices, &primitive, scene.nodes, (uint32_t)scene.nodes_count);
+			primitives[j].Count = (uint32_t)indices.size() - primitives[j].FirstIndex;
+			check(materialMap.contains(primitive.material));
+			primitives[j].MaterialIndex = materialMap.at(primitive.material);
+			check(primitive.indices->count == primitives[j].Count);
+		}
+
+		// Sort primitives by index
+		std::sort(primitives.begin(), primitives.end(),
+			[](const Mist::PrimitiveMeshData& a, const Mist::PrimitiveMeshData& b) {return a.MaterialIndex < b.MaterialIndex; }
+		);
+
+		mesh.MoveIndicesFrom(indices);
+		mesh.MoveVerticesFrom(vertices);
 	}
 }
 
@@ -403,6 +508,7 @@ namespace Mist
 		}
 		//memset(this, 0, sizeof(*this));
 		ZeroMemory(this, sizeof(*this));
+		AmbientColor = { 0.02f, 0.02f, 0.02f };
 	}
 
 
@@ -452,7 +558,6 @@ namespace Mist
 		m_globalTransforms.clear();
 		m_hierarchy.clear();
 		m_meshArray.clear();
-		m_componentMap.clear();
 		m_names.clear();
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 			m_dirtyNodes[i].clear();
@@ -557,40 +662,23 @@ namespace Mist
 			// Process mesh
 			if (node.mesh)
 			{
-				// Load geometry data
-				std::vector<Vertex> vertices;
-				std::vector<uint32_t> indices;
-				std::vector<PrimitiveMeshData> pmd(node.mesh->primitives_count);
-
-				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
-				{
-					const cgltf_primitive& primitive = node.mesh->primitives[j];
-					uint32_t vertexOffset = (uint32_t)vertices.size();
-					pmd[j].FirstIndex = (uint32_t)indices.size();
-					gltf_api::LoadIndices(indices, &primitive, vertexOffset);
-					gltf_api::LoadVertices(vertices, &primitive, data->nodes, (uint32_t)data->nodes_count);
-					pmd[j].Count = (uint32_t)indices.size() - pmd[j].FirstIndex;
-					pmd[j].MaterialIndex = materialIndexMap[primitive.material];
-					check(primitive.indices->count == pmd[j].Count);
-				}
-
-				// Sort primitives by index
-				std::sort(pmd.begin(), pmd.end(),
-					[](const PrimitiveMeshData& a, const PrimitiveMeshData& b) {return a.MaterialIndex < b.MaterialIndex; }
-				);
+				Mesh mesh;
+				tDynArray<PrimitiveMeshData> primitives;
+				gltf_api::LoadGeometry(mesh, primitives, materialIndexMap, node, *data);
 
 				// Submit data
-				Mesh mesh;
-				mesh.MoveIndicesFrom(indices);
-				mesh.MoveVerticesFrom(vertices);
-				SubmitMesh(mesh);
+				// Create mesh component associated
+				MeshComponent mc;
+				strcpy_s(mc.MeshAssetPath, filepath);
+				mc.MeshName = node.mesh->name;
+				mc.MeshIndex = SubmitMesh(mesh);
 
 				// TODO: find out a better way to assign primitives to mesh render data.
 				MeshRenderData& mrd = GetMeshRenderData(mesh.GetHandle());
-				mrd.PrimitiveArray = std::move(pmd);
+				mrd.PrimitiveArray = std::move(primitives);
 				mrd.IndexCount = (uint32_t)mesh.GetIndexCount();
 
-				SetMesh(renderObject, mesh);
+				SetMesh(renderObject, mc);
 
 				if (node.mesh->name && *node.mesh->name)
 					SetRenderObjectName(renderObject, node.mesh->name);
@@ -600,44 +688,157 @@ namespace Mist
 		return true;
 	}
 
+	void Scene::LoadScene(const char* filepath)
+	{
+#ifdef SCENE_LOAD_YAML
+		io::File file;
+		check(file.Open(filepath, "r"));
+		uint32_t size = file.GetContentSize();
+		char* content = new char[size];
+		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
+		file.Close();
+		check(contentReaded <= size);
+		content[contentReaded] = 0;
+
+		YAML::Node root = YAML::Load(content);
+		for (const auto& it : root)
+		{
+			uint32_t parent = it["Parent"].as<uint32_t>();
+			if (parent == RenderObject::InvalidId)
+				parent = GetRoot();
+			RenderObject rb = CreateRenderObject(parent);
+			SetRenderObjectName(rb, it["Name"].as<tString>().c_str());
+			
+			TransformComponent t;
+			YAML::Node transformNode = it["TransformComponent"];
+			t.Position = transformNode["Position"].as<glm::vec3>();
+			t.Rotation = transformNode["Rotation"].as<glm::vec3>();
+			t.Scale = transformNode["Scale"].as<glm::vec3>();
+			SetTransform(rb, t);
+
+			YAML::Node lightNode = it["LightComponent"];
+			if (lightNode)
+			{
+				LightComponent lightComponent;
+				lightComponent.Color = lightNode["Color"].as<glm::vec3>();
+				lightComponent.Radius = lightNode["Radius"].as<float>();
+				lightComponent.Compression = lightNode["Compression"].as<float>();
+				lightComponent.InnerCutoff = lightNode["InnerCutoff"].as<float>();
+				lightComponent.OuterCutoff = lightNode["OuterCutoff"].as<float>();
+				lightComponent.ProjectShadows = lightNode["ProjectShadows"].as<bool>();
+				lightComponent.Type = StrToLightType(lightNode["Type"].as<tString>().c_str());
+				SetLight(rb, lightComponent);
+			}
+
+			YAML::Node meshNode = it["MeshComponent"];
+			if (meshNode)
+			{
+				MeshComponent m;
+				strcpy_s(m.MeshAssetPath, meshNode["MeshAssetPath"].as<tString>().c_str());
+				m.MeshName = meshNode["MeshName"].as<tString>();
+				m.MeshIndex = UINT32_MAX;
+				if (!m_meshNameIndexMap.contains(m.MeshAssetPath))
+					check(LoadMeshesFromFile(m.MeshAssetPath));
+				const tDynArray<uint32_t>& sceneMeshes = m_meshNameIndexMap[m.MeshAssetPath];
+				for (uint32_t i = 0; i < (uint32_t)sceneMeshes.size(); ++i)
+				{
+					if (!strcmp(m.MeshName.c_str(), m_meshArray[sceneMeshes[i]].GetName()))
+					{
+						m.MeshIndex = i;
+						break;
+					}
+				}
+				check(m.MeshIndex != UINT32_MAX);
+				SetMesh(rb, m);
+			}
+		}
+
+
+		delete[] content;
+#endif // SCENE_LOAD_YAML
+	}
+
+	void Scene::SaveScene(const char* filepath)
+	{
+#ifdef SCENE_LOAD_YAML
+		YAML::Emitter emitter;
+
+		emitter << YAML::BeginSeq;
+		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
+		{
+			const Hierarchy& h = m_hierarchy[i];
+			emitter << YAML::BeginMap;
+			emitter << YAML::Key << "RenderObject" << YAML::Value << i;
+			emitter << YAML::Key << "Name" << YAML::Value << GetRenderObjectName(i);
+			emitter << YAML::Key << "Parent" << YAML::Value << h.Parent;
+
+			const TransformComponent& t = m_transformComponents[i];
+			emitter << YAML::Key << "TransformComponent" << YAML::BeginMap;
+			emitter << YAML::Key << "Position" << YAML::Value << t.Position;
+			emitter << YAML::Key << "Rotation" << YAML::Value << t.Rotation;
+			emitter << YAML::Key << "Scale" << YAML::Value << t.Scale;
+			emitter << YAML::EndMap;
+
+			if (m_lightComponentMap.contains(i))
+			{
+				const LightComponent& light = m_lightComponentMap[i];
+				emitter << YAML::Key << "LightComponent" << YAML::BeginMap;
+				emitter << YAML::Key << "Type" << YAML::Value << LightTypeToStr(light.Type);
+				emitter << YAML::Key << "Color" << YAML::Value << light.Color;
+				emitter << YAML::Key << "Radius" << YAML::Value << light.Radius;
+				emitter << YAML::Key << "Compression" << YAML::Value << light.Radius;
+				emitter << YAML::Key << "InnerCutoff" << YAML::Value << light.InnerCutoff;
+				emitter << YAML::Key << "OuterCutoff" << YAML::Value << light.OuterCutoff;
+				emitter << YAML::Key << "ProjectShadows" << YAML::Value << light.ProjectShadows;
+				emitter << YAML::EndMap;
+			}
+
+			if (m_meshComponentMap.contains(i))
+			{
+				emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
+#if 1
+				const MeshComponent& mesh = m_meshComponentMap[i];
+				emitter << YAML::Key << "MeshAssetPath" << YAML::Value << mesh.MeshAssetPath;
+				emitter << YAML::Key << "MeshName" << YAML::Value << mesh.MeshName;
+				emitter << YAML::EndMap;
+#endif // 0
+
+			}
+
+			emitter << YAML::EndMap;
+		}
+		emitter << YAML::EndSeq;
+		check(emitter.good());
+		const char* out = emitter.c_str();
+		uint32_t size = (uint32_t)emitter.size();
+		Logf(LogLevel::Info, "YAML %u b\n%s\n", size, out);
+
+		io::File file;
+		check(file.Open(filepath, "w"));
+		file.Write(out, size);
+		file.Close();
+#endif
+	}
+
 	void Scene::DestroyRenderObject(RenderObject object)
 	{
 		check(false && "not implemented yet" && __FUNCTION__ && __FILE__ && __LINE__);
 	}
 
-	const Mesh* Scene::GetMesh(RenderObject renderObject) const
+	const MeshComponent* Scene::GetMesh(RenderObject renderObject) const
 	{
 		check(IsValid(renderObject));
-		const Mesh* mesh = nullptr;
-		if (m_componentMap.contains(renderObject))
-		{
-			uint32_t index = m_componentMap.at(renderObject).MeshIndex;
-			if (index < (uint32_t)m_meshArray.size())
-				mesh = &m_meshArray.at(index);
-		}
+		const MeshComponent* mesh = nullptr;
+		if (m_meshComponentMap.contains(renderObject))
+			mesh = &m_meshComponentMap.at(renderObject);
 		return mesh;
 	}
 
-	void Scene::SetMesh(RenderObject renderObject, const Mesh& mesh)
+	void Scene::SetMesh(RenderObject renderObject, const MeshComponent& meshComponent)
 	{
 		check(IsValid(renderObject));
-		if (m_componentMap.contains(renderObject))
-		{
-			RenderObjectComponents& components = m_componentMap[renderObject];
-			if (components.MeshIndex >= (uint32_t)m_meshArray.size())
-			{
-				components.MeshIndex = (uint32_t)m_meshArray.size();
-				m_meshArray.push_back(mesh);
-			}
-			else
-				m_meshArray[components.MeshIndex] = mesh;
-		}
-		else
-		{
-			uint32_t index = (uint32_t)m_meshArray.size();
-			m_meshArray.push_back(mesh);
-			m_componentMap[renderObject] = { .MeshIndex = index };
-		}
+		check(meshComponent.MeshIndex < (uint32_t)m_meshArray.size());
+		m_meshComponentMap[renderObject] = meshComponent;
 	}
 
 	const char* Scene::GetRenderObjectName(RenderObject object) const
@@ -685,38 +886,18 @@ namespace Mist
 	{
 		check(IsValid(renderObject));
 		const LightComponent* light = nullptr;
-		if (m_componentMap.contains(renderObject))
-		{
-			uint32_t index = m_componentMap.at(renderObject).LightIndex;
-			if (index < (uint32_t)m_lightArray.size())
-				light = &m_lightArray[index];
-		}
+		if (m_lightComponentMap.contains(renderObject))
+			light = &m_lightComponentMap.at(renderObject);
 		return light;
 	}
 
 	void Scene::SetLight(RenderObject renderObject, const LightComponent& light)
 	{
 		check(IsValid(renderObject));
-		if (m_componentMap.contains(renderObject))
-		{
-			RenderObjectComponents& components = m_componentMap[renderObject];
-			if (components.LightIndex >= (uint32_t)m_lightArray.size())
-			{
-				components.LightIndex = (uint32_t)m_lightArray.size();
-				m_lightArray.push_back(light);
-			}
-			else
-				m_lightArray[components.LightIndex] = light;
-		}
-		else
-		{
-			uint32_t index = (uint32_t)m_lightArray.size();
-			m_componentMap[renderObject] = { .LightIndex = index };
-			m_lightArray.push_back(light);
-		}
+		m_lightComponentMap[renderObject] = light;
 	}
 
-	void Scene::SubmitMesh(Mesh& mesh)
+	uint32_t Scene::SubmitMesh(Mesh& mesh)
 	{
 		check(!mesh.GetHandle().IsValid());
 		check(mesh.GetVertexCount() > 0 && mesh.GetIndexCount() > 0);
@@ -736,9 +917,13 @@ namespace Mist
 		RenderHandle handle = GenerateRenderHandle();
 		mesh.SetHandle(handle);
 		m_renderData.Meshes[handle] = mrd;
+
+		uint32_t meshIndex = (uint32_t)m_meshArray.size();
+		m_meshArray.push_back(mesh);
+		return meshIndex;
 	}
 
-	void Scene::SubmitMaterial(Material& material)
+	uint32_t Scene::SubmitMaterial(Material& material)
 	{
 		check(!material.GetHandle().IsValid());
 
@@ -766,7 +951,9 @@ namespace Mist
 
 		material.SetHandle(h);
 		m_renderData.Materials[h] = mrd;
+		uint32_t materialIndex = (uint32_t)m_materialArray.size();
 		m_materialArray.push_back(material);
+		return materialIndex;
 	}
 
 	RenderHandle Scene::LoadTexture(const char* texturePath)
@@ -815,6 +1002,49 @@ namespace Mist
 		}
 	}
 
+	bool Scene::LoadMeshesFromFile(const char* filepath)
+	{
+		check(!m_meshNameIndexMap.contains(filepath));
+		cgltf_data* data = gltf_api::ParseFile(filepath);
+		char rootAssetPath[512];
+		io::GetDirectoryFromFilepath(filepath, rootAssetPath, 512);
+		if (!data)
+		{
+			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", filepath);
+			return false;
+		}
+
+		std::unordered_map<cgltf_material*, uint32_t> materialIndexMap;
+		for (uint32_t i = 0; i < data->materials_count; ++i)
+		{
+			Material m;
+			gltf_api::LoadMaterial(this, rootAssetPath, m, data->materials[i]);
+			materialIndexMap[&data->materials[i]] = GetMaterialCount();
+			SubmitMaterial(m);
+		}
+
+		uint32_t nodesCount = (uint32_t)data->nodes_count;
+		uint32_t renderObjectOffset = GetRenderObjectCount();
+		for (uint32_t i = 0; i < nodesCount; ++i)
+		{
+			const cgltf_node& node = data->nodes[i];
+
+			// Process mesh
+			if (node.mesh)
+			{
+				Mesh mesh;
+				tDynArray<PrimitiveMeshData> primitives;
+				gltf_api::LoadGeometry(mesh, primitives, materialIndexMap, node, *data);
+				uint32_t meshIndex = SubmitMesh(mesh);
+				m_meshNameIndexMap[filepath].push_back(meshIndex);
+				MeshRenderData& mrd = GetMeshRenderData(m_meshArray[meshIndex].GetHandle());
+				mrd.PrimitiveArray = std::move(primitives);
+			}
+		}
+		gltf_api::FreeData(data);
+		return true;
+	}
+
 	const Mesh* Scene::GetMeshArray() const
 	{
 		return m_meshArray.data();
@@ -823,16 +1053,6 @@ namespace Mist
 	uint32_t Scene::GetMeshCount() const
 	{
 		return (uint32_t)m_meshArray.size();
-	}
-
-	const LightComponent* Scene::GetLightArray() const
-	{
-		return m_lightArray.data();
-	}
-
-	uint32_t Scene::GetLightCount() const
-	{
-		return (uint32_t)m_lightArray.size();
 	}
 
 	const Material* Scene::GetMaterialArray() const
@@ -875,9 +1095,11 @@ namespace Mist
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			RenderObject renderObject = i;
-			const Mesh* mesh = GetMesh(renderObject);
-			if (mesh)
+			const MeshComponent* meshComponent = GetMesh(renderObject);
+			if (meshComponent)
 			{
+				check(meshComponent->MeshIndex < (uint32_t)m_meshArray.size());
+				const Mesh* mesh = &m_meshArray[meshComponent->MeshIndex];
 				const MeshRenderData& mrd = GetMeshRenderData(mesh->GetHandle());
 
 				// BaseOffset in buffer is already setted when descriptor was created.
@@ -924,9 +1146,11 @@ namespace Mist
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			RenderObject renderObject = i;
-			const Mesh* mesh = GetMesh(renderObject);
-			if (mesh)
+			const MeshComponent* meshComponent = GetMesh(renderObject);
+			if (meshComponent)
 			{
+				check(meshComponent->MeshIndex < (uint32_t)m_meshArray.size());
+				const Mesh* mesh = &m_meshArray[meshComponent->MeshIndex];
 				const MeshRenderData& mrd = GetMeshRenderData(mesh->GetHandle());
 
 				// BaseOffset in buffer is already setted when descriptor was created.
@@ -957,14 +1181,25 @@ namespace Mist
 		}
 	}
 
-	void Scene::ImGuiDraw(bool createWindow)
+	void Scene::ImGuiDraw()
 	{
-		if (createWindow)
-			ImGui::Begin("SceneGraph");
+		ImGui::Begin("SceneGraph");
 
 		float posStep = 0.5f;
 		float rotStep = 0.1f;
 		float sclStep = 0.5f;
+
+		if (ImGui::Button("Save"))
+			SaveScene("scenes/Scene.yaml");
+		if (ImGui::Button("Load"))
+			LoadScene("scenes/Scene.yaml");
+
+		if (ImGui::Button("New render object"))
+			CreateRenderObject(GetRoot());
+		
+		ImGui::Separator();
+		ImGui::Text("Scene objects");
+		ImGui::Separator();
 
 		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
@@ -972,6 +1207,9 @@ namespace Mist
 			sprintf(treeId, "%u", i);
 			if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
 			{
+				glm::mat4 transform;
+				TransformComponentToMatrix(&m_transformComponents[i], &transform, 1);
+				DebugRender::DrawAxis(transform);
 				const Hierarchy& node = m_hierarchy[i];
 				ImGui::Text("Parent: %s", node.Parent != RenderObject::InvalidId ? GetRenderObjectName(node.Parent) : "None");
 				char buff[32];
@@ -1001,11 +1239,22 @@ namespace Mist
 						MarkAsDirty(i);
 				}
 				sprintf_s(buff, "##LightComponent%u", i);
-				if (m_componentMap[i].LightIndex != UINT32_MAX)
+				if (m_lightComponentMap.contains(i))
 				{
 					if (ImGui::TreeNode(buff, "Light component"))
 					{
-						LightComponent& light = m_lightArray[m_componentMap[i].LightIndex];
+						LightComponent& light = m_lightComponentMap[i];
+						static const char* lightTypes[] = { "Point", "Directional", "Spot" };
+						uint32_t lightCount = sizeof(lightTypes) / sizeof(const char*);
+						if (ImGui::BeginCombo("Type", lightTypes[(uint32_t)light.Type]))
+						{
+							for (uint32_t j = 0; j < lightCount; ++j)
+							{
+								if (ImGui::Selectable(lightTypes[j], j == (uint32_t)light.Type))
+									light.Type = (ELightType)j;
+							}
+							ImGui::EndCombo();
+						}
 						ImGui::Columns(2);
 						ImGui::Text("Color");
 						ImGui::NextColumn();
@@ -1016,6 +1265,25 @@ namespace Mist
 						ImGui::NextColumn();
 						sprintf_s(buff, "##LightRadius%u", i);
 						ImGui::DragFloat(buff, &light.Radius, 0.5f, 0.f, FLT_MAX);
+						ImGui::NextColumn();
+						ImGui::Text("Compression");
+						sprintf_s(buff, "##LightCompression%u", i);
+						ImGui::DragFloat(buff, &light.Compression, 0.f, 0.f, FLT_MAX);
+						ImGui::NextColumn();
+						ImGui::Text("Inner cutoff");
+						ImGui::NextColumn();
+						sprintf_s(buff, "##LightInnerCutoff%u", i);
+						ImGui::DragFloat(buff, &light.InnerCutoff, 0.f, 0.f, FLT_MAX);
+						ImGui::NextColumn();
+						ImGui::Text("Outer cutoff");
+						ImGui::NextColumn();
+						sprintf_s(buff, "##LightOuterCutoff%u", i);
+						ImGui::DragFloat(buff, &light.OuterCutoff, 0.f, 0.f, FLT_MAX);
+						ImGui::NextColumn();
+						ImGui::Text("Project shadows");
+						ImGui::NextColumn();
+						sprintf_s(buff, "##LightShadows%u", i);
+						ImGui::Checkbox(buff, &light.ProjectShadows);
 						ImGui::NextColumn();
 
 						ImGui::Columns();
@@ -1127,8 +1395,7 @@ namespace Mist
 		}
 #endif // 0
 
-		if (createWindow)
-			ImGui::End();
+		ImGui::End();
 	}
 
 	bool Scene::IsDirty() const
@@ -1149,10 +1416,11 @@ namespace Mist
 		EnvironmentData renderData;
 		ProcessEnvironmentData(viewMat, renderData);
 
+#if 0
 		// Calculate environment data positions from view space. TODO: cache results to avoid doing it each frame.
-		//EnvironmentData renderData = m_environmentData;
+//EnvironmentData renderData = m_environmentData;
 		for (uint32_t i = 0; i < renderData.ActiveLightsCount; ++i)
-			renderData.Lights[i].Position = glm::vec3(viewMat * glm::vec4(renderData.Lights[i].Position, 1.f));
+			renderData.Lights[i].Position = glm::vec3(glm::vec4(renderData.Lights[i].Position, 1.f));
 		for (uint32_t i = 0; i < renderData.ActiveSpotLightsCount; ++i)
 		{
 			glm::mat4 t = math::ToMat4(renderData.SpotLights[i].Position, renderData.SpotLights[i].Direction, glm::vec3(1.f));
@@ -1166,6 +1434,8 @@ namespace Mist
 			t = viewMat * t;
 			renderData.DirectionalLight.Direction = math::GetDir(t);
 		}
+#endif // 0
+
 
 		UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
@@ -1182,19 +1452,17 @@ namespace Mist
 	{
 		environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
 #if 1
+		environmentData.AmbientColor = m_ambientColor;
 		environmentData.ActiveLightsCount = 0.f;
 		environmentData.ActiveSpotLightsCount = 0.f;
-		for (auto& it : m_componentMap)
+		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
-			const RenderObjectComponents& comp = it.second;
-			if (comp.LightIndex != UINT32_MAX)
+			if (m_lightComponentMap.contains(i))
 			{
-				check(it.first < GetRenderObjectCount());
-				check(comp.LightIndex < GetLightCount());
-				const glm::mat4& mat = m_globalTransforms[it.first];
+				const glm::mat4& mat = m_globalTransforms[i];
 				const glm::vec3 pos = math::GetPos(viewSpace * mat);
 				const glm::vec3 dir = math::GetDir(viewSpace * mat);
-				const LightComponent& light = GetLightArray()[comp.LightIndex];
+				const LightComponent& light = m_lightComponentMap[i];
 				switch (light.Type)
 				{
 				case ELightType::Point:

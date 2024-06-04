@@ -1,0 +1,42 @@
+- RenderObject: 0
+  Name: RenderObject_0
+  Parent: 4294967295
+  TransformComponent:
+    Position: [0, 0, 0]
+    Rotation: [0, 0, 0]
+    Scale: [1, 1, 1]
+- RenderObject: 1
+  Name: Mesh_0
+  Parent: 0
+  TransformComponent:
+    Position: [0, 0, 0]
+    Rotation: [0, -0, 0]
+    Scale: [0.00800000038, 0.00800000038, 0.00800000038]
+  MeshComponent:
+    MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
+    MeshName: Mesh_0
+- RenderObject: 2
+  Name: Cube
+  Parent: 0
+  TransformComponent:
+    Position: [0, 0, 0]
+    Rotation: [0, -0, 0]
+    Scale: [1, 1, 1]
+  MeshComponent:
+    MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
+    MeshName: Cube
+- RenderObject: 3
+  Name: Light
+  Parent: 0
+  TransformComponent:
+    Position: [0, 0, 0]
+    Rotation: [0, 0, 0]
+    Scale: [1, 1, 1]
+  LightComponent:
+    Type: Spot
+    Color: [1, 0, 0]
+    Radius: 10
+    Compression: 10
+    InnerCutoff: 1
+    OuterCutoff: 0.5
+    ProjectShadows: false
