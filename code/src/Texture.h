@@ -52,7 +52,7 @@ namespace Mist
 	};
 
 
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture);
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture, EFormat format);
 
 	struct SamplerDescription
 	{

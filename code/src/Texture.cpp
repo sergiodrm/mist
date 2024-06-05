@@ -60,6 +60,7 @@ namespace Mist
 		AllocatedBuffer stageBuffer = Memory::CreateBuffer(renderContext.Allocator, size,
 			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
 		Memory::MemCopy(renderContext.Allocator, stageBuffer, textureInfo.Pixels, size);
+		Logf(LogLevel::Info, "Created texture %s size %u bytes.\n", FormatToStr(textureInfo.Format), size);
 
 		// Prepare image creation
 		VkExtent3D extent;
@@ -167,7 +168,7 @@ namespace Mist
 		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
 	}
 
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture)
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture, EFormat format)
 	{
 		// Load texture from file
 		io::TextureRaw texData;
@@ -182,7 +183,8 @@ namespace Mist
 		texInfo.Width = texData.Width;
 		texInfo.Height = texData.Height;
 		texInfo.Depth = 1;
-		texInfo.Format = utils::GetImageFormatFromChannels(texData.Channels);
+		//texInfo.Format = utils::GetImageFormatFromChannels(texData.Channels);
+		texInfo.Format = format;
 		texInfo.Pixels = texData.Pixels;
 		texInfo.PixelCount = texData.Width * texData.Height * /*texData.Channels*/1; // depth
 		texture.Init(context, texInfo);

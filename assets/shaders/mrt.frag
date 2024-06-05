@@ -17,14 +17,20 @@ void main()
 {
 	outPosition = vec4(inWorldPos, 1.0);
 
+#define USE_TBN
+#ifdef USE_TBN
 	// Calculate normal in tangent space
 	vec3 N = normalize(inNormal);
 	vec3 T = normalize(inTangent);
 	vec3 B = cross(N, T);
 	mat3 TBN = mat3(T, B, N);
 	vec3 tnorm = TBN * normalize(texture(u_Textures[1], inUV).xyz * 2.0 - vec3(1.0));
-	outNormal = normalize(vec4(inNormal, 1.0));
+	outNormal = vec4(tnorm, 1.0);
+	//outNormal = normalize(texture(u_Textures[1], inUV));
+#else
 	//outNormal = vec4(inTangent, 1.0);
+	outNormal = normalize(vec4(inNormal, 1.0));
+#endif
 
 	outAlbedo = texture(u_Textures[0], inUV);
 	if (outAlbedo.a <= 0.1)

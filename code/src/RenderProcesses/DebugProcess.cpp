@@ -106,7 +106,7 @@ namespace Mist
 
 		void Init(const RenderContext& context)
 		{
-			check(LoadTextureFromFile(context, ASSET_PATH("textures/checkerboard.jpg"), DefaultTexture));
+			check(LoadTextureFromFile(context, ASSET_PATH("textures/checkerboard.jpg"), DefaultTexture, FORMAT_R8G8B8A8_SRGB));
 			TextureDescriptor texDescriptor;
 			texDescriptor.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			texDescriptor.Sampler = CreateSampler(context);

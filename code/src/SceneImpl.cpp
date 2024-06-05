@@ -353,11 +353,11 @@ namespace gltf_api
 			indices[i + indexOffset] = (uint32_t)cgltf_accessor_read_index(primitive->indices, i) + offset;
 	}
 
-	Mist::RenderHandle LoadTexture(Mist::Scene* scene, const char* rootAssetPath, const cgltf_texture_view& texView)
+	Mist::RenderHandle LoadTexture(Mist::Scene* scene, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format)
 	{
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
-		Mist::RenderHandle handle = scene->LoadTexture(texturePath);
+		Mist::RenderHandle handle = scene->LoadTexture(texturePath, format);
 		return handle;
 	}
 
@@ -369,7 +369,7 @@ namespace gltf_api
 		{
 			Mist::RenderHandle diffHandle = LoadTexture(scene,
 				rootAssetPath,
-				mtl.pbr_metallic_roughness.base_color_texture);
+				mtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB);
 			material.SetDiffuseTexture(diffHandle);
 		}
 #ifdef Mist_ENABLE_LOADER_LOG
@@ -381,7 +381,7 @@ namespace gltf_api
 		{
 			Mist::RenderHandle handle = LoadTexture(scene,
 				rootAssetPath,
-				mtl.pbr_specular_glossiness.diffuse_texture);
+				mtl.pbr_specular_glossiness.diffuse_texture, Mist::FORMAT_R8G8B8A8_UNORM);
 			material.SetSpecularTexture(handle);
 			
 			Mist::Log(Mist::LogLevel::Warn, "Specular.\n");
@@ -395,7 +395,7 @@ namespace gltf_api
 		{
 			Mist::RenderHandle handle = LoadTexture(scene,
 				rootAssetPath,
-				mtl.normal_texture);
+				mtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM);
 			material.SetNormalTexture(handle);
 		}
 #ifdef Mist_ENABLE_LOADER_LOG
@@ -956,10 +956,11 @@ namespace Mist
 		return materialIndex;
 	}
 
-	RenderHandle Scene::LoadTexture(const char* texturePath)
+	RenderHandle Scene::LoadTexture(const char* texturePath) { return RenderHandle(); }
+	RenderHandle Scene::LoadTexture(const char* texturePath, EFormat format)
 	{
 		Texture tex;
-		check(LoadTextureFromFile(m_engine->GetContext(), texturePath, tex));
+		check(LoadTextureFromFile(m_engine->GetContext(), texturePath, tex, format));
 		RenderHandle h = GenerateRenderHandle();
 		m_renderData.Textures[h] = tex;
 		return h;

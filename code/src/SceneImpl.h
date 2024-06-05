@@ -130,6 +130,7 @@ namespace Mist
 		virtual uint32_t SubmitMesh(Mesh& mesh) override;
 		virtual uint32_t SubmitMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
+		RenderHandle LoadTexture(const char* texturePath, EFormat format);
 
 		void MarkAsDirty(RenderObject renderObject);
 

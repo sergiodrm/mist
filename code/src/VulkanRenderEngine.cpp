@@ -398,7 +398,7 @@ namespace Mist
 	{
 		static RenderHandle texture;
 		if (!texture.IsValid())
-			texture = m_scene->LoadTexture(ASSET_PATH("textures/checkerboard.jpg"));
+			texture = m_scene->LoadTexture(ASSET_PATH("textures/checkerboard.jpg"), FORMAT_R8G8B8A8_SRGB);
 		return texture;
 	}
 
