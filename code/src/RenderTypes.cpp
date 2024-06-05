@@ -904,6 +904,8 @@ namespace Mist
 	{
 		switch (format)
 		{
+		case Mist::FORMAT_R8G8B8_UNORM: return 1 * 3;
+		case Mist::FORMAT_R8G8B8A8_UNORM: return 1 * 4;
 		case Mist::FORMAT_R8G8B8_SRGB: return 1 * 3;
 		case Mist::FORMAT_R8G8B8A8_SRGB: return 1 * 4;
 		case Mist::FORMAT_R16G16B16_SFLOAT: return 2 * 3;
