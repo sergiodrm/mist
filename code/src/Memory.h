@@ -1,7 +1,7 @@
 // header file for Mist project 
 #pragma once
 
-#ifdef Mist_MEM_MANAGEMENT
+#ifdef MIST_MEM_MANAGEMENT
 #include <vulkan/vulkan.h>
 #else
 #include <vk_mem_alloc.h>
@@ -27,7 +27,7 @@ namespace Mist
 
 	struct Allocator
 	{
-#ifdef Mist_MEM_MANAGEMENT
+#ifdef MIST_MEM_MANAGEMENT
 		VkDevice Device;
 		VkPhysicalDevice PhysicalDevice;
 #else
@@ -37,11 +37,11 @@ namespace Mist
 
 	struct Allocation
 	{
-#ifdef Mist_MEM_MANAGEMENT
+#ifdef MIST_MEM_MANAGEMENT
 		VkDeviceMemory Alloc{ nullptr };
 #else
 		VmaAllocation Alloc{ nullptr };
-#endif // !Mist_MEM_MANAGEMENT
+#endif // !MIST_MEM_MANAGEMENT
 		inline bool IsAllocated() const { return Alloc != nullptr; }
 	};
 
@@ -64,7 +64,7 @@ namespace Mist
 		static void Init(Allocator*& allocator, VkInstance vkInstance, VkDevice vkDevice, VkPhysicalDevice vkPhysicalDevice);
 		static void Destroy(Allocator*& allocator);
 
-#ifdef Mist_MEM_MANAGEMENT
+#ifdef MIST_MEM_MANAGEMENT
 		/**
 		 * Common
 		 */
@@ -72,7 +72,7 @@ namespace Mist
 		static VkDeviceMemory Allocate(Allocator* allocator, VkBuffer buffer, VkMemoryPropertyFlags memoryProperties);
 		static VkDeviceMemory Allocate(Allocator* allocator, VkImage image, VkMemoryPropertyFlags memoryProperties);
 		static void Free(Allocator* allocator, VkDeviceMemory memory);
-#endif // Mist_MEM_MANAGEMENT
+#endif // MIST_MEM_MANAGEMENT
 
 		/**
 		 * Buffers
