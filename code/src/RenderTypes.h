@@ -423,6 +423,43 @@ namespace Mist
 	};
 	DEFINE_FLAG_BITS_TYPE(ESampleCount);
 
+
+#define PRIMITIVE_TOPOLOGY_LIST \
+	_X_(PRIMITIVE_TOPOLOGY_POINT_LIST) \
+	_X_(PRIMITIVE_TOPOLOGY_LINE_LIST) \
+	_X_(PRIMITIVE_TOPOLOGY_LINE_STRIP) \
+	_X_(PRIMITIVE_TOPOLOGY_TRIANGLE_LIST) \
+	_X_(PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP) \
+	_X_(PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) \
+	_X_(PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY) \
+	_X_(PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY) \
+	_X_(PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY) \
+	_X_(PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY) \
+	_X_(PRIMITIVE_TOPOLOGY_PATCH_LIST ) \
+	_X_(PRIMITIVE_TOPOLOGY_MAX_ENUM) \
+
+	enum EPrimitiveTopology
+	{
+#define _X_(x) x,
+		PRIMITIVE_TOPOLOGY_LIST
+#undef _X_
+	};
+
+#define CULL_MODE_LIST \
+    _X_(CULL_MODE_NONE, 0x00) \
+	_X_(CULL_MODE_FRONT_BIT, 0x01) \
+	_X_(CULL_MODE_BACK_BIT, 0x02) \
+	_X_(CULL_MODE_FRONT_AND_BACK, 0x03) \
+	_X_(CULL_MODE_FLAG_BITS_MAX_ENUM, 0xff)
+	
+	enum ECullMode
+	{
+#define _X_(x, v) x = v,
+		CULL_MODE_LIST
+#undef _X_
+	};
+	DEFINE_ENUM_BIT_OPERATORS(ECullMode);
+
 #ifdef MIST_VULKAN
 
 	const char* VkResultToStr(VkResult res);
@@ -437,6 +474,8 @@ namespace Mist
 		VkFilter GetFilter(EFilterType type);
 		VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode);
 		VkSampleCountFlagBits GetSampleCount(ESampleCount sample);
+		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology);
+		VkCullModeFlags GetCullMode(ECullMode mode);
 	}
 	namespace fromvk
 	{
@@ -447,6 +486,8 @@ namespace Mist
 		EFilterType GetFilter(VkFilter type);
 		ESamplerAddressMode GetSamplerAddressMode(VkSamplerAddressMode mode);
 		ESampleCount GetSampleCount(VkSampleCountFlagBits sample);
+		EPrimitiveTopology GetPrimitiveTopology(VkPrimitiveTopology topology);
+		ECullMode GetCullMode(VkCullModeFlags mode);
 	}
 
 	namespace utils

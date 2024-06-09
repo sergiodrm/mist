@@ -493,6 +493,28 @@ namespace Mist
 			}
 			return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 		}
+
+		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology)
+		{
+			switch (topology)
+			{
+#define _X_(x) case x: return VK_##x;
+				PRIMITIVE_TOPOLOGY_LIST
+#undef _X_
+			}
+			check(false);
+			return VkPrimitiveTopology();
+		}
+
+		VkCullModeFlags GetCullMode(ECullMode mode)
+		{
+			VkCullModeFlags res = VK_CULL_MODE_NONE;
+			if (mode & CULL_MODE_FRONT_BIT) 
+				res |= VK_CULL_MODE_FRONT_BIT; 
+			if (mode & CULL_MODE_BACK_BIT) 
+				res |= VK_CULL_MODE_BACK_BIT;
+			return res;
+		}
 	}
 
 
@@ -853,6 +875,27 @@ namespace Mist
 			case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE: return SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
 			}
 			return SAMPLER_ADDRESS_MODE_MAX_ENUM;
+		}
+
+		EPrimitiveTopology GetPrimitiveTopology(VkPrimitiveTopology topology)
+		{
+#define _X_(x) case VK_##x: return x;
+			switch (topology)
+			{
+				PRIMITIVE_TOPOLOGY_LIST
+			}
+#undef _X_
+			check(false);
+			return EPrimitiveTopology();
+		}
+
+		ECullMode GetCullMode(VkCullModeFlags mode)
+		{
+			ECullMode res = CULL_MODE_NONE;
+#define _X_(x, v) if (mode & VK_##x) res |= x;
+			CULL_MODE_LIST
+#undef _X_
+				return res;
 		}
 
 		ESampleCount GetSampleCount(VkSampleCountFlags sample)
