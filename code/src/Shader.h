@@ -114,7 +114,8 @@ namespace Mist
 		uint32_t SubpassIndex = 0;
 		const RenderTarget* RenderTarget = nullptr;
 		VertexInputLayout InputLayout;
-		VkPrimitiveTopology Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		EPrimitiveTopology Topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		ECullMode CullMode = CULL_MODE_BACK_BIT;
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.

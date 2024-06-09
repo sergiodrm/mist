@@ -666,7 +666,8 @@ namespace Mist
 		// Input configuration
 		builder.InputDescription = m_description.InputLayout;
 		builder.SubpassIndex = m_description.SubpassIndex;
-		builder.Topology = m_description.Topology;
+		builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
+		builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
 		// Generate shader module stages
 		tArray<ShaderDescription, 2> descs;
 		descs[0] = { m_description.VertexShaderFile.c_str(), VK_SHADER_STAGE_VERTEX_BIT };
