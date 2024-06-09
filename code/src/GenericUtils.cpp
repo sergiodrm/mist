@@ -180,6 +180,11 @@ namespace Mist
 		return t * r * s;
 	}
 
+	glm::mat4 math::PosToMat4(const glm::vec3& pos)
+	{
+		return glm::translate(glm::mat4(1.f), pos);
+	}
+
 	glm::vec3 math::GetDir(const glm::mat4& transform)
 	{
 		return transform[2];
