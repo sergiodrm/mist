@@ -115,7 +115,7 @@ namespace Mist
 		const RenderTarget* RenderTarget = nullptr;
 		VertexInputLayout InputLayout;
 		EPrimitiveTopology Topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		ECullMode CullMode = CULL_MODE_BACK_BIT;
+		ECullMode CullMode = CULL_MODE_FRONT_BIT;
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
