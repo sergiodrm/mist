@@ -95,6 +95,31 @@ namespace Mist
 		EnvironmentData();
 	};
 
+	struct Skybox
+	{
+		enum
+		{
+			FRONT, 
+			BACK, 
+			LEFT, 
+			RIGHT, 
+			TOP, 
+			BOTTOM,
+			COUNT
+		};
+		uint32_t MeshIndex;
+		VkDescriptorSet CubemapSet;
+		RenderHandle Cubemap[COUNT];
+		char CubemapFiles[COUNT][256];
+		ShaderProgram* CubemapShader = nullptr;
+
+		Skybox() : MeshIndex(UINT32_MAX), CubemapSet(VK_NULL_HANDLE) 
+		{ 
+			for (uint32_t i = 0; i < COUNT; ++i)
+				*CubemapFiles[i] = 0;
+		}
+	};
+
 	class Scene : public IScene
 	{
 	protected:
@@ -130,7 +155,8 @@ namespace Mist
 		virtual uint32_t SubmitMesh(Mesh& mesh) override;
 		virtual uint32_t SubmitMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
-		RenderHandle LoadTexture(const char* texturePath, EFormat format);
+		RenderHandle LoadTexture(const RenderContext& context, const char* texturePath, EFormat format);
+		RenderHandle SubmitTexture(Texture tex);
 
 		void MarkAsDirty(RenderObject renderObject);
 
@@ -153,6 +179,7 @@ namespace Mist
 		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 		// Draw without materials
 		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		void DrawSkybox(CommandBuffer cmd, ShaderProgram* shader);
 
 		void ImGuiDraw();
 		bool IsDirty() const;
@@ -160,6 +187,7 @@ namespace Mist
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
 		bool LoadMeshesFromFile(const char* filepath);
+		bool LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
 
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
@@ -182,5 +210,6 @@ namespace Mist
 		glm::vec3 m_ambientColor = {0.05f, 0.05f, 0.05f};
 
 		tMap<tString, tDynArray<uint32_t>> m_meshNameIndexMap;
+		Skybox m_skybox;
 	};
 }

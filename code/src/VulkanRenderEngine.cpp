@@ -148,6 +148,21 @@ namespace Mist
 		}
 	}
 
+	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
+	{
+		ShaderProgramDescription shaderDesc;
+		shaderDesc.VertexShaderFile = SHADER_FILEPATH("skybox.vert");
+		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("skybox.frag");
+		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		shaderDesc.RenderTarget = rt;
+		shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
+		Shader = ShaderProgram::Create(context, shaderDesc);
+	}
+
+	void CubemapPipeline::Destroy(const RenderContext& context)
+	{
+	}
+
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		CPU_PROFILE_SCOPE(Init);
@@ -260,6 +275,7 @@ namespace Mist
 			m_screenPipeline.DebugInstance.PushFrameData(m_renderContext, &buffer);
 		}
 #endif // 0
+		m_cubemapPipeline.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 
 
 		AddImGuiCallback(&Mist_profiling::ImGuiDraw);
@@ -398,7 +414,7 @@ namespace Mist
 	{
 		static RenderHandle texture;
 		if (!texture.IsValid())
-			texture = m_scene->LoadTexture(ASSET_PATH("textures/checkerboard.jpg"), FORMAT_R8G8B8A8_SRGB);
+			texture = m_scene->LoadTexture(m_renderContext, ASSET_PATH("textures/checkerboard.jpg"), FORMAT_R8G8B8A8_SRGB);
 		return texture;
 	}
 
@@ -484,6 +500,7 @@ namespace Mist
 			m_ssao.DrawPass(m_renderContext, frameContext);
 			m_deferredLighting.DrawPass(m_renderContext, frameContext);
 #endif // 0
+
 			m_renderer.Draw(m_renderContext, frameContext);
 
 			//render::DrawQuadTexture(m_screenPipeline.QuadSets[frameIndex]);
@@ -495,6 +512,17 @@ namespace Mist
 
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
+
+#if 0
+			// Skybox
+			if (m_scene)
+			{
+				m_cubemapPipeline.Shader->UseProgram(cmd);
+				m_scene->DrawSkybox(cmd, m_cubemapPipeline.Shader);
+			}
+#endif // 0
+
+
 			// Post process
 			m_screenPipeline.VB.Bind(cmd);
 			m_screenPipeline.IB.Bind(cmd);
@@ -964,7 +992,5 @@ namespace Mist
 		if (Image.IsAllocated())
 			Memory::DestroyImage(renderContext.Allocator, Image);
 	}
-
-
 
 }

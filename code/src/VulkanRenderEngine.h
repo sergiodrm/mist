@@ -82,6 +82,14 @@ namespace Mist
 		void Init(const RenderContext& context, const Swapchain& swapchain);
 		void Destroy(const RenderContext& context);
 	};
+
+	struct CubemapPipeline
+	{
+		ShaderProgram* Shader = nullptr;
+
+		void Init(const RenderContext& context, const RenderTarget* rt);
+		void Destroy(const RenderContext& context);
+	};
 	
 	class VulkanRenderEngine : public IRenderEngine
 	{
@@ -136,6 +144,7 @@ namespace Mist
 		Swapchain m_swapchain;
 
 		ScreenQuadPipeline m_screenPipeline;
+		CubemapPipeline m_cubemapPipeline;
 		Renderer m_renderer;
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];

@@ -31,14 +31,18 @@ namespace Mist
 		glm::vec4 ssaoNoise[SSAO_NOISE_SAMPLES];
 		for (uint32_t i = 0; i < SSAO_NOISE_SAMPLES; ++i)
 			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
-		TextureCreateInfo texInfo;
-		texInfo.Width = 4;
-		texInfo.Height = 4;
-		texInfo.Depth = 1;
-		texInfo.Format = FORMAT_R32G32B32A32_SFLOAT;
-		texInfo.PixelCount = 4 * 4;
-		texInfo.Pixels = &ssaoNoise[0];
-		m_noiseTexture.Init(renderContext, texInfo);
+		tImageDescription imageDesc;
+		imageDesc.Width = 4;
+		imageDesc.Height = 4;
+		imageDesc.Depth = 1;
+		imageDesc.Format = FORMAT_R8G8B8A8_UNORM;
+		imageDesc.Flags = 0;
+		imageDesc.Layers = 1;
+		imageDesc.MipLevels = 1;
+		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
+		m_noiseTexture.AllocateImage(renderContext, imageDesc);
+		const uint8_t* pixels = (uint8_t*)ssaoNoise;
+		m_noiseTexture.SetImageLayers(renderContext, &pixels, 1);
 
 		// Render target
 		RenderTargetDescription rtDesc;
@@ -122,7 +126,7 @@ namespace Mist
 		imageInfo[3].imageView = rt.GetRenderTarget(GBuffer::RT_DEPTH);
 		imageInfo[4].sampler = sampler;
 		imageInfo[4].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		imageInfo[4].imageView = m_noiseTexture.GetImageView();
+		imageInfo[4].imageView = m_noiseTexture.GetImageView(0);
 
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 		builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);

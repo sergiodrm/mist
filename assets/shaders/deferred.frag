@@ -40,6 +40,9 @@ layout(set = 0, binding = 6) uniform ShadowMapInfo
     mat4 LightViewMat[MAX_SHADOW_MAPS];
 } u_ShadowMapInfo;
 
+#define LightRadius(l) l.Pos.a
+#define LightCompression(l) l.Color.w
+
 float LinearizeDepth(float z, float n, float f)
 {
     return (2.0 * n) / (f + n - z * (f - n));	
@@ -64,14 +67,14 @@ vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDi
 }
 
 #if 1
-vec4 GetLightSpaceCoords(vec4 fragWorldPos, int lightIndex)
+vec4 GetLightSpaceCoords(vec4 fragPos, int lightIndex)
 {
-    return u_ShadowMapInfo.LightViewMat[lightIndex] * fragWorldPos;
+    return u_ShadowMapInfo.LightViewMat[lightIndex] * fragPos;
 }
 
-float CalculateShadow(vec4 fragWorldPos, int shadowMapIndex)
+float CalculateShadow(vec4 fragPos, int shadowMapIndex)
 {
-    vec4 lightSpaceCoord = GetLightSpaceCoords(fragWorldPos, shadowMapIndex);
+    vec4 lightSpaceCoord = GetLightSpaceCoords(fragPos, shadowMapIndex);
     vec4 shadowCoord = lightSpaceCoord / lightSpaceCoord.w;
 #if 1
     // PCF
@@ -110,8 +113,8 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, LightData li
 {
     // Attenuation
     float dist = length(vec3(light.Pos) - fragPos);
-    float r = light.Pos.a;
-    float c = light.Color.a;
+    float r = LightRadius(light);
+    float c = LightCompression(light);
     float attenuation = pow(smoothstep(r, 0, dist), c);
 
     vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
@@ -171,7 +174,7 @@ void main()
         for (int i = 0; i < numSpotLights; ++i)
         {
             vec3 spotLightColor = ProcessSpotLight(fragPos, fragNormal, viewPos, u_Env.SpotLights[i]);
-#if 1
+#if 0
             if (u_Env.SpotLights[i].Color.w >= 0.f)
             {
                 int shadowIndex = int(u_Env.SpotLights[i].Color.w);

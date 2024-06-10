@@ -9,11 +9,11 @@
 #include <gltf/cgltf.h>
 #undef CGLTF_IMPLEMENTATION
 
-#ifdef Mist_MEM_MANAGEMENT
-// TODO: wtf windows declare these macros and project does not compile when Mist_MEM_MANAGEMENT is defined. WTF!?
+#ifdef MIST_MEM_MANAGEMENT
+// TODO: wtf windows declare these macros and project does not compile when MIST_MEM_MANAGEMENT is defined. WTF!?
 #undef min
 #undef max  
-#endif // Mist_MEM_MANAGEMENT
+#endif // MIST_MEM_MANAGEMENT
 
 #include <glm/gtx/transform.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -34,7 +34,7 @@
 #endif // SCENE_LOAD_YAML
 #include <fstream>
 
-//#define Mist_ENABLE_LOADER_LOG
+//#define MIST_ENABLE_LOADER_LOG
 
 #ifdef SCENE_LOAD_YAML
 YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec3& v)
@@ -249,19 +249,19 @@ namespace gltf_api
 		case cgltf_attribute_type_color:
 			ToVec3(vertex.Color, data);
 			break;
-		case cgltf_attribute_type_tangent: 
+		case cgltf_attribute_type_tangent:
 			ToVec3(vertex.Tangent, data);
 			break;
-		case cgltf_attribute_type_joints: 
-#ifdef Mist_ENABLE_LOADER_LOG
+		case cgltf_attribute_type_joints:
+#ifdef MIST_ENABLE_LOADER_LOG
 			attributeName = "joints";
-#endif // Mist_ENABLE_LOADER_LOG
+#endif // MIST_ENABLE_LOADER_LOG
 
 			break;
-		case cgltf_attribute_type_weights: 
-#ifdef Mist_ENABLE_LOADER_LOG
+		case cgltf_attribute_type_weights:
+#ifdef MIST_ENABLE_LOADER_LOG
 			attributeName = "weights";
-#endif // Mist_ENABLE_LOADER_LOG
+#endif // MIST_ENABLE_LOADER_LOG
 			break;
 		case cgltf_attribute_type_invalid:
 		case cgltf_attribute_type_custom:
@@ -270,10 +270,10 @@ namespace gltf_api
 		default:
 			break;
 		}
-#ifdef Mist_ENABLE_LOADER_LOG
+#ifdef MIST_ENABLE_LOADER_LOG
 		if (attributeName)
 			Mist::Logf(Mist::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
-#endif // Mist_ENABLE_LOADER_LOG
+#endif // MIST_ENABLE_LOADER_LOG
 
 	}
 
@@ -353,55 +353,58 @@ namespace gltf_api
 			indices[i + indexOffset] = (uint32_t)cgltf_accessor_read_index(primitive->indices, i) + offset;
 	}
 
-	Mist::RenderHandle LoadTexture(Mist::Scene* scene, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format)
+	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, Mist::Texture& texOut)
 	{
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
-		Mist::RenderHandle handle = scene->LoadTexture(texturePath, format);
-		return handle;
+		return Mist::LoadTextureFromFile(context, texturePath, texOut, format);
 	}
 
-	void LoadMaterial(Mist::Scene* scene, const char* rootAssetPath, Mist::Material& material, const cgltf_material& mtl)
+	void LoadMaterial(const Mist::RenderContext& context, Mist::Scene& scene, const char* rootAssetPath, Mist::Material& material, const cgltf_material& mtl)
 	{
 		check(mtl.name);
 		material.SetName(mtl.name);
 		if (mtl.pbr_metallic_roughness.base_color_texture.texture)
 		{
-			Mist::RenderHandle diffHandle = LoadTexture(scene,
+			Mist::Texture diffuse;
+			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB);
-			material.SetDiffuseTexture(diffHandle);
+				mtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, diffuse));
+			Mist::RenderHandle h = scene.SubmitTexture(diffuse);
+			material.SetDiffuseTexture(h);
 		}
-#ifdef Mist_ENABLE_LOADER_LOG
+#ifdef MIST_ENABLE_LOADER_LOG
 		else
 			Mist::Log(Mist::LogLevel::Warn, "Diffuse material texture not found.\n");
-#endif // Mist_ENABLE_LOADER_LOG
+#endif // MIST_ENABLE_LOADER_LOG
 
 		if (mtl.pbr_specular_glossiness.diffuse_texture.texture)
 		{
-			Mist::RenderHandle handle = LoadTexture(scene,
+			Mist::Texture tex;
+			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.pbr_specular_glossiness.diffuse_texture, Mist::FORMAT_R8G8B8A8_UNORM);
-			material.SetSpecularTexture(handle);
-			
-			Mist::Log(Mist::LogLevel::Warn, "Specular.\n");
+				mtl.pbr_specular_glossiness.diffuse_texture, Mist::FORMAT_R8G8B8A8_UNORM, tex));
+			Mist::RenderHandle h = scene.SubmitTexture(tex);
+			material.SetSpecularTexture(h);
 		}
-#ifdef Mist_ENABLE_LOADER_LOG
+#ifdef MIST_ENABLE_LOADER_LOG
 		else
 			Mist::Log(Mist::LogLevel::Warn, "Specular material texture not found.\n");
-#endif // Mist_ENABLE_LOADER_LOG
+#endif // MIST_ENABLE_LOADER_LOG
 
 		if (mtl.normal_texture.texture)
 		{
-			Mist::RenderHandle handle = LoadTexture(scene,
+			Mist::Texture tex;
+			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM);
-			material.SetNormalTexture(handle);
+				mtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, tex));
+			Mist::RenderHandle h = scene.SubmitTexture(tex);
+			material.SetNormalTexture(h);
 		}
-#ifdef Mist_ENABLE_LOADER_LOG
+#ifdef MIST_ENABLE_LOADER_LOG
 		else
 			Mist::Log(Mist::LogLevel::Warn, "Normal material texture not found.\n");
-#endif // Mist_ENABLE_LOADER_LOG
+#endif // MIST_ENABLE_LOADER_LOG
 	}
 
 	void LoadGeometry(Mist::Mesh& mesh, Mist::tDynArray<Mist::PrimitiveMeshData>& primitives, const std::unordered_map<cgltf_material*, uint32_t>& materialMap, const cgltf_node& node, const cgltf_data& scene)
@@ -463,6 +466,7 @@ namespace Mist
 		{
 			descAllocator.Allocate(&Set, Layout);
 		}
+#if 0
 		if (Sampler == VK_NULL_HANDLE)
 		{
 			VkSamplerCreateInfo samplerCreateInfo
@@ -477,6 +481,8 @@ namespace Mist
 			};
 			vkcheck(vkCreateSampler(renderContext.Device, &samplerCreateInfo, nullptr, &Sampler));
 		}
+#endif // 0
+
 	}
 
 	void MaterialRenderData::Destroy(const RenderContext& renderContext)
@@ -628,7 +634,7 @@ namespace Mist
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
 			Material m;
-			gltf_api::LoadMaterial(this, rootAssetPath, m, data->materials[i]);
+			gltf_api::LoadMaterial(m_engine->GetContext(), *this, rootAssetPath, m, data->materials[i]);
 			materialIndexMap[&data->materials[i]] = GetMaterialCount();
 			SubmitMaterial(m);
 		}
@@ -698,17 +704,36 @@ namespace Mist
 		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
 		file.Close();
 		check(contentReaded <= size);
-		content[contentReaded] = 0;
+		content[contentReaded==size?size-1:contentReaded] = 0;
 
 		YAML::Node root = YAML::Load(content);
-		for (const auto& it : root)
+		check(root);
+		YAML::Node envNode = root["Environment"];
+		check(envNode);
+		m_ambientColor = envNode["Ambient"].as<glm::vec3>();
+		char skyboxTextures[Skybox::COUNT][256];
+		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
+			strcpy_s(skyboxTextures[i], envNode["Skybox"][i].as<tString>().c_str());
+		LoadSkybox(m_engine->GetContext(), m_skybox, 
+			skyboxTextures[Skybox::FRONT],
+			skyboxTextures[Skybox::BACK],
+			skyboxTextures[Skybox::LEFT],
+			skyboxTextures[Skybox::RIGHT],
+			skyboxTextures[Skybox::TOP],
+			skyboxTextures[Skybox::BOTTOM]);
+
+
+
+		YAML::Node renderObjectSeq = root["RenderObjects"];
+		check(renderObjectSeq);
+		for (const auto& it : renderObjectSeq)
 		{
 			uint32_t parent = it["Parent"].as<uint32_t>();
 			if (parent == RenderObject::InvalidId)
 				parent = GetRoot();
 			RenderObject rb = CreateRenderObject(parent);
 			SetRenderObjectName(rb, it["Name"].as<tString>().c_str());
-			
+
 			TransformComponent t;
 			YAML::Node transformNode = it["TransformComponent"];
 			t.Position = transformNode["Position"].as<glm::vec3>();
@@ -744,7 +769,7 @@ namespace Mist
 				{
 					if (!strcmp(m.MeshName.c_str(), m_meshArray[sceneMeshes[i]].GetName()))
 					{
-						m.MeshIndex = i;
+						m.MeshIndex = sceneMeshes[i];
 						break;
 					}
 				}
@@ -763,6 +788,19 @@ namespace Mist
 #ifdef SCENE_LOAD_YAML
 		YAML::Emitter emitter;
 
+		emitter << YAML::BeginMap;
+		emitter << YAML::Key << "Environment";
+		{
+			emitter << YAML::BeginMap;
+			emitter << YAML::Key << "Ambient" << YAML::Value << m_ambientColor;
+			emitter << YAML::Key << "Skybox" << YAML::BeginSeq;
+			for (uint32_t i = 0; i < Skybox::COUNT; ++i)
+				emitter << m_skybox.CubemapFiles[i];
+			emitter << YAML::EndSeq;
+			emitter << YAML::EndMap;
+		}
+		emitter << YAML::Key << "RenderObjects";
+		emitter << YAML::BeginMap;
 		emitter << YAML::BeginSeq;
 		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
@@ -808,6 +846,9 @@ namespace Mist
 			emitter << YAML::EndMap;
 		}
 		emitter << YAML::EndSeq;
+		emitter << YAML::EndMap;
+		emitter << YAML::EndMap;
+
 		check(emitter.good());
 		const char* out = emitter.c_str();
 		uint32_t size = (uint32_t)emitter.size();
@@ -943,7 +984,8 @@ namespace Mist
 					RenderHandle defTex = m_engine->GetDefaultTexture();
 					texture = m_renderData.Textures[defTex];
 				}
-				texture.Bind(m_engine->GetContext(), mrd.Set, mrd.Sampler, binding, arrayIndex);
+				BindDescriptorTexture(m_engine->GetContext(), texture, 0, mrd.Set, binding, arrayIndex);
+				//texture.Bind(m_engine->GetContext(), mrd.Set, binding, arrayIndex);
 			};
 		submitTexture(material.GetDiffuseTexture(), mrd, 0, 0);
 		submitTexture(material.GetNormalTexture(), mrd, 0, 1);
@@ -956,14 +998,19 @@ namespace Mist
 		return materialIndex;
 	}
 
-	RenderHandle Scene::LoadTexture(const char* texturePath) { return RenderHandle(); }
-	RenderHandle Scene::LoadTexture(const char* texturePath, EFormat format)
+	RenderHandle Scene::SubmitTexture(Texture tex)
 	{
-		Texture tex;
-		check(LoadTextureFromFile(m_engine->GetContext(), texturePath, tex, format));
 		RenderHandle h = GenerateRenderHandle();
 		m_renderData.Textures[h] = tex;
 		return h;
+	}
+
+	RenderHandle Scene::LoadTexture(const char* texturePath) { check(false); return RenderHandle(); }
+	RenderHandle Scene::LoadTexture(const RenderContext& context, const char* texturePath, EFormat format)
+	{
+		Texture tex;
+		check(LoadTextureFromFile(context, texturePath, tex, format));
+		return SubmitTexture(tex);
 	}
 
 	void Scene::MarkAsDirty(RenderObject renderObject)
@@ -974,6 +1021,7 @@ namespace Mist
 		for (RenderObject child = m_hierarchy[renderObject].Child; child.IsValid(); child = m_hierarchy[child].Sibling)
 			MarkAsDirty(child);
 	}
+
 
 	void Scene::RecalculateTransforms()
 	{
@@ -1019,7 +1067,7 @@ namespace Mist
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
 			Material m;
-			gltf_api::LoadMaterial(this, rootAssetPath, m, data->materials[i]);
+			gltf_api::LoadMaterial(m_engine->GetContext(), *this, rootAssetPath, m, data->materials[i]);
 			materialIndexMap[&data->materials[i]] = GetMaterialCount();
 			SubmitMaterial(m);
 		}
@@ -1044,6 +1092,40 @@ namespace Mist
 		}
 		gltf_api::FreeData(data);
 		return true;
+	}
+
+	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
+	{
+#if 0
+		// descriptors generator
+		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
+		// Textures
+		const char* files[] = { front, back, left, right, top, bottom };
+		VkDescriptorImageInfo infos[Skybox::COUNT];
+		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
+		{
+			check(*files[i]);
+			strcpy_s(skybox.CubemapFiles[i], files[i]);
+			skybox.Cubemap[i] = LoadTexture(context, files[i], FORMAT_R8G8B8A8_UNORM);
+			check(skybox.Cubemap[i].IsValid());
+			const Texture& tex = m_renderData.Textures[skybox.Cubemap[i]];
+			infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			infos[i].imageView = tex.GetImageView(i);
+			infos[i].sampler = CreateSampler(context);
+			builder.BindImage(i, &infos[i], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+		}
+		check(builder.Build(context, skybox.CubemapSet));
+
+		// Mesh
+		static const char* cubeMeshFile = ASSET_PATH("models/cube.gltf");
+		if (!m_meshNameIndexMap.contains(cubeMeshFile))
+			LoadMeshesFromFile(cubeMeshFile);
+		check(m_meshNameIndexMap.contains(cubeMeshFile) && m_meshNameIndexMap[cubeMeshFile].size() == 1);
+		skybox.MeshIndex = m_meshNameIndexMap[cubeMeshFile][0];
+
+#endif // 0
+
+		return false;
 	}
 
 	const Mesh* Scene::GetMeshArray() const
@@ -1127,10 +1209,10 @@ namespace Mist
 						check(material && material->GetHandle().IsValid());
 						const MaterialRenderData& mtl = GetMaterialRenderData(material->GetHandle());
 						shader->BindDescriptorSets(cmd, &mtl.Set, 1, materialSetIndex);
-						++Mist_profiling::GRenderStats.SetBindingCount;
 					}
-					vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					++Mist_profiling::GRenderStats.DrawCalls;
+					//vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
+					//++Mist_profiling::GRenderStats.DrawCalls;
+					RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
 					Mist_profiling::GRenderStats.TrianglesCount += drawData.Count / 3;
 				}
 			}
@@ -1157,7 +1239,6 @@ namespace Mist
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
 				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
-				++Mist_profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)
@@ -1167,7 +1248,8 @@ namespace Mist
 					mrd.BindBuffers(cmd);
 				}
 				// TODO: index buffer is ordered the whole buffer or just by primitive?
-				vkCmdDrawIndexed(cmd, mesh->GetIndexCount(), 1, 0, 0, 0);
+				//vkCmdDrawIndexed(cmd, mesh->GetIndexCount(), 1, 0, 0, 0);
+				RenderAPI::CmdDrawIndexed(cmd, mrd.IndexCount, 1, 0, 0, 0);
 #if 0
 				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
 				{
@@ -1182,6 +1264,18 @@ namespace Mist
 		}
 	}
 
+	void Scene::DrawSkybox(CommandBuffer cmd, ShaderProgram* shader)
+	{
+		if (m_skybox.CubemapSet != VK_NULL_HANDLE)
+		{
+			const Mesh& mesh = m_meshArray[m_skybox.MeshIndex];
+			const MeshRenderData& mrd = m_renderData.Meshes[mesh.GetHandle()];
+			mrd.BindBuffers(cmd);
+			shader->BindDescriptorSets(cmd, &m_skybox.CubemapSet, 1, 0, nullptr, 0);
+			RenderAPI::CmdDrawIndexed(cmd, mrd.IndexCount, 1, 0, 0, 0);
+		}
+	}
+
 	void Scene::ImGuiDraw()
 	{
 		ImGui::Begin("SceneGraph");
@@ -1190,14 +1284,32 @@ namespace Mist
 		float rotStep = 0.1f;
 		float sclStep = 0.5f;
 
+		static char sceneFile[256];
+		static bool _b = false;
+		if (!_b)
+		{
+			strcpy_s(sceneFile, "scenes/Scene.yaml");
+			_b = !false;
+		}
+		ImGui::InputText("Scene file", sceneFile, 256);
+		ImGui::Columns(2);
 		if (ImGui::Button("Save"))
-			SaveScene("scenes/Scene.yaml");
+			SaveScene(sceneFile);
+		ImGui::NextColumn();
 		if (ImGui::Button("Load"))
-			LoadScene("scenes/Scene.yaml");
+			LoadScene(sceneFile);
+		ImGui::Columns();
 
-		if (ImGui::Button("New render object"))
-			CreateRenderObject(GetRoot());
-		
+		ImGui::Separator();
+		ImGui::Text("Environment");
+		ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
+		ImGui::Columns(2);
+		//ImGui::InputText("Skybox cubemap", m_skybox.CubemapFile, 256);
+		ImGui::NextColumn();
+		ImGui::Button("Reload");
+		ImGui::Columns();
+
+
 		ImGui::Separator();
 		ImGui::Text("Scene objects");
 		ImGui::Separator();
@@ -1269,17 +1381,18 @@ namespace Mist
 						ImGui::NextColumn();
 						ImGui::Text("Compression");
 						sprintf_s(buff, "##LightCompression%u", i);
-						ImGui::DragFloat(buff, &light.Compression, 0.f, 0.f, FLT_MAX);
+						ImGui::NextColumn();
+						ImGui::DragFloat(buff, &light.Compression, 0.05f, 0.f, FLT_MAX);
 						ImGui::NextColumn();
 						ImGui::Text("Inner cutoff");
 						ImGui::NextColumn();
 						sprintf_s(buff, "##LightInnerCutoff%u", i);
-						ImGui::DragFloat(buff, &light.InnerCutoff, 0.f, 0.f, FLT_MAX);
+						ImGui::DragFloat(buff, &light.InnerCutoff, 0.1f, 0.f, FLT_MAX);
 						ImGui::NextColumn();
 						ImGui::Text("Outer cutoff");
 						ImGui::NextColumn();
 						sprintf_s(buff, "##LightOuterCutoff%u", i);
-						ImGui::DragFloat(buff, &light.OuterCutoff, 0.f, 0.f, FLT_MAX);
+						ImGui::DragFloat(buff, &light.OuterCutoff, 0.1f, 0.f, FLT_MAX);
 						ImGui::NextColumn();
 						ImGui::Text("Project shadows");
 						ImGui::NextColumn();
@@ -1391,13 +1504,13 @@ namespace Mist
 
 					constexpr float scl = 1.f; // meters
 					DebugRender::DrawAxis(data.Position, pyr, glm::vec3(scl));
+					}
 				}
 			}
-		}
 #endif // 0
 
 		ImGui::End();
-	}
+		}
 
 	bool Scene::IsDirty() const
 	{
@@ -1428,7 +1541,7 @@ namespace Mist
 			t = viewMat * t;
 			renderData.SpotLights[i].Position = math::GetPos(t);
 			renderData.SpotLights[i].Direction = math::GetDir(t);
-		}
+	}
 		// Directional lights
 		{
 			glm::mat4 t = math::ToMat4(glm::vec3(0.f), renderData.DirectionalLight.Direction, glm::vec3(1.f));
@@ -1441,7 +1554,7 @@ namespace Mist
 		UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
-	}
+}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
 	{
@@ -1491,5 +1604,5 @@ namespace Mist
 #endif // 0
 
 	}
-	
+
 }

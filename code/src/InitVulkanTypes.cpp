@@ -235,7 +235,7 @@ namespace Mist
 			return info;
 		}
 
-		VkImageCreateInfo ImageCreateInfo(EFormat format, EImageUsage usageFlags, tExtent3D extent, uint32_t arrayLayers)
+		VkImageCreateInfo ImageCreateInfo(EFormat format, EImageUsage usageFlags, tExtent3D extent, uint32_t arrayLayers, uint32_t mipLevels, VkImageCreateFlags flags)
 		{
 			VkImageCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -243,11 +243,12 @@ namespace Mist
 			info.imageType = VK_IMAGE_TYPE_2D;
 			info.format = tovk::GetFormat(format);
 			info.extent = extent;
-			info.mipLevels = 1;
+			info.mipLevels = mipLevels;
 			info.arrayLayers = arrayLayers;
 			info.samples = VK_SAMPLE_COUNT_1_BIT;
 			info.tiling = VK_IMAGE_TILING_OPTIMAL;
 			info.usage = tovk::GetImageUsage(usageFlags);
+			info.flags = flags;
 			return info;
 		}
 

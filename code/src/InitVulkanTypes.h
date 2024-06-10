@@ -63,7 +63,7 @@ namespace Mist
 		/**
 		 * Image types builders
 		 */
-		VkImageCreateInfo ImageCreateInfo(EFormat format, EImageUsage usageFlags, tExtent3D extent, uint32_t arrayLayers = 1);
+		VkImageCreateInfo ImageCreateInfo(EFormat format, EImageUsage usageFlags, tExtent3D extent, uint32_t arrayLayers = 1, uint32_t mipLevels = 1, VkImageCreateFlags flags = 0);
 		VkImageViewCreateInfo ImageViewCreateInfo(EFormat format, VkImage image, EImageAspect aspectFlags, uint32_t baseArrayLayer = 0, uint32_t layerCount = 1);
 		VkSamplerCreateInfo SamplerCreateInfo(EFilterType filters, ESamplerAddressMode samplerAddressMode = SAMPLER_ADDRESS_MODE_REPEAT);
 		VkWriteDescriptorSet ImageWriteDescriptor(VkDescriptorType type, VkDescriptorSet dstSet, VkDescriptorImageInfo* imageInfo, uint32_t binding);

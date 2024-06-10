@@ -110,7 +110,7 @@ namespace Mist
 			TextureDescriptor texDescriptor;
 			texDescriptor.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			texDescriptor.Sampler = CreateSampler(context);
-			texDescriptor.View = DefaultTexture.GetImageView();
+			texDescriptor.View = DefaultTexture.GetImageView(0);
 			for (uint32_t i = 0; i < QuadBatch::MaxViews; ++i)
 				GQuadBatch.TexDescriptors[i] = texDescriptor;
 		}
@@ -258,7 +258,7 @@ namespace Mist
 			shaderDesc.VertexShaderFile = globals::LineVertexShader;
 			shaderDesc.FragmentShaderFile = globals::LineFragmentShader;
 			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
-			shaderDesc.Topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+			shaderDesc.Topology = PRIMITIVE_TOPOLOGY_LINE_LIST;
 			shaderDesc.RenderTarget = renderTarget;
 			m_lineShader = ShaderProgram::Create(context, shaderDesc);
 		}

@@ -108,7 +108,13 @@ namespace Mist
 
 	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType)
 	{
-		glm::mat4 depthView = glm::inverse(math::ToMat4(lightPos, lightRot, glm::vec3(1.f)));
+		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
+		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
+		lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
+		// Light translation
+		glm::mat4 t = math::PosToMat4(lightPos);
+
+		glm::mat4 depthView = glm::inverse(t * lightRotMat);
 		glm::mat4 depthProj = GetProjection(projType);
 		depthProj[1][1] *= -1.f;
 		glm::mat4 depthVP = depthProj * depthView;
@@ -124,7 +130,7 @@ namespace Mist
 	{
 		check(lightIndex < globals::MaxShadowMapAttachments);
 		m_shader->UseProgram(cmd);
-		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex;
+		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
 		m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
 
 		scene->Draw(cmd, m_shader, 1, m_frameData[frameIndex].ModelSet);
@@ -138,7 +144,6 @@ namespace Mist
 
 	void ShadowMapPipeline::SetDepthVP(uint32_t index, const glm::mat4& mat)
 	{
-
 		check(index < globals::MaxShadowMapAttachments);
 		m_depthMVPCache[index] = mat;
 	}
@@ -150,16 +155,14 @@ namespace Mist
 
 	void ShadowMapPipeline::ImGuiDraw(bool createWindow)
 	{
-		if (createWindow)
-			ImGui::Begin("ShadowMap proj params");
+		ImGui::Begin("ShadowMap proj params");
 		if (ImGui::DragFloat("Near clip", &m_clip[0], 1.f) | ImGui::DragFloat("Far clip", &m_clip[1], 1.f))
 			DebugRender::SetDebugClipParams(m_clip[0], m_clip[1]);
 		ImGui::DragFloat("FOV", &m_perspectiveParams[0], 0.01f);
 		ImGui::DragFloat("Aspect ratio", &m_perspectiveParams[1], 0.01f);
 		ImGui::DragFloat2("Ortho x", &m_orthoParams[0]);
 		ImGui::DragFloat2("Ortho y", &m_orthoParams[2]);
-		if (createWindow)
-			ImGui::End();
+		ImGui::End();
 	}
 
 	ShadowMapProcess::ShadowMapProcess()
@@ -270,6 +273,7 @@ namespace Mist
 		glm::mat4 lightMatrix[globals::MaxShadowMapAttachments];
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
+			//lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
 			lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
 		}
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
