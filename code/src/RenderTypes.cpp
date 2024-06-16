@@ -515,6 +515,18 @@ namespace Mist
 				res |= VK_CULL_MODE_BACK_BIT;
 			return res;
 		}
+
+		VkFrontFace GetFrontFace(EFrontFace face)
+		{
+			switch (face)
+			{
+#define _X_(x) case EFrontFace::x: return VK_##x;
+				FRONT_FACE_LIST
+#undef _X_
+			}
+			check(false);
+			return (VkFrontFace)0;
+		}
 	}
 
 
@@ -896,6 +908,18 @@ namespace Mist
 			CULL_MODE_LIST
 #undef _X_
 				return res;
+		}
+
+		EFrontFace GetFrontFace(VkFrontFace face)
+		{
+			switch (face)
+			{
+#define _X_(x) case VK_##x: return x;
+				FRONT_FACE_LIST
+#undef _X_
+			}
+			check(false);
+			return (EFrontFace)0;
 		}
 
 		ESampleCount GetSampleCount(VkSampleCountFlags sample)

@@ -460,6 +460,28 @@ namespace Mist
 	};
 	DEFINE_ENUM_BIT_OPERATORS(ECullMode);
 
+#define FRONT_FACE_LIST \
+	_X_(FRONT_FACE_COUNTER_CLOCKWISE) \
+	_X_(FRONT_FACE_CLOCKWISE) \
+
+	enum EFrontFace
+	{
+#define _X_(x) x,
+		FRONT_FACE_LIST
+#undef _X_
+	};
+
+	enum EDepthStencilState
+	{
+		DEPTH_STENCIL_NONE = 0x00,
+		DEPTH_STENCIL_DEPTH_TEST = 0x01,
+		DEPTH_STENCIL_DEPTH_WRITE = 0x02,
+		DEPTH_STENCIL_DEPTH_BOUNDS_TEST = 0x04,
+		DEPTH_STENCIL_STENCIL_TEST = 0x08,
+		DEPTH_STENCIL_ALL = 0xff
+	};
+	DEFINE_ENUM_BIT_OPERATORS(EDepthStencilState);
+
 #ifdef MIST_VULKAN
 
 	const char* VkResultToStr(VkResult res);
@@ -476,6 +498,7 @@ namespace Mist
 		VkSampleCountFlagBits GetSampleCount(ESampleCount sample);
 		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology);
 		VkCullModeFlags GetCullMode(ECullMode mode);
+		VkFrontFace GetFrontFace(EFrontFace face);
 	}
 	namespace fromvk
 	{
@@ -488,6 +511,7 @@ namespace Mist
 		ESampleCount GetSampleCount(VkSampleCountFlagBits sample);
 		EPrimitiveTopology GetPrimitiveTopology(VkPrimitiveTopology topology);
 		ECullMode GetCullMode(VkCullModeFlags mode);
+		EFrontFace GetFrontFace(VkFrontFace face);
 	}
 
 	namespace utils
