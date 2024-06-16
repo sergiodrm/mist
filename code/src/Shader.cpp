@@ -668,6 +668,14 @@ namespace Mist
 		builder.SubpassIndex = m_description.SubpassIndex;
 		builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
 		builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
+		builder.Rasterizer.frontFace = tovk::GetFrontFace(m_description.FrontFaceMode);
+#if 1
+		builder.DepthStencil.depthWriteEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_WRITE ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
+#endif // 0
+
 		// Generate shader module stages
 		tArray<ShaderDescription, 2> descs;
 		descs[0] = { m_description.VertexShaderFile.c_str(), VK_SHADER_STAGE_VERTEX_BIT };

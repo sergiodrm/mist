@@ -116,6 +116,8 @@ namespace Mist
 		VertexInputLayout InputLayout;
 		EPrimitiveTopology Topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		ECullMode CullMode = CULL_MODE_FRONT_BIT;
+		EFrontFace FrontFaceMode = FRONT_FACE_CLOCKWISE;
+		EDepthStencilState DepthStencilMode = DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_DEPTH_WRITE;
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
