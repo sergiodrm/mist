@@ -34,7 +34,6 @@ namespace Mist
 		uint32_t Depth;
 		uint32_t Layers;
 		VkImageCreateFlags Flags;
-
 		SamplerDescription SamplerDesc;
 	};
 
@@ -54,7 +53,7 @@ namespace Mist
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels);
 	bool TransferImage(const RenderContext& context, const tImageDescription& createInfo, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut);
 	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const tImageDescription& imageDesc);
-	bool BindDescriptorTexture(const RenderContext& context, const Texture& texture, uint32_t layerIndex, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
+	bool BindDescriptorTexture(const RenderContext& context, const Texture& texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 
 
 	namespace io
@@ -83,13 +82,13 @@ namespace Mist
 		void SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount);
 		void GenerateMipmaps(const RenderContext& context);
 
-		ImageView GetImageView(uint32_t layerIndex) const { return m_views[layerIndex]; }
+		ImageView GetImageView() const { return m_view; }
 		Sampler GetSampler() const { return m_sampler; }
 
 	private:
 		tImageDescription m_description;
 		AllocatedImage m_image;
-		tDynArray<ImageView> m_views;
+		ImageView m_view;
 		Sampler m_sampler;
 	};
 	

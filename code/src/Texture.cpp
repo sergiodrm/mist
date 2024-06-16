@@ -48,8 +48,8 @@ namespace Mist
 	void Texture::Destroy(const RenderContext& context)
 	{
 		vkDestroySampler(context.Device, m_sampler, nullptr);
-		for (uint32_t i = 0; i < (uint32_t)m_views.size(); ++i)
-			vkDestroyImageView(context.Device, m_views[i], nullptr);
+		
+		vkDestroyImageView(context.Device, m_view, nullptr);
 		Memory::DestroyImage(context.Allocator, m_image);
 	}
 
@@ -58,7 +58,6 @@ namespace Mist
 		check(!m_image.IsAllocated());
 		m_description = desc;
 		check(CreateImage(context, desc, m_image));
-		m_views.resize(desc.Layers);
 
 		// Format requirement check
 		{
@@ -92,23 +91,20 @@ namespace Mist
 		check(m_image.IsAllocated());
 		check(TransferImage(context, m_description, layerDataArray, layerCount, m_image));
 
-		for (uint32_t i = 0; i < layerCount; i++)
+		VkImageViewCreateInfo viewInfo
 		{
-			VkImageViewCreateInfo viewInfo
-			{
-				.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-				.pNext = nullptr,
-				.image = m_image.Image,
-				.viewType = VK_IMAGE_VIEW_TYPE_2D,
-				.format = tovk::GetFormat(m_description.Format),
-			};
-			viewInfo.subresourceRange.baseMipLevel = 0;
-			viewInfo.subresourceRange.levelCount = m_description.MipLevels;
-			viewInfo.subresourceRange.baseArrayLayer = i;
-			viewInfo.subresourceRange.layerCount = 1;
-			viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &m_views[i]));
-		}
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.pNext = nullptr,
+			.image = m_image.Image,
+			.viewType = layerCount > 1 ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
+			.format = tovk::GetFormat(m_description.Format),
+		};
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = m_description.MipLevels;
+		viewInfo.subresourceRange.baseArrayLayer = 0;
+		viewInfo.subresourceRange.layerCount = layerCount;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &m_view));
 	}
 
 	void Texture::GenerateMipmaps(const RenderContext& context)
@@ -527,13 +523,13 @@ namespace Mist
 		return true;
 	}
 
-	bool BindDescriptorTexture(const RenderContext& context, const Texture& texture, uint32_t layerIndex, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex)
+	bool BindDescriptorTexture(const RenderContext& context, const Texture& texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex)
 	{
 		//check(set != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
 		VkDescriptorImageInfo imageInfo
 		{
 			.sampler = texture.GetSampler(),
-			.imageView = texture.GetImageView(layerIndex),
+			.imageView = texture.GetImageView(),
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
 		VkWriteDescriptorSet writeSet
