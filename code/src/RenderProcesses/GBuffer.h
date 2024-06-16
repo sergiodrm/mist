@@ -10,7 +10,6 @@ namespace Mist
 	struct RenderContext;
 	class ShaderProgram;
 
-
 	class GBuffer : public RenderProcess
 	{
 		struct FrameData

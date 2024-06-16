@@ -93,7 +93,7 @@ namespace Mist
 	{
 		RenderTargetDescription rtDesc;
 		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
-		rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {1.f, 0.f, 0.f, 1.f} });
+		rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
 		rtDesc.ExternalAttachmentCount = 1;
 
 		uint32_t swapchainCount = swapchain.GetImageCount();
@@ -153,9 +153,11 @@ namespace Mist
 		ShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = SHADER_FILEPATH("skybox.vert");
 		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("skybox.frag");
-		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
+		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = rt;
 		shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
+		shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
+		shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 		Shader = ShaderProgram::Create(context, shaderDesc);
 	}
 
@@ -205,6 +207,7 @@ namespace Mist
 		check(InitSync());
 
 		m_screenPipeline.Init(m_renderContext, m_swapchain);
+		m_cubemapPipeline.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 		// Initialize render processes after instantiate render context
 		m_renderer.Init(m_renderContext, m_frameContextArray, sizeof(m_frameContextArray) / sizeof(RenderFrameContext));
 		DebugRender::Init(m_renderContext);
@@ -256,26 +259,38 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			UniformBufferMemoryPool& buffer = m_frameContextArray[i].GlobalBuffer;
-			buffer.AllocUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, sizeof(int));
-			buffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(int));
-			VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCREEN_QUAD_INDEX);
 
-			DescriptorBuilder builder = DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator);
-			builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
-			builder.Build(m_renderContext, m_screenPipeline.QuadSets[i]);
+			// Screen quad pipeline
+			{
+				buffer.AllocUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, sizeof(int));
+				buffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(int));
+				VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCREEN_QUAD_INDEX);
 
-			VkDescriptorImageInfo quadImageInfoArray;
-			quadImageInfoArray.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			quadImageInfoArray.imageView = lightingRT.GetRenderTarget(0);
-			quadImageInfoArray.sampler = CreateSampler(m_renderContext);
-			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindImage(0, &quadImageInfoArray, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(m_renderContext, m_screenPipeline.PresentTexSets[i]);
+				DescriptorBuilder builder = DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator);
+				builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
+				builder.Build(m_renderContext, m_screenPipeline.QuadSets[i]);
 
-			m_screenPipeline.DebugInstance.PushFrameData(m_renderContext, &buffer);
+				VkDescriptorImageInfo quadImageInfoArray;
+				quadImageInfoArray.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				quadImageInfoArray.imageView = lightingRT.GetRenderTarget(0);
+				quadImageInfoArray.sampler = CreateSampler(m_renderContext);
+				DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+					.BindImage(0, &quadImageInfoArray, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+					.Build(m_renderContext, m_screenPipeline.PresentTexSets[i]);
+
+				m_screenPipeline.DebugInstance.PushFrameData(m_renderContext, &buffer);
+			}
+
+			// Cubemap pipeline
+			{
+				buffer.AllocUniform(m_renderContext, "ProjViewRot", 2.f * sizeof(glm::mat4));
+				VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("ProjViewRot");
+				DescriptorBuilder::Create(*m_renderContext.LayoutCache, *m_renderContext.DescAllocator)
+					.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+					.Build(m_renderContext, m_cubemapPipeline.Sets[i]);
+			}
 		}
 #endif // 0
-		m_cubemapPipeline.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 
 
 		AddImGuiCallback(&Mist_profiling::ImGuiDraw);
@@ -432,27 +447,21 @@ namespace Mist
 	{
 		// Update scene graph data
 		RenderFrameContext& frameContext = GetFrameContext();
+
+		glm::mat4 viewRot = m_cameraData.View;
+		viewRot[3] = { 0.f,0.f,0.f,1.f };
+		glm::mat4 ubo[2];
+		ubo[0] = viewRot;
+		ubo[1] = m_cameraData.Projection * viewRot;
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, "ProjViewRot", &ubo, 2.f*sizeof(glm::mat4));
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
+
 		frameContext.PresentTex = m_screenPipeline.PresentTexSets[GetFrameIndex()];
 		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
-		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
 		m_renderer.UpdateRenderData(m_renderContext, frameContext);
-
-#if 0
-		// Renderers do your things...
-		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
-		{
-			for (IRendererBase* it : m_renderers[i])
-				it->PrepareFrame(m_renderContext, GetFrameContext());
-		}
-#endif // 0
-
-
-#if 0
-		m_ssao.PrepareFrame(m_renderContext, frameContext);
-#endif // 0
-
 	}
 
 	void VulkanRenderEngine::Draw()
@@ -465,11 +474,6 @@ namespace Mist
 		{
 			WaitFences(&frameContext.RenderFence, 1);
 			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_FENCE_READY;
-		}
-
-		{
-			CPU_PROFILE_SCOPE(UpdateBuffers);
-			frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
 		}
 
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
@@ -513,14 +517,13 @@ namespace Mist
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
 
-#if 0
 			// Skybox
 			if (m_scene)
 			{
 				m_cubemapPipeline.Shader->UseProgram(cmd);
+				m_cubemapPipeline.Shader->BindDescriptorSets(cmd, &m_cubemapPipeline.Sets[frameIndex], 1, 0, nullptr, 0);
 				m_scene->DrawSkybox(cmd, m_cubemapPipeline.Shader);
 			}
-#endif // 0
 
 
 			// Post process

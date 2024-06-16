@@ -17,6 +17,7 @@ namespace Mist
 		struct FrameData
 		{
 			VkDescriptorSet Set;
+			VkDescriptorSet CameraSkyboxSet;
 		};
 	public:
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_LIGHTING; }
@@ -34,6 +35,7 @@ namespace Mist
 		VertexBuffer m_quadVB;
 		IndexBuffer m_quadIB;
 		Sampler m_sampler;
+		ShaderProgram* m_skyboxShader;
 	};
 
 #if 0

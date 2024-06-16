@@ -126,7 +126,7 @@ namespace Mist
 		imageInfo[3].imageView = rt.GetRenderTarget(GBuffer::RT_DEPTH);
 		imageInfo[4].sampler = sampler;
 		imageInfo[4].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		imageInfo[4].imageView = m_noiseTexture.GetImageView(0);
+		imageInfo[4].imageView = m_noiseTexture.GetImageView();
 
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 		builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);

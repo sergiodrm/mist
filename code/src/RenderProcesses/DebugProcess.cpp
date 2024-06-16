@@ -110,7 +110,7 @@ namespace Mist
 			TextureDescriptor texDescriptor;
 			texDescriptor.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			texDescriptor.Sampler = CreateSampler(context);
-			texDescriptor.View = DefaultTexture.GetImageView(0);
+			texDescriptor.View = DefaultTexture.GetImageView();
 			for (uint32_t i = 0; i < QuadBatch::MaxViews; ++i)
 				GQuadBatch.TexDescriptors[i] = texDescriptor;
 		}

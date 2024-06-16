@@ -109,9 +109,8 @@ namespace Mist
 		};
 		uint32_t MeshIndex;
 		VkDescriptorSet CubemapSet;
-		RenderHandle Cubemap[COUNT];
+
 		char CubemapFiles[COUNT][256];
-		ShaderProgram* CubemapShader = nullptr;
 
 		Skybox() : MeshIndex(UINT32_MAX), CubemapSet(VK_NULL_HANDLE) 
 		{ 

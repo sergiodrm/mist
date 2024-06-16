@@ -100,6 +100,15 @@ namespace YAML
 
 #endif
 
+#define GLTF_LOAD_GEOMETRY_POSITION 0x01
+#define GLTF_LOAD_GEOMETRY_NORMAL 0x02
+#define GLTF_LOAD_GEOMETRY_COLOR 0x04
+#define GLTF_LOAD_GEOMETRY_TANGENT 0x08
+#define GLTF_LOAD_GEOMETRY_TEXCOORDS 0x10
+#define GLTF_LOAD_GEOMETRY_JOINTS 0x20
+#define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
+#define GLTF_LOAD_GEOMETRY_ALL 0xff
+
 namespace gltf_api
 {
 	void HandleError(cgltf_result result, const char* filepath)
@@ -712,8 +721,12 @@ namespace Mist
 		check(envNode);
 		m_ambientColor = envNode["Ambient"].as<glm::vec3>();
 		char skyboxTextures[Skybox::COUNT][256];
-		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
-			strcpy_s(skyboxTextures[i], envNode["Skybox"][i].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::FRONT], envNode["Skybox"]["Front"].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::BACK], envNode["Skybox"]["Back"].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::TOP], envNode["Skybox"]["Top"].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::BOTTOM], envNode["Skybox"]["Bottom"].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::LEFT], envNode["Skybox"]["Left"].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::RIGHT], envNode["Skybox"]["Right"].as<tString>().c_str());
 		LoadSkybox(m_engine->GetContext(), m_skybox, 
 			skyboxTextures[Skybox::FRONT],
 			skyboxTextures[Skybox::BACK],
@@ -793,10 +806,14 @@ namespace Mist
 		{
 			emitter << YAML::BeginMap;
 			emitter << YAML::Key << "Ambient" << YAML::Value << m_ambientColor;
-			emitter << YAML::Key << "Skybox" << YAML::BeginSeq;
-			for (uint32_t i = 0; i < Skybox::COUNT; ++i)
-				emitter << m_skybox.CubemapFiles[i];
-			emitter << YAML::EndSeq;
+			emitter << YAML::Key << "Skybox" << YAML::BeginMap;
+			emitter << YAML::Key << "Front" << YAML::Value << m_skybox.CubemapFiles[Skybox::FRONT];
+			emitter << YAML::Key << "Back" << YAML::Value << m_skybox.CubemapFiles[Skybox::BACK];
+			emitter << YAML::Key << "Top" << YAML::Value << m_skybox.CubemapFiles[Skybox::TOP];
+			emitter << YAML::Key << "Bottom" << YAML::Value << m_skybox.CubemapFiles[Skybox::BOTTOM];
+			emitter << YAML::Key << "Left" << YAML::Value << m_skybox.CubemapFiles[Skybox::LEFT];
+			emitter << YAML::Key << "Right" << YAML::Value << m_skybox.CubemapFiles[Skybox::RIGHT];
+			emitter << YAML::EndMap;
 			emitter << YAML::EndMap;
 		}
 		emitter << YAML::Key << "RenderObjects";
@@ -984,7 +1001,7 @@ namespace Mist
 					RenderHandle defTex = m_engine->GetDefaultTexture();
 					texture = m_renderData.Textures[defTex];
 				}
-				BindDescriptorTexture(m_engine->GetContext(), texture, 0, mrd.Set, binding, arrayIndex);
+				BindDescriptorTexture(m_engine->GetContext(), texture, mrd.Set, binding, arrayIndex);
 				//texture.Bind(m_engine->GetContext(), mrd.Set, binding, arrayIndex);
 			};
 		submitTexture(material.GetDiffuseTexture(), mrd, 0, 0);
@@ -1088,6 +1105,7 @@ namespace Mist
 				m_meshNameIndexMap[filepath].push_back(meshIndex);
 				MeshRenderData& mrd = GetMeshRenderData(m_meshArray[meshIndex].GetHandle());
 				mrd.PrimitiveArray = std::move(primitives);
+				mrd.IndexCount = mesh.GetIndexCount();
 			}
 		}
 		gltf_api::FreeData(data);
@@ -1096,24 +1114,48 @@ namespace Mist
 
 	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
-#if 0
 		// descriptors generator
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
-		// Textures
-		const char* files[] = { front, back, left, right, top, bottom };
-		VkDescriptorImageInfo infos[Skybox::COUNT];
+
+		// Load textures from files
+		const char* files[] = { left, right, top, bottom, front, back };
+		io::TextureRaw textureData[Skybox::COUNT];
+		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
+			check(io::LoadTexture(files[i], textureData[i]));
+		// Size integrity check and generate an array to reference the pixels of each texture.
+		const uint8_t* pixelsArray[Skybox::COUNT];
 		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
 		{
 			check(*files[i]);
 			strcpy_s(skybox.CubemapFiles[i], files[i]);
-			skybox.Cubemap[i] = LoadTexture(context, files[i], FORMAT_R8G8B8A8_UNORM);
-			check(skybox.Cubemap[i].IsValid());
-			const Texture& tex = m_renderData.Textures[skybox.Cubemap[i]];
-			infos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			infos[i].imageView = tex.GetImageView(i);
-			infos[i].sampler = CreateSampler(context);
-			builder.BindImage(i, &infos[i], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
+			check(textureData[i].Width == textureData[(i + 1)%Skybox::COUNT].Width
+				&& textureData[i].Height == textureData[(i + 1) % Skybox::COUNT].Height
+				&& textureData[i].Channels == textureData[(i + 1) % Skybox::COUNT].Channels
+				&& textureData[i].Pixels);
+			pixelsArray[i] = textureData[i].Pixels;
 		}
+
+		// Create texture
+		tImageDescription imageDesc;
+		imageDesc.Format = FORMAT_R8G8B8A8_SRGB;
+		imageDesc.Layers = Skybox::COUNT;
+		imageDesc.Width = textureData[0].Width;
+		imageDesc.Height = textureData[0].Height;
+		imageDesc.Depth = 1;
+		imageDesc.Flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+		imageDesc.MipLevels = 1; // needs cubemap?
+		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
+		Texture cubemapTex;
+		cubemapTex.AllocateImage(context, imageDesc);
+		// Set image layers with each cubemap texture
+		cubemapTex.SetImageLayers(context, pixelsArray, Skybox::COUNT);
+		SubmitTexture(cubemapTex);
+
+		VkDescriptorImageInfo info;
+		info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		info.imageView = cubemapTex.GetImageView();
+		info.sampler = cubemapTex.GetSampler();
+		builder.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 		check(builder.Build(context, skybox.CubemapSet));
 
 		// Mesh
@@ -1123,9 +1165,7 @@ namespace Mist
 		check(m_meshNameIndexMap.contains(cubeMeshFile) && m_meshNameIndexMap[cubeMeshFile].size() == 1);
 		skybox.MeshIndex = m_meshNameIndexMap[cubeMeshFile][0];
 
-#endif // 0
-
-		return false;
+		return true;
 	}
 
 	const Mesh* Scene::GetMeshArray() const
@@ -1271,7 +1311,7 @@ namespace Mist
 			const Mesh& mesh = m_meshArray[m_skybox.MeshIndex];
 			const MeshRenderData& mrd = m_renderData.Meshes[mesh.GetHandle()];
 			mrd.BindBuffers(cmd);
-			shader->BindDescriptorSets(cmd, &m_skybox.CubemapSet, 1, 0, nullptr, 0);
+			shader->BindDescriptorSets(cmd, &m_skybox.CubemapSet, 1, 1, nullptr, 0);
 			RenderAPI::CmdDrawIndexed(cmd, mrd.IndexCount, 1, 0, 0, 0);
 		}
 	}
@@ -1291,13 +1331,14 @@ namespace Mist
 			strcpy_s(sceneFile, "scenes/Scene.yaml");
 			_b = !false;
 		}
-		ImGui::InputText("Scene file", sceneFile, 256);
-		ImGui::Columns(2);
+		ImGui::Columns(3);
 		if (ImGui::Button("Save"))
 			SaveScene(sceneFile);
 		ImGui::NextColumn();
 		if (ImGui::Button("Load"))
 			LoadScene(sceneFile);
+		ImGui::NextColumn();
+		ImGui::InputText("Scene file", sceneFile, 256);
 		ImGui::Columns();
 
 		ImGui::Separator();
@@ -1554,7 +1595,7 @@ namespace Mist
 		UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
 		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
-}
+	}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
 	{

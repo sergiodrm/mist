@@ -74,6 +74,7 @@ namespace Mist
 		VertexBuffer VB;
 		IndexBuffer IB;
 		ShaderProgram* Shader;
+		// One render target per swapchain image.
 		tDynArray<RenderTarget> RenderTargetArray;
 		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> QuadSets;
 		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> PresentTexSets;
@@ -86,6 +87,7 @@ namespace Mist
 	struct CubemapPipeline
 	{
 		ShaderProgram* Shader = nullptr;
+		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> Sets;
 
 		void Init(const RenderContext& context, const RenderTarget* rt);
 		void Destroy(const RenderContext& context);

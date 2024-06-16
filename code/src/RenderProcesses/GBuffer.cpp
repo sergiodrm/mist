@@ -25,7 +25,7 @@ namespace Mist
 {
 	void GBuffer::Init(const RenderContext& renderContext)
 	{
-		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 1.f} };
+		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
 		RenderTargetDescription description;
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_POSITION, GBUFFER_RT_LAYOUT_POSITION, SAMPLE_COUNT_1_BIT, clearValue);
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_NORMAL, GBUFFER_RT_LAYOUT_NORMAL, SAMPLE_COUNT_1_BIT, clearValue);

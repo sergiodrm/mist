@@ -29,20 +29,22 @@ namespace Mist
 {
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
-		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 1.f} };
+		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
 		RenderTargetDescription description;
 		description.AddColorAttachment(GBUFFER_COMPOSITION_FORMAT, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		m_renderTarget.Create(renderContext, description);
 
-		// Deferred pipeline
-		ShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
-		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("deferred.frag");
-		shaderDesc.RenderTarget = &m_renderTarget;
-		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
+		{
+			// Deferred pipeline
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
+			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("deferred.frag");
+			shaderDesc.RenderTarget = &m_renderTarget;
+			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			m_shader = ShaderProgram::Create(renderContext, shaderDesc);
+		}
 
 		// init quad
 		float vertices[] =
@@ -61,6 +63,21 @@ namespace Mist
 		bufferInfo.Data = indices;
 		bufferInfo.Size = sizeof(indices);
 		m_quadIB.Init(renderContext, bufferInfo);
+
+#if 0
+		{
+			ShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile = SHADER_FILEPATH("skybox.vert");
+			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("skybox.frag");
+			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+			shaderDesc.RenderTarget = &m_renderTarget;
+			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
+			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
+			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
+			m_skyboxShader = ShaderProgram::Create(renderContext, shaderDesc);
+		}
+#endif // 0
+
 	}
 
 	void DeferredLighting::Destroy(const RenderContext& renderContext)
@@ -118,6 +135,15 @@ namespace Mist
 			.BindImage(5, shadowMapTex, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindBuffer(6, &shadowMapBuffer, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_frameData[frameIndex].Set);
+
+#if 0
+		// Skybox
+		VkDescriptorBufferInfo cameraBufferInfo = buffer.GenerateDescriptorBufferInfo("ProjViewRot");
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+			.BindBuffer(0, &cameraBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+			.Build(renderContext, m_frameData[frameIndex].CameraSkyboxSet);
+#endif // 0
+
 	}
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)

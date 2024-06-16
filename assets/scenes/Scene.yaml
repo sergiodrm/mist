@@ -1,11 +1,11 @@
 Environment:
   Skybox: 
-    - ../assets/textures/Lycksele3/posz.jpg
-    - ../assets/textures/Lycksele3/negz.jpg
-    - ../assets/textures/Lycksele3/posx.jpg
-    - ../assets/textures/Lycksele3/negx.jpg
-    - ../assets/textures/Lycksele3/posy.jpg
-    - ../assets/textures/Lycksele3/negy.jpg
+    Left: ../assets/textures/skybox/left.jpg
+    Right: ../assets/textures/skybox/right.jpg
+    Top: ../assets/textures/skybox/top.jpg
+    Bottom: ../assets/textures/skybox/bottom.jpg
+    Front: ../assets/textures/skybox/front.jpg
+    Back: ../assets/textures/skybox/back.jpg
   Ambient: [0.02, 0.05, 0.1]
 RenderObjects:
   - RenderObject: 0
