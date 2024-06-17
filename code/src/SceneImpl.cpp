@@ -556,7 +556,7 @@ namespace Mist
 	Scene::Scene(IRenderEngine* engine) : IScene(), m_engine(static_cast<VulkanRenderEngine*>(engine))
 	{
 		// Create root scene
-		CreateRenderObject(RenderObject::InvalidId);
+		//CreateRenderObject(RenderObject::InvalidId);
 	}
 
 	Scene::~Scene()
@@ -705,7 +705,6 @@ namespace Mist
 
 	void Scene::LoadScene(const char* filepath)
 	{
-#ifdef SCENE_LOAD_YAML
 		io::File file;
 		check(file.Open(filepath, "r"));
 		uint32_t size = file.GetContentSize();
@@ -742,8 +741,6 @@ namespace Mist
 		for (const auto& it : renderObjectSeq)
 		{
 			uint32_t parent = it["Parent"].as<uint32_t>();
-			if (parent == RenderObject::InvalidId)
-				parent = GetRoot();
 			RenderObject rb = CreateRenderObject(parent);
 			SetRenderObjectName(rb, it["Name"].as<tString>().c_str());
 
@@ -790,15 +787,11 @@ namespace Mist
 				SetMesh(rb, m);
 			}
 		}
-
-
 		delete[] content;
-#endif // SCENE_LOAD_YAML
 	}
 
 	void Scene::SaveScene(const char* filepath)
 	{
-#ifdef SCENE_LOAD_YAML
 		YAML::Emitter emitter;
 
 		emitter << YAML::BeginMap;
@@ -851,13 +844,10 @@ namespace Mist
 			if (m_meshComponentMap.contains(i))
 			{
 				emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
-#if 1
 				const MeshComponent& mesh = m_meshComponentMap[i];
 				emitter << YAML::Key << "MeshAssetPath" << YAML::Value << mesh.MeshAssetPath;
 				emitter << YAML::Key << "MeshName" << YAML::Value << mesh.MeshName;
 				emitter << YAML::EndMap;
-#endif // 0
-
 			}
 
 			emitter << YAML::EndMap;
@@ -875,7 +865,6 @@ namespace Mist
 		check(file.Open(filepath, "w"));
 		file.Write(out, size);
 		file.Close();
-#endif
 	}
 
 	void Scene::DestroyRenderObject(RenderObject object)
@@ -1056,7 +1045,7 @@ namespace Mist
 			m_dirtyNodes[0].clear();
 		}
 		// Iterate over the deeper levels
-		for (uint32_t level = 1; level < MaxNodeLevel && !m_dirtyNodes[level].empty(); ++level)
+		for (uint32_t level = 1; level < MaxNodeLevel; ++level)
 		{
 			for (uint32_t nodeIndex = 0; nodeIndex < m_dirtyNodes[level].size(); ++nodeIndex)
 			{
@@ -1449,107 +1438,6 @@ namespace Mist
 				ImGui::TreePop();
 			}
 		}
-
-#if 0
-		auto utilDragFloat = [](const char* label, uint32_t id, float* data, uint32_t count, bool asColor, float diff = 1.f, float minLimit = 0.f, float maxLimit = 0.f)
-			{
-				ImGui::Columns(2);
-				ImGui::Text(label);
-				ImGui::NextColumn();
-				char buff[64];
-				sprintf_s(buff, "##%s%u", label, id);
-				bool r = false;
-				switch (count)
-				{
-				case 1: r = ImGui::DragFloat(buff, data, diff, minLimit, maxLimit); break;
-				case 2: r = ImGui::DragFloat2(buff, data, diff, minLimit, maxLimit); break;
-				case 3: r = asColor ? ImGui::ColorEdit3(buff, data) : ImGui::DragFloat3(buff, data, diff, minLimit, maxLimit); break;
-				case 4: r = asColor ? ImGui::ColorEdit4(buff, data) : ImGui::DragFloat4(buff, data, diff, minLimit, maxLimit); break;
-				}
-				ImGui::NextColumn();
-				ImGui::Columns();
-				return r;
-			};
-		auto utilShadowCheckbox = [](const char* label, uint32_t id, float& shadowMapIndex)
-			{
-				bool projectShadow = shadowMapIndex >= 0.f;
-				char buff[64];
-				sprintf_s(buff, "##%s%u", label, id);
-				ImGui::Columns(2);
-				ImGui::Text("%s", label);
-				ImGui::NextColumn();
-				if (ImGui::Checkbox(buff, &projectShadow))
-					shadowMapIndex = projectShadow ? 0.f : -1.f;
-				ImGui::Columns();
-			};
-
-		utilDragFloat("Ambient color", 0, &m_environmentData.AmbientColor[0], 3, true);
-		uint32_t shadowIdLabel = 0;
-		if (ImGui::CollapsingHeader("Directional light"))
-		{
-			utilShadowCheckbox("Project shadows", shadowIdLabel++, m_environmentData.DirectionalLight.ShadowMapIndex);
-			utilDragFloat("Direction", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Direction[0], 3, false, 0.02f, -1.f, 1.f);
-			utilDragFloat("Color", EnvironmentData::MaxLights, &m_environmentData.DirectionalLight.Color[0], 3, true);
-			DebugRender::DrawLine3D(glm::vec3(0.f), m_environmentData.DirectionalLight.Direction, glm::vec3(1.f));
-		}
-		if (ImGui::CollapsingHeader("Point lights"))
-		{
-			int32_t activeLightsCount = (int32_t)m_environmentData.ActiveLightsCount;
-			if (ImGui::SliderInt("Active point lights", &activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d"))
-				m_environmentData.ActiveLightsCount = (float)activeLightsCount;
-			for (int32_t i = 0; i < activeLightsCount; ++i)
-			{
-				char buff[32];
-				sprintf_s(buff, "PointLight_%u", i);
-				if (ImGui::CollapsingHeader(buff))
-				{
-					utilDragFloat("Position", i, &m_environmentData.Lights[i].Position[0], 3, false);
-					utilDragFloat("Color", i, &m_environmentData.Lights[i].Color[0], 3, true);
-					utilDragFloat("Radius", i, &m_environmentData.Lights[i].Radius, 1, false, 0.5f, 0.f, FLT_MAX);
-					utilDragFloat("Compression", i, &m_environmentData.Lights[i].Compression, 1, false, 0.5f, 0.5f, FLT_MAX);
-
-					DebugRender::DrawAxis(m_environmentData.Lights[i].Position, glm::vec3(0.f), glm::vec3(1.f));
-					DebugRender::DrawSphere(m_environmentData.Lights[i].Position, m_environmentData.Lights[i].Radius, m_environmentData.Lights[i].Color);
-				}
-			}
-		}
-		if (ImGui::CollapsingHeader("Spot lights"))
-		{
-			int32_t activeLightsCount = (int32_t)m_environmentData.ActiveSpotLightsCount;
-			if (ImGui::SliderInt("Active spot lights", &activeLightsCount, 0, (int32_t)EnvironmentData::MaxLights, "%d"))
-				m_environmentData.ActiveSpotLightsCount = (float)activeLightsCount;
-
-			for (uint32_t i = 0; i < (uint32_t)activeLightsCount; ++i)
-			{
-				char buff[32];
-				sprintf_s(buff, "SpotLight_%u", i);
-				if (ImGui::CollapsingHeader(buff))
-				{
-					SpotLightData& data = m_environmentData.SpotLights[i];
-					utilShadowCheckbox("Project shadows", shadowIdLabel++, data.ShadowMapIndex);
-					utilDragFloat("Position", i, &data.Position[0], 3, false);
-					glm::vec3 dir = glm::normalize(data.Direction);
-
-					// dir vector to roll pitch yaw (x:pitch, y:yaw, z:roll)
-					glm::vec3 pyr = math::ToRot(data.Direction);
-					if (utilDragFloat("Direction", i, &pyr[0], 3, false, 0.02f))
-					{
-						// Transform to rot matrix
-						glm::mat4 m = math::PitchYawRollToMat4(pyr);
-						// Forward direction (0, 0, 1) in rotation space.
-						data.Direction = glm::vec3(m * glm::vec4(0.f, 0.f, 1.f, 1.f));
-					}
-					utilDragFloat("Color", i, &data.Color[0], 3, true);
-					utilDragFloat("InnerCutoff", i, &data.InnerCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
-					utilDragFloat("OuterCutoff", i, &data.OuterCutoff, 1, false, 0.01f, 0.f, FLT_MAX);
-
-					constexpr float scl = 1.f; // meters
-					DebugRender::DrawAxis(data.Position, pyr, glm::vec3(scl));
-					}
-				}
-			}
-#endif // 0
-
 		ImGui::End();
 		}
 
@@ -1565,36 +1453,18 @@ namespace Mist
 
 	void Scene::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
-		RecalculateTransforms();
-		check(!IsDirty());
-		const glm::mat4& viewMat = frameContext.CameraData->View;
-		EnvironmentData renderData;
-		ProcessEnvironmentData(viewMat, renderData);
+		if (GetRenderObjectCount())
+		{
+			RecalculateTransforms();
+			check(!IsDirty());
+			const glm::mat4& viewMat = frameContext.CameraData->View;
+			EnvironmentData renderData;
+			ProcessEnvironmentData(viewMat, renderData);
 
-#if 0
-		// Calculate environment data positions from view space. TODO: cache results to avoid doing it each frame.
-//EnvironmentData renderData = m_environmentData;
-		for (uint32_t i = 0; i < renderData.ActiveLightsCount; ++i)
-			renderData.Lights[i].Position = glm::vec3(glm::vec4(renderData.Lights[i].Position, 1.f));
-		for (uint32_t i = 0; i < renderData.ActiveSpotLightsCount; ++i)
-		{
-			glm::mat4 t = math::ToMat4(renderData.SpotLights[i].Position, renderData.SpotLights[i].Direction, glm::vec3(1.f));
-			t = viewMat * t;
-			renderData.SpotLights[i].Position = math::GetPos(t);
-			renderData.SpotLights[i].Direction = math::GetDir(t);
-	}
-		// Directional lights
-		{
-			glm::mat4 t = math::ToMat4(glm::vec3(0.f), renderData.DirectionalLight.Direction, glm::vec3(1.f));
-			t = viewMat * t;
-			renderData.DirectionalLight.Direction = math::GetDir(t);
+			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
+			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
+			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 		}
-#endif // 0
-
-
-		UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
-		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
-		check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 	}
 
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
