@@ -1,52 +1,52 @@
 Environment:
-  Skybox: 
-    Left: ../assets/textures/skybox/left.jpg
-    Right: ../assets/textures/skybox/right.jpg
-    Top: ../assets/textures/skybox/top.jpg
-    Bottom: ../assets/textures/skybox/bottom.jpg
+  Ambient: [0.0199999996, 0.0500000007, 0.100000001]
+  Skybox:
     Front: ../assets/textures/skybox/front.jpg
     Back: ../assets/textures/skybox/back.jpg
-  Ambient: [0.02, 0.05, 0.1]
+    Top: ../assets/textures/skybox/top.jpg
+    Bottom: ../assets/textures/skybox/bottom.jpg
+    Left: ../assets/textures/skybox/left.jpg
+    Right: ../assets/textures/skybox/right.jpg
 RenderObjects:
-  - RenderObject: 0
-    Name: RenderObject_0
-    Parent: 4294967295
-    TransformComponent:
-      Position: [0, 0, 0]
-      Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-  - RenderObject: 2
-    Name: Mesh_0
-    Parent: 0
-    TransformComponent:
-      Position: [0, 0, 0]
-      Rotation: [0, -0, 0]
-      Scale: [0.00800000038, 0.00800000038, 0.00800000038]
-    MeshComponent:
-      MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
-      MeshName: Mesh_0
-  - RenderObject: 3
-    Name: Cube
-    Parent: 0
-    TransformComponent:
-      Position: [0, 0, 0]
-      Rotation: [0, -0, 0]
-      Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
-      MeshName: Cube
-  - RenderObject: 4
-    Name: Light
-    Parent: 0
-    TransformComponent:
-      Position: [3, 1.5, 0]
-      Rotation: [0, 1.29999995, 0]
-      Scale: [1, 1, 1]
-    LightComponent:
-      Type: Spot
-      Color: [0.93007493, 1, 0.524509788]
-      Radius: 10
-      Compression: 10
-      InnerCutoff: 1
-      OuterCutoff: 0.800000012
-      ProjectShadows: false
+    - RenderObject: 0
+      Name: RenderObject_0
+      Parent: 4294967295
+      TransformComponent:
+        Position: [0, 0, 0]
+        Rotation: [0, 0, 0]
+        Scale: [1, 1, 1]
+    - RenderObject: 1
+      Name: Mesh_0
+      Parent: 0
+      TransformComponent:
+        Position: [0, 0, 0]
+        Rotation: [0, -0, 0]
+        Scale: [0.00800000038, 0.00800000038, 0.00800000038]
+      MeshComponent:
+        MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
+        MeshName: Mesh_0
+    - RenderObject: 2
+      Name: Sphere
+      Parent: 0
+      TransformComponent:
+        Position: [9, 1.5, 0]
+        Rotation: [0, -0, 0]
+        Scale: [1, 1, 1]
+      MeshComponent:
+        MeshAssetPath: ../assets/models/sphere.gltf
+        MeshName: Sphere
+    - RenderObject: 3
+      Name: Light
+      Parent: 0
+      TransformComponent:
+        Position: [3.5, 1.5, 0]
+        Rotation: [0, 0.600000024, 0]
+        Scale: [1, 1, 1]
+      LightComponent:
+        Type: Point
+        Color: [1, 1, 1]
+        Radius: 10
+        Compression: 10
+        InnerCutoff: 1
+        OuterCutoff: 0.800000012
+        ProjectShadows: false
