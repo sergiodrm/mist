@@ -42,6 +42,7 @@ layout(set = 0, binding = 6) uniform ShadowMapInfo
 
 #define LightRadius(l) l.Pos.a
 #define LightCompression(l) l.Color.w
+#define M_PI 3.1415926535897932384626433832795
 
 float LinearizeDepth(float z, float n, float f)
 {
@@ -144,8 +145,104 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, SpotLightData
     return lighting * intensity;
 }
 
+// The Fresnel-Schlick approximation expects a F0 parameter 
+// which is known as the surface reflection at zero incidence 
+// or how much the surface reflects if looking directly at the surface.
+vec3 FresnelSchlick(float cosTheta, vec3 F0)
+{
+    return F0 + (1.f-F0) * pow(clamp(1.f-cosTheta, 0.f, 1.f), 5.f);
+}
+
+float DistributionGGX(vec3 N, vec3 H, float Roughness)
+{
+    float a = Roughness*Roughness;
+    float a2 = a*a;
+    float NdotH = max(dot(N, H), 0.f);
+    float NdotH2 = NdotH*NdotH;
+
+    float num = a2;
+    float denom = NdotH2 * (a2 - 1.f) + 1.f;
+    denom = M_PI * denom * denom;
+    return num / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float Roughness)
+{
+    float r = Roughness + 1.f;
+    float k = (r*r)/8.f;
+    float num = NdotV;
+    float denom = NdotV * (1.f-k) + k;
+    return num/denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float Roughness)
+{
+    float NdotV = max(dot(N, V), 0.f);
+    float NdotL = max(dot(N, L), 0.f);
+    float ggx2 = GeometrySchlickGGX(NdotV, Roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, Roughness);
+    return ggx1*ggx2;
+}
+
+vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, LightData Light)
+{
+    vec3 N = normalize(Normal);
+    vec3 V = normalize(-FragViewPos);
+
+    float Metallic = 0.5f;
+    float Roughness = 0.7f;
+
+
+    vec3 Lo = vec3(0.f);
+    //for (int i = 0; i < 4; ++i)
+    {
+        // Radiance calculation
+        vec3 LightPos = Light.Pos.xyz;
+        vec3 LightDir = LightPos - FragViewPos;
+        vec3 L = normalize(LightDir);
+        vec3 H = normalize(V + L);
+        float Distance = length(LightDir);
+        float Attenuation = 1.f/(Distance * Distance);
+        vec3 Radiance = Light.Color.rgb * Attenuation;
+
+        // Ratio between diffuse and specular factor
+        vec3 F0 = vec3(0.04f);
+        F0 = mix(F0, Albedo, Metallic);
+        vec3 F = FresnelSchlick(max(dot(H, V), 0.f), F0);
+
+        // Normal distribution
+        float NDF = DistributionGGX(N, H, Roughness);
+        // Geometry distribution
+        float G = GeometrySmith(N, V, L, Roughness);
+        // Calculate Cook-Torrance BRDF
+        vec3 num = NDF * G * F;
+        float denom = 4.f * max(dot(N, V), 0.f) * max(dot(N, L), 0.f) + 0.0001f;
+        vec3 specular = num/denom;
+
+        // Light contribution
+        vec3 kS = F; // specular contribution
+        vec3 kD = vec3(1.f)-kS; // diffuse contribution (energy conservation)
+        kD *= 1.f-Metallic;
+
+        float NdotL = max(dot(N, L), 0.f);
+        Lo += (kD * Albedo / M_PI + specular) * Radiance * NdotL;
+    }
+
+    return vec4(Lo, 1.f);
+}
+
 void main()
 {
+	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
+	vec3 fragNormal = normalize(texture(u_GBufferNormal, inTexCoords).rgb);
+	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
+    outColor = main_PBR(fragPos, fragNormal, fragColor.rgb, u_Env.Lights[0]);
+    return;
+
+
+
+
+#if 0
 	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
 	vec3 fragNormal = normalize(texture(u_GBufferNormal, inTexCoords).rgb);
 	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
@@ -204,4 +301,5 @@ void main()
         //lightColor = vec3(shadowCoord);
     }
     outColor = vec4(lightColor, 1.f) * outColor;
+#endif
 }
