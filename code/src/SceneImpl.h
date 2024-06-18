@@ -210,5 +210,6 @@ namespace Mist
 
 		tMap<tString, tDynArray<uint32_t>> m_meshNameIndexMap;
 		Skybox m_skybox;
+		uint32_t m_defaultMaterialIndex = 0;
 	};
 }

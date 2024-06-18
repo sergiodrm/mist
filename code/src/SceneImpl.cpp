@@ -563,7 +563,10 @@ namespace Mist
 	{}
 
 	void Scene::Init()
-	{}
+	{
+		Material defaultMaterial;
+		m_defaultMaterialIndex = SubmitMaterial(defaultMaterial);
+	}
 
 	void Scene::Destroy()
 	{
@@ -640,6 +643,7 @@ namespace Mist
 		}
 
 		std::unordered_map<cgltf_material*, uint32_t> materialIndexMap;
+		materialIndexMap[nullptr] = m_defaultMaterialIndex;
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
 			Material m;
@@ -1070,6 +1074,7 @@ namespace Mist
 		}
 
 		std::unordered_map<cgltf_material*, uint32_t> materialIndexMap;
+		materialIndexMap[nullptr] = m_defaultMaterialIndex;
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
 			Material m;
