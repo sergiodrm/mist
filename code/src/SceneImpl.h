@@ -6,7 +6,9 @@
 //#include "VulkanRenderEngine.h"
 #include "VulkanBuffer.h"
 #include "Texture.h"
+#include "Globals.h"
 
+#define MIST_MAX_MATERIALS 50
 
 namespace Mist
 {
@@ -17,14 +19,25 @@ namespace Mist
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
 
+	struct MaterialUniform
+	{
+		float Metallic = 0.f;
+		float Roughness = 0.f;
+	};
+
 	struct MaterialRenderData
 	{
-		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
-		VkDescriptorSet Set{ VK_NULL_HANDLE };
-		VkSampler Sampler{ VK_NULL_HANDLE };
+		struct FrameData
+		{
+			VkDescriptorSet TextureSet;
+			VkDescriptorSet ParamsSet;
+		};
 
-		static VkDescriptorSetLayout GetDescriptorSetLayout(const RenderContext& renderContext, DescriptorLayoutCache& layoutCache);
-		void Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache);
+		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
+		tArray<FrameData, globals::MaxOverlappedFrames> MaterialSets;
+
+		static VkDescriptorSetLayout GetDescriptorSetLayout(const RenderContext& renderContext);
+		void Init(const RenderContext& renderContext);
 		void Destroy(const RenderContext& renderContext);
 	};
 
@@ -52,7 +65,6 @@ namespace Mist
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
 		ResourceMap<Texture> Textures;
 		ResourceMap<MeshRenderData> Meshes;
-		ResourceMap<MaterialRenderData> Materials;
 	};
 
 	struct LightData
@@ -133,6 +145,8 @@ namespace Mist
 		virtual void Init() override;
 		virtual void Destroy() override;
 
+		void InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext);
+
 		virtual bool LoadModel(const char* filepath) override;
 		void LoadScene(const char* filepath);
 		void SaveScene(const char* filepath);
@@ -141,6 +155,10 @@ namespace Mist
 		virtual void DestroyRenderObject(RenderObject object) override;
 		virtual bool IsValid(RenderObject object) const override;
 		virtual uint32_t GetRenderObjectCount() const override;
+
+		virtual Material* CreateMaterial() override;
+		virtual Material* GetMaterial(uint32_t index) override;
+		virtual const Material* GetMaterial(uint32_t index) const override;
 
 		virtual RenderObject GetRoot() const override;
 		virtual const MeshComponent* GetMesh(RenderObject renderObject) const override;
@@ -156,6 +174,7 @@ namespace Mist
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
 		RenderHandle LoadTexture(const RenderContext& context, const char* texturePath, EFormat format);
 		RenderHandle SubmitTexture(Texture tex);
+		void UpdateMaterialBindings(Material& material);
 
 		void MarkAsDirty(RenderObject renderObject);
 
@@ -198,6 +217,8 @@ namespace Mist
 		tMap<uint32_t, MeshComponent> m_meshComponentMap;
 		tMap<uint32_t, LightComponent> m_lightComponentMap;
 		tDynArray<Material> m_materialArray;
+		tDynArray<MaterialRenderData> m_materialRenderDataArray;
+		tDynArray<uint32_t> m_dirtyMaterials;
 		tDynArray<Mesh> m_meshArray;
 
 		tDynArray<glm::mat4> m_localTransforms;

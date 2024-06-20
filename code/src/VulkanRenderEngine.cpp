@@ -283,7 +283,7 @@ namespace Mist
 
 			// Cubemap pipeline
 			{
-				buffer.AllocUniform(m_renderContext, "ProjViewRot", 2.f * sizeof(glm::mat4));
+				buffer.AllocUniform(m_renderContext, "ProjViewRot", 2 * sizeof(glm::mat4));
 				VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("ProjViewRot");
 				DescriptorBuilder::Create(*m_renderContext.LayoutCache, *m_renderContext.DescAllocator)
 					.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
@@ -333,9 +333,10 @@ namespace Mist
 				m_eventCallback(&e);
 		}
 
-		BeginFrame();
+		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
+		BeginFrame();
 		Mist_profiling::GRenderStats.Reset();
 		Draw();
 		return res;
@@ -422,6 +423,8 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{ 
 			m_frameContextArray[i].Scene = m_scene;
+			if (scene)
+				m_scene->InitFrameData(m_renderContext, m_frameContextArray[i]);
 		}
 	}
 
@@ -453,14 +456,13 @@ namespace Mist
 		glm::mat4 ubo[2];
 		ubo[0] = viewRot;
 		ubo[1] = m_cameraData.Projection * viewRot;
-		frameContext.GlobalBuffer.SetUniform(m_renderContext, "ProjViewRot", &ubo, 2.f*sizeof(glm::mat4));
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, "ProjViewRot", &ubo, 2*sizeof(glm::mat4));
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
 
 		frameContext.PresentTex = m_screenPipeline.PresentTexSets[GetFrameIndex()];
 		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
-		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 		m_renderer.UpdateRenderData(m_renderContext, frameContext);
 	}
 

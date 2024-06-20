@@ -184,14 +184,10 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float Roughness)
     return ggx1*ggx2;
 }
 
-vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, LightData Light)
+vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float Roughness, float AO, LightData Light)
 {
     vec3 N = normalize(Normal);
     vec3 V = normalize(-FragViewPos);
-
-    float Metallic = 0.5f;
-    float Roughness = 0.7f;
-
 
     vec3 Lo = vec3(0.f);
     //for (int i = 0; i < 4; ++i)
@@ -227,16 +223,25 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, LightData Light)
         float NdotL = max(dot(N, L), 0.f);
         Lo += (kD * Albedo / M_PI + specular) * Radiance * NdotL;
     }
+    vec3 Ambient = vec3(0.001) * Albedo * AO;
+    vec3 Color = Ambient + Lo;
+    Color = Color / (Color + vec3(1.f));
+    Color = pow(Color, vec3(1.f/2.2f));
 
-    return vec4(Lo, 1.f);
+    return vec4(Color, 1.f);
 }
 
 void main()
 {
-	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
-	vec3 fragNormal = normalize(texture(u_GBufferNormal, inTexCoords).rgb);
+    vec4 gbufferPos = texture(u_GBufferPosition, inTexCoords);
+    vec4 gbufferNormal = texture(u_GBufferNormal, inTexCoords);
+	vec3 fragPos = gbufferPos.rgb;
+	vec3 fragNormal = normalize(gbufferNormal.xyz);
 	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
-    outColor = main_PBR(fragPos, fragNormal, fragColor.rgb, u_Env.Lights[0]);
+    float metallic = gbufferPos.a;
+    float roughness = gbufferNormal.a;
+    float ao = 0.01f;
+    outColor = main_PBR(fragPos, fragNormal, fragColor.rgb, metallic, roughness, ao, u_Env.Lights[0]);
     return;
 
 

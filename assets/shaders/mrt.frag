@@ -11,11 +11,22 @@ layout (location = 0) out vec4 outPosition;
 layout (location = 1) out vec4 outNormal;
 layout (location = 2) out vec4 outAlbedo;
 
-layout(set = 2, binding = 0) uniform sampler2D u_Textures[3];
+layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
+layout(set = 3, binding = 0) uniform MaterialParams
+{
+	vec2 Params;
+} u_material;
+
+//#define MaterialHasMetallic(m) int(m.Params.x)
+//#define MaterialHasRouhness(m) int(m.Params.y)
+#define MaterialMetallic(m) m.Params.x
+#define MaterialRoughness(m) m.Params.y
+
 
 void main() 
 {
 	outPosition = vec4(inWorldPos, 1.0);
+	outPosition.w = MaterialMetallic(u_material);
 
 #define USE_TBN
 #ifdef USE_TBN
@@ -26,6 +37,7 @@ void main()
 	mat3 TBN = mat3(T, B, N);
 	vec3 tnorm = TBN * normalize(texture(u_Textures[1], inUV).xyz * 2.0 - vec3(1.0));
 	outNormal = vec4(tnorm, 1.0);
+	outNormal.w = MaterialRoughness(u_material);
 	//outNormal = normalize(texture(u_Textures[1], inUV));
 #else
 	//outNormal = vec4(inTangent, 1.0);

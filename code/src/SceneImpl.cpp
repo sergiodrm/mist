@@ -380,12 +380,16 @@ namespace gltf_api
 				rootAssetPath,
 				mtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, diffuse));
 			Mist::RenderHandle h = scene.SubmitTexture(diffuse);
-			material.SetDiffuseTexture(h);
+			material.SetAlbedoTexture(h);
 		}
-#ifdef MIST_ENABLE_LOADER_LOG
 		else
+		{
+#ifdef MIST_ENABLE_LOADER_LOG
 			Mist::Log(Mist::LogLevel::Warn, "Diffuse material texture not found.\n");
 #endif // MIST_ENABLE_LOADER_LOG
+		}
+		material.SetMetallic(mtl.pbr_metallic_roughness.metallic_factor);
+		material.SetRoughness(mtl.pbr_metallic_roughness.roughness_factor);
 
 		if (mtl.pbr_specular_glossiness.diffuse_texture.texture)
 		{
@@ -413,6 +417,18 @@ namespace gltf_api
 #ifdef MIST_ENABLE_LOADER_LOG
 		else
 			Mist::Log(Mist::LogLevel::Warn, "Normal material texture not found.\n");
+#endif // MIST_ENABLE_LOADER_LOG
+
+		if (mtl.occlusion_texture.texture)
+		{
+			Mist::Texture tex;
+			check(LoadTexture(context, rootAssetPath, mtl.occlusion_texture, Mist::FORMAT_R8G8B8A8_UNORM, tex));
+			Mist::RenderHandle h = scene.SubmitTexture(tex);
+			material.SetOcclusionTexture(h);
+		}
+#ifdef MIST_ENABLE_LOADER_LOG
+		else
+			Mist::Log(Mist::LogLevel::Warn, "Occlusion material texture not found.\n");
 #endif // MIST_ENABLE_LOADER_LOG
 	}
 
@@ -456,48 +472,30 @@ namespace Mist
 		IndexBuffer.Bind(cmd);
 	}
 
-	VkDescriptorSetLayout MaterialRenderData::GetDescriptorSetLayout(const RenderContext& renderContext, DescriptorLayoutCache& layoutCache)
+	VkDescriptorSetLayout MaterialRenderData::GetDescriptorSetLayout(const RenderContext& renderContext)
 	{
 		VkDescriptorSetLayout layout;
-		DescriptorSetLayoutBuilder::Create(layoutCache)
-			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3)
+		DescriptorSetLayoutBuilder::Create(*renderContext.LayoutCache)
+			.AddBinding(0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 6)
 			.Build(renderContext, &layout);
 		return layout;
 	}
 
-	void MaterialRenderData::Init(const RenderContext& renderContext, DescriptorAllocator& descAllocator, DescriptorLayoutCache& layoutCache)
+	void MaterialRenderData::Init(const RenderContext& renderContext)
 	{
-		if (Layout == VK_NULL_HANDLE)
+		check(Layout == VK_NULL_HANDLE);
+		DescriptorAllocator& descAllocator = *renderContext.DescAllocator;
+		DescriptorLayoutCache& layoutCache = *renderContext.LayoutCache;
+		Layout = GetDescriptorSetLayout(renderContext);
+		for (uint32_t i = 0; i < (uint32_t)MaterialSets.size(); ++i)
 		{
-			Layout = GetDescriptorSetLayout(renderContext, layoutCache);
+			descAllocator.Allocate(&MaterialSets[i].TextureSet, Layout);
+			MaterialSets[i].ParamsSet = VK_NULL_HANDLE;
 		}
-		if (Set == VK_NULL_HANDLE)
-		{
-			descAllocator.Allocate(&Set, Layout);
-		}
-#if 0
-		if (Sampler == VK_NULL_HANDLE)
-		{
-			VkSamplerCreateInfo samplerCreateInfo
-			{
-				.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-				.pNext = nullptr,
-				.magFilter = VK_FILTER_LINEAR,
-				.minFilter = VK_FILTER_LINEAR,
-				.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT
-			};
-			vkcheck(vkCreateSampler(renderContext.Device, &samplerCreateInfo, nullptr, &Sampler));
-		}
-#endif // 0
-
 	}
 
 	void MaterialRenderData::Destroy(const RenderContext& renderContext)
-	{
-		vkDestroySampler(renderContext.Device, Sampler, nullptr);
-	}
+	{	}
 
 
 	EnvironmentData::EnvironmentData() :
@@ -532,6 +530,7 @@ namespace Mist
 		check(!engine->GetScene());
 		Scene* scene = new Scene(engine);
 		engine->SetScene(scene);
+		scene->Init();
 		return scene;
 	}
 
@@ -564,8 +563,8 @@ namespace Mist
 
 	void Scene::Init()
 	{
-		Material defaultMaterial;
-		m_defaultMaterialIndex = SubmitMaterial(defaultMaterial);
+		// default material
+		Material* mat = CreateMaterial();
 	}
 
 	void Scene::Destroy()
@@ -586,14 +585,21 @@ namespace Mist
 			it.second.VertexBuffer.Destroy(renderContext);
 			it.second.IndexBuffer.Destroy(renderContext);
 		}
-		for (auto& it : m_renderData.Materials)
+		for (uint32_t i = 0; i < (uint32_t)m_materialRenderDataArray.size(); ++i)
 		{
-			it.second.Destroy(m_engine->GetContext());
+			m_materialRenderDataArray[i].Destroy(m_engine->GetContext());
 		}
+		m_materialRenderDataArray.clear();
+		m_materialArray.clear();
 		for (auto& it : m_renderData.Textures)
 		{
 			it.second.Destroy(m_engine->GetContext());
 		}
+	}
+
+	void Scene::InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext)
+	{
+		frameContext.GlobalBuffer.AllocDynamicUniform(renderContext, "Material", sizeof(MaterialUniform), MIST_MAX_MATERIALS);
 	}
 
 	RenderObject Scene::CreateRenderObject(RenderObject parent)
@@ -646,10 +652,10 @@ namespace Mist
 		materialIndexMap[nullptr] = m_defaultMaterialIndex;
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
-			Material m;
-			gltf_api::LoadMaterial(m_engine->GetContext(), *this, rootAssetPath, m, data->materials[i]);
-			materialIndexMap[&data->materials[i]] = GetMaterialCount();
-			SubmitMaterial(m);
+			Material* m = CreateMaterial();
+			gltf_api::LoadMaterial(m_engine->GetContext(), *this, rootAssetPath, *m, data->materials[i]);
+			materialIndexMap[&data->materials[i]] = m->GetHandle();
+			UpdateMaterialBindings(*m);
 		}
 
 		uint32_t nodesCount = (uint32_t)data->nodes_count;
@@ -907,6 +913,32 @@ namespace Mist
 		return (uint32_t)m_hierarchy.size();
 	}
 
+	Material* Scene::CreateMaterial()
+	{
+		check(m_materialArray.size() == m_materialRenderDataArray.size());
+		check(m_materialArray.size() < MIST_MAX_MATERIALS);
+		uint32_t matIndex = (uint32_t)m_materialArray.size();
+		m_materialArray.push_back(Material());
+		m_materialRenderDataArray.push_back(MaterialRenderData());
+		Material& mat = m_materialArray[matIndex];
+		MaterialRenderData& renderData = m_materialRenderDataArray[matIndex];
+		renderData.Init(m_engine->GetContext());
+		mat.SetHandle(matIndex);
+		return &mat;
+	}
+
+	Material* Scene::GetMaterial(uint32_t index)
+	{
+		check(index < (uint32_t)m_materialArray.size());
+		return &m_materialArray[index];
+	}
+
+	const Material* Scene::GetMaterial(uint32_t index) const
+	{
+		check(index < (uint32_t)m_materialArray.size());
+		return &m_materialArray[index];
+	}
+
 	RenderObject Scene::GetRoot() const
 	{
 		static RenderObject root = 0;
@@ -976,36 +1008,8 @@ namespace Mist
 
 	uint32_t Scene::SubmitMaterial(Material& material)
 	{
-		check(!material.GetHandle().IsValid());
-
-		RenderHandle h = GenerateRenderHandle();
-		MaterialRenderData mrd;
-		mrd.Init(m_engine->GetContext(), m_engine->GetDescriptorAllocator(), m_engine->GetDescriptorSetLayoutCache());
-
-		auto submitTexture = [this](RenderHandle texHandle, MaterialRenderData& mrd, uint32_t binding, uint32_t arrayIndex)
-			{
-				Texture texture;
-				if (texHandle.IsValid())
-				{
-					texture = m_renderData.Textures[texHandle];
-				}
-				else
-				{
-					RenderHandle defTex = m_engine->GetDefaultTexture();
-					texture = m_renderData.Textures[defTex];
-				}
-				BindDescriptorTexture(m_engine->GetContext(), texture, mrd.Set, binding, arrayIndex);
-				//texture.Bind(m_engine->GetContext(), mrd.Set, binding, arrayIndex);
-			};
-		submitTexture(material.GetDiffuseTexture(), mrd, 0, 0);
-		submitTexture(material.GetNormalTexture(), mrd, 0, 1);
-		submitTexture(material.GetSpecularTexture(), mrd, 0, 2);
-
-		material.SetHandle(h);
-		m_renderData.Materials[h] = mrd;
-		uint32_t materialIndex = (uint32_t)m_materialArray.size();
-		m_materialArray.push_back(material);
-		return materialIndex;
+		UpdateMaterialBindings(material);
+		return material.GetHandle();
 	}
 
 	RenderHandle Scene::SubmitTexture(Texture tex)
@@ -1013,6 +1017,15 @@ namespace Mist
 		RenderHandle h = GenerateRenderHandle();
 		m_renderData.Textures[h] = tex;
 		return h;
+	}
+
+	void Scene::UpdateMaterialBindings(Material& material)
+	{
+		check(material.GetHandle() < (uint32_t)m_materialArray.size());
+		if (material.IsDirty())
+		{
+			m_dirtyMaterials.push_back(material.GetHandle());
+		}
 	}
 
 	RenderHandle Scene::LoadTexture(const char* texturePath) { check(false); return RenderHandle(); }
@@ -1077,10 +1090,10 @@ namespace Mist
 		materialIndexMap[nullptr] = m_defaultMaterialIndex;
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
-			Material m;
-			gltf_api::LoadMaterial(m_engine->GetContext(), *this, rootAssetPath, m, data->materials[i]);
-			materialIndexMap[&data->materials[i]] = GetMaterialCount();
-			SubmitMaterial(m);
+			Material* m = CreateMaterial();
+			gltf_api::LoadMaterial(m_engine->GetContext(), *this, rootAssetPath, *m, data->materials[i]);
+			materialIndexMap[&data->materials[i]] = m->GetHandle();
+			UpdateMaterialBindings(*m);
 		}
 
 		uint32_t nodesCount = (uint32_t)data->nodes_count;
@@ -1194,12 +1207,14 @@ namespace Mist
 
 	const MaterialRenderData& Scene::GetMaterialRenderData(RenderHandle handle) const
 	{
-		return m_renderData.Materials.at(handle);
+		check(handle < (uint32_t)m_materialRenderDataArray.size());
+		return m_materialRenderDataArray.at(handle);
 	}
 
 	MaterialRenderData& Scene::GetMaterialRenderData(RenderHandle handle)
 	{
-		return m_renderData.Materials.at(handle);
+		check(handle < (uint32_t)m_materialRenderDataArray.size());
+		return m_materialRenderDataArray.at(handle);
 	}
 
 	void Scene::Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
@@ -1239,15 +1254,13 @@ namespace Mist
 					if (lastMaterialIndex != drawData.MaterialIndex)
 					{
 						lastMaterialIndex = drawData.MaterialIndex;
-						const Material* material = &GetMaterialArray()[drawData.MaterialIndex];
-						check(material && material->GetHandle().IsValid());
-						const MaterialRenderData& mtl = GetMaterialRenderData(material->GetHandle());
-						shader->BindDescriptorSets(cmd, &mtl.Set, 1, materialSetIndex);
+						uint32_t materialPadding = Memory::PadOffsetAlignment((uint32_t)m_engine->GetContext().GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(MaterialUniform));
+						uint32_t bufferOffset = materialPadding * drawData.MaterialIndex;
+						const MaterialRenderData& mtl = m_materialRenderDataArray[lastMaterialIndex];
+						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetFrameIndex()].TextureSet, 1, materialSetIndex);
+						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetFrameIndex()].ParamsSet, 1, materialSetIndex + 1, &bufferOffset, 1);
 					}
-					//vkCmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					//++Mist_profiling::GRenderStats.DrawCalls;
 					RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					Mist_profiling::GRenderStats.TrianglesCount += drawData.Count / 3;
 				}
 			}
 		}
@@ -1281,8 +1294,6 @@ namespace Mist
 					lastMesh = mesh;
 					mrd.BindBuffers(cmd);
 				}
-				// TODO: index buffer is ordered the whole buffer or just by primitive?
-				//vkCmdDrawIndexed(cmd, mesh->GetIndexCount(), 1, 0, 0, 0);
 				RenderAPI::CmdDrawIndexed(cmd, mrd.IndexCount, 1, 0, 0, 0);
 #if 0
 				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
@@ -1460,6 +1471,7 @@ namespace Mist
 	{
 		if (GetRenderObjectCount())
 		{
+			// Update geometry
 			RecalculateTransforms();
 			check(!IsDirty());
 			const glm::mat4& viewMat = frameContext.CameraData->View;
@@ -1469,6 +1481,60 @@ namespace Mist
 			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
+
+			// Update materials
+			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
+			{
+				//check(m_dirtyMaterials[i] < (uint32_t)m_materialArray.size());
+				Material& material = m_materialArray[i];
+				if (material.IsDirty())
+				{
+					RenderHandle h = material.GetHandle();
+
+					MaterialRenderData& mrd = m_materialRenderDataArray[h];
+					auto submitTexture = [&](RenderHandle texHandle, uint32_t binding, uint32_t arrayIndex)
+						{
+							Texture texture;
+							if (texHandle.IsValid())
+							{
+								texture = m_renderData.Textures[texHandle];
+							}
+							else
+							{
+								RenderHandle defTex = m_engine->GetDefaultTexture();
+								texture = m_renderData.Textures[defTex];
+							}
+							BindDescriptorTexture(m_engine->GetContext(), texture, mrd.MaterialSets[frameContext.FrameIndex].TextureSet, binding, arrayIndex);
+						};
+					submitTexture(material.GetAlbedoTexture(), 0, 0);
+					submitTexture(material.GetNormalTexture(), 0, 1);
+					submitTexture(material.GetSpecularTexture(), 0, 2);
+					submitTexture(material.GetOcclusionTexture(), 0, 3);
+					submitTexture(material.GetMetallicTexture(), 0, 4);
+					submitTexture(material.GetRoughnessTexture(), 0, 5);
+
+					MaterialUniform ubo;
+					ubo.Metallic =  0.44f;//material.GetMetallic();
+					ubo.Roughness = 0.44f;//material.GetRoughness();
+					buffer->SetDynamicUniform(renderContext, "Material", &ubo, sizeof(MaterialUniform), sizeof(MaterialUniform), h);
+
+					if (mrd.MaterialSets[frameContext.FrameIndex].ParamsSet == VK_NULL_HANDLE)
+					{
+						VkDescriptorBufferInfo info = buffer->GenerateDescriptorBufferInfo("Material");
+						DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+							.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+							.Build(renderContext, mrd.MaterialSets[frameContext.FrameIndex].ParamsSet);
+					}
+
+					material.SetDirty(false);
+				}
+			}
+
+			// Integrity check
+			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
+			{
+				check(!m_materialArray[i].IsDirty());
+			}
 		}
 	}
 

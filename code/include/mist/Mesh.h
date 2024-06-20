@@ -30,19 +30,35 @@ namespace Mist
 	{
 	public:
 
-		inline RenderHandle GetDiffuseTexture() const { return m_diffuseTextureHandle; }
+		inline RenderHandle GetAlbedoTexture() const { return m_albedoTextureHandle; }
 		inline RenderHandle GetNormalTexture() const { return m_normalTextureHandle; }
 		inline RenderHandle GetSpecularTexture() const { return m_specularTextureHandle; }
-		inline void SetDiffuseTexture(RenderHandle texHandle) { m_diffuseTextureHandle = texHandle, m_dirty = true; }
+		inline RenderHandle GetOcclusionTexture() const { return m_occlusionTextureHandle; }
+		inline RenderHandle GetMetallicTexture() const { return m_metallicTextureHandle; }
+		inline RenderHandle GetRoughnessTexture() const { return m_roughnessTextureHandle; }
+		inline void SetAlbedoTexture(RenderHandle texHandle) { m_albedoTextureHandle = texHandle, m_dirty = true; }
 		inline void SetNormalTexture(RenderHandle texHandle) { m_normalTextureHandle = texHandle; m_dirty = true; }
 		inline void SetSpecularTexture(RenderHandle texHandle) { m_specularTextureHandle = texHandle; m_dirty = true; }
+		inline void SetOcclusionTexture(RenderHandle texHandle) { m_occlusionTextureHandle = texHandle; m_dirty = true; }
+		inline void SetMetallicTexture(RenderHandle texHandle) { m_occlusionTextureHandle = texHandle; m_dirty = true; }
+		inline void SetRoughnessTexture(RenderHandle texHandle) { m_occlusionTextureHandle = texHandle; m_dirty = true; }
+		inline float GetMetallic() const { return m_metallic; }
+		inline float GetRoughness() const { return m_roughness; }
+		inline void SetMetallic(float value) { m_metallic = value; m_dirty = true; }
+		inline void SetRoughness(float value) { m_roughness = value; m_dirty = true; }
 		inline bool IsDirty() const { return m_dirty; }
+		inline void SetDirty(bool v) { m_dirty = v; }
 
 	private:
 		bool m_dirty{ true };
-		RenderHandle m_diffuseTextureHandle;
+		float m_roughness = 0.f;
+		float m_metallic = 0.f;
+		RenderHandle m_albedoTextureHandle;
 		RenderHandle m_normalTextureHandle;
 		RenderHandle m_specularTextureHandle;
+		RenderHandle m_occlusionTextureHandle;
+		RenderHandle m_metallicTextureHandle;
+		RenderHandle m_roughnessTextureHandle;
 	};
 
 	class Mesh : public RenderResource

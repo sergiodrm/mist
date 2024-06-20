@@ -199,6 +199,7 @@ namespace Mist
 		// MRT pipeline
 		ShaderProgramDescription shaderDesc;
 		shaderDesc.DynamicBuffers.push_back("u_model");
+		shaderDesc.DynamicBuffers.push_back("u_material");
 		shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");
 		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("mrt.frag");
 		shaderDesc.RenderTarget = &m_renderTarget;

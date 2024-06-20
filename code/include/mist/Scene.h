@@ -83,6 +83,10 @@ namespace Mist
 		virtual bool IsValid(RenderObject object) const = 0;
 		virtual uint32_t GetRenderObjectCount() const = 0;
 
+		virtual Material* CreateMaterial() = 0;
+		virtual Material* GetMaterial(uint32_t index) = 0;
+		virtual const Material* GetMaterial(uint32_t index) const = 0;
+
 		virtual RenderObject GetRoot() const = 0;
 		virtual const char* GetRenderObjectName(RenderObject object) const = 0;
 		virtual void SetRenderObjectName(RenderObject object, const char* name) = 0;
