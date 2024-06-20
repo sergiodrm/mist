@@ -250,10 +250,18 @@ namespace Mist
 			info.Size = size;
 			info.Offset = m_freeMemoryOffset;
 			m_infoMap[name] = info;
+			// TODO: padding already has size accumulated...
 			m_freeMemoryOffset += Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, size);
 			return info.Offset;
 		}
 		return UINT32_MAX;
+	}
+
+	uint32_t UniformBufferMemoryPool::AllocDynamicUniform(const RenderContext& renderContext, const char* name, uint32_t elemSize, uint32_t elemCount)
+	{
+		uint32_t paddingSize = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
+		uint32_t chunkSize = paddingSize * elemCount;
+		return AllocUniform(renderContext, name, chunkSize);
 	}
 
 	void UniformBufferMemoryPool::DestroyUniform(const char* name)
@@ -274,6 +282,14 @@ namespace Mist
 			return true;
 		}
 		return false;
+	}
+
+	bool UniformBufferMemoryPool::SetDynamicUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t elemSize, uint32_t elemIndex, uint32_t elemOffset)
+	{
+		check(elemOffset + size <= elemSize);
+		uint32_t totalSize = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
+		uint32_t bufferOffset = totalSize * elemIndex + elemOffset;
+		return SetUniform(renderContext, name, source, size, bufferOffset);
 	}
 
 	UniformBufferMemoryPool::ItemMapInfo UniformBufferMemoryPool::GetLocationInfo(const char* name) const
