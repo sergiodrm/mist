@@ -49,6 +49,15 @@ float LinearizeDepth(float z, float n, float f)
     return (2.0 * n) / (f + n - z * (f - n));	
 }
 
+float CalculateAttenuation(float distance, float radius, float compression)
+{
+#if 0
+    return pow(smoothstep(radius, 0, distance), compression);
+#else
+    return 1.f / (distance * distance);
+#endif
+}
+
 vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDir, vec3 lightColor)
 {
     // Diffuse
@@ -116,7 +125,7 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, LightData li
     float dist = length(vec3(light.Pos) - fragPos);
     float r = LightRadius(light);
     float c = LightCompression(light);
-    float attenuation = pow(smoothstep(r, 0, dist), c);
+    float attenuation = CalculateAttenuation(dist, r, c);
 
     vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
     vec3 lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
@@ -198,7 +207,9 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
         vec3 L = normalize(LightDir);
         vec3 H = normalize(V + L);
         float Distance = length(LightDir);
-        float Attenuation = 1.f/(Distance * Distance);
+        float Radius = LightRadius(Light);
+        float Compression = LightCompression(Light);
+        float Attenuation = CalculateAttenuation(Distance, Radius, Compression);
         vec3 Radiance = Light.Color.rgb * Attenuation;
 
         // Ratio between diffuse and specular factor
@@ -223,7 +234,7 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
         float NdotL = max(dot(N, L), 0.f);
         Lo += (kD * Albedo / M_PI + specular) * Radiance * NdotL;
     }
-    vec3 Ambient = vec3(0.001) * Albedo * AO;
+    vec3 Ambient = vec3(0.03) * Albedo * AO;
     vec3 Color = Ambient + Lo;
     Color = Color / (Color + vec3(1.f));
     Color = pow(Color, vec3(1.f/2.2f));

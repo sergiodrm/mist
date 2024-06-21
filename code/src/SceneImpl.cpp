@@ -388,6 +388,21 @@ namespace gltf_api
 			Mist::Log(Mist::LogLevel::Warn, "Diffuse material texture not found.\n");
 #endif // MIST_ENABLE_LOADER_LOG
 		}
+		if (mtl.pbr_metallic_roughness.metallic_roughness_texture.texture)
+		{
+			Mist::Texture diffuse;
+			check(LoadTexture(context,
+				rootAssetPath,
+				mtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_SRGB, diffuse));
+			Mist::RenderHandle h = scene.SubmitTexture(diffuse);
+			material.SetMetallicTexture(h);
+		}
+		else
+		{
+#ifdef MIST_ENABLE_LOADER_LOG
+			Mist::Log(Mist::LogLevel::Warn, "Diffuse material texture not found.\n");
+#endif // MIST_ENABLE_LOADER_LOG
+		}
 		material.SetMetallic(mtl.pbr_metallic_roughness.metallic_factor);
 		material.SetRoughness(mtl.pbr_metallic_roughness.roughness_factor);
 
@@ -565,6 +580,7 @@ namespace Mist
 	{
 		// default material
 		Material* mat = CreateMaterial();
+		mat->SetName("DefaultMaterial");
 	}
 
 	void Scene::Destroy()
@@ -722,7 +738,7 @@ namespace Mist
 		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
 		file.Close();
 		check(contentReaded <= size);
-		content[contentReaded==size?size-1:contentReaded] = 0;
+		content[contentReaded == size ? size - 1 : contentReaded] = 0;
 
 		YAML::Node root = YAML::Load(content);
 		check(root);
@@ -736,7 +752,7 @@ namespace Mist
 		strcpy_s(skyboxTextures[Skybox::BOTTOM], envNode["Skybox"]["Bottom"].as<tString>().c_str());
 		strcpy_s(skyboxTextures[Skybox::LEFT], envNode["Skybox"]["Left"].as<tString>().c_str());
 		strcpy_s(skyboxTextures[Skybox::RIGHT], envNode["Skybox"]["Right"].as<tString>().c_str());
-		LoadSkybox(m_engine->GetContext(), m_skybox, 
+		LoadSkybox(m_engine->GetContext(), m_skybox,
 			skyboxTextures[Skybox::FRONT],
 			skyboxTextures[Skybox::BACK],
 			skyboxTextures[Skybox::LEFT],
@@ -1135,7 +1151,7 @@ namespace Mist
 		{
 			check(*files[i]);
 			strcpy_s(skybox.CubemapFiles[i], files[i]);
-			check(textureData[i].Width == textureData[(i + 1)%Skybox::COUNT].Width
+			check(textureData[i].Width == textureData[(i + 1) % Skybox::COUNT].Width
 				&& textureData[i].Height == textureData[(i + 1) % Skybox::COUNT].Height
 				&& textureData[i].Channels == textureData[(i + 1) % Skybox::COUNT].Channels
 				&& textureData[i].Pixels);
@@ -1349,113 +1365,134 @@ namespace Mist
 		ImGui::Separator();
 		ImGui::Text("Environment");
 		ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
-		ImGui::Columns(2);
-		//ImGui::InputText("Skybox cubemap", m_skybox.CubemapFile, 256);
-		ImGui::NextColumn();
 		ImGui::Button("Reload");
-		ImGui::Columns();
 
 
 		ImGui::Separator();
-		ImGui::Text("Scene objects");
-		ImGui::Separator();
-
-		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
+		if (ImGui::TreeNode("Scene tree"))
 		{
-			char treeId[2];
-			sprintf(treeId, "%u", i);
-			if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
+			for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 			{
-				glm::mat4 transform;
-				TransformComponentToMatrix(&m_transformComponents[i], &transform, 1);
-				DebugRender::DrawAxis(transform);
-				const Hierarchy& node = m_hierarchy[i];
-				ImGui::Text("Parent: %s", node.Parent != RenderObject::InvalidId ? GetRenderObjectName(node.Parent) : "None");
-				char buff[32];
-				sprintf_s(buff, "##TransformComponent%u", i);
-				if (ImGui::TreeNode(buff, "Transform component"))
+				char treeId[2];
+				sprintf(treeId, "%u", i);
+				if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
 				{
-					TransformComponent& t = m_transformComponents[i];
-					ImGui::Columns(2);
-					ImGui::Text("Position");
-					ImGui::NextColumn();
-					sprintf_s(buff, "##TransformPos%d", i);
-					bool dirty = ImGui::DragFloat3(buff, &t.Position[0], posStep);
-					ImGui::NextColumn();
-					ImGui::Text("Rotation");
-					ImGui::NextColumn();
-					sprintf_s(buff, "##TransformRot%d", i);
-					dirty |= ImGui::DragFloat3(buff, &t.Rotation[0], rotStep);
-					ImGui::NextColumn();
-					ImGui::Text("Scale");
-					ImGui::NextColumn();
-					sprintf_s(buff, "##TransformScl%d", i);
-					dirty |= ImGui::DragFloat3(buff, &t.Scale[0], sclStep);
-					ImGui::Columns();
-					ImGui::TreePop();
-
-					if (dirty)
-						MarkAsDirty(i);
-				}
-				sprintf_s(buff, "##LightComponent%u", i);
-				if (m_lightComponentMap.contains(i))
-				{
-					if (ImGui::TreeNode(buff, "Light component"))
+					glm::mat4 transform;
+					TransformComponentToMatrix(&m_transformComponents[i], &transform, 1);
+					DebugRender::DrawAxis(transform);
+					const Hierarchy& node = m_hierarchy[i];
+					ImGui::Text("Parent: %s", node.Parent != RenderObject::InvalidId ? GetRenderObjectName(node.Parent) : "None");
+					char buff[32];
+					sprintf_s(buff, "##TransformComponent%u", i);
+					if (ImGui::TreeNode(buff, "Transform component"))
 					{
-						LightComponent& light = m_lightComponentMap[i];
-						static const char* lightTypes[] = { "Point", "Directional", "Spot" };
-						uint32_t lightCount = sizeof(lightTypes) / sizeof(const char*);
-						if (ImGui::BeginCombo("Type", lightTypes[(uint32_t)light.Type]))
-						{
-							for (uint32_t j = 0; j < lightCount; ++j)
-							{
-								if (ImGui::Selectable(lightTypes[j], j == (uint32_t)light.Type))
-									light.Type = (ELightType)j;
-							}
-							ImGui::EndCombo();
-						}
+						TransformComponent& t = m_transformComponents[i];
 						ImGui::Columns(2);
-						ImGui::Text("Color");
+						ImGui::Text("Position");
 						ImGui::NextColumn();
-						sprintf_s(buff, "##LightColor%u", i);
-						ImGui::ColorEdit3(buff, &light.Color[0]);
+						sprintf_s(buff, "##TransformPos%d", i);
+						bool dirty = ImGui::DragFloat3(buff, &t.Position[0], posStep);
 						ImGui::NextColumn();
-						ImGui::Text("Radius");
+						ImGui::Text("Rotation");
 						ImGui::NextColumn();
-						sprintf_s(buff, "##LightRadius%u", i);
-						ImGui::DragFloat(buff, &light.Radius, 0.5f, 0.f, FLT_MAX);
+						sprintf_s(buff, "##TransformRot%d", i);
+						dirty |= ImGui::DragFloat3(buff, &t.Rotation[0], rotStep);
 						ImGui::NextColumn();
-						ImGui::Text("Compression");
-						sprintf_s(buff, "##LightCompression%u", i);
+						ImGui::Text("Scale");
 						ImGui::NextColumn();
-						ImGui::DragFloat(buff, &light.Compression, 0.05f, 0.f, FLT_MAX);
-						ImGui::NextColumn();
-						ImGui::Text("Inner cutoff");
-						ImGui::NextColumn();
-						sprintf_s(buff, "##LightInnerCutoff%u", i);
-						ImGui::DragFloat(buff, &light.InnerCutoff, 0.1f, 0.f, FLT_MAX);
-						ImGui::NextColumn();
-						ImGui::Text("Outer cutoff");
-						ImGui::NextColumn();
-						sprintf_s(buff, "##LightOuterCutoff%u", i);
-						ImGui::DragFloat(buff, &light.OuterCutoff, 0.1f, 0.f, FLT_MAX);
-						ImGui::NextColumn();
-						ImGui::Text("Project shadows");
-						ImGui::NextColumn();
-						sprintf_s(buff, "##LightShadows%u", i);
-						ImGui::Checkbox(buff, &light.ProjectShadows);
-						ImGui::NextColumn();
-
+						sprintf_s(buff, "##TransformScl%d", i);
+						dirty |= ImGui::DragFloat3(buff, &t.Scale[0], sclStep);
 						ImGui::Columns();
 						ImGui::TreePop();
-					}
-				}
 
-				ImGui::TreePop();
+						if (dirty)
+							MarkAsDirty(i);
+					}
+					sprintf_s(buff, "##LightComponent%u", i);
+					if (m_lightComponentMap.contains(i))
+					{
+						if (ImGui::TreeNode(buff, "Light component"))
+						{
+							LightComponent& light = m_lightComponentMap[i];
+							static const char* lightTypes[] = { "Point", "Directional", "Spot" };
+							uint32_t lightCount = sizeof(lightTypes) / sizeof(const char*);
+							if (ImGui::BeginCombo("Type", lightTypes[(uint32_t)light.Type]))
+							{
+								for (uint32_t j = 0; j < lightCount; ++j)
+								{
+									if (ImGui::Selectable(lightTypes[j], j == (uint32_t)light.Type))
+										light.Type = (ELightType)j;
+								}
+								ImGui::EndCombo();
+							}
+							ImGui::Columns(2);
+							ImGui::Text("Color");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightColor%u", i);
+							ImGui::ColorEdit3(buff, &light.Color[0]);
+							ImGui::NextColumn();
+							ImGui::Text("Radius");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightRadius%u", i);
+							ImGui::DragFloat(buff, &light.Radius, 0.5f, 0.f, FLT_MAX);
+							ImGui::NextColumn();
+							ImGui::Text("Compression");
+							sprintf_s(buff, "##LightCompression%u", i);
+							ImGui::NextColumn();
+							ImGui::DragFloat(buff, &light.Compression, 0.05f, 0.f, FLT_MAX);
+							ImGui::NextColumn();
+							ImGui::Text("Inner cutoff");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightInnerCutoff%u", i);
+							ImGui::DragFloat(buff, &light.InnerCutoff, 0.1f, 0.f, FLT_MAX);
+							ImGui::NextColumn();
+							ImGui::Text("Outer cutoff");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightOuterCutoff%u", i);
+							ImGui::DragFloat(buff, &light.OuterCutoff, 0.1f, 0.f, FLT_MAX);
+							ImGui::NextColumn();
+							ImGui::Text("Project shadows");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightShadows%u", i);
+							ImGui::Checkbox(buff, &light.ProjectShadows);
+							ImGui::NextColumn();
+
+							ImGui::Columns();
+							ImGui::TreePop();
+						}
+					}
+
+					ImGui::TreePop();
+				}
 			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Material list"))
+		{
+			char buff[32];
+			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
+			{
+				if (ImGui::TreeNode(&m_materialArray[i], "(Slot %d) %s", i, m_materialArray[i].GetName()))
+				{
+					bool dirty = false;
+					sprintf_s(buff, "##Metallic_%d", i);
+					float metallic = m_materialArray[i].GetMetallic();
+					dirty |= ImGui::DragFloat(buff, &metallic, 0.01f, 0.f, 1.f);
+					sprintf_s(buff, "##Roughness_%d", i);
+					float roughness = m_materialArray[i].GetMetallic();
+					dirty |= ImGui::DragFloat(buff, &roughness, 0.01f, 0.f, 1.f);
+					if (dirty)
+					{
+						m_materialArray[i].SetMetallic(metallic);
+						m_materialArray[i].SetRoughness(roughness);
+					}
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
 		}
 		ImGui::End();
-		}
+	}
 
 	bool Scene::IsDirty() const
 	{
@@ -1487,35 +1524,37 @@ namespace Mist
 			{
 				//check(m_dirtyMaterials[i] < (uint32_t)m_materialArray.size());
 				Material& material = m_materialArray[i];
-				if (material.IsDirty())
+				//if (material.IsDirty())
 				{
 					RenderHandle h = material.GetHandle();
-
 					MaterialRenderData& mrd = m_materialRenderDataArray[h];
-					auto submitTexture = [&](RenderHandle texHandle, uint32_t binding, uint32_t arrayIndex)
-						{
-							Texture texture;
-							if (texHandle.IsValid())
+					if (material.IsDirty())
+					{
+						auto submitTexture = [&](RenderHandle texHandle, uint32_t binding, uint32_t arrayIndex)
 							{
-								texture = m_renderData.Textures[texHandle];
-							}
-							else
-							{
-								RenderHandle defTex = m_engine->GetDefaultTexture();
-								texture = m_renderData.Textures[defTex];
-							}
-							BindDescriptorTexture(m_engine->GetContext(), texture, mrd.MaterialSets[frameContext.FrameIndex].TextureSet, binding, arrayIndex);
-						};
-					submitTexture(material.GetAlbedoTexture(), 0, 0);
-					submitTexture(material.GetNormalTexture(), 0, 1);
-					submitTexture(material.GetSpecularTexture(), 0, 2);
-					submitTexture(material.GetOcclusionTexture(), 0, 3);
-					submitTexture(material.GetMetallicTexture(), 0, 4);
-					submitTexture(material.GetRoughnessTexture(), 0, 5);
+								Texture texture;
+								if (texHandle.IsValid())
+								{
+									texture = m_renderData.Textures[texHandle];
+								}
+								else
+								{
+									RenderHandle defTex = m_engine->GetDefaultTexture();
+									texture = m_renderData.Textures[defTex];
+								}
+								BindDescriptorTexture(m_engine->GetContext(), texture, mrd.MaterialSets[frameContext.FrameIndex].TextureSet, binding, arrayIndex);
+							};
+						submitTexture(material.GetAlbedoTexture(), 0, 0);
+						submitTexture(material.GetNormalTexture(), 0, 1);
+						submitTexture(material.GetSpecularTexture(), 0, 2);
+						submitTexture(material.GetOcclusionTexture(), 0, 3);
+						submitTexture(material.GetMetallicTexture(), 0, 4);
+						submitTexture(material.GetRoughnessTexture(), 0, 5);
+					}
 
 					MaterialUniform ubo;
-					ubo.Metallic =  0.44f;//material.GetMetallic();
-					ubo.Roughness = 0.44f;//material.GetRoughness();
+					ubo.Metallic = material.GetMetallic();
+					ubo.Roughness = material.GetRoughness();
 					buffer->SetDynamicUniform(renderContext, "Material", &ubo, sizeof(MaterialUniform), sizeof(MaterialUniform), h);
 
 					if (mrd.MaterialSets[frameContext.FrameIndex].ParamsSet == VK_NULL_HANDLE)

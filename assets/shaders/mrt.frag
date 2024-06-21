@@ -26,7 +26,7 @@ layout(set = 3, binding = 0) uniform MaterialParams
 void main() 
 {
 	outPosition = vec4(inWorldPos, 1.0);
-	outPosition.w = MaterialMetallic(u_material);
+	outPosition.w = texture(u_Textures[3], inUV).b;
 
 #define USE_TBN
 #ifdef USE_TBN
@@ -37,7 +37,7 @@ void main()
 	mat3 TBN = mat3(T, B, N);
 	vec3 tnorm = TBN * normalize(texture(u_Textures[1], inUV).xyz * 2.0 - vec3(1.0));
 	outNormal = vec4(tnorm, 1.0);
-	outNormal.w = MaterialRoughness(u_material);
+	outNormal.w = texture(u_Textures[3], inUV).g;
 	//outNormal = normalize(texture(u_Textures[1], inUV));
 #else
 	//outNormal = vec4(inTangent, 1.0);
