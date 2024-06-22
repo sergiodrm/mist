@@ -287,6 +287,8 @@ void main()
     float metallic = gbufferPos.a;
     float roughness = gbufferNormal.a;
     float ao = texture(u_ssao, inTexCoords).r;
+    if (fragColor.a <= 0.1f)
+        discard;
     outColor = main_PBR(fragPos, fragNormal, fragColor.rgb, metallic, roughness, ao);
     return;
 

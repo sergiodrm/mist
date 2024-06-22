@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.00392156886, 0.00392156886, 0.00392156886]
   Skybox:
-    Front: ../assets/textures/skybox/top.jpg
-    Back: ../assets/textures/skybox/bottom.jpg
-    Top: ../assets/textures/skybox/left.jpg
-    Bottom: ../assets/textures/skybox/right.jpg
-    Left: ../assets/textures/skybox/front.jpg
-    Right: ../assets/textures/skybox/back.jpg
+    Front: ../assets/textures/skybox/front.jpg
+    Back: ../assets/textures/skybox/back.jpg
+    Top: ../assets/textures/skybox/top.jpg
+    Bottom: ../assets/textures/skybox/bottom.jpg
+    Left: ../assets/textures/skybox/left.jpg
+    Right: ../assets/textures/skybox/right.jpg
 RenderObjects:
   - RenderObject: 0
     Name: RenderObject_0
@@ -45,11 +45,11 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [-3.5, 1.5, 0]
-      Rotation: [0, 0.600000024, 0]
+      Rotation: [-4.4000001, 0.699999988, 0]
       Scale: [1, 1, 1]
     LightComponent:
-      Type: Point
-      Color: [0.617646694, 0, 1]
+      Type: Directional
+      Color: [0.145809323, 0.166666687, 0.116013087]
       Radius: 9
       Compression: 9
       InnerCutoff: 1
