@@ -131,7 +131,7 @@ namespace Mist
 
 		void Print(const LogEntry& entry)
 		{
-			fprintf_s(m_file, "<div style=\"color:%s\">[%s] %s</div>\n", 
+			fprintf_s(m_file, "<div style=\"color:%s\">[%7s] %s</div>\n", 
 				LogLevelHtmlColor(entry.Level), LogLevelToStr(entry.Level), entry.Msg);
 		}
 
@@ -170,7 +170,7 @@ namespace Mist
 		case LogLevel::Ok:
 		case LogLevel::Warn:
 		case LogLevel::Error:
-			printf("%s[%s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
+			printf("%s[%7s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
 			wchar_t wString[LOG_MSG_MAX_SIZE];
 			MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
 			OutputDebugString(wString);
