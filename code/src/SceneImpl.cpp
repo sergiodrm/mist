@@ -836,7 +836,6 @@ namespace Mist
 			emitter << YAML::EndMap;
 		}
 		emitter << YAML::Key << "RenderObjects";
-		emitter << YAML::BeginMap;
 		emitter << YAML::BeginSeq;
 		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
@@ -879,7 +878,6 @@ namespace Mist
 			emitter << YAML::EndMap;
 		}
 		emitter << YAML::EndSeq;
-		emitter << YAML::EndMap;
 		emitter << YAML::EndMap;
 
 		check(emitter.good());
