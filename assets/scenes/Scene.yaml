@@ -1,12 +1,12 @@
 Environment:
-  Ambient: [0.0199999996, 0.0500000007, 0.100000001]
+  Ambient: [0.00392156886, 0.00392156886, 0.00392156886]
   Skybox:
-    Front: ../assets/textures/skybox/left.jpg
-    Back: ../assets/textures/skybox/right.jpg
-    Top: ../assets/textures/skybox/front.jpg
-    Bottom: ../assets/textures/skybox/back.jpg
-    Left: ../assets/textures/skybox/top.jpg
-    Right: ../assets/textures/skybox/bottom.jpg
+    Front: ../assets/textures/skybox/top.jpg
+    Back: ../assets/textures/skybox/bottom.jpg
+    Top: ../assets/textures/skybox/left.jpg
+    Bottom: ../assets/textures/skybox/right.jpg
+    Left: ../assets/textures/skybox/front.jpg
+    Right: ../assets/textures/skybox/back.jpg
 RenderObjects:
   - RenderObject: 0
     Name: RenderObject_0
@@ -25,18 +25,33 @@ RenderObjects:
     MeshComponent:
       MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
       MeshName: Mesh_0
-  - RenderObject: 3
+  - RenderObject: 2
     Name: Light
     Parent: 0
     TransformComponent:
-      Position: [3.5, 1.5, 0]
+      Position: [7.5, 1.5, 0]
       Rotation: [0, 0.600000024, 0]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
-      Color: [1, 1, 1]
-      Radius: 10
-      Compression: 10
+      Color: [0.362745106, 1, 0.362745106]
+      Radius: 30.5
+      Compression: 30.5
+      InnerCutoff: 1
+      OuterCutoff: 0.800000012
+      ProjectShadows: false
+  - RenderObject: 3
+    Name: Light_2
+    Parent: 0
+    TransformComponent:
+      Position: [-3.5, 1.5, 0]
+      Rotation: [0, 0.600000024, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Point
+      Color: [0.617646694, 0, 1]
+      Radius: 9
+      Compression: 9
       InnerCutoff: 1
       OuterCutoff: 0.800000012
       ProjectShadows: false
