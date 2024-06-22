@@ -199,7 +199,7 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData Light, vec3 Albe
     return CalculateBRDF(fragNormal, L, Radiance, Albedo, Metallic, Roughness, V, H);
 }
 
-vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, vec3 viewPos, LightData light, vec3 Albedo, float Metallic, float Roughness)
+vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 Albedo, float Metallic, float Roughness)
 {
     vec3 V = normalize(-fragPos);
     vec3 lightDir = normalize(vec3(-light.Pos));
@@ -264,6 +264,10 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     }
     spotLightColor *= (1.f-spotLightShadow);
     Lo += spotLightColor;
+
+    // Directional light
+    vec3 directionalLightColor = ProcessDirectionalLight(FragViewPos, N, u_Env.DirectionalLight, Albedo, Metallic, Roughness);
+    Lo += directionalLightColor;
 
     vec3 Ambient = vec3(u_Env.AmbientColor) * Albedo * AO;
     vec3 Color = Ambient + Lo;
