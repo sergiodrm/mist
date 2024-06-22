@@ -359,8 +359,11 @@ namespace Mist
 					descriptorSetInfo.BindingArray.resize(bufferInfo.Binding + 1);
 				descriptorSetInfo.BindingArray[bufferInfo.Binding] = bufferInfo;
 
+#ifdef MIST_SHADER_REFLECTION_LOG
 				Logf(LogLevel::Debug, "> %s [ShaderStage: %s; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", vkutils::GetVulkanDescriptorTypeName(descriptorType),
 					vkutils::GetVulkanShaderStageName(shaderStage), bufferInfo.Name.c_str(), setIndex, bufferInfo.Binding, bufferInfo.Size, bufferInfo.ArrayCount);
+#endif // MIST_SHADER_REFLECTION_LOG
+
 				return setIndex;
 			};
 
@@ -368,7 +371,10 @@ namespace Mist
 		spirv_cross::CompilerGLSL compiler(binaryData, binaryCount);
 		spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
+#ifdef MIST_SHADER_REFLECTION_LOG
 		Log(LogLevel::Debug, "Processing shader reflection...\n");
+#endif // MIST_SHADER_REFLECTION_LOG
+
 
 		for (const spirv_cross::Resource& resource : resources.uniform_buffers)
 			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
@@ -389,11 +395,16 @@ namespace Mist
 			info.Size = (uint32_t)compiler.get_declared_struct_size(type);
 			info.ShaderStage = shaderStage;
 			m_reflectionProperties.PushConstantMap[shaderStage] = info;
+#ifdef MIST_SHADER_REFLECTION_LOG
 			Logf(LogLevel::Debug, "> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
 				vkutils::GetVulkanShaderStageName(shaderStage), info.Name.c_str(), info.Offset, info.Size);
-		}
+#endif // MIST_SHADER_REFLECTION_LOG
 
+		}
+#if MIST_SHADER_REFLECTION_LOG
 		Log(LogLevel::Debug, "End shader reflection.\n");
+#endif // MIST_SHADER_REFLECTION_LOG
+
 	}
 
 	ShaderDescriptorSetInfo& ShaderCompiler::FindOrCreateDescriptorSet(uint32_t set)
