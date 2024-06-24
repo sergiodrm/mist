@@ -42,11 +42,12 @@ namespace Mist
 		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
 		void SetProjection(float fov, float aspectRatio);
 		void SetProjection(float minX, float maxX, float minY, float maxY);
-		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType);
+		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType, const glm::mat4& viewMatrix);
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
 		void RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
 		void SetDepthVP(uint32_t index, const glm::mat4& mat);
+		void SetLightVP(uint32_t index, const glm::mat4& mat);
 		uint32_t GetBufferSize() const;
 
 		void ImGuiDraw(bool createWindow = false);
@@ -55,6 +56,7 @@ namespace Mist
 		ShaderProgram* m_shader;
 		// Cache for save depth view projection data until flush to gpu buffer.
 		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
+		glm::mat4 m_lightMVPCache[globals::MaxShadowMapAttachments];
 		// Projection params
 		float m_perspectiveParams[2];
 		float m_orthoParams[4];
@@ -91,7 +93,7 @@ namespace Mist
 		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
-		uint32_t m_lightCount;
+		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;
 	};

@@ -29,17 +29,17 @@ RenderObjects:
     Name: Light
     Parent: 0
     TransformComponent:
-      Position: [7.5, 1.5, 0]
-      Rotation: [0, 0.600000024, 0]
+      Position: [6, 1.5, -1]
+      Rotation: [0, 7, 0]
       Scale: [1, 1, 1]
     LightComponent:
-      Type: Point
+      Type: Spot
       Color: [0.362745106, 1, 0.362745106]
       Radius: 30.5
       Compression: 30.5
       InnerCutoff: 1
       OuterCutoff: 0.800000012
-      ProjectShadows: false
+      ProjectShadows: true
   - RenderObject: 3
     Name: Light_2
     Parent: 0

@@ -552,12 +552,7 @@ namespace Mist
 	IScene* IScene::LoadScene(IRenderEngine* engine, const char* sceneFilepath)
 	{
 		Scene* scene = static_cast<Scene*>(CreateScene(engine));
-		if (!scene->LoadModel(sceneFilepath))
-		{
-			Logf(LogLevel::Error, "Error loading scene from: %s.\n", sceneFilepath);
-			DestroyScene(scene);
-			scene = nullptr;
-		}
+		scene->LoadScene(sceneFilepath);
 		return scene;
 	}
 
@@ -1588,6 +1583,7 @@ namespace Mist
 		environmentData.AmbientColor = m_ambientColor;
 		environmentData.ActiveLightsCount = 0.f;
 		environmentData.ActiveSpotLightsCount = 0.f;
+		uint32_t shadowMapIndex = 0;
 		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
 			if (m_lightComponentMap.contains(i))
@@ -1607,10 +1603,12 @@ namespace Mist
 					break;
 				case ELightType::Directional:
 					environmentData.DirectionalLight.Color = light.Color;
+					environmentData.DirectionalLight.ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
 					environmentData.DirectionalLight.Direction = dir;
 					break;
 				case ELightType::Spot:
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Color = light.Color;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Position = pos;
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Direction = dir;
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].InnerCutoff = light.InnerCutoff;
@@ -1620,6 +1618,7 @@ namespace Mist
 				}
 			}
 		}
+		check(shadowMapIndex <= globals::MaxShadowMapAttachments);
 #endif // 0
 
 	}

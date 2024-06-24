@@ -24,7 +24,7 @@ namespace Mist
 		: m_shader(nullptr)
 	{
 		SetProjection(glm::radians(45.f), 16.f / 9.f);
-		SetProjection(0.f, 1920.f, 0.f, 1080.f);
+		SetProjection(-50.f, 50.f, -50.f, 50.f);
 		SetClip(1.f, 1000.f);
 
 		memset(m_depthMVPCache, 0, sizeof(m_depthMVPCache));
@@ -106,8 +106,16 @@ namespace Mist
 		m_orthoParams[3] = maxY;
 	}
 
-	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType)
+	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType, const glm::mat4& viewMatrix)
 	{
+		static constexpr glm::mat4 depthBias =
+		{
+			0.5f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.5f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.5f, 0.5f, 0.0f, 1.0f
+		};
+
 		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
 		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
 		lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
@@ -118,12 +126,16 @@ namespace Mist
 		glm::mat4 depthProj = GetProjection(projType);
 		depthProj[1][1] *= -1.f;
 		glm::mat4 depthVP = depthProj * depthView;
+		// Light Matrix with inverse(viewMatrix) because gbuffer calculates position buffer in view space.
+		glm::mat4 lightVP = depthBias * depthVP * glm::inverse(viewMatrix);
 		SetDepthVP(lightIndex, depthVP);
+		SetLightVP(lightIndex, lightVP);
 	}
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
 	{
 		buffer->SetUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, m_depthMVPCache, GetBufferSize());
+		buffer->SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, m_lightMVPCache, GetBufferSize());
 	}
 
 	void ShadowMapPipeline::RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
@@ -146,6 +158,12 @@ namespace Mist
 	{
 		check(index < globals::MaxShadowMapAttachments);
 		m_depthMVPCache[index] = mat;
+	}
+
+	void ShadowMapPipeline::SetLightVP(uint32_t index, const glm::mat4& mat)
+	{
+		check(index < globals::MaxShadowMapAttachments);
+		m_lightMVPCache[index] = mat;
 	}
 
 	uint32_t ShadowMapPipeline::GetBufferSize() const
@@ -232,8 +250,11 @@ namespace Mist
 				if (light && light->Type != ELightType::Point)
 				{
 					const TransformComponent& t = scene.GetTransform(i);
-					m_shadowMapPipeline.SetupLight(m_lightCount++, t.Position, t.Rotation,
-						light->Type == ELightType::Directional ? ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC : ShadowMapPipeline::PROJECTION_PERSPECTIVE);
+					m_shadowMapPipeline.SetupLight(m_lightCount++, 
+						light->Type == ELightType::Directional ? renderFrameContext.CameraData->View[3] : t.Position,
+						t.Rotation,
+						light->Type == ELightType::Directional ? ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC : ShadowMapPipeline::PROJECTION_PERSPECTIVE,
+						renderFrameContext.CameraData->View);
 				}
 			}
 
@@ -262,6 +283,7 @@ namespace Mist
 
 		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
 
+#if 0
 		// Update light VP matrix for lighting pass
 		static constexpr glm::mat4 depthBias =
 		{
@@ -277,6 +299,8 @@ namespace Mist
 			lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
 		}
 		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
+#endif // 0
+
 	}
 
 	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
