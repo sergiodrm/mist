@@ -12,11 +12,11 @@
 namespace Mist
 {
 	Camera::Camera()
-		: m_position(0.f, 7.f, 10.f),
+		: m_position(0.f, 0.f, 0.f),
 		m_rotation(0.f),
 		m_fov(45.f),
 		m_aspectRatio(16.f / 9.f),
-		m_nearClip(1.f),
+		m_nearClip(0.1f),
 		m_farClip(1000000.f),
 		m_left(0.f),
 		m_right(1920.f),
