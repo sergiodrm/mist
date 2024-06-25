@@ -8,7 +8,6 @@
 #include "VulkanBuffer.h"
 #include "RenderDescriptor.h"
 #include "imgui_internal.h"
-#include "Renderers/DebugRenderer.h"
 #include "glm/ext/matrix_clip_space.inl"
 #include "glm/matrix.hpp"
 #include "GenericUtils.h"

@@ -24,7 +24,6 @@
 #include "VulkanRenderEngine.h"
 #include <algorithm>
 #include <imgui.h>
-#include "Renderers/DebugRenderer.h"
 
 #define SCENE_LOAD_YAML
 #ifdef SCENE_LOAD_YAML

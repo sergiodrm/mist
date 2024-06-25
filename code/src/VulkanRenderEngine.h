@@ -17,8 +17,8 @@
 #include "FunctionStack.h"
 #include "Framebuffer.h"
 #include "Scene.h"
-#include "RendererBase.h"
 #include "RenderProcesses/UIProcess.h"
+#include "RendererBase.h"
 
 #include <cstdio>
 #include <SDL.h>
@@ -26,7 +26,6 @@
 #include <string.h>
 #include <chrono>
 #include "Globals.h"
-#include "DeferredRender.h"
 
 namespace Mist
 {

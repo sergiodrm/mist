@@ -2,7 +2,6 @@
 // Header file
 
 #pragma once
-#include "RendererBase.h"
 #include "RenderTarget.h"
 #include "DebugProcess.h"
 

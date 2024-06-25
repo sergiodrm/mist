@@ -8,7 +8,6 @@
 #include "VulkanBuffer.h"
 #include "RenderDescriptor.h"
 #include "imgui_internal.h"
-#include "Renderers/DebugRenderer.h"
 
 #define GBUFFER_RT_FORMAT_POSITION FORMAT_R32G32B32A32_SFLOAT
 #define GBUFFER_RT_FORMAT_NORMAL GBUFFER_RT_FORMAT_POSITION
