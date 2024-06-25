@@ -23,8 +23,9 @@ namespace Mist
 		: m_shader(nullptr)
 	{
 		SetProjection(glm::radians(45.f), 16.f / 9.f);
-		SetProjection(-50.f, 50.f, -50.f, 50.f);
-		SetClip(1.f, 1000.f);
+		SetProjection(-10.f, 10.f, -10.f, 10.f);
+		SetPerspectiveClip(1.f, 1000.f);
+		SetOrthographicClip(-10.f, 10.f);
 
 		memset(m_depthMVPCache, 0, sizeof(m_depthMVPCache));
 	}
@@ -72,10 +73,17 @@ namespace Mist
 		m_frameData.push_back(fd);
 	}
 
-	void ShadowMapPipeline::SetClip(float nearClip, float farClip)
+	void ShadowMapPipeline::SetPerspectiveClip(float nearClip, float farClip)
 	{
-		m_clip[0] = nearClip;
-		m_clip[1] = farClip;
+		m_perspectiveParams[2] = nearClip;
+		m_perspectiveParams[3] = farClip;
+		DebugRender::SetDebugClipParams(nearClip, farClip);
+	}
+
+	void ShadowMapPipeline::SetOrthographicClip(float nearClip, float farClip)
+	{
+		m_orthoParams[4] = nearClip;
+		m_orthoParams[5] = farClip;
 		DebugRender::SetDebugClipParams(nearClip, farClip);
 	}
 
@@ -84,9 +92,9 @@ namespace Mist
 		switch (projType)
 		{
 		case PROJECTION_PERSPECTIVE:
-			return glm::perspective(m_perspectiveParams[0], m_perspectiveParams[1], m_clip[0], m_clip[1]);
+			return glm::perspective(m_perspectiveParams[0], m_perspectiveParams[1], m_perspectiveParams[2], m_perspectiveParams[3]);
 		case PROJECTION_ORTHOGRAPHIC:
-			return glm::ortho(m_orthoParams[0], m_orthoParams[1], m_orthoParams[2], m_orthoParams[3], m_clip[0], m_clip[1]);
+			return glm::ortho(m_orthoParams[0], m_orthoParams[1], m_orthoParams[2], m_orthoParams[3], m_orthoParams[4], m_orthoParams[5]);
 		}
 		return glm::mat4(1.f);
 	}
@@ -114,6 +122,8 @@ namespace Mist
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.5f, 0.5f, 0.0f, 1.0f
 		};
+		if (projType == PROJECTION_ORTHOGRAPHIC)
+			Logf(LogLevel::Debug, "camera pos: %f, %f, %f\n", lightPos.x, lightPos.y, lightPos.z);
 
 		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
 		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
@@ -173,12 +183,14 @@ namespace Mist
 	void ShadowMapPipeline::ImGuiDraw(bool createWindow)
 	{
 		ImGui::Begin("ShadowMap proj params");
-		if (ImGui::DragFloat("Near clip", &m_clip[0], 1.f) | ImGui::DragFloat("Far clip", &m_clip[1], 1.f))
-			DebugRender::SetDebugClipParams(m_clip[0], m_clip[1]);
+		ImGui::DragFloat("Near clip", &m_perspectiveParams[3], 1.f);
+		ImGui::DragFloat("Far clip", &m_perspectiveParams[4], 1.f);
 		ImGui::DragFloat("FOV", &m_perspectiveParams[0], 0.01f);
 		ImGui::DragFloat("Aspect ratio", &m_perspectiveParams[1], 0.01f);
 		ImGui::DragFloat2("Ortho x", &m_orthoParams[0]);
 		ImGui::DragFloat2("Ortho y", &m_orthoParams[2]);
+		ImGui::DragFloat("Ortho Near clip", &m_orthoParams[4], 1.f);
+		ImGui::DragFloat("Ortho Far clip", &m_orthoParams[5], 1.f);
 		ImGui::End();
 	}
 
@@ -250,34 +262,12 @@ namespace Mist
 				{
 					const TransformComponent& t = scene.GetTransform(i);
 					m_shadowMapPipeline.SetupLight(m_lightCount++, 
-						light->Type == ELightType::Directional ? renderFrameContext.CameraData->View[3] : t.Position,
+						light->Type == ELightType::Directional ? glm::inverse(renderFrameContext.CameraData->InvView)[3] : t.Position,
 						t.Rotation,
 						light->Type == ELightType::Directional ? ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC : ShadowMapPipeline::PROJECTION_PERSPECTIVE,
-						renderFrameContext.CameraData->View);
+						renderFrameContext.CameraData->InvView);
 				}
 			}
-
-#if 0
-			if (envData.DirectionalLight.ShadowMapIndex >= 0.f)
-			{
-				m_attachmentIndexBits |= 1 << (uint32_t)shadowMapIndex;
-				m_shadowMapPipeline.SetupLight(0, envData.DirectionalLight.Position, math::ToRot(envData.DirectionalLight.Direction), ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC);
-				envData.DirectionalLight.ShadowMapIndex = shadowMapIndex++;
-			}
-
-			for (uint32_t i = 0; i < EnvironmentData::MaxLights; ++i)
-			{
-				SpotLightData& light = envData.SpotLights[i];
-				if (light.ShadowMapIndex >= 0.f)
-				{
-					m_attachmentIndexBits |= 1 << (uint32_t)shadowMapIndex;
-					m_shadowMapPipeline.SetupLight((uint32_t)shadowMapIndex, light.Position, math::ToRot(light.Direction * -1.f), ShadowMapPipeline::PROJECTION_PERSPECTIVE);
-					light.ShadowMapIndex = shadowMapIndex++;
-					if ((uint32_t)shadowMapIndex >= globals::MaxShadowMapAttachments)
-						break;
-				}
-			}
-#endif // 0
 		}
 
 		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);

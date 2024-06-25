@@ -50,7 +50,7 @@ namespace Mist
 
 	struct CameraData
 	{
-		glm::mat4 View;
+		glm::mat4 InvView;
 		glm::mat4 Projection;
 		glm::mat4 ViewProjection;
 	};

@@ -397,9 +397,9 @@ namespace Mist
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
 	{
-		m_cameraData.View = glm::inverse(view);
+		m_cameraData.InvView = glm::inverse(view);
 		m_cameraData.Projection = projection;
-		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.View;
+		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.InvView;
 	}
 
 	IScene* VulkanRenderEngine::GetScene()
@@ -447,7 +447,7 @@ namespace Mist
 		// Update scene graph data
 		RenderFrameContext& frameContext = GetFrameContext();
 
-		glm::mat4 viewRot = m_cameraData.View;
+		glm::mat4 viewRot = m_cameraData.InvView;
 		viewRot[3] = { 0.f,0.f,0.f,1.f };
 		glm::mat4 ubo[2];
 		ubo[0] = viewRot;

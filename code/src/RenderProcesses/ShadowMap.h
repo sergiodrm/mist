@@ -38,7 +38,8 @@ namespace Mist
 
 		void AddFrameData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
 
-		void SetClip(float nearClip, float farClip);
+		void SetPerspectiveClip(float nearClip, float farClip);
+		void SetOrthographicClip(float nearClip, float farClip);
 		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
 		void SetProjection(float fov, float aspectRatio);
 		void SetProjection(float minX, float maxX, float minY, float maxY);
@@ -58,9 +59,8 @@ namespace Mist
 		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
 		glm::mat4 m_lightMVPCache[globals::MaxShadowMapAttachments];
 		// Projection params
-		float m_perspectiveParams[2];
-		float m_orthoParams[4];
-		float m_clip[2];
+		float m_perspectiveParams[4];
+		float m_orthoParams[6];
 		// Per frame info
 		std::vector<FrameData> m_frameData;
 	};

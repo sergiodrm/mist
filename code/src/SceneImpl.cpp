@@ -1359,7 +1359,6 @@ namespace Mist
 		ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
 		ImGui::Button("Reload");
 
-
 		ImGui::Separator();
 		if (ImGui::TreeNode("Scene tree"))
 		{
@@ -1503,7 +1502,7 @@ namespace Mist
 			// Update geometry
 			RecalculateTransforms();
 			check(!IsDirty());
-			const glm::mat4& viewMat = frameContext.CameraData->View;
+			const glm::mat4& viewMat = frameContext.CameraData->InvView;
 			EnvironmentData renderData;
 			ProcessEnvironmentData(viewMat, renderData);
 
