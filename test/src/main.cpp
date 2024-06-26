@@ -95,7 +95,7 @@ public:
 
 protected:
 	virtual bool LoadTest() { return true; }
-	virtual void ProcessLogic(float timeDiff) {}
+	virtual void ProcessLogic(float timeDiff) {	}
 	virtual void UnloadTest() {}
 	virtual void ProcessEvent(void* eventData) {}
 
@@ -112,7 +112,7 @@ protected:
 	{
 #define TEST_LOAD
 #ifdef TEST_LOAD
-		Mist::IScene* scene = Mist::IScene::CreateScene(m_engine);
+		scene = Mist::IScene::LoadScene(m_engine, "../assets/scenes/scene.yaml");
 #else
 		//const char* scenePath = "../assets/models/vulkanscene_shadow.gltf";
 		const char* scenePath = "../assets/models/sponza/sponzatest/Sponzatest.gltf";
@@ -137,14 +137,51 @@ protected:
 		scene->SetRenderObjectName(obj, "Light");
 #endif // TEST_LOAD
 
-		return scene;
+		return scene != nullptr;
 	}
+
+	virtual void ProcessLogic(float timeDiff)
+	{
+#if 0
+		static float accumulated = timeDiff;
+		Mist::RenderObject lightObject;
+		for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
+		{
+			if (!strcmp(scene->GetRenderObjectName(i), "Light"))
+			{
+				lightObject = i;
+				break;
+			}
+		}
+		if (lightObject.IsValid())
+		{
+			Mist::TransformComponent transform = scene->GetTransform(lightObject);
+			float speed = 1.f;
+			float amplitude = 10.f;
+			float freq = 0.2f;
+			float movement = amplitude * sin(accumulated * freq * 2.f * M_PI) * speed * timeDiff;
+			transform.Position.x = movement;
+			movement = amplitude * cos(accumulated * freq * 2.f * M_PI) * speed * timeDiff;
+			transform.Position.z = movement;
+			accumulated += timeDiff;
+			scene->SetTransform(lightObject, transform);
+		}
+#endif // 0
+
+	}
+
+	Mist::IScene* scene = nullptr;
 };
 
 Test* CreateTest(int32_t argc, char** argv)
 {
 	// TODO: read cmd args.
 	return new SponzaTest();
+}
+
+void DestroyTest(Test* test)
+{
+	delete test;
 }
 
 
@@ -156,6 +193,6 @@ int main(int32_t argc, char** argv)
 		test->RunLoop();
 	}
 	test->Destroy();
-	delete test;
+	DestroyTest(test);
 	return 0;
 }
