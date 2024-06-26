@@ -193,10 +193,6 @@ namespace Mist
 
 		// Commands
 		check(InitCommands());
-		// RenderPass
-		check(InitRenderPass());
-		// Framebuffers
-		check(InitFramebuffers());
 		// Pipelines
 		check(InitPipeline());
 		// Init sync vars
@@ -207,49 +203,7 @@ namespace Mist
 		// Initialize render processes after instantiate render context
 		m_renderer.Init(m_renderContext, m_frameContextArray, sizeof(m_frameContextArray) / sizeof(RenderFrameContext));
 		DebugRender::Init(m_renderContext);
-#if 0
 
-		RendererCreateInfo rendererCreateInfo;
-		rendererCreateInfo.Context = m_renderContext;
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			rendererCreateInfo.FrameUniformBufferArray[i] = &m_frameContextArray[i].GlobalBuffer;
-			//rendererCreateInfo.ShadowMapAttachments[i] = m_renderTargetArray[i][RENDER_PASS_SHADOW_MAP].GetRenderTarget(0);
-		}
-
-		rendererCreateInfo.ConstantRange = nullptr;
-		rendererCreateInfo.ConstantRangeCount = 0;
-
-		m_gbuffer.Init(m_renderContext);
-		m_deferredLighting.Init(m_renderContext);
-		m_ssao.Init(m_renderContext);
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			UniformBufferMemoryPool* buffer = &m_frameContextArray[i].GlobalBuffer;
-			m_gbuffer.InitFrameData(m_renderContext, buffer, i);
-			m_deferredLighting.InitFrameData(m_renderContext, buffer, i, m_gbuffer);
-			m_ssao.InitFrameData(m_renderContext, buffer, i, m_gbuffer);
-		}
-		m_shutdownStack.Add([this] { m_gbuffer.Destroy(m_renderContext); });
-		m_shutdownStack.Add([this] { m_deferredLighting.Destroy(m_renderContext); });
-		m_shutdownStack.Add([this] { m_ssao.Destroy(m_renderContext); });
-
-
-		rendererCreateInfo.AdditionalData = &m_ssao.GetRenderTarget();
-
-		LightingRenderer* lightingRenderer = new LightingRenderer();
-		m_renderers[RENDER_PASS_SHADOW_MAP].push_back(new ShadowMapRenderer());
-		m_renderers[RENDER_PASS_LIGHTING].push_back(lightingRenderer);
-		for (uint32_t i = 0; i < RENDER_PASS_COUNT; i++)
-		{
-			for (IRendererBase* renderer : m_renderers[i])
-				renderer->Init(rendererCreateInfo);
-		}
-
-
-#endif // 0
-
-#if 1
 		const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
 		const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
@@ -286,7 +240,6 @@ namespace Mist
 					.Build(m_renderContext, m_cubemapPipeline.Sets[i]);
 			}
 		}
-#endif // 0
 
 
 		AddImGuiCallback(&Mist_profiling::ImGuiDraw);
@@ -926,40 +879,11 @@ namespace Mist
 				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 
-#if 0
-			tArray<VkDescriptorImageInfo, 2> quadImageInfoArray;
-			quadImageInfoArray[0].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			quadImageInfoArray[0].imageView = m_colorAttachments[i].FramebufferArray[0]->GetImageViewAt(0);
-			quadImageInfoArray[0].sampler = m_quadSampler.GetSampler();
-			quadImageInfoArray[1].imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			quadImageInfoArray[1].imageView = m_colorAttachments[i].FramebufferArray[0]->GetImageViewAt(0);
-			quadImageInfoArray[1].sampler = m_quadSampler.GetSampler();
-			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
-				.BindImage(0, &quadImageInfoArray[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.BindImage(1, &quadImageInfoArray[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(m_renderContext, m_quadSets[i]);
-#endif // 0
-
-
 			// Scene buffer allocation. TODO: this should be done by scene.
 			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, sizeof(glm::mat4) * globals::MaxRenderObjects);
 			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_SCENE_ENV_DATA, sizeof(EnvironmentData));
 		}
 		return true;
-	}
-
-	void VulkanRenderEngine::DrawPass(VkCommandBuffer cmd, uint32_t frameIndex, ERenderPassType passType)
-	{
-#if 0
-		//RenderTarget& rt = m_renderTargetArray[frameIndex][passType];
-
-		std::vector<IRendererBase*>& renderers = m_renderers[passType];
-		//rt.BeginPass(cmd);
-		for (IRendererBase* it : renderers)
-			it->RecordCmd(m_renderContext, GetFrameContext(), 0);
-		//rt.EndPass(cmd);  
-#endif // 0
-
 	}
 
 	void VulkanRenderEngine::ForceSync()

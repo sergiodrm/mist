@@ -129,12 +129,8 @@ namespace Mist
 		// Initializations
 		bool InitVulkan();
 		bool InitCommands();
-		bool InitRenderPass();
-		bool InitFramebuffers();
 		bool InitSync();
 		bool InitPipeline();
-
-		void DrawPass(VkCommandBuffer cmd, uint32_t frameIndex, ERenderPassType passType);
 
 		void ForceSync();
 
