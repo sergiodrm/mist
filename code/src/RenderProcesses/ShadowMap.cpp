@@ -122,8 +122,6 @@ namespace Mist
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.5f, 0.5f, 0.0f, 1.0f
 		};
-		if (projType == PROJECTION_ORTHOGRAPHIC)
-			Logf(LogLevel::Debug, "camera pos: %f, %f, %f\n", lightPos.x, lightPos.y, lightPos.z);
 
 		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
 		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
