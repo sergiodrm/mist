@@ -55,14 +55,6 @@ namespace Mist
 		glm::mat4 ViewProjection;
 	};
 
-	struct RenderPassAttachment
-	{
-		AllocatedImage Image;
-		std::vector<Framebuffer*> FramebufferArray;
-
-		void Destroy(const RenderContext& renderContext);
-	};
-
 	struct ScreenQuadPipeline
 	{
 		// Pipelines to render in screen framebuffer directly.

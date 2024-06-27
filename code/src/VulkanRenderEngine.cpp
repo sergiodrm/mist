@@ -786,18 +786,4 @@ namespace Mist
 		if (count > 0)
 			WaitFences(fences, count);
 	}
-
-	void RenderPassAttachment::Destroy(const RenderContext& renderContext)
-	{
-		for (uint32_t i = 0; i < (uint32_t)FramebufferArray.size(); ++i)
-		{
-			FramebufferArray[i]->Destroy(renderContext);
-			delete FramebufferArray[i];
-		}
-		FramebufferArray.clear();
-
-		if (Image.IsAllocated())
-			Memory::DestroyImage(renderContext.Allocator, Image);
-	}
-
 }
