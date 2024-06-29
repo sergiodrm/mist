@@ -105,7 +105,7 @@ namespace Mist
 		VkShaderStageFlagBits Stage;
 	};
 
-	struct ShaderProgramDescription
+	struct GraphicsShaderProgramDescription
 	{
 		/// Shader files
 		tString VertexShaderFile;
@@ -125,12 +125,22 @@ namespace Mist
 		tDynArray<tString> DynamicBuffers;
 	};
 
+	struct ComputeShaderProgramDescription
+	{
+		tString ComputeShaderFile;
+
+		/// Leave empty to run shader reflexion on shader file content.
+		/// Use to specify dynamic uniform buffers.
+		tDynArray<VkPushConstantRange> PushConstantArray;
+		tDynArray<tString> DynamicBuffers;
+	};
+
 	class ShaderProgram
 	{
 	public:
 		ShaderProgram();
 
-		static ShaderProgram* Create(const RenderContext& context, const ShaderProgramDescription& description);
+		static ShaderProgram* Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
 
 		void Destroy(const RenderContext& context);
 		bool Reload(const RenderContext& context);
@@ -141,11 +151,26 @@ namespace Mist
 
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 
-		const ShaderProgramDescription& GetDescription() const { return m_description; }
+		const GraphicsShaderProgramDescription& GetDescription() const { return m_description; }
 
 	private:
-		bool _Create(const RenderContext& context, const ShaderProgramDescription& description);
-		ShaderProgramDescription m_description;
+		bool _Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
+		GraphicsShaderProgramDescription m_description;
+		VkPipeline m_pipeline;
+		VkPipelineLayout m_pipelineLayout;
+	};
+
+	class ComputeShader
+	{
+	public:
+		static ComputeShader* Create(const RenderContext& context, const ComputeShaderProgramDescription& description);
+
+		void Destroy(const RenderContext& context);
+		bool Reload(const RenderContext& context);
+		inline const ComputeShaderProgramDescription& GetDescription() const { return m_description; }
+
+	private:
+		ComputeShaderProgramDescription m_description;
 		VkPipeline m_pipeline;
 		VkPipelineLayout m_pipelineLayout;
 	};
@@ -161,7 +186,9 @@ namespace Mist
 		void Init(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
+		void AddShaderProgram(const RenderContext& context, ComputeShader* computeShader);
 		ShaderProgram* FindShaderProgram(const char* vertexFile, const char* fragmentFile) const;
+		ShaderProgram* FindShaderProgram(const char* key) const;
 		void ReloadFromFile(const RenderContext& context);
 
 		ShaderProgram** GetShaderArray() { return m_shaderArray.data(); }
@@ -169,6 +196,7 @@ namespace Mist
 
 	private:
 		tDynArray<ShaderProgram*> m_shaderArray;
+		tDynArray<ComputeShader*> m_computeShaderArray;
 		tMap<tString, uint32_t> m_indexMap;
 	};
 

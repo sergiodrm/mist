@@ -20,6 +20,7 @@
 
 #ifdef SHADER_RUNTIME_COMPILATION
 
+//#define MIST_SHADER_REFLECTION_LOG
 //#define SHADER_FORCE_COMPILATION
 #define SHADER_BINARY_FILE_EXTENSION ".spv"
 
@@ -49,6 +50,7 @@ namespace shader_compiler
 		{
 		case VK_SHADER_STAGE_VERTEX_BIT: return shaderc_glsl_vertex_shader;
 		case VK_SHADER_STAGE_FRAGMENT_BIT: return shaderc_glsl_fragment_shader;
+		case VK_SHADER_STAGE_COMPUTE_BIT: return shaderc_glsl_compute_shader;
 		}
 		check(false && "Unreachable code");
 		return (shaderc_shader_kind)0;
@@ -146,6 +148,7 @@ namespace vkutils
 		{
 		case VK_SHADER_STAGE_VERTEX_BIT: return "Vertex";
 		case VK_SHADER_STAGE_FRAGMENT_BIT: return "Fragment";
+		case VK_SHADER_STAGE_COMPUTE_BIT: return "Compute";
 		}
 		check(false && "Unreachable code");
 		return "Unknown";
@@ -401,7 +404,7 @@ namespace Mist
 #endif // MIST_SHADER_REFLECTION_LOG
 
 		}
-#if MIST_SHADER_REFLECTION_LOG
+#ifdef MIST_SHADER_REFLECTION_LOG
 		Log(LogLevel::Debug, "End shader reflection.\n");
 #endif // MIST_SHADER_REFLECTION_LOG
 
@@ -468,6 +471,7 @@ namespace Mist
 			{
 			case VK_SHADER_STAGE_FRAGMENT_BIT: desiredExt = SHADER_FRAG_FILE_EXTENSION; break;
 			case VK_SHADER_STAGE_VERTEX_BIT: desiredExt = SHADER_VERTEX_FILE_EXTENSION; break;
+			case VK_SHADER_STAGE_COMPUTE_BIT: desiredExt = SHADER_COMPUTE_FILE_EXTENSION; break;
 			default:
 				return res;
 			}
@@ -643,7 +647,7 @@ namespace Mist
 		, m_pipelineLayout(VK_NULL_HANDLE)
 	{	}
 
-	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const ShaderProgramDescription& description)
+	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const GraphicsShaderProgramDescription& description)
 	{
 		ShaderProgram* program = new ShaderProgram();
 		check(program->_Create(context, description));
@@ -652,7 +656,7 @@ namespace Mist
 		return program;
 	}
 
-	bool ShaderProgram::_Create(const RenderContext& context, const ShaderProgramDescription& description)
+	bool ShaderProgram::_Create(const RenderContext& context, const GraphicsShaderProgramDescription& description)
 	{
 		check(!IsLoaded());
 		m_description = description;
@@ -758,9 +762,79 @@ namespace Mist
 		++Mist_profiling::GRenderStats.SetBindingCount;
 	}
 
+	ComputeShader* ComputeShader::Create(const RenderContext& context, const ComputeShaderProgramDescription& description)
+	{
+		ComputeShader* shader = new ComputeShader();
+		shader->m_description = description;
+		shader->Reload(context);
+		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
+		db.AddShaderProgram(context, shader);
+		return shader;
+	}
+
+	void ComputeShader::Destroy(const RenderContext& context)
+	{
+		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
+		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
+	}
+
+	bool ComputeShader::Reload(const RenderContext& context)
+	{
+		check(!m_description.ComputeShaderFile.empty());
+		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
+
+		VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
+
+		ShaderDescription fileDescription;
+		fileDescription.Filepath = m_description.ComputeShaderFile;
+		fileDescription.Stage = stage;
+		ShaderCompiler compiler(context);
+		compiler.ProcessShaderFile(m_description.ComputeShaderFile.c_str(), stage);
+
+		for (uint32_t i = 0; i < (uint32_t)m_description.DynamicBuffers.size(); ++i)
+			compiler.SetUniformBufferAsDynamic(m_description.DynamicBuffers[i].c_str());
+		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
+
+		VkShaderModule module = compiler.GetCompiledModule(stage);
+		check(module != VK_NULL_HANDLE);
+
+		VkPipelineShaderStageCreateInfo shaderStageInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr };
+		shaderStageInfo.module = module;
+		shaderStageInfo.stage = stage;
+		shaderStageInfo.pName = "main";
+		shaderStageInfo.flags = 0;
+
+		VkPipelineLayoutCreateInfo layoutInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, .pNext = nullptr };
+		layoutInfo.flags = 0;
+		layoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
+		layoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
+		if (m_description.PushConstantArray.empty())
+		{
+			layoutInfo.pushConstantRangeCount = (uint32_t)m_description.PushConstantArray.size();
+			layoutInfo.pPushConstantRanges = m_description.PushConstantArray.data();
+		}
+		else
+		{
+			layoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
+			layoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
+		}
+
+		vkcheck(vkCreatePipelineLayout(context.Device, &layoutInfo, nullptr, &m_pipelineLayout));
+		check(m_pipelineLayout != VK_NULL_HANDLE);
+
+		VkComputePipelineCreateInfo computeInfo{ .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, .pNext = nullptr };
+		computeInfo.layout = m_pipelineLayout;
+		computeInfo.stage = shaderStageInfo;
+		computeInfo.flags = 0;
+		vkcheck(vkCreateComputePipelines(context.Device, nullptr, 1, &computeInfo, nullptr, &m_pipeline));
+		check(m_pipeline != VK_NULL_HANDLE);
+		return true;
+	}
+
+
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
 	{
-		const ShaderProgramDescription& description = program->GetDescription();
+		const GraphicsShaderProgramDescription& description = program->GetDescription();
 		check(!FindShaderProgram(description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str()));
 
 		uint32_t index = (uint32_t)m_shaderArray.size();
@@ -770,11 +844,25 @@ namespace Mist
 		m_indexMap[key] = index;
 	}
 
+	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ComputeShader* computeShader)
+	{
+		const ComputeShaderProgramDescription& description = computeShader->GetDescription();
+		check(!FindShaderProgram(description.ComputeShaderFile.c_str()));
+		uint32_t index = (uint32_t)m_computeShaderArray.size();
+		m_computeShaderArray.push_back(computeShader);
+		m_indexMap[description.ComputeShaderFile.c_str()] = index;
+	}
+
 	ShaderProgram* ShaderFileDB::FindShaderProgram(const char* vertexFile, const char* fragmentFile) const
 	{
-		ShaderProgram* p = nullptr;
 		char key[512];
 		GenerateKey(key, vertexFile, fragmentFile);
+		return FindShaderProgram(key);
+	}
+
+	ShaderProgram* ShaderFileDB::FindShaderProgram(const char* key) const
+	{
+		ShaderProgram* p = nullptr;
 		if (m_indexMap.contains(key))
 			p = m_shaderArray[m_indexMap.at(key)];
 		return p;
@@ -805,10 +893,16 @@ namespace Mist
 			delete m_shaderArray[i];
 			m_shaderArray[i] = nullptr;
 		}
+		for (uint32_t i = 0; i < (uint32_t)m_computeShaderArray.size(); ++i)
+		{
+			m_computeShaderArray[i]->Destroy(context);
+			delete m_computeShaderArray[i];
+			m_computeShaderArray[i] = nullptr;
+		}
+		m_computeShaderArray.clear();
 		m_shaderArray.clear();
 		m_indexMap.clear();
 #ifdef SHADER_RUNTIME_COMPILATION
 #endif // SHADER_RUNTIME_COMPILATION
 	}
-
 }
