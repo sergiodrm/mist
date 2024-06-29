@@ -956,6 +956,19 @@ namespace Mist
 		vkResetCommandPool(renderContext.Device, renderContext.TransferContext.CommandPool, 0);
 	}
 
+	void utils::CmdCopyBuffer(const RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size)
+	{
+		CmdSubmitTransfer(renderContext,
+			[&](CommandBuffer cmd)
+			{
+				VkBufferCopy copyInfo;
+				copyInfo.size = size;
+				copyInfo.dstOffset = 0;
+				copyInfo.srcOffset = 0;
+				vkCmdCopyBuffer(cmd, srcBuffer.Buffer, dstBuffer.Buffer, 1, &copyInfo);
+			});
+	}
+
 	EFormat utils::GetImageFormatFromChannels(uint32_t channels)
 	{
 		switch (channels)

@@ -517,6 +517,7 @@ namespace Mist
 	namespace utils
 	{
 		void CmdSubmitTransfer(const RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback);
+		void CmdCopyBuffer(const RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size);
 		EFormat GetImageFormatFromChannels(uint32_t channels);
 		size_t GetPixelSizeFromFormat(EFormat format);
 	}
