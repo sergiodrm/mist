@@ -26,6 +26,7 @@
 #include <string.h>
 #include <chrono>
 #include "Globals.h"
+#include "RenderProcesses/GPUParticleSystem.h"
 
 namespace Mist
 {
@@ -153,6 +154,8 @@ namespace Mist
 		std::vector<ImGuiCallback> m_imguiCallbackArray;
 		typedef std::function<void(void*)> EventCallback;
 		EventCallback m_eventCallback;
+
+		GPUParticleSystem m_gpuParticleSystem;
 	};
 
 	extern RenderHandle GenerateRenderHandle();

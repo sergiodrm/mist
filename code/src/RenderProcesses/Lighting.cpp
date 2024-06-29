@@ -23,7 +23,7 @@ namespace Mist
 
 		{
 			// Deferred pipeline
-			ShaderProgramDescription shaderDesc;
+			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("deferred.frag");
 			shaderDesc.RenderTarget = &m_renderTarget;

@@ -40,6 +40,8 @@ namespace Mist
 		ShaderFileDB* ShaderDB;
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
+		VkQueue ComputeQueue;
+		uint32_t ComputeQueueFamily;
 
 		TransferContext TransferContext;
 

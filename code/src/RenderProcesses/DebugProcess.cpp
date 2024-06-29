@@ -253,7 +253,7 @@ namespace Mist
 		/** Pipeline layout and pipeline **/
 		/**********************************/
 		{
-			ShaderProgramDescription shaderDesc;
+			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile = globals::LineVertexShader;
 			shaderDesc.FragmentShaderFile = globals::LineFragmentShader;
 			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
@@ -299,7 +299,7 @@ namespace Mist
 
 		// Quad pipeline
 		{
-			ShaderProgramDescription shaderDesc;
+			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile = SHADER_FILEPATH("screenquad.vert");
 			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("screenquad.frag");
 			shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Int });

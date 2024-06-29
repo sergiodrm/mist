@@ -36,7 +36,7 @@ namespace Mist
 
 	void ShadowMapPipeline::Init(const RenderContext& renderContext, const RenderTarget* renderTarget)
 	{
-		ShaderProgramDescription shaderDesc;
+		GraphicsShaderProgramDescription shaderDesc;
 
 		// CreatePipeline
 		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };

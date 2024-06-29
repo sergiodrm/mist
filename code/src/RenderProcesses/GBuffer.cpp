@@ -184,7 +184,7 @@ namespace Mist
 	void GBuffer::InitPipeline(const RenderContext& renderContext)
 	{
 		// MRT pipeline
-		ShaderProgramDescription shaderDesc;
+		GraphicsShaderProgramDescription shaderDesc;
 		shaderDesc.DynamicBuffers.push_back("u_model");
 		shaderDesc.DynamicBuffers.push_back("u_material");
 		shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");

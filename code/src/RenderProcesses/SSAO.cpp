@@ -53,7 +53,7 @@ namespace Mist
 		m_rt.Create(renderContext, rtDesc);
 
 		// Shader
-		ShaderProgramDescription shaderDesc;
+		GraphicsShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
 		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("ssao.frag");
 		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
@@ -85,7 +85,7 @@ namespace Mist
 		m_blurRT.Create(renderContext, blurRtDesc);
 
 		// Blur shader
-		ShaderProgramDescription blurShaderDesc;
+		GraphicsShaderProgramDescription blurShaderDesc;
 		blurShaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
 		blurShaderDesc.FragmentShaderFile = SHADER_FILEPATH("ssaoblur.frag");
 		blurShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();

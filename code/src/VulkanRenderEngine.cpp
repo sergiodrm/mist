@@ -101,7 +101,7 @@ namespace Mist
 		}
 
 		// Init shader
-		ShaderProgramDescription shaderDesc;
+		GraphicsShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = globals::PostProcessVertexShader;
 		shaderDesc.FragmentShaderFile = globals::PostProcessFragmentShader;
 		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
@@ -146,7 +146,7 @@ namespace Mist
 
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{
-		ShaderProgramDescription shaderDesc;
+		GraphicsShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile = SHADER_FILEPATH("skybox.vert");
 		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("skybox.frag");
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
@@ -246,6 +246,8 @@ namespace Mist
 		AddImGuiCallback([this]() { ImGuiDraw(); });
 		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(); });
 
+		m_gpuParticleSystem.Init(m_renderContext);
+
 		return true;
 	}
 
@@ -300,16 +302,7 @@ namespace Mist
 		if (m_scene)
 			IScene::DestroyScene(m_scene);
 
-#if 0
-		for (uint32_t i = 0; i < RENDER_PASS_COUNT; ++i)
-		{
-			for (IRendererBase* it : m_renderers[i])
-			{
-				it->Destroy(m_renderContext);
-				delete it;
-			}
-		}
-#endif // 0
+		m_gpuParticleSystem.Destroy(m_renderContext);
 
 		DebugRender::Destroy(m_renderContext);
 		m_renderer.Destroy(m_renderContext);
@@ -567,7 +560,7 @@ namespace Mist
 				shaderArray[i]->Reload(m_renderContext);
 			}
 			ImGui::NextColumn();
-			const ShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
+			const GraphicsShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
 			ImGui::Text("%s", shaderDesc.VertexShaderFile.c_str());
 			ImGui::NextColumn();
 			ImGui::Text("%s", shaderDesc.FragmentShaderFile.c_str());
@@ -673,6 +666,31 @@ namespace Mist
 		m_renderContext.GraphicsQueue = device.get_queue(vkb::QueueType::graphics).value();
 		m_renderContext.GraphicsQueueFamily = device.get_queue_index(vkb::QueueType::graphics).value();
 		Log(LogLevel::Ok, "Vulkan graphics queue instance created...\n");
+
+		// Compute queue from device
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, nullptr);
+		VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyCount];
+		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, queueFamilyProperties);
+
+		uint32_t graphicsComputeQueueIndex = UINT32_MAX;
+		for (uint32_t i = 0; i < queueFamilyCount; ++i)
+		{
+			if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT
+				&& queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
+			{
+				graphicsComputeQueueIndex = i;
+				break;
+			}
+		}
+		check(graphicsComputeQueueIndex != UINT32_MAX);
+		delete[] queueFamilyProperties;
+		queueFamilyProperties = nullptr;
+
+		m_renderContext.ComputeQueueFamily = graphicsComputeQueueIndex;
+		vkGetDeviceQueue(m_renderContext.Device, graphicsComputeQueueIndex, 0, &m_renderContext.ComputeQueue);
+		check(m_renderContext.ComputeQueue);
+
 
 		// Dump physical device info
 		VkPhysicalDeviceProperties deviceProperties;
