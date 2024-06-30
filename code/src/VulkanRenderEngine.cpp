@@ -316,7 +316,9 @@ namespace Mist
 		{
 			m_frameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
 
+			vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].ComputeFence, nullptr);
 			vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
+			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].ComputeSemaphore, nullptr);
 			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
 			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
 			vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
@@ -457,6 +459,7 @@ namespace Mist
 
 
 
+			m_gpuParticleSystem.Draw(cmd, frameContext);
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
 
@@ -468,7 +471,6 @@ namespace Mist
 				m_scene->DrawSkybox(cmd, m_cubemapPipeline.Shader);
 			}
 
-			m_gpuParticleSystem.Draw(cmd, frameContext);
 
 
 			// Post process

@@ -37,6 +37,7 @@ namespace Mist
 			description.Topology = PRIMITIVE_TOPOLOGY_POINT_LIST;
 			description.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Float4 });
 			description.RenderTarget = rt;
+			description.RenderTarget = &m_renderTarget;
 			description.DepthStencilMode = DEPTH_STENCIL_NONE;
 			description.CullMode = CULL_MODE_NONE;
 			description.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
@@ -116,19 +117,19 @@ namespace Mist
 
 	void GPUParticleSystem::Draw(CommandBuffer cmd, const RenderFrameContext& frameContext)
 	{
-		//m_renderTarget.BeginPass(cmd);
+		m_renderTarget.BeginPass(cmd);
 		m_graphicsShader->UseProgram(cmd);
 		VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(cmd, 0, 1, &m_ssboArray[frameContext.FrameIndex].Buffer, &offset);
 		RenderAPI::CmdDraw(cmd, PARTICLE_COUNT, 1, 0, 0);
 
-		//m_renderTarget.EndPass(cmd);
+		m_renderTarget.EndPass(cmd);
 
-		//TextureDescriptor tex;
-		//tex.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		//tex.View = m_renderTarget.GetRenderTarget(0);
-		//tex.Sampler = m_sampler;
-		//DebugRender::DrawScreenQuad(glm::vec2{ 1920.f * 0.5f, 1080.f * 0.5f }, glm::vec2{ 400.f, 400.f }, tex);
+		TextureDescriptor tex;
+		tex.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		tex.View = m_renderTarget.GetRenderTarget(0);
+		tex.Sampler = m_sampler;
+		DebugRender::DrawScreenQuad(glm::vec2{ 1920.f * 0.5f, 1080.f * 0.5f }, glm::vec2{ 400.f, 400.f }, tex);
 	}
 
 	void GPUParticleSystem::Destroy(const RenderContext& context)
