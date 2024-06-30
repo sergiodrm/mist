@@ -246,7 +246,7 @@ namespace Mist
 		AddImGuiCallback([this]() { ImGuiDraw(); });
 		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(); });
 
-		m_gpuParticleSystem.Init(m_renderContext);
+		m_gpuParticleSystem.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_frameContextArray);
 
 		return true;
@@ -419,12 +419,12 @@ namespace Mist
 		uint32_t frameIndex = GetFrameIndex();
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_FENCE_READY))
+		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY) || !(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
 		{
 			VkFence waitFences[] = { frameContext.RenderFence, frameContext.ComputeFence };
 			uint32_t waitFencesCount = sizeof(waitFences) / sizeof(VkFence);
 			WaitFences(waitFences, waitFencesCount);
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_FENCE_READY;
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY | FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
 		}
 
 		{
@@ -439,6 +439,7 @@ namespace Mist
 			RenderAPI::ResetCommandBuffer(frameContext.ComputeCommand, 0);
 			RenderAPI::BeginCommandBuffer(frameContext.ComputeCommand, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 			BeginGPUEvent(m_renderContext, frameContext.ComputeCommand, "Begin Compute");
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
 			m_gpuParticleSystem.Dispatch(frameContext.ComputeCommand, frameIndex);
 			RenderAPI::EndCommandBuffer(frameContext.ComputeCommand);
 			EndGPUEvent(m_renderContext, frameContext.ComputeCommand);
@@ -451,8 +452,10 @@ namespace Mist
 			RenderAPI::ResetCommandBuffer(frameContext.GraphicsCommand, 0);
 			RenderAPI::BeginCommandBuffer(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 			BeginGPUEvent(m_renderContext, cmd, "Begin Graphics", 0xff0000ff);
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE;
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE;
 			m_renderer.Draw(m_renderContext, frameContext);
+
+
 
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
@@ -464,6 +467,8 @@ namespace Mist
 				m_cubemapPipeline.Shader->BindDescriptorSets(cmd, &m_cubemapPipeline.Sets[frameIndex], 1, 0, nullptr, 0);
 				m_scene->DrawSkybox(cmd, m_cubemapPipeline.Shader);
 			}
+
+			m_gpuParticleSystem.Draw(cmd, frameContext);
 
 
 			// Post process
@@ -483,7 +488,7 @@ namespace Mist
 			// Terminate command buffer
 			RenderAPI::EndCommandBuffer(cmd);
 			EndGPUEvent(m_renderContext, cmd);
-			frameContext.StatusFlags &= ~(FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE | FRAME_CONTEXT_FLAG_FENCE_READY);
+			frameContext.StatusFlags &= ~(FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE | FRAME_CONTEXT_FLAG_RENDER_FENCE_READY | FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE | FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY);
 		}
 
 
@@ -767,7 +772,7 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitSync()
 	{
-		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_frameContextArray[i];
 			// Render fence
@@ -783,15 +788,15 @@ namespace Mist
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
 
 			char buff[256];
-			sprintf_s(buff, "GraphicsFence_%d", i);
+			sprintf_s(buff, "GraphicsFence_%u", i);
 			SetVkObjectName(m_renderContext, &frameContext.RenderFence, VK_OBJECT_TYPE_FENCE, buff);
-			sprintf_s(buff, "ComputeFence_%d", i);
+			sprintf_s(buff, "ComputeFence_%u", i);
 			SetVkObjectName(m_renderContext, &frameContext.ComputeFence, VK_OBJECT_TYPE_FENCE, buff);
-			sprintf_s(buff, "RenderSemaphore_%d", i);
+			sprintf_s(buff, "RenderSemaphore_%u", i);
 			SetVkObjectName(m_renderContext, &frameContext.RenderSemaphore, VK_OBJECT_TYPE_SEMAPHORE, buff);
-			sprintf_s(buff, "ComputeSemaphore_%d", i);
+			sprintf_s(buff, "ComputeSemaphore_%u", i);
 			SetVkObjectName(m_renderContext, &frameContext.ComputeSemaphore, VK_OBJECT_TYPE_SEMAPHORE, buff);
-			sprintf_s(buff, "PresentSemaphore_%d", i);
+			sprintf_s(buff, "PresentSemaphore_%u", i);
 			SetVkObjectName(m_renderContext, &frameContext.PresentSemaphore, VK_OBJECT_TYPE_SEMAPHORE, buff);
 		}
 
@@ -833,19 +838,24 @@ namespace Mist
 	void VulkanRenderEngine::ForceSync()
 	{
 		PROFILE_SCOPE_LOG(ForceSync, "Force sync operation");
-		VkFence fences[globals::MaxOverlappedFrames];
-		uint32_t count = 0;
+		tDynArray<VkFence> fences;
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			check(!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_FENCE_READY))
+			check(!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
+			check(!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
+			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
 			{
-				fences[i] = m_frameContextArray[i].RenderFence;
-				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_FENCE_READY;
-				++count;
+				fences.push_back(m_frameContextArray[i].RenderFence);
+				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
 			}
+			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE))
+			{
+				fences.push_back(m_frameContextArray[i].ComputeFence);
+				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
+			}
+
 		}
-		if (count > 0)
-			WaitFences(fences, count);
+		if (!fences.empty())
+			WaitFences(fences.data(), (uint32_t)fences.size());
 	}
 }

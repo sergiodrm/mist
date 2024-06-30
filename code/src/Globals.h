@@ -47,7 +47,7 @@ namespace Mist
 		extern const char* DepthQuadFragmentShader;
 		extern const char* PostProcessVertexShader;
 		extern const char* PostProcessFragmentShader;
-		inline constexpr unsigned int MaxOverlappedFrames = 2;
+		inline constexpr unsigned int MaxOverlappedFrames = 1;
 		inline constexpr unsigned int MaxRenderObjects = 1000;
 		inline constexpr unsigned int MaxShadowMapAttachments = 3;
 	}

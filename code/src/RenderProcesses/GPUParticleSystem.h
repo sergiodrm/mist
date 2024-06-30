@@ -6,12 +6,13 @@
 #include "Globals.h"
 #include "VulkanBuffer.h"
 #include "RenderAPI.h"
+#include "RenderTarget.h"
 #include <glm/glm.hpp>
 
 namespace Mist
 {
 	class ComputeShader;
-	class RenderFrameContext;
+	struct RenderFrameContext;
 
 	struct Particle
 	{
@@ -24,14 +25,19 @@ namespace Mist
 	{
 	public:
 
-		void Init(const RenderContext& context);
+		void Init(const RenderContext& context, RenderTarget* rt);
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
 		void Dispatch(CommandBuffer cmd, uint32_t frameIndex);
+		void Draw(CommandBuffer cmd, const RenderFrameContext& frameContext);
 		void Destroy(const RenderContext& context);
 
 	private:
-		ComputeShader* m_shader;
+		ComputeShader* m_computeShader;
 		AllocatedBuffer m_ssboArray[globals::MaxOverlappedFrames];
 		VkDescriptorSet m_ssboDescriptorArray[globals::MaxOverlappedFrames];
+
+		ShaderProgram* m_graphicsShader;
+		RenderTarget m_renderTarget;
+		Sampler m_sampler;
 	};
 }
