@@ -8,4 +8,7 @@ void main()
     //FragColor = InColor;
     vec2 Coord = gl_PointCoord - vec2(0.5);
     FragColor = vec4(InColor.rgb, 0.5 - length(Coord));
+    const float radius = 0.5f;
+    if (length(Coord) > radius)
+        discard;
 }

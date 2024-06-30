@@ -713,11 +713,15 @@ namespace Mist
 
 		// Blending info for color attachments
 		uint32_t colorAttachmentCount = m_description.RenderTarget->GetDescription().ColorAttachmentCount;
+		check((uint32_t)m_description.ColorAttachmentBlendingArray.size() <= colorAttachmentCount);
 		builder.ColorBlendAttachment.resize(colorAttachmentCount);
 		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
 		{
 			// Single blenc attachment without blending and writing RGBA
-			builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
+			if (i < (uint32_t)m_description.ColorAttachmentBlendingArray.size())
+				builder.ColorBlendAttachment[i] = m_description.ColorAttachmentBlendingArray[i];
+			else
+				builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
 		}
 
 		// Pass layout info

@@ -413,6 +413,7 @@ namespace Mist
 		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_renderer.UpdateRenderData(m_renderContext, frameContext);
+		m_gpuParticleSystem.UpdateBuffers(m_renderContext, frameContext);
 	}
 
 	void VulkanRenderEngine::Draw()
@@ -591,6 +592,8 @@ namespace Mist
 		}
 		ImGui::Columns();
 		ImGui::End();
+
+		m_gpuParticleSystem.ImGuiDraw();
 	}
 
 	void VulkanRenderEngine::WaitFences(VkFence* fences, uint32_t fenceCount, uint64_t timeoutSeconds, bool waitAll)

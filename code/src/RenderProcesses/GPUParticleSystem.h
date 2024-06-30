@@ -14,6 +14,13 @@ namespace Mist
 	class ComputeShader;
 	struct RenderFrameContext;
 
+	struct ParameterUBO
+	{
+		float DeltaTime = 0.033f;
+		float Speed = 1.f;
+		float MaxSpeed = 10.f;
+	};
+
 	struct Particle
 	{
 		glm::vec2 Position;
@@ -27,9 +34,11 @@ namespace Mist
 
 		void Init(const RenderContext& context, RenderTarget* rt);
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
+		void UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext);
 		void Dispatch(CommandBuffer cmd, uint32_t frameIndex);
 		void Draw(CommandBuffer cmd, const RenderFrameContext& frameContext);
 		void Destroy(const RenderContext& context);
+		void ImGuiDraw();
 
 	private:
 		ComputeShader* m_computeShader;
@@ -39,5 +48,8 @@ namespace Mist
 		ShaderProgram* m_graphicsShader;
 		RenderTarget m_renderTarget;
 		Sampler m_sampler;
+
+		ParameterUBO m_params;
+		bool m_showRT = true;
 	};
 }

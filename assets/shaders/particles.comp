@@ -10,6 +10,8 @@ struct Particle
 layout (std140, binding = 0) uniform ParameterUBO
 {
     float DeltaTime;
+    float Speed;
+    float MaxSpeed;
 };
 
 layout (std140, binding = 1) readonly buffer ParticleSSBOIn
@@ -29,8 +31,10 @@ void main()
     uint index = gl_GlobalInvocationID.x;
 
     Particle particleIn = ParticlesIn[index];
-    ParticlesOut[index].Position = particleIn.Position + particleIn.Velocity * 0.033f;
+    vec2 velocity = min(particleIn.Velocity * Speed, vec2(MaxSpeed));
+    ParticlesOut[index].Position = particleIn.Position + velocity * DeltaTime;
     ParticlesOut[index].Velocity = particleIn.Velocity;
+    ParticlesOut[index].Color = vec4(dot(particleIn.Velocity, vec2(MaxSpeed)), particleIn.Position.xy, 1.f);
     if (ParticlesOut[index].Position.x > 1.f)
     {
         ParticlesOut[index].Position.x = -1.f;
