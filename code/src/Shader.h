@@ -7,6 +7,7 @@
 #include <string>
 #include "RenderTypes.h"
 #include "VulkanBuffer.h"
+#include "RenderAPI.h"
 
 namespace Mist
 {
@@ -168,6 +169,9 @@ namespace Mist
 		void Destroy(const RenderContext& context);
 		bool Reload(const RenderContext& context);
 		inline const ComputeShaderProgramDescription& GetDescription() const { return m_description; }
+
+		void UseProgram(CommandBuffer cmd) const;
+		void BindDescriptorSets(CommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
 
 	private:
 		ComputeShaderProgramDescription m_description;

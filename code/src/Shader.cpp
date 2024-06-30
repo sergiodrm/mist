@@ -831,6 +831,18 @@ namespace Mist
 		return true;
 	}
 
+	void ComputeShader::UseProgram(CommandBuffer cmd) const
+	{
+		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
+		++Mist_profiling::GRenderStats.ShaderProgramCount;
+	}
+
+	void ComputeShader::BindDescriptorSets(CommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
+	{
+		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
+		++Mist_profiling::GRenderStats.SetBindingCount;
+	}
+
 
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
 	{

@@ -56,6 +56,12 @@ namespace Mist
 		glm::mat4 ViewProjection;
 	};
 
+	struct UBOTime
+	{
+		float DeltaTime;
+		float TotalTime;
+	};
+
 	struct ScreenQuadPipeline
 	{
 		// Pipelines to render in screen framebuffer directly.

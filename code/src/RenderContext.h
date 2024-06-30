@@ -28,23 +28,35 @@ namespace Mist
 	struct RenderContext
 	{
 		struct Window* Window;
+
+		// App
 		VkInstance Instance;
-		VkPhysicalDevice GPUDevice;
 		VkSurfaceKHR Surface;
 		VkDebugUtilsMessengerEXT DebugMessenger;
+
+		// Device and properties
+		VkPhysicalDevice GPUDevice;
 		VkPhysicalDeviceProperties GPUProperties;
 		VkDevice Device;
+
+		// Memory related
 		Allocator* Allocator;
 		DescriptorLayoutCache* LayoutCache;
 		DescriptorAllocator* DescAllocator;
+		// Shader data base
 		ShaderFileDB* ShaderDB;
+
+		// Graphics queue
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
+
+		// Compute queue
 		VkQueue ComputeQueue;
 		uint32_t ComputeQueueFamily;
 
 		TransferContext TransferContext;
 
+		// External dll references
 		PFN_vkCmdBeginDebugUtilsLabelEXT pfn_vkCmdBeginDebugUtilsLabelEXT;
 		PFN_vkCmdEndDebugUtilsLabelEXT pfn_vkCmdEndDebugUtilsLabelEXT;
 		PFN_vkCmdInsertDebugUtilsLabelEXT pfn_vkCmdInsertDebugUtilsLabelEXT;
@@ -57,11 +69,19 @@ namespace Mist
 		// Sync vars
 		VkFence RenderFence{};
 		VkSemaphore RenderSemaphore{};
+
+		VkFence ComputeFence{};
+		VkSemaphore ComputeSemaphore{};
+
 		VkSemaphore PresentSemaphore{};
 
-		// Commands
+		// Graphics Commands
 		VkCommandPool GraphicsCommandPool{};
 		VkCommandBuffer GraphicsCommand{};
+
+		// Compute Commands (TODO: can share command pool between frames in flight?)
+		VkCommandPool ComputeCommandPool{};
+		VkCommandBuffer ComputeCommand{};
 
 		// Descriptors
 		VkDescriptorSet CameraDescriptorSet{};
