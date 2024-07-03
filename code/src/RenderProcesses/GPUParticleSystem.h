@@ -7,6 +7,7 @@
 #include "VulkanBuffer.h"
 #include "RenderAPI.h"
 #include "RenderTarget.h"
+#include "Texture.h"
 #include <glm/glm.hpp>
 
 namespace Mist
@@ -19,6 +20,8 @@ namespace Mist
 		float DeltaTime = 0.033f;
 		float Speed = 1.f;
 		float MaxSpeed = 10.f;
+		int32_t MovementMode = 0;
+		glm::vec2 Point = glm::vec2(0.f, 0.f);
 	};
 
 	struct Particle
@@ -44,6 +47,8 @@ namespace Mist
 		ComputeShader* m_computeShader;
 		AllocatedBuffer m_ssboArray[globals::MaxOverlappedFrames];
 		VkDescriptorSet m_ssboDescriptorArray[globals::MaxOverlappedFrames];
+		Texture m_circleGradientTexture;
+		VkDescriptorSet m_circleSet;
 
 		ShaderProgram* m_graphicsShader;
 		RenderTarget m_renderTarget;

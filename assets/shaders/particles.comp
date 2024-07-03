@@ -12,6 +12,8 @@ layout (std140, binding = 0) uniform ParameterUBO
     float DeltaTime;
     float Speed;
     float MaxSpeed;
+    int MovementMode;
+    vec2 Point;
 };
 
 layout (std140, binding = 1) readonly buffer ParticleSSBOIn
@@ -26,15 +28,24 @@ layout(std140, binding = 2) buffer ParticleSSBOOut
 
 layout (local_size_x= 256, local_size_y = 1, local_size_z = 1) in;
 
+#define REPULSION_FACTOR 0.00035f
+
+vec2 Repulsion(vec2 Position, vec2 Center)
+{
+    vec2 Diff = Center - Position;
+    float Distance = length(Diff);
+    return Diff / (Distance*Distance*Distance) * REPULSION_FACTOR;
+}
+
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
 
     Particle particleIn = ParticlesIn[index];
     vec2 velocity = min(particleIn.Velocity * Speed, vec2(MaxSpeed));
+    velocity += (Repulsion(particleIn.Position, Point));
     ParticlesOut[index].Position = particleIn.Position + velocity * DeltaTime;
     ParticlesOut[index].Velocity = particleIn.Velocity;
-    ParticlesOut[index].Color = vec4(dot(particleIn.Velocity, vec2(MaxSpeed)), particleIn.Position.xy, 1.f);
     if (ParticlesOut[index].Position.x > 1.f)
     {
         ParticlesOut[index].Position.x = -1.f;

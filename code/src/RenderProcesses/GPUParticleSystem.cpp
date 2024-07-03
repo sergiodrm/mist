@@ -9,7 +9,7 @@
 #include "Debug.h"
 #include "Texture.h"
 
-#define PARTICLE_COUNT 4096
+#define PARTICLE_COUNT 512 * 256
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
 
 namespace Mist
@@ -18,7 +18,7 @@ namespace Mist
 	{
 		// RenderTarget
 		{
-			tClearValue clearValue{ 0.f, 0.f, 0.f, 1.f };
+			tClearValue clearValue{ 0.f, 0.f, 0.f, 0.f };
 			RenderTargetDescription description;
 			description.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
 			description.RenderArea.extent = { 800, 800 };
@@ -43,14 +43,14 @@ namespace Mist
 			description.CullMode = CULL_MODE_NONE;
 			description.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 			description.ColorAttachmentBlendingArray.resize(1);
-			description.ColorAttachmentBlendingArray[0].colorWriteMask = 0xF;
+			description.ColorAttachmentBlendingArray[0].colorWriteMask = 0xf;
 			description.ColorAttachmentBlendingArray[0].blendEnable = VK_TRUE;
 			description.ColorAttachmentBlendingArray[0].colorBlendOp = VK_BLEND_OP_ADD;
-			description.ColorAttachmentBlendingArray[0].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-			description.ColorAttachmentBlendingArray[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			description.ColorAttachmentBlendingArray[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+			description.ColorAttachmentBlendingArray[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 			description.ColorAttachmentBlendingArray[0].alphaBlendOp = VK_BLEND_OP_ADD;
-			description.ColorAttachmentBlendingArray[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			description.ColorAttachmentBlendingArray[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_DST_ALPHA;
+			description.ColorAttachmentBlendingArray[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+			description.ColorAttachmentBlendingArray[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 			m_graphicsShader = ShaderProgram::Create(context, description);
 		}
 
@@ -95,6 +95,15 @@ namespace Mist
 		delete[] particles;
 
 		m_sampler = CreateSampler(context);
+
+		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
+		VkDescriptorImageInfo imageInfo;
+		imageInfo.sampler = m_sampler;
+		imageInfo.imageView = m_circleGradientTexture.GetImageView();
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, m_circleSet);
 	}
 
 	void GPUParticleSystem::InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray)
@@ -135,8 +144,10 @@ namespace Mist
 	{
 		m_renderTarget.BeginPass(cmd);
 		m_graphicsShader->UseProgram(cmd);
+		m_graphicsShader->BindDescriptorSets(cmd, &m_circleSet, 1, 0);
 		VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(cmd, 0, 1, &m_ssboArray[frameContext.FrameIndex].Buffer, &offset);
+
 		RenderAPI::CmdDraw(cmd, PARTICLE_COUNT, 1, 0, 0);
 
 		m_renderTarget.EndPass(cmd);
@@ -153,6 +164,8 @@ namespace Mist
 
 	void GPUParticleSystem::Destroy(const RenderContext& context)
 	{
+		m_circleGradientTexture.Destroy(context);
+
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			Memory::DestroyBuffer(context.Allocator, m_ssboArray[i]);
@@ -168,6 +181,7 @@ namespace Mist
 		ImGui::DragFloat("DeltaTime", &m_params.DeltaTime, 0.005f, 0.f, 2.f);
 		ImGui::DragFloat("Speed", &m_params.Speed, 0.001f, 0.f, 10.f);
 		ImGui::DragFloat("Max speed", &m_params.MaxSpeed, 0.001f, 0.f, 10.f);
+		ImGui::DragFloat2("Point", &m_params.Point[0], 0.05f);
 		ImGui::End();
 	}
 }

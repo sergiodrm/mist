@@ -14,7 +14,7 @@ out gl_PerVertex
 
 void main()
 {
-    gl_PointSize = 3.f;
+    gl_PointSize = 4.f;
     gl_Position = vec4(InPosition.xy, 0.f, 1.f);
     OutColor = InColor;
 }
