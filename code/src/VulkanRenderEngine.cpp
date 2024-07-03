@@ -422,13 +422,21 @@ namespace Mist
 		uint32_t frameIndex = GetFrameIndex();
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY) || !(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
+
+		VkFence waitFences[2];
+		uint32_t waitFencesCount = 0;
+		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
 		{
-			VkFence waitFences[] = { frameContext.RenderFence, frameContext.ComputeFence };
-			uint32_t waitFencesCount = sizeof(waitFences) / sizeof(VkFence);
-			WaitFences(waitFences, waitFencesCount);
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY | FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
+			waitFences[waitFencesCount++] = frameContext.RenderFence;
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
 		}
+		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE))
+		{
+			waitFences[waitFencesCount++] = frameContext.ComputeFence;
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
+		}
+		if (waitFencesCount > 0)
+			WaitFences(waitFences, waitFencesCount);
 
 		{
 			CPU_PROFILE_SCOPE(PrepareFrame);
