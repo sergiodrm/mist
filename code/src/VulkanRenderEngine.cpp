@@ -578,27 +578,45 @@ namespace Mist
 		ImGui::Begin("Engine");
 		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
 		ImGui::Separator();
-		ImGui::Columns(3);
-		ShaderProgram** shaderArray = m_shaderDb.GetShaderArray();
-		uint32_t shaderCount = m_shaderDb.GetShaderCount();
-		for (uint32_t i = 0; i < shaderCount; ++i)
+		if (ImGui::TreeNode("Graphics Shaders"))
 		{
-			char label[32];
-			sprintf_s(label, "Reload_%d", i);
-			if (ImGui::Button(label))
+			ImGui::Columns(3);
+			ShaderProgram** shaderArray = m_shaderDb.GetShaderArray();
+			uint32_t shaderCount = m_shaderDb.GetShaderCount();
+			for (uint32_t i = 0; i < shaderCount; ++i)
 			{
-				ForceSync();
-				shaderArray[i]->Destroy(m_renderContext);
-				shaderArray[i]->Reload(m_renderContext);
+				char label[32];
+				sprintf_s(label, "Reload_%d", i);
+				if (ImGui::Button(label))
+				{
+					ForceSync();
+					shaderArray[i]->Destroy(m_renderContext);
+					shaderArray[i]->Reload(m_renderContext);
+				}
+				ImGui::NextColumn();
+				const GraphicsShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
+				ImGui::Text("%s", shaderDesc.VertexShaderFile.c_str());
+				ImGui::NextColumn();
+				ImGui::Text("%s", shaderDesc.FragmentShaderFile.c_str());
+				ImGui::NextColumn();
 			}
-			ImGui::NextColumn();
-			const GraphicsShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
-			ImGui::Text("%s", shaderDesc.VertexShaderFile.c_str());
-			ImGui::NextColumn();
-			ImGui::Text("%s", shaderDesc.FragmentShaderFile.c_str());
-			ImGui::NextColumn();
+			ImGui::Columns();
+			ImGui::TreePop();
 		}
-		ImGui::Columns();
+		if (ImGui::Button("Reload all"))
+		{
+			ForceSync();
+			for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
+			{
+				m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
+				m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
+			}
+			for (uint32_t i = 0; i < m_shaderDb.GetComputeShaderCount(); ++i)
+			{
+				m_shaderDb.GetComputeShaderArray()[i]->Destroy(m_renderContext);
+				m_shaderDb.GetComputeShaderArray()[i]->Reload(m_renderContext);
+			}
+		}
 		ImGui::End();
 
 		m_gpuParticleSystem.ImGuiDraw();

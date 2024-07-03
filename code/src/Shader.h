@@ -198,6 +198,8 @@ namespace Mist
 
 		ShaderProgram** GetShaderArray() { return m_shaderArray.data(); }
 		uint32_t GetShaderCount() const { return (uint32_t)m_shaderArray.size(); }
+		ComputeShader** GetComputeShaderArray() { return m_computeShaderArray.data(); }
+		uint32_t GetComputeShaderCount() const { return (uint32_t)m_computeShaderArray.size(); }
 
 	private:
 		tDynArray<ShaderProgram*> m_shaderArray;

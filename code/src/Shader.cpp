@@ -780,6 +780,8 @@ namespace Mist
 	{
 		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
 		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
+		m_pipeline = VK_NULL_HANDLE;
+		m_pipelineLayout = VK_NULL_HANDLE;
 	}
 
 	bool ComputeShader::Reload(const RenderContext& context)
