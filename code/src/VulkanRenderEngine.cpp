@@ -423,6 +423,8 @@ namespace Mist
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 
+//#define MIST_FORCE_SYNC
+#ifndef MIST_FORCE_SYNC
 		VkFence waitFences[2];
 		uint32_t waitFencesCount = 0;
 		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
@@ -437,6 +439,10 @@ namespace Mist
 		}
 		if (waitFencesCount > 0)
 			WaitFences(waitFences, waitFencesCount);
+#else
+		ForceSync();
+#endif // !MIST_FORCE_SYNC
+
 
 		{
 			CPU_PROFILE_SCOPE(PrepareFrame);
