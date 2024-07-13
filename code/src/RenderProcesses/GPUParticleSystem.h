@@ -33,8 +33,17 @@ namespace Mist
 
 	class GPUParticleSystem
 	{
+		enum
+		{
+			GPU_PARTICLES_NONE = 0x00,
+			GPU_PARTICLES_COMPUTE_ACTIVE = 0x01,
+			GPU_PARTICLES_GRAPHICS_ACTIVE = 0x02,
+			GPU_PARTICLES_ACTIVE = GPU_PARTICLES_COMPUTE_ACTIVE | GPU_PARTICLES_GRAPHICS_ACTIVE,
+			GPU_PARTICLES_SHOW_RT = 0x04
+		};
 	public:
 
+		GPUParticleSystem();
 		void Init(const RenderContext& context, RenderTarget* rt);
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
 		void UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext);
@@ -55,6 +64,7 @@ namespace Mist
 		Sampler m_sampler;
 
 		ParameterUBO m_params;
-		bool m_showRT = true;
+		int32_t m_flags;
+		uint32_t m_particleCount;
 	};
 }
