@@ -25,8 +25,9 @@
 #include "RenderTarget.h"
 #include "RenderProcesses/RenderProcess.h"
 #include "TimeUtils.h"
+#include "CmdParser.h"
 
-//#define MIST_CRASH_ON_VALIDATION_LAYER
+#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -248,6 +249,8 @@ namespace Mist
 
 		m_gpuParticleSystem.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_frameContextArray);
+
+		AddConsoleCommand(ExecCommand_CVar);
 
 		return true;
 	}
@@ -567,19 +570,15 @@ namespace Mist
 		}
 	}
 
+	CIntVar ImGuiDemoWindow("ImGuiDemoWindow", 0);
+
 	void VulkanRenderEngine::ImGuiDraw()
 	{
-#if 0
-		for (uint32_t passIndex = 0; passIndex < RENDER_PASS_COUNT; ++passIndex)
-		{
-			for (uint32_t i = 0; i < (uint32_t)m_renderers[passIndex].size(); ++i)
-				m_renderers[passIndex][i]->ImGuiDraw();
-		}
-		m_gbuffer.ImGuiDraw();
-		m_ssao.ImGuiDraw();
-#endif // 0
 		m_renderer.ImGuiDraw();
 
+		DrawConsole();
+		if (ImGuiDemoWindow.Get())
+			ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Engine");
 		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
