@@ -9,6 +9,7 @@
 #include "glm/gtx/euler_angles.inl"
 #include "glm/gtx/matrix_decompose.hpp"
 #include "Globals.h"
+#include <imgui/imgui.h>
 
 namespace Mist
 {
@@ -211,4 +212,23 @@ namespace Mist
 		q = glm::conjugate(q);
 		rot = glm::eulerAngles(q);
 	}
+
+	void PrintMat(const glm::mat4& mat)
+	{
+		for (uint32_t i = 0; i < 4; ++i)
+		{
+			Logf(LogLevel::Debug, "%.3f %.3f %.3f %.3f\n", mat[i][0], mat[i][1], mat[i][2], mat[i][3]);
+		}
+	}
+}
+
+bool Mist::ImGuiUtils::CheckboxBitField(const char* id, int32_t* bitfield, int32_t bitflag)
+{
+	bool v = (*bitfield) & bitflag;
+	if (ImGui::Checkbox(id, &v))
+	{
+		v ? (*bitfield) |= bitflag : (*bitfield) &= ~bitflag;
+		return true;
+	}
+	return false;
 }
