@@ -249,6 +249,7 @@ namespace Mist
 		else
 		{
 			float shadowMapIndex = 0.f;
+			glm::mat4 invView = renderFrameContext.CameraData->InvView;
 
 			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
 			uint32_t count = scene.GetRenderObjectCount();
@@ -256,16 +257,28 @@ namespace Mist
 			for (uint32_t i = 0; i < count; ++i)
 			{
 				const LightComponent* light = scene.GetLight(i);
-				if (light && light->Type != ELightType::Point)
+				if (light && light->Type != ELightType::Point && light->ProjectShadows)
 				{
 					const TransformComponent& t = scene.GetTransform(i);
-					m_shadowMapPipeline.SetupLight(m_lightCount++, 
-						light->Type == ELightType::Directional ? glm::inverse(renderFrameContext.CameraData->InvView)[3] : t.Position,
-						t.Rotation,
-						light->Type == ELightType::Directional ? ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC : ShadowMapPipeline::PROJECTION_PERSPECTIVE,
-						renderFrameContext.CameraData->InvView);
+					switch (light->Type)
+					{
+					case ELightType::Directional:
+						m_shadowMapPipeline.SetupLight(m_lightCount++,
+							glm::inverse(renderFrameContext.CameraData->InvView)[3],
+							t.Rotation,
+							ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC,
+							glm::inverse(invView));
+						break;
+					case ELightType::Spot:
+						m_shadowMapPipeline.SetProjection(light->OuterCutoff * 2.f, 16.f / 9.f);
+						m_shadowMapPipeline.SetupLight(m_lightCount++, t.Position, t.Rotation, ShadowMapPipeline::PROJECTION_PERSPECTIVE, invView);
+						break;
+					default:
+						check(false && "Unreachable");
+					}
 				}
 			}
+			check(m_lightCount <= globals::MaxShadowMapAttachments);
 		}
 
 		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
