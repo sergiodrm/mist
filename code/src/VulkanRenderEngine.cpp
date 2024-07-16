@@ -570,14 +570,15 @@ namespace Mist
 		}
 	}
 
-	CIntVar ImGuiDemoWindow("ImGuiDemoWindow", 0);
+	
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
 		m_renderer.ImGuiDraw();
 
-		DrawConsole();
-		if (ImGuiDemoWindow.Get())
+		if (CVar_ShowConsole.Get())
+			DrawConsole();
+		if (CVar_ShowImGuiDemo.Get())
 			ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Engine");
