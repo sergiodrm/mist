@@ -273,17 +273,20 @@ namespace Mist
 			{
 			case SDL_QUIT: res = false; break;
 			}
-			const uint8_t* keystate = SDL_GetKeyboardState(nullptr);
-			static int s = 0;
-			int c = keystate[SDL_SCANCODE_SPACE];
-			if (s != c)
+			int numKeys = 0;
+			const uint8_t* keystate = SDL_GetKeyboardState(&numKeys);
+			static uint8_t tabState = 0;
+			keystate[SDL_SCANCODE_TAB] ?
+				tabState |= 0x01 :
+				tabState &= ~0x01;
+			if ((bool)(tabState & 0x01) != (bool)(tabState & 0x02))
 			{
-				s = c;
-				if (c)
-					m_screenPipeline.QuadIndex = ++m_screenPipeline.QuadIndex % MAX_RT_SCREEN;
+				keystate[SDL_SCANCODE_TAB] ?
+					tabState |= 0x02 :
+					tabState &= ~0x02;
+				if (tabState & 0x01)
+					CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
 			}
-			else if (keystate[SDL_SCANCODE_ESCAPE])
-				m_screenPipeline.QuadIndex = -1;
 			if (m_eventCallback)
 				m_eventCallback(&e);
 		}
