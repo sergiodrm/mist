@@ -315,7 +315,7 @@ namespace Mist
 		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
-		BeginFrame();
+		//BeginFrame();
 		Mist_profiling::GRenderStats.Reset();
 		Draw();
 		return res;
@@ -469,6 +469,8 @@ namespace Mist
 #else
 		ForceSync();
 #endif // !MIST_FORCE_SYNC
+
+		BeginFrame();
 
 
 		{
