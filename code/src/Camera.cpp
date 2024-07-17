@@ -8,6 +8,7 @@
 #include <SDL.h>
 #include "Logger.h"
 #include "Debug.h"
+#include "GenericUtils.h"
 
 namespace Mist
 {
@@ -153,6 +154,9 @@ namespace Mist
 		glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, m_position);
 		glm::mat4 rot = glm::toMat4(glm::quat(m_rotation));
 		m_view = tras * rot;
+
+		Log(LogLevel::Debug, "RecalculateView:\n");
+		PrintMat(m_view);
 	}
 
 	void Camera::RecalculateProjection()
@@ -237,23 +241,33 @@ namespace Mist
 
 	void CameraController::ProcessInputMovement(float elapsedSeconds)
 	{
-		if (m_motionRotation != glm::vec2{ 0.f })
+		if (m_scriptActive)
 		{
-			m_camera.SetRotation(m_camera.GetRotation() + m_maxRotSpeed * glm::vec3{ m_motionRotation.x, m_motionRotation.y, 0.f });
-			m_motionRotation = glm::vec2{ 0.f };
-		}
-		if (m_direction != glm::vec3{ 0.f })
-		{
-			m_direction = glm::normalize(m_direction);
-			m_speed += m_acceleration * elapsedSeconds;
-			m_speed = __min(m_maxSpeed, m_speed);
-			glm::vec3 movement = m_direction * m_speed * elapsedSeconds;
-			m_camera.SetPosition(m_camera.GetPosition() + movement);
-			m_direction = glm::vec3{ 0.f };
+			static float acc = 0.f;
+			acc += elapsedSeconds;
+			float diff = 2.f * sinf(acc) * elapsedSeconds;
+			m_camera.SetPosition(m_camera.GetPosition() + glm::vec3(diff, 0.f, 0.f));
 		}
 		else
 		{
-			m_speed = 0.f;
+			if (m_motionRotation != glm::vec2{ 0.f })
+			{
+				m_camera.SetRotation(m_camera.GetRotation() + m_maxRotSpeed * glm::vec3{ m_motionRotation.x, m_motionRotation.y, 0.f });
+				m_motionRotation = glm::vec2{ 0.f };
+			}
+			if (m_direction != glm::vec3{ 0.f })
+			{
+				m_direction = glm::normalize(m_direction);
+				m_speed += m_acceleration * elapsedSeconds;
+				m_speed = __min(m_maxSpeed, m_speed);
+				glm::vec3 movement = m_direction * m_speed * elapsedSeconds;
+				m_camera.SetPosition(m_camera.GetPosition() + movement);
+				m_direction = glm::vec3{ 0.f };
+			}
+			else
+			{
+				m_speed = 0.f;
+			}
 		}
 	}
 
@@ -262,6 +276,7 @@ namespace Mist
 		ImGui::Begin("Camera");
 		if (ImGui::CollapsingHeader("View"))
 		{
+			ImGui::Checkbox("auto move camera", &m_scriptActive);
 			if (ImGui::Button("Reset position"))
 				m_camera.SetPosition({ 0.f, 0.f, 0.f });
 			glm::vec3 pos = m_camera.GetPosition();

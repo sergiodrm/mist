@@ -94,5 +94,7 @@ namespace Mist
 
 		bool m_isMotionControlActive = false;
 		glm::vec2 m_motionRotation{ 0.f };
+
+		bool m_scriptActive = false;
 	};
 }

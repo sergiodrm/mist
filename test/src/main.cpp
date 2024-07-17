@@ -52,6 +52,7 @@ private:
 	TimePoint m_start;
 	TimePoint m_mark;
 };
+#if 0
 
 class Test
 {
@@ -122,7 +123,7 @@ protected:
 		{
 			Mist::Logf(Mist::LogLevel::Error, "Error loading test scene: %s\n", scenePath);
 			return false;
-		}
+	}
 #endif // TEST_LOAD
 
 
@@ -138,7 +139,7 @@ protected:
 #endif // TEST_LOAD
 
 		return scene != nullptr;
-	}
+}
 
 	virtual void ProcessLogic(float timeDiff)
 	{
@@ -195,4 +196,40 @@ int main(int32_t argc, char** argv)
 	test->Destroy();
 	DestroyTest(test);
 	return 0;
+}
+#endif // 0
+
+#include "mist/Application.h"
+
+class tGameApplication : public Mist::tApplication
+{
+public:
+
+	virtual void Init(int argc, char** argv) override
+	{
+		Mist::tApplication::Init(argc, argv);
+
+		Mist::IRenderEngine* engine = GetEngineInstance();
+		Mist::IScene::LoadScene(engine, "../assets/scenes/scene.yaml");
+		engine->SetAppEventCallback([this](void* d) { m_camera.ProcessEvent(d); });
+	}
+
+	virtual void LogicProcess(float deltaTime) override 
+	{
+		m_camera.Tick(deltaTime);
+		GetEngineInstance()->UpdateSceneView(m_camera.GetCamera().GetView(), m_camera.GetCamera().GetProjection());
+	}
+
+private:
+	Mist::CameraController m_camera;
+};
+
+Mist::tApplication* CreateGameApplication()
+{
+	return new tGameApplication();
+}
+
+void DestroyGameApplication(Mist::tApplication* app)
+{
+	delete app;
 }

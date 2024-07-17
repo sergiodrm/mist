@@ -27,7 +27,7 @@
 #include "TimeUtils.h"
 #include "CmdParser.h"
 
-#define MIST_CRASH_ON_VALIDATION_LAYER
+//#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -169,7 +169,6 @@ namespace Mist
 	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
 	{
 		CPU_PROFILE_SCOPE(Init);
-		InitLog("log.html");
 #ifdef _DEBUG
 		Log(LogLevel::Info, "Running app in DEBUG mode.\n");
 #else
@@ -279,6 +278,13 @@ namespace Mist
 			}
 			int numKeys = 0;
 			const uint8_t* keystate = SDL_GetKeyboardState(&numKeys);
+
+			for (int i = 0; i < numKeys; ++i)
+			{
+				if (keystate[i])
+					Logf(LogLevel::Debug, "Key: %d; State: %d\n", i, keystate[i]);
+			}
+
 			static uint8_t tabState = 0;
 			keystate[SDL_SCANCODE_TAB] ?
 				tabState |= 0x01 :
@@ -352,7 +358,7 @@ namespace Mist
 		Log(LogLevel::Ok, "Render engine terminated.\n");
 		Logf(MistDebug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
 			"Total vulkan layer validation errors: %u.\n", MistDebug::GVulkanLayerValidationErrors);
-		TerminateLog();
+		
 	}
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
