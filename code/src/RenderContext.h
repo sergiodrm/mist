@@ -29,7 +29,7 @@ namespace Mist
 
 	struct RenderContext
 	{
-		struct Window* Window;
+		const struct Window* Window;
 
 		// App
 		VkInstance Instance;

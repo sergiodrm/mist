@@ -34,21 +34,6 @@ namespace Mist
 	class IRendererBase;
 	struct ShaderModuleLoadDescription;
 
-	struct Window
-	{
-		SDL_Window* WindowInstance;
-		uint32_t Width;
-		uint32_t Height;
-		char Title[32];
-
-		Window() : WindowInstance(nullptr), Width(1920), Height(1080)
-		{
-			*Title = 0;
-		}
-
-		static Window Create(uint32_t width, uint32_t height, const char* title);
-	};
-
 	struct CameraData
 	{
 		glm::mat4 InvView;
@@ -97,7 +82,7 @@ namespace Mist
 		/**
 		 * IRenderEngine interface
 		 */
-		virtual bool Init(const InitializationSpecs& initSpec) override;
+		virtual bool Init(const Window& window) override;
 		virtual bool RenderProcess() override;
 		virtual void Shutdown() override;
 
@@ -135,7 +120,6 @@ namespace Mist
 
 	private:
 
-		Window m_window;
 		RenderContext m_renderContext;
 		Swapchain m_swapchain;
 

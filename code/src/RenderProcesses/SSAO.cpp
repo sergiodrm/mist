@@ -6,6 +6,7 @@
 #include "RenderContext.h"
 #include "VulkanRenderEngine.h"
 #include "GBuffer.h"
+#include "Application.h"
 
 
 #define SSAO_NOISE_SAMPLES 16

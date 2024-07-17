@@ -1,7 +1,24 @@
 #pragma once
+#include <cstdint>
 
 namespace Mist
 {
+	struct Window
+	{
+		void* WindowInstance;
+		uint32_t Width;
+		uint32_t Height;
+		char Title[32];
+
+		Window() : WindowInstance(nullptr), Width(1920), Height(1080)
+		{
+			*Title = 0;
+		}
+		static Window Create(uint32_t width, uint32_t height, const char* title);
+		static void CreateSurface(const Window& window, void* renderApiInstance, void* outSurface);
+		static void Destroy(Window& window);
+	};
+
 	class tApplication
 	{
 	public:
@@ -20,5 +37,6 @@ namespace Mist
 
 	private:
 		class IRenderEngine* m_engine = nullptr;
+		Window m_window;
 	};
 }

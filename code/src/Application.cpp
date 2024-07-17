@@ -23,8 +23,10 @@ namespace Mist
     void tApplication::Init(int argc, char** argv)
     {
         check(!m_engine);
+
+        m_window = Window::Create(1920, 1080, "MistEngine");
         m_engine = IRenderEngine::MakeInstance();
-        m_engine->Init({ 1920, 1080, "MistEngine" });
+        m_engine->Init(m_window);
     }
 
     void tApplication::Destroy()
@@ -32,6 +34,7 @@ namespace Mist
         m_engine->Shutdown();
         IRenderEngine::FreeRenderEngine();
         m_engine = nullptr;
+        Window::Destroy(m_window);
     }
 
     int tApplication::Run()

@@ -5,6 +5,7 @@
 #include "Shader.h"
 #include "Globals.h"
 #include "VulkanRenderEngine.h"
+#include "Application.h"
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
@@ -40,7 +41,7 @@ namespace Mist
 
 		// Init imgui lib
 		ImGui::CreateContext();
-		ImGui_ImplSDL2_InitForVulkan(context.Window->WindowInstance);
+		ImGui_ImplSDL2_InitForVulkan((SDL_Window*)context.Window->WindowInstance);
 		ImGui_ImplVulkan_InitInfo initInfo
 		{
 			.Instance = context.Instance,
@@ -82,7 +83,7 @@ namespace Mist
 	void ImGuiInstance::BeginFrame(const RenderContext& context)
 	{
 		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL2_NewFrame(context.Window->WindowInstance);
+		ImGui_ImplSDL2_NewFrame((SDL_Window*)context.Window->WindowInstance);
 		ImGui::NewFrame();
 	}
 

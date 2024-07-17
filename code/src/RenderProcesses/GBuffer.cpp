@@ -4,12 +4,17 @@
 #include "VulkanRenderEngine.h"
 #include "SceneImpl.h"
 #include <imgui/imgui.h>
+#include "CmdParser.h"
+#include "Application.h"
 
 
 
 
 namespace Mist
 {
+	CFloatVar CVar_GBufferRenderTargetResolution("GBufferRenderTargetResolutionFactor", 1.f);
+
+
 	void GBuffer::Init(const RenderContext& renderContext)
 	{
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };

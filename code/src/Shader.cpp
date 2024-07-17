@@ -13,6 +13,7 @@
 #include "Logger.h"
 #include "RenderContext.h"
 #include "VulkanRenderEngine.h"
+#include "Application.h"
 
 #include "TimeUtils.h"
 

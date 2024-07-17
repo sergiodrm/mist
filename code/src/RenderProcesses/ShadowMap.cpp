@@ -11,6 +11,7 @@
 #include "glm/ext/matrix_clip_space.inl"
 #include "glm/matrix.hpp"
 #include "GenericUtils.h"
+#include "Application.h"
 
 #define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
 #define SHADOW_MAP_RT_LAYOUT IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL

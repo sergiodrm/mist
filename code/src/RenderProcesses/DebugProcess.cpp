@@ -12,6 +12,7 @@
 #include "GenericUtils.h"
 #include "RenderAPI.h"
 #include "Texture.h"
+#include "Application.h"
 
 
 namespace Mist

@@ -13,13 +13,8 @@ namespace Mist
 	struct RenderObjectTransform;
 	struct RenderObjectMesh;
 	struct RenderHandle;
+	struct Window;
 
-	struct InitializationSpecs
-	{
-		uint32_t WindowWidth;
-		uint32_t WindowHeight;
-		char WindowTitle[32];
-	};
 
 	// Abstract class of main renderer
 	class IRenderEngine
@@ -36,7 +31,7 @@ namespace Mist
 
 
 		virtual ~IRenderEngine() = default;
-		virtual bool Init(const InitializationSpecs& initSpec) = 0;
+		virtual bool Init(const Window& window) = 0;
 		virtual bool RenderProcess() = 0;
 		virtual void Shutdown() = 0;
 

@@ -26,6 +26,7 @@
 #include "RenderProcesses/RenderProcess.h"
 #include "TimeUtils.h"
 #include "CmdParser.h"
+#include "Application.h"
 
 //#define MIST_CRASH_ON_VALIDATION_LAYER
 
@@ -86,8 +87,19 @@ namespace Mist
 			title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
 			width, height, windowFlags
 		);
-
+		SDL_Init(SDL_INIT_VIDEO);
 		return newWindow;
+	}
+
+	void Window::CreateSurface(const Window& window, void* renderApiInstance, void* outSurface)
+	{
+		SDL_Vulkan_CreateSurface((SDL_Window*)window.WindowInstance, *((VkInstance*)renderApiInstance), (VkSurfaceKHR*)outSurface);
+	}
+
+	void Window::Destroy(Window& window)
+	{
+		SDL_DestroyWindow((SDL_Window*)window.WindowInstance);
+		ZeroMemory(&window, sizeof(Window));
 	}
 
 	void ScreenQuadPipeline::Init(const RenderContext& context, const Swapchain& swapchain)
@@ -166,7 +178,7 @@ namespace Mist
 	{
 	}
 
-	bool VulkanRenderEngine::Init(const InitializationSpecs& spec)
+	bool VulkanRenderEngine::Init(const Window& window)
 	{
 		CPU_PROFILE_SCOPE(Init);
 #ifdef _DEBUG
@@ -176,9 +188,8 @@ namespace Mist
 #endif // _DEBUG
 
 		Log(LogLevel::Info, "Initialize render engine.\n");
+		m_renderContext.Window = &window;
 		SDL_Init(SDL_INIT_VIDEO);
-		m_window = Window::Create(spec.WindowWidth, spec.WindowHeight, spec.WindowTitle);
-		m_renderContext.Window = &m_window;
 		Log(LogLevel::Ok, "Window created successfully!\n");
 		
 		// Init vulkan context
@@ -193,7 +204,7 @@ namespace Mist
 		m_renderContext.ShaderDB = &m_shaderDb;
 
 		// Swapchain
-		check(m_swapchain.Init(m_renderContext, { spec.WindowWidth, spec.WindowHeight }));
+		check(m_swapchain.Init(m_renderContext, { window.Width, window.Height }));
 
 		// Commands
 		check(InitCommands());
@@ -352,7 +363,7 @@ namespace Mist
 		vkb::destroy_debug_utils_messenger(m_renderContext.Instance,
 			m_renderContext.DebugMessenger);
 		vkDestroyInstance(m_renderContext.Instance, nullptr);
-		SDL_DestroyWindow(m_window.WindowInstance);
+		
 
 
 		Log(LogLevel::Ok, "Render engine terminated.\n");
@@ -709,7 +720,7 @@ namespace Mist
 		Log(LogLevel::Ok, "Vulkan render instance created...\n");
 
 		// Physical device
-		SDL_Vulkan_CreateSurface(m_window.WindowInstance, m_renderContext.Instance, &m_renderContext.Surface);
+		Window::CreateSurface(*m_renderContext.Window, &m_renderContext.Instance, &m_renderContext.Surface);
 		Log(LogLevel::Ok, "Vulkan surface instance created...\n");
 		vkb::PhysicalDeviceSelector selector(instance);
 		vkb::PhysicalDevice physicalDevice = selector
