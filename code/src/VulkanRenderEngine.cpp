@@ -64,6 +64,10 @@ namespace MistDebug
 
 namespace Mist
 {
+	CBoolVar CVar_ShowConsole("ShowConsole", false);
+	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
+
+
 	RenderHandle GenerateRenderHandle()
 	{
 		static RenderHandle h;
