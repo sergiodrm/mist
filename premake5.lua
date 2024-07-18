@@ -137,6 +137,7 @@ workspace "Mist"
 
         includedirs {
             "%{includes.mist}",
+            "%{wks.location}/code/include/mist",
             "%{includes.glm}",
             "%{includes.generic}",
         }

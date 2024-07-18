@@ -1,16 +1,16 @@
 #include <cstdint>
 
-#include <Mist/RenderEngine.h>
-#include <Mist/RenderObject.h>
-#include <Mist/Mesh.h>
-#include <Mist/Scene.h>
+#include <Mist/Render/RenderEngine.h>
+#include <Mist/Render/RenderObject.h>
+#include <Mist/Render/Mesh.h>
+#include <Mist/Scene/Scene.h>
 
 #include <chrono>
 #include <corecrt_math_defines.h>
 
 #include <imgui/imgui.h>
-#include "Mist/Camera.h"
-#include "Mist/Logger.h"
+#include "Mist/Render/Camera.h"
+#include "Mist/Core/Logger.h"
 #include "glm/gtx/transform.hpp"
 
 class Timer
@@ -199,7 +199,7 @@ int main(int32_t argc, char** argv)
 }
 #endif // 0
 
-#include "mist/Application.h"
+#include "Application/Application.h"
 
 class tGameApplication : public Mist::tApplication
 {

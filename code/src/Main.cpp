@@ -1,6 +1,6 @@
 
-#include "Application.h"
-#include "Logger.h"
+#include "Application/Application.h"
+#include "Core/Logger.h"
 
 int main(int argc, char* argv[])
 {
