@@ -154,9 +154,6 @@ namespace Mist
 		glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, m_position);
 		glm::mat4 rot = glm::toMat4(glm::quat(m_rotation));
 		m_view = tras * rot;
-
-		Log(LogLevel::Debug, "RecalculateView:\n");
-		PrintMat(m_view);
 	}
 
 	void Camera::RecalculateProjection()

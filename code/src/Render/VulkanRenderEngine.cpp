@@ -290,12 +290,6 @@ namespace Mist
 			int numKeys = 0;
 			const uint8_t* keystate = SDL_GetKeyboardState(&numKeys);
 
-			for (int i = 0; i < numKeys; ++i)
-			{
-				if (keystate[i])
-					Logf(LogLevel::Debug, "Key: %d; State: %d\n", i, keystate[i]);
-			}
-
 			static uint8_t tabState = 0;
 			keystate[SDL_SCANCODE_TAB] ?
 				tabState |= 0x01 :
