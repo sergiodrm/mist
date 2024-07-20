@@ -27,6 +27,7 @@
 #include "Utils/TimeUtils.h"
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
+#include "Application/Event.h"
 
 //#define MIST_CRASH_ON_VALIDATION_LAYER
 
@@ -278,33 +279,28 @@ namespace Mist
 		point = now;
 		Mist_profiling::ShowFps(1000.f / (ms));
 
-		bool res = true;
-		SDL_Event e;
-		while (SDL_PollEvent(&e))
+		bool exitFlag = false;
+		struct ProcessEventPayload
 		{
-			ImGui_ImplSDL2_ProcessEvent(&e);
-			switch (e.type)
-			{
-			case SDL_QUIT: res = false; break;
-			}
-			int numKeys = 0;
-			const uint8_t* keystate = SDL_GetKeyboardState(&numKeys);
+			VulkanRenderEngine* Engine;
+			bool* Exit;
+		} data{this, &exitFlag };
 
-			static uint8_t tabState = 0;
-			keystate[SDL_SCANCODE_TAB] ?
-				tabState |= 0x01 :
-				tabState &= ~0x01;
-			if ((bool)(tabState & 0x01) != (bool)(tabState & 0x02))
+		ProcessEvents([](void* e, void* userData)
 			{
-				keystate[SDL_SCANCODE_TAB] ?
-					tabState |= 0x02 :
-					tabState &= ~0x02;
-				if (tabState & 0x01)
-					CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
-			}
-			if (m_eventCallback)
-				m_eventCallback(&e);
-		}
+				ProcessEventPayload& payload = *(ProcessEventPayload*)userData;
+				SDL_Event& ev = *(SDL_Event*)e;
+				switch (ev.type)
+				{
+				case SDL_QUIT: *payload.Exit = true; break;
+				}
+				if (payload.Engine->m_eventCallback)
+					payload.Engine->m_eventCallback(&ev);
+			}, &data);
+		UpdateInputState();
+
+		if (GetKeyboardState(MIST_KEY_CODE_TAB) && !GetKeyboardPreviousState(MIST_KEY_CODE_TAB))
+			CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
 
 		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 		for (auto& fn : m_imguiCallbackArray)
@@ -312,7 +308,7 @@ namespace Mist
 		//BeginFrame();
 		Mist_profiling::GRenderStats.Reset();
 		Draw();
-		return res;
+		return !exitFlag;
 	}
 
 	void VulkanRenderEngine::Shutdown()
@@ -595,6 +591,7 @@ namespace Mist
 	void VulkanRenderEngine::ImGuiDraw()
 	{
 		m_renderer.ImGuiDraw();
+		ImGuiDrawInputState();
 
 		if (CVar_ShowConsole.Get())
 			DrawConsole();
