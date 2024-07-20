@@ -309,7 +309,7 @@ namespace Mist
 		char buff[64];
 		sprintf_s(buff, "RT_Image_%d", c);
 		SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
-		Logf(LogLevel::Debug, "Creating attachment %d...\n", c);
+		Logf(LogLevel::Debug, "Render target: %s...\n", buff);
 
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(description.Format, attachment.Image.Image, aspect);
 		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &attachment.View));

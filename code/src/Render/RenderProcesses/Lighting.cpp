@@ -9,15 +9,18 @@
 #include "Render/RenderDescriptor.h"
 #include "imgui_internal.h"
 #include "Application/Application.h"
+#include "Application/CmdParser.h"
 
 
 namespace Mist
 {
+	CBoolVar CVar_HDREnable("HDREnable", true);
+
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
 		RenderTargetDescription description;
-		description.AddColorAttachment(GBUFFER_COMPOSITION_FORMAT, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(HDR_FORMAT, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		m_renderTarget.Create(renderContext, description);
@@ -64,10 +67,27 @@ namespace Mist
 		}
 #endif // 0
 
+		{
+			tClearValue clearValue{ 1.f, 1.f, 1.f, 1.f };
+			RenderTargetDescription ldrRtDesc;
+			ldrRtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
+			ldrRtDesc.RenderArea.offset = { .x = 0, .y = 0 };
+			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
+			m_ldrRenderTarget.Create(renderContext, ldrRtDesc);
+
+			GraphicsShaderProgramDescription hdrShaderDesc;
+			hdrShaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
+			hdrShaderDesc.FragmentShaderFile = SHADER_FILEPATH("hdr.frag");
+			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			hdrShaderDesc.RenderTarget = &m_ldrRenderTarget;
+			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
+		}
+
 	}
 
 	void DeferredLighting::Destroy(const RenderContext& renderContext)
 	{
+		m_ldrRenderTarget.Destroy(renderContext);
 		m_renderTarget.Destroy(renderContext);
 		m_quadIB.Destroy(renderContext);
 		m_quadVB.Destroy(renderContext);
@@ -122,6 +142,20 @@ namespace Mist
 			.BindBuffer(6, &shadowMapBuffer, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_frameData[frameIndex].Set);
 
+		buffer.AllocUniform(renderContext, "HDRParams", sizeof(HDRParams));
+		VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("HDRParams");
+
+		VkDescriptorImageInfo hdrTex
+		{
+			.sampler = sampler,
+			.imageView = m_renderTarget.GetRenderTarget(0),
+			.imageLayout = tovk::GetImageLayout(GBUFFER_COMPOSITION_LAYOUT)
+		};
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+			.BindImage(0, &hdrTex, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.BindBuffer(1, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(renderContext, m_frameData[frameIndex].HdrSet);
+
 #if 0
 		// Skybox
 		VkDescriptorBufferInfo cameraBufferInfo = buffer.GenerateDescriptorBufferInfo("ProjViewRot");
@@ -130,6 +164,11 @@ namespace Mist
 			.Build(renderContext, m_frameData[frameIndex].CameraSkyboxSet);
 #endif // 0
 
+	}
+
+	void DeferredLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
+	{
+		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
 	}
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -145,5 +184,26 @@ namespace Mist
 		vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 		m_renderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
+
+		// HDR and tone mapping
+		BeginGPUEvent(renderContext, cmd, "HDR");
+		m_ldrRenderTarget.BeginPass(cmd);
+		m_hdrShader->UseProgram(cmd);
+		m_hdrShader->BindDescriptorSets(cmd, &m_frameData[frameContext.FrameIndex].HdrSet, 1);
+		m_quadVB.Bind(cmd);
+		m_quadIB.Bind(cmd);
+		RenderAPI::CmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+		m_ldrRenderTarget.EndPass(cmd);
+		EndGPUEvent(renderContext, cmd);
+	}
+	void DeferredLighting::ImGuiDraw()
+	{
+		ImGui::Begin("HDR");
+		/*bool enabled = CVar_HDREnable.Get();
+		if (ImGui::Checkbox("HDR enabled", &enabled)) 
+			CVar_HDREnable.Set(enabled);*/
+		ImGui::DragFloat("Gamma correction", &m_hdrParams.GammaCorrection, 0.1f, 0.f, 5.f);
+		ImGui::DragFloat("Exposure", &m_hdrParams.Exposure, 0.1f, 0.f, 5.f);
+		ImGui::End();
 	}
 }
