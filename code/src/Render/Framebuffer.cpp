@@ -41,7 +41,7 @@ namespace Mist
         check(aspectFlags);
 
         VkImageCreateInfo imageCI = vkinit::ImageCreateInfo(format, usage, m_extent);
-		AllocatedImage image = Memory::CreateImage(m_renderContext.Allocator, imageCI, MEMORY_USAGE_GPU);
+		AllocatedImage image = MemNewImage(m_renderContext.Allocator, imageCI, MEMORY_USAGE_GPU);
 		m_imageArray.push_back(image);
 
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(format, image.Image, aspectFlags);
@@ -94,7 +94,7 @@ namespace Mist
     {
         for (uint32_t i = 0; i < m_imageArray.size(); ++i)
         {
-            Memory::DestroyImage(renderContext.Allocator, m_imageArray[i]);
+            MemFreeImage(renderContext.Allocator, m_imageArray[i]);
         }
         m_imageArray.clear();
         for (uint32_t i = 0; i < m_attachmentViewArray.size(); ++i)

@@ -74,13 +74,13 @@ namespace Mist
 		}
 
 		// Create staging buffer to copy from system memory to host memory
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, EMemUsage::MEMORY_USAGE_CPU);
+		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, EMemUsage::MEMORY_USAGE_CPU);
 		Memory::MemCopy(context.Allocator, stageBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
 
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			// Create ssbo
-			m_ssboArray[i] = Memory::CreateBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
+			m_ssboArray[i] = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 				| VK_BUFFER_USAGE_TRANSFER_DST_BIT
 				| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -94,7 +94,7 @@ namespace Mist
 		}
 
 		// Destroy stage buffer
-		Memory::DestroyBuffer(context.Allocator, stageBuffer);
+		MemFreeBuffer(context.Allocator, stageBuffer);
 
 		delete[] particles;
 
@@ -176,7 +176,7 @@ namespace Mist
 
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			Memory::DestroyBuffer(context.Allocator, m_ssboArray[i]);
+			MemFreeBuffer(context.Allocator, m_ssboArray[i]);
 		}
 
 		m_renderTarget.Destroy(context);

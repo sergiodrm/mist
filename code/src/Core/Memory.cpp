@@ -12,10 +12,10 @@
 
 //#define MIST_MEMORY_VERBOSE
 
+#define MEM_ALLOC_INFO_ARRAY_COUNT 1024
+
 namespace memapi
 {
-	
-
 #ifndef MIST_MEM_MANAGEMENT
 	VmaMemoryUsage GetMemUsage(Mist::EMemUsage memUsage)
 	{
@@ -83,6 +83,45 @@ namespace Mist
 		return nullptr;
 	}
 
+	uint16_t FindAllocation(Allocator* allocator, Alloc_t alloc)
+	{
+		uint16_t index = UINT16_MAX;
+		for (uint16_t i = 0; i < MEM_ALLOC_INFO_ARRAY_COUNT; ++i)
+		{
+			if (allocator->AllocInfoArray[i].Alloc == alloc)
+			{
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+
+	void SetAllocInfo(AllocInfo& info, Alloc_t alloc, const char* file, uint16_t line)
+	{
+		info.Alloc = alloc;
+		strcpy_s(info.File, file);
+		info.Line = line;
+	}
+
+	void RegisterAllocation(Allocator* allocator, Alloc_t alloc, const char* file, uint16_t line)
+	{
+		uint16_t allocIndex = UINT16_MAX;
+		if (allocator->AllocInfoIndex < MEM_ALLOC_INFO_ARRAY_COUNT)
+			allocIndex = allocator->AllocInfoIndex++;
+		else
+			allocIndex = FindAllocation(allocator, nullptr);
+		check(allocIndex < MEM_ALLOC_INFO_ARRAY_COUNT);
+		SetAllocInfo(allocator->AllocInfoArray[allocIndex], alloc, file, line);
+	}
+
+	void ReleaseAllocation(Allocator* allocator, Alloc_t alloc)
+	{
+		uint16_t index = FindAllocation(allocator, alloc);
+		check(index < MEM_ALLOC_INFO_ARRAY_COUNT);
+		SetAllocInfo(allocator->AllocInfoArray[index], nullptr, "\0", UINT16_MAX);
+	}
+
 	void Memory::Init(Allocator*& allocator, VkInstance vkInstance, VkDevice vkDevice, VkPhysicalDevice vkPhysicalDevice)
 	{
 		check(vkInstance != VK_NULL_HANDLE);
@@ -101,10 +140,29 @@ namespace Mist
 		allocator->PhysicalDevice = vkPhysicalDevice;
 #endif // !MIST_MEM_MANAGEMENT
 
+		allocator->AllocInfoArray = new AllocInfo[MEM_ALLOC_INFO_ARRAY_COUNT];
+		allocator->AllocInfoIndex = 0;
 	}
 
 	void Memory::Destroy(Allocator*& allocator)
 	{
+		bool failure = false;
+		for (uint16_t i = 0; i < MEM_ALLOC_INFO_ARRAY_COUNT; ++i)
+		{
+			if (allocator->AllocInfoArray[i].Alloc)
+			{
+				logerror("Allocated memory leaked:\n");
+				logferror("> Alloc: 0x%p\n", allocator->AllocInfoArray[i].Alloc);
+				logferror("> File:  %s\n", allocator->AllocInfoArray[i].File);
+				logferror("> Line:  %d\n", allocator->AllocInfoArray[i].Line);
+				failure = true;
+			}
+		}
+		check(!failure && "Memory leak found.");
+		delete[] allocator->AllocInfoArray;
+		allocator->AllocInfoArray = nullptr;
+		allocator->AllocInfoIndex = UINT16_MAX;
+
 #ifdef MIST_MEMORY_VERBOSE
 		check(Allocations.empty());
 #endif // MIST_MEMORY_VERBOSE
@@ -176,7 +234,7 @@ namespace Mist
 #endif // !MIST_MEM_MANAGEMENT
 
 
-	AllocatedBuffer Memory::CreateBuffer(Allocator* allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, EMemUsage memUsage)
+	AllocatedBuffer Memory::CreateBuffer(const char* file, uint16_t line, Allocator* allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, EMemUsage memUsage)
 	{
 		VkBufferCreateInfo bufferInfo
 		{
@@ -206,6 +264,8 @@ namespace Mist
 
 #endif // !MIST_MEM_MANAGEMENT
 
+		RegisterAllocation(allocator, newBuffer.Alloc, file, line);
+
 #ifdef MIST_MEMORY_VERBOSE
 		Logf(LogLevel::Debug, "[MEMORY] New buffer [0x%p;0x%p;%u b]\n", (void*)newBuffer.Alloc, (void*)newBuffer.Buffer, bufferSize);
 		Allocations[newBuffer.Alloc] = newBuffer.Alloc;
@@ -215,6 +275,7 @@ namespace Mist
 
 	void Memory::DestroyBuffer(Allocator* allocator, AllocatedBuffer buffer)
 	{
+		ReleaseAllocation(allocator, buffer.Alloc);
 #ifdef MIST_MEMORY_VERBOSE
 		Allocations.erase(buffer.Alloc);
 		Logf(LogLevel::Debug, "[MEMORY] Destroy buffer [0x%p;0x%p]\n", (void*)buffer.Alloc, (void*)buffer.Buffer);
@@ -254,7 +315,7 @@ namespace Mist
 		return alignment;
 	}
 
-	AllocatedImage Memory::CreateImage(Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage)
+	AllocatedImage Memory::CreateImage(const char* file, uint16_t line, Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage)
 	{
 #ifdef MIST_MEMORY_VERBOSE
 		Logf(LogLevel::Info, "[MEMORY] Image create info: [Extent: %u x %u x %u; Format: %u; MemUsage: %s]\n",
@@ -284,11 +345,13 @@ namespace Mist
 		Logf(LogLevel::Debug, "[MEMORY] New image [0x%p;0x%p]\n", (void*)image.Alloc, (void*)image.Image);
 		Allocations[image.Alloc] = image.Alloc;
 #endif // MIST_MEMORY_VERBOSE
+		RegisterAllocation(allocator, image.Alloc, file, line);
 		return image;
 	}
 
 	void Memory::DestroyImage(Allocator* allocator, AllocatedImage image)
 	{
+		ReleaseAllocation(allocator, image.Alloc);
 #ifdef MIST_MEMORY_VERBOSE
 		Logf(LogLevel::Debug, "[MEMORY] Destroy image [0x%p;0x%p]\n", (void*)image.Alloc, (void*)image.Image);
 		Allocations.erase(image.Alloc);

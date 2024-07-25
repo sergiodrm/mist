@@ -17,7 +17,7 @@ namespace Mist
 		if (Image.IsAllocated())
 		{
 			vkDestroyImageView(renderContext.Device, View, nullptr);
-			Memory::DestroyImage(renderContext.Allocator, Image);
+			MemFreeImage(renderContext.Allocator, Image);
 		}
 	}
 
@@ -304,7 +304,7 @@ namespace Mist
 
 		tExtent3D extent{ .width = m_description.RenderArea.extent.width, .height = m_description.RenderArea.extent.height, .depth = 1 };
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(description.Format, imageUsage, extent);
-		attachment.Image = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
+		attachment.Image = MemNewImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 		static int c = 0;
 		char buff[64];
 		sprintf_s(buff, "RT_Image_%d", c);

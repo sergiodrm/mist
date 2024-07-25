@@ -25,6 +25,20 @@ namespace Mist
 	};
 	const char* MemUsageToStr(EMemUsage usage);
 
+#ifdef MIST_MEM_MANAGEMENT
+	typedef VkDeviceMemory Alloc_t;
+#else
+	typedef VmaAllocation Alloc_t;
+#endif // MIST_MEM_MANAGEMENT
+
+
+	struct AllocInfo
+	{
+		Alloc_t Alloc = nullptr;
+		uint16_t Line = UINT16_MAX;
+		char File[512];
+	};
+
 	struct Allocator
 	{
 #ifdef MIST_MEM_MANAGEMENT
@@ -33,15 +47,13 @@ namespace Mist
 #else
 		VmaAllocator AllocatorInstance;
 #endif
+		AllocInfo* AllocInfoArray = nullptr;
+		uint16_t AllocInfoIndex = UINT16_MAX;
 	};
 
 	struct Allocation
 	{
-#ifdef MIST_MEM_MANAGEMENT
-		VkDeviceMemory Alloc{ nullptr };
-#else
-		VmaAllocation Alloc{ nullptr };
-#endif // !MIST_MEM_MANAGEMENT
+		Alloc_t Alloc{ nullptr };
 		inline bool IsAllocated() const { return Alloc != nullptr; }
 	};
 
@@ -77,7 +89,7 @@ namespace Mist
 		/**
 		 * Buffers
 		 */
-		static AllocatedBuffer CreateBuffer(Allocator* allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, EMemUsage memUsage);
+		static AllocatedBuffer CreateBuffer(const char* file, uint16_t line, Allocator* allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, EMemUsage memUsage);
 		static void DestroyBuffer(Allocator* allocator, AllocatedBuffer buffer);
 		// Copy cpu data to buffer.
 		static void MemCopy(Allocator* allocator, Allocation allocation, const void* source, size_t cpySize, size_t dstOffset = 0, size_t srcOffset = 0);
@@ -87,7 +99,12 @@ namespace Mist
 		/**
 		 * Images
 		 */
-		static AllocatedImage CreateImage(Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage);
+		static AllocatedImage CreateImage(const char* file, uint16_t line, Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage);
 		static void DestroyImage(Allocator* allocator, AllocatedImage image);
 	};
 }
+
+#define MemNewBuffer(...) Mist::Memory::CreateBuffer(__FILE__, (uint16_t)__LINE__, __VA_ARGS__)
+#define MemNewImage(...) Mist::Memory::CreateImage(__FILE__, (uint16_t)__LINE__, __VA_ARGS__)
+#define MemFreeBuffer(...) Mist::Memory::DestroyBuffer(__VA_ARGS__)
+#define MemFreeImage(...) Mist::Memory::DestroyImage(__VA_ARGS__)

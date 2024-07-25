@@ -29,7 +29,7 @@ namespace Mist
 		VkExtent3D depthExtent = { spec.ImageWidth, spec.ImageHeight, 1 };
 		m_depthFormat = FORMAT_D32_SFLOAT;
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(m_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthExtent);
-		m_depthImage = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
+		m_depthImage = MemNewImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
 
 		// Image view
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(m_depthFormat, m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -45,7 +45,7 @@ namespace Mist
 			vkDestroyImageView(renderContext.Device, m_imageViews[i], nullptr);
 
 		vkDestroyImageView(renderContext.Device, m_depthImageView, nullptr);
-		Memory::DestroyImage(renderContext.Allocator, m_depthImage);
+		MemFreeImage(renderContext.Allocator, m_depthImage);
 		vkDestroySwapchainKHR(renderContext.Device, m_swapchain, nullptr);
 	}
 }

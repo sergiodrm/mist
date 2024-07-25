@@ -50,7 +50,7 @@ namespace Mist
 		vkDestroySampler(context.Device, m_sampler, nullptr);
 		
 		vkDestroyImageView(context.Device, m_view, nullptr);
-		Memory::DestroyImage(context.Allocator, m_image);
+		MemFreeImage(context.Allocator, m_image);
 	}
 
 	void Texture::AllocateImage(const RenderContext& context, const tImageDescription& desc)
@@ -322,7 +322,7 @@ namespace Mist
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.flags = createInfo.Flags;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		imageOut = Memory::CreateImage(context.Allocator, info, MEMORY_USAGE_GPU);
+		imageOut = MemNewImage(context.Allocator, info, MEMORY_USAGE_GPU);
 		return imageOut.IsAllocated();
 	}
 
@@ -336,7 +336,7 @@ namespace Mist
 		// Create transit buffer
 		VkDeviceSize size = utils::GetPixelSizeFromFormat(imageDesc.Format) * (VkDeviceSize)(imageDesc.Width * imageDesc.Height * imageDesc.Depth);
 		//check(size == textureInfo.PixelCount);
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
+		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
 		//Memory::MemCopy(context.Allocator, stageBuffer, data, size);
 		tExtent3D extent;
 		extent.width = imageDesc.Width;
@@ -404,7 +404,7 @@ namespace Mist
 				});
 		}
 
-		Memory::DestroyBuffer(context.Allocator, stageBuffer);
+		MemFreeBuffer(context.Allocator, stageBuffer);
 
 		return true;
 	}

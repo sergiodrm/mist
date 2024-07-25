@@ -154,13 +154,13 @@ namespace Mist
 
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		const RenderContext& context = engine->GetContext();
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
+		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
 		Memory::MemCopy(context.Allocator, stageBuffer, cpuData, size);
 		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd) 
 			{
 				gpuBuffer.UpdateData(cmd, stageBuffer.Buffer, size, 0);
 			});
-		Memory::DestroyBuffer(context.Allocator, stageBuffer);
+		MemFreeBuffer(context.Allocator, stageBuffer);
 	}
 
 	GPUBuffer::GPUBuffer()
@@ -175,7 +175,7 @@ namespace Mist
 	{
 		check(m_buffer.Buffer == VK_NULL_HANDLE);
 		check(m_buffer.Alloc == nullptr);
-		m_buffer = Memory::CreateBuffer(renderContext.Allocator,
+		m_buffer = MemNewBuffer(renderContext.Allocator,
 			info.Size,
 			vkutils::GetVulkanBufferUsage(m_usage)
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -190,7 +190,7 @@ namespace Mist
 
 	void GPUBuffer::Destroy(const RenderContext& renderContext)
 	{
-		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
+		MemFreeBuffer(renderContext.Allocator, m_buffer);
 		m_size = 0;
 	}
 
@@ -223,7 +223,7 @@ namespace Mist
 
 		// TODO: bufferSize must be power of 2. Override with greater size or check size?
 		VkBufferUsageFlags usageFlags = vkutils::GetVulkanBufferUsage(usage);
-		m_buffer = Memory::CreateBuffer(renderContext.Allocator, bufferSize, usageFlags, MEMORY_USAGE_CPU_TO_GPU);
+		m_buffer = MemNewBuffer(renderContext.Allocator, bufferSize, usageFlags, MEMORY_USAGE_CPU_TO_GPU);
 		m_maxMemoryAllocated = bufferSize;
 		static int c = 0;
 		char buff[64];
@@ -234,7 +234,7 @@ namespace Mist
 	void UniformBufferMemoryPool::Destroy(const RenderContext& renderContext)
 	{
 		check(m_buffer.IsAllocated());
-		Memory::DestroyBuffer(renderContext.Allocator, m_buffer);
+		MemFreeBuffer(renderContext.Allocator, m_buffer);
 		m_infoMap.clear();
 	}
 
