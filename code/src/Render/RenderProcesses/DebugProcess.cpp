@@ -19,7 +19,7 @@ namespace Mist
 {
 	namespace DebugRender
 	{
-		Texture DefaultTexture;
+		Texture* DefaultTexture;
 
 		constexpr glm::vec2 QuadVertexUVs[4] =
 		{
@@ -106,18 +106,19 @@ namespace Mist
 
 		void Init(const RenderContext& context)
 		{
-			check(LoadTextureFromFile(context, ASSET_PATH("textures/checkerboard.jpg"), DefaultTexture, FORMAT_R8G8B8A8_SRGB));
+			check(LoadTextureFromFile(context, ASSET_PATH("textures/checkerboard.jpg"), &DefaultTexture, FORMAT_R8G8B8A8_SRGB));
 			TextureDescriptor texDescriptor;
+			tViewDescription viewDesc;
 			texDescriptor.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			texDescriptor.Sampler = CreateSampler(context);
-			texDescriptor.View = DefaultTexture.GetImageView();
+			texDescriptor.View = DefaultTexture->CreateView(context, viewDesc);
 			for (uint32_t i = 0; i < QuadBatch::MaxViews; ++i)
 				GQuadBatch.TexDescriptors[i] = texDescriptor;
 		}
 
 		void Destroy(const RenderContext& context)
 		{
-			DefaultTexture.Destroy(context);
+			Texture::Destroy(context, DefaultTexture);
 		}
 
 		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)

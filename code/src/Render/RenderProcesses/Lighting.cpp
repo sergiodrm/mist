@@ -2,6 +2,7 @@
 #include <vector>
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"
+#include "Core/Debug.h"
 #include "Render/InitVulkanTypes.h"
 #include "GBuffer.h"
 #include "Scene/SceneImpl.h"
@@ -10,6 +11,8 @@
 #include "imgui_internal.h"
 #include "Application/Application.h"
 #include "Application/CmdParser.h"
+
+#define BLOOM_MIPMAP_LEVELS 5
 
 
 namespace Mist
@@ -24,8 +27,16 @@ namespace Mist
 	{
 		// Downscale
 		{
+			tImageDescription description;
+			description.Width = context.Window->Width;
+			description.Height = context.Window->Height;
+			description.Depth = 1;
+			description.SampleCount = SAMPLE_COUNT_1_BIT;
+			description.Layers = 1;
+			description.MipLevels = BLOOM_MIPMAP_LEVELS;
+			description.Flags = 0;
+			m_downscaleRT.Image = Texture::Create(context, description);
 			
-
 			tClearValue clearValue = { 1.f, 1.f, 1.f, 1.f };
 			RenderTargetDescription rtdesc;
 			rtdesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
@@ -44,6 +55,7 @@ namespace Mist
 	}
 	void BloomEffect::Destroy(const RenderContext& context)
 	{
+		Texture::Destroy(context, m_downscaleRT.Image);
 	}
 
 	void DeferredLighting::Init(const RenderContext& renderContext)

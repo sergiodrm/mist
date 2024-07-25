@@ -41,9 +41,9 @@ namespace Mist
 		imageDesc.Layers = 1;
 		imageDesc.MipLevels = 1;
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-		m_noiseTexture.AllocateImage(renderContext, imageDesc);
+		m_noiseTexture = Texture::Create(renderContext, imageDesc);
 		const uint8_t* pixels = (uint8_t*)ssaoNoise;
-		m_noiseTexture.SetImageLayers(renderContext, &pixels, 1);
+		m_noiseTexture->SetImageLayers(renderContext, &pixels, 1);
 
 		// Render target
 		RenderTargetDescription rtDesc;
@@ -98,7 +98,7 @@ namespace Mist
 	{
 		m_screenQuadIB.Destroy(renderContext);
 		m_screenQuadVB.Destroy(renderContext);
-		m_noiseTexture.Destroy(renderContext);
+		Texture::Destroy(renderContext, m_noiseTexture);
 		m_rt.Destroy(renderContext);
 		m_blurRT.Destroy(renderContext);
 	}
@@ -110,6 +110,7 @@ namespace Mist
 
 		Sampler sampler = CreateSampler(context, FILTER_NEAREST, FILTER_NEAREST);
 
+		tViewDescription viewDesc;
 		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
 		const RenderTarget& rt = *gbuffer->GetRenderTarget();
 		VkDescriptorImageInfo imageInfo[5];
@@ -127,7 +128,7 @@ namespace Mist
 		imageInfo[3].imageView = rt.GetRenderTarget(GBuffer::RT_DEPTH);
 		imageInfo[4].sampler = sampler;
 		imageInfo[4].imageLayout = tovk::GetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		imageInfo[4].imageView = m_noiseTexture.GetImageView();
+		imageInfo[4].imageView = m_noiseTexture->CreateView(context, viewDesc);
 
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 		builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);

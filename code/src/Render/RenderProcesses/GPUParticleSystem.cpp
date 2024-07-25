@@ -100,10 +100,13 @@ namespace Mist
 
 		m_sampler = CreateSampler(context);
 
-		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
+
+		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), &m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
+		tViewDescription viewDesc;
+		ImageView view = m_circleGradientTexture->CreateView(context, viewDesc);
 		VkDescriptorImageInfo imageInfo;
 		imageInfo.sampler = m_sampler;
-		imageInfo.imageView = m_circleGradientTexture.GetImageView();
+		imageInfo.imageView = view;
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
 			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -172,7 +175,7 @@ namespace Mist
 
 	void GPUParticleSystem::Destroy(const RenderContext& context)
 	{
-		m_circleGradientTexture.Destroy(context);
+		Texture::Destroy(context, m_circleGradientTexture);
 
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{

@@ -47,7 +47,7 @@ namespace Mist
 	private:
 		ShaderProgram* m_ssaoShader;
 		RenderTarget m_rt;
-		Texture m_noiseTexture;
+		Texture* m_noiseTexture;
 		FrameData m_frameData[globals::MaxOverlappedFrames];
 		SSAOUBO m_uboData;
 		VertexBuffer m_screenQuadVB;

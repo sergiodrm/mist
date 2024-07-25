@@ -18,6 +18,13 @@ namespace Mist
 		float Exposure = 1.f;
 	};
 
+	struct ExternalAttachmentRT
+	{
+		VkImageView View;
+		Texture* Image;
+		RenderTarget RT;
+	};
+
 	class BloomEffect
 	{
 	public:
@@ -28,8 +35,8 @@ namespace Mist
 		void Destroy(const RenderContext& context);
 
 	private:
-		RenderTarget m_downscaleRT;
-		RenderTarget m_upscaleRT;
+		ExternalAttachmentRT m_downscaleRT;
+		ExternalAttachmentRT m_upscaleRT;
 
 		ShaderProgram* m_downscaleShader;
 		ShaderProgram* m_upscaleShader;

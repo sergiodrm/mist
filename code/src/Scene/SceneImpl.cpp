@@ -361,7 +361,7 @@ namespace gltf_api
 			indices[i + indexOffset] = (uint32_t)cgltf_accessor_read_index(primitive->indices, i) + offset;
 	}
 
-	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, Mist::Texture& texOut)
+	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, Mist::Texture** texOut)
 	{
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
@@ -374,10 +374,10 @@ namespace gltf_api
 		material.SetName(mtl.name);
 		if (mtl.pbr_metallic_roughness.base_color_texture.texture)
 		{
-			Mist::Texture diffuse;
+			Mist::Texture* diffuse;
 			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, diffuse));
+				mtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &diffuse));
 			Mist::RenderHandle h = scene.SubmitTexture(diffuse);
 			material.SetAlbedoTexture(h);
 		}
@@ -389,10 +389,10 @@ namespace gltf_api
 		}
 		if (mtl.pbr_metallic_roughness.metallic_roughness_texture.texture)
 		{
-			Mist::Texture diffuse;
+			Mist::Texture* diffuse;
 			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_SRGB, diffuse));
+				mtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_SRGB, &diffuse));
 			Mist::RenderHandle h = scene.SubmitTexture(diffuse);
 			material.SetMetallicTexture(h);
 		}
@@ -407,10 +407,10 @@ namespace gltf_api
 
 		if (mtl.pbr_specular_glossiness.diffuse_texture.texture)
 		{
-			Mist::Texture tex;
+			Mist::Texture* tex;
 			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.pbr_specular_glossiness.diffuse_texture, Mist::FORMAT_R8G8B8A8_UNORM, tex));
+				mtl.pbr_specular_glossiness.diffuse_texture, Mist::FORMAT_R8G8B8A8_UNORM, &tex));
 			Mist::RenderHandle h = scene.SubmitTexture(tex);
 			material.SetSpecularTexture(h);
 		}
@@ -421,10 +421,10 @@ namespace gltf_api
 
 		if (mtl.normal_texture.texture)
 		{
-			Mist::Texture tex;
+			Mist::Texture* tex;
 			check(LoadTexture(context,
 				rootAssetPath,
-				mtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, tex));
+				mtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, &tex));
 			Mist::RenderHandle h = scene.SubmitTexture(tex);
 			material.SetNormalTexture(h);
 		}
@@ -435,8 +435,8 @@ namespace gltf_api
 
 		if (mtl.occlusion_texture.texture)
 		{
-			Mist::Texture tex;
-			check(LoadTexture(context, rootAssetPath, mtl.occlusion_texture, Mist::FORMAT_R8G8B8A8_UNORM, tex));
+			Mist::Texture* tex;
+			check(LoadTexture(context, rootAssetPath, mtl.occlusion_texture, Mist::FORMAT_R8G8B8A8_UNORM, &tex));
 			Mist::RenderHandle h = scene.SubmitTexture(tex);
 			material.SetOcclusionTexture(h);
 		}
@@ -603,7 +603,7 @@ namespace Mist
 		m_materialArray.clear();
 		for (auto& it : m_renderData.Textures)
 		{
-			it.second.Destroy(m_engine->GetContext());
+			Texture::Destroy(m_engine->GetContext(), it.second);
 		}
 	}
 
@@ -1020,7 +1020,7 @@ namespace Mist
 		return material.GetHandle();
 	}
 
-	RenderHandle Scene::SubmitTexture(Texture tex)
+	RenderHandle Scene::SubmitTexture(Texture* tex)
 	{
 		RenderHandle h = GenerateRenderHandle();
 		m_renderData.Textures[h] = tex;
@@ -1039,8 +1039,8 @@ namespace Mist
 	RenderHandle Scene::LoadTexture(const char* texturePath) { check(false); return RenderHandle(); }
 	RenderHandle Scene::LoadTexture(const RenderContext& context, const char* texturePath, EFormat format)
 	{
-		Texture tex;
-		check(LoadTextureFromFile(context, texturePath, tex, format));
+		Texture* tex;
+		check(LoadTextureFromFile(context, texturePath, &tex, format));
 		return SubmitTexture(tex);
 	}
 
@@ -1160,16 +1160,19 @@ namespace Mist
 		imageDesc.Flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		imageDesc.MipLevels = 1; // needs cubemap?
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-		Texture cubemapTex;
-		cubemapTex.AllocateImage(context, imageDesc);
+		Texture* cubemapTex = Texture::Create(context, imageDesc);
 		// Set image layers with each cubemap texture
-		cubemapTex.SetImageLayers(context, pixelsArray, Skybox::COUNT);
+		cubemapTex->SetImageLayers(context, pixelsArray, Skybox::COUNT);
 		SubmitTexture(cubemapTex);
 
+		tViewDescription viewDesc;
+		viewDesc.BaseArrayLayer = 0;
+		viewDesc.LayerCount = Skybox::COUNT;
+		viewDesc.ViewType = VK_IMAGE_VIEW_TYPE_CUBE;
 		VkDescriptorImageInfo info;
 		info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		info.imageView = cubemapTex.GetImageView();
-		info.sampler = cubemapTex.GetSampler();
+		info.imageView = cubemapTex->CreateView(context, viewDesc);
+		info.sampler = cubemapTex->GetSampler();
 		builder.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 		check(builder.Build(context, skybox.CubemapSet));
 
@@ -1523,7 +1526,7 @@ namespace Mist
 					{
 						auto submitTexture = [&](RenderHandle texHandle, uint32_t binding, uint32_t arrayIndex)
 							{
-								Texture texture;
+								Texture* texture;
 								if (texHandle.IsValid())
 								{
 									texture = m_renderData.Textures[texHandle];

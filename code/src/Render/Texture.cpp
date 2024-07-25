@@ -49,7 +49,8 @@ namespace Mist
 	{
 		vkDestroySampler(context.Device, m_sampler, nullptr);
 		
-		vkDestroyImageView(context.Device, m_view, nullptr);
+		for (uint32_t i = 0; i < (uint32_t)m_views.size(); ++i)
+			vkDestroyImageView(context.Device, m_views[i], nullptr);
 		MemFreeImage(context.Allocator, m_image);
 	}
 
@@ -85,26 +86,24 @@ namespace Mist
 		vkcheck(vkCreateSampler(context.Device, &samplerCreateInfo, nullptr, &m_sampler));
 	}
 
+	Texture* Texture::Create(const RenderContext& context, const tImageDescription& description)
+	{
+		Texture* texture = new Texture();
+		texture->AllocateImage(context, description);
+		return texture;
+	}
+
+	void Texture::Destroy(const RenderContext& context, Texture* texture)
+	{
+		texture->Destroy(context);
+		delete texture;
+	}
+
 	void Texture::SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount)
 	{
 		check(layerCount == m_description.Layers);
 		check(m_image.IsAllocated());
 		check(TransferImage(context, m_description, layerDataArray, layerCount, m_image));
-
-		VkImageViewCreateInfo viewInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			.pNext = nullptr,
-			.image = m_image.Image,
-			.viewType = layerCount > 1 ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
-			.format = tovk::GetFormat(m_description.Format),
-		};
-		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.levelCount = m_description.MipLevels;
-		viewInfo.subresourceRange.baseArrayLayer = 0;
-		viewInfo.subresourceRange.layerCount = layerCount;
-		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &m_view));
 	}
 
 	void Texture::GenerateMipmaps(const RenderContext& context)
@@ -112,6 +111,48 @@ namespace Mist
 		for (uint32_t i = 1; i <= m_description.MipLevels; ++i)
 			TransitionImageLayout(context, m_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, i);
 		check(GenerateImageMipmaps(context, m_image, m_description));
+	}
+
+	ImageView Texture::CreateView(const RenderContext& context, const tViewDescription& viewDesc)
+	{
+		VkImageViewCreateInfo viewInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.pNext = nullptr,
+			.image = m_image.Image,
+			.viewType = viewDesc.ViewType,
+			.format = tovk::GetFormat(m_description.Format),
+		};
+		check(viewDesc.BaseMipLevel + viewDesc.LevelCount <= m_description.MipLevels);
+		check(viewDesc.BaseArrayLayer + viewDesc.LayerCount <= m_description.Layers);
+		viewInfo.subresourceRange.baseMipLevel = viewDesc.BaseMipLevel;
+		viewInfo.subresourceRange.levelCount = viewDesc.LevelCount;
+		viewInfo.subresourceRange.baseArrayLayer = viewDesc.BaseArrayLayer;
+		viewInfo.subresourceRange.layerCount = viewDesc.LayerCount;
+		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		ImageView view;
+		vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &view));
+		m_views.push_back(view);
+
+		static int c = 0;
+		char buff[256];
+		if (c == 90) __debugbreak();
+		sprintf_s(buff, "ImageView_%d", c++);
+		SetVkObjectName(context, &view, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
+
+
+		return view;
+	}
+
+	ImageView Texture::GetView(uint32_t viewIndex) const
+	{
+		check(viewIndex < (uint32_t)m_views.size());
+		return m_views[viewIndex];
+	}
+
+	uint32_t Texture::GetViewCount() const
+	{
+		return (uint32_t)m_views.size();
 	}
 
 
@@ -523,13 +564,14 @@ namespace Mist
 		return true;
 	}
 
-	bool BindDescriptorTexture(const RenderContext& context, const Texture& texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex)
+	bool BindDescriptorTexture(const RenderContext& context, Texture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex)
 	{
 		//check(set != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
+		tViewDescription viewDesc;
 		VkDescriptorImageInfo imageInfo
 		{
-			.sampler = texture.GetSampler(),
-			.imageView = texture.GetImageView(),
+			.sampler = texture->GetSampler(),
+			.imageView = texture->GetViewCount() ? texture->GetView(0) : texture->CreateView(context, viewDesc),
 			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 		};
 		VkWriteDescriptorSet writeSet
@@ -547,8 +589,9 @@ namespace Mist
 		return true;
 	}
 
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture, EFormat format)
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture** texture, EFormat format)
 	{
+		check(texture);
 		// Load texture from file
 		io::TextureRaw texData;
 		if (!io::LoadTexture(filepath, texData))
@@ -570,9 +613,10 @@ namespace Mist
 		texInfo.MipLevels = CalculateMipLevels(texInfo.Width, texInfo.Height);
 		texInfo.SampleCount = SAMPLE_COUNT_1_BIT;
 		const uint8_t* pixels = (uint8_t*)texData.Pixels;
-		texture.AllocateImage(context, texInfo);
-		texture.SetImageLayers(context, &pixels, 1);
-		texture.GenerateMipmaps(context);
+
+		*texture = Texture::Create(context, texInfo);
+		(*texture)->SetImageLayers(context, &pixels, 1);
+		(*texture)->GenerateMipmaps(context);
 #else
 		texInfo.Pixels = texData.Pixels;
 		texInfo.PixelCount = texData.Width * texData.Height * /*texData.Channels*/1; // depth

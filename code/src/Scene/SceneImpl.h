@@ -63,7 +63,7 @@ namespace Mist
 	{
 		template <typename RenderResourceType>
 		using ResourceMap = std::unordered_map<RenderHandle, RenderResourceType, RenderHandle::Hasher>;
-		ResourceMap<Texture> Textures;
+		ResourceMap<Texture*> Textures;
 		ResourceMap<MeshRenderData> Meshes;
 	};
 
@@ -173,7 +173,7 @@ namespace Mist
 		virtual uint32_t SubmitMaterial(Material& material) override;
 		virtual RenderHandle LoadTexture(const char* texturePath) override;
 		RenderHandle LoadTexture(const RenderContext& context, const char* texturePath, EFormat format);
-		RenderHandle SubmitTexture(Texture tex);
+		RenderHandle SubmitTexture(Texture* tex);
 		void UpdateMaterialBindings(Material& material);
 
 		void MarkAsDirty(RenderObject renderObject);

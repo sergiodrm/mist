@@ -37,6 +37,16 @@ namespace Mist
 		SamplerDescription SamplerDesc;
 	};
 
+	struct tViewDescription
+	{
+		uint32_t BaseMipLevel = 0;
+		uint32_t LevelCount = 1;
+		uint32_t BaseArrayLayer = 0;
+		uint32_t LayerCount = 1;
+		VkImageViewType ViewType = VK_IMAGE_VIEW_TYPE_2D;
+		VkImageViewCreateFlags Flags = 0;
+	};
+
 
 	Sampler CreateSampler(const RenderContext& renderContext, const SamplerDescription& description);
 	Sampler CreateSampler(const RenderContext& renderContext,
@@ -53,7 +63,7 @@ namespace Mist
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels);
 	bool TransferImage(const RenderContext& context, const tImageDescription& createInfo, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut);
 	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const tImageDescription& imageDesc);
-	bool BindDescriptorTexture(const RenderContext& context, const Texture& texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
+	bool BindDescriptorTexture(const RenderContext& context, Texture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 
 
 	namespace io
@@ -73,22 +83,27 @@ namespace Mist
 
 	class Texture
 	{
+		Texture() = default;
 	public:
 
-		Texture() = default;
-		void Destroy(const RenderContext& context);
+		static Texture* Create(const RenderContext& context, const tImageDescription& description);
+		static void Destroy(const RenderContext& context, Texture* texture);
 
-		void AllocateImage(const RenderContext& context, const tImageDescription& desc);
 		void SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount);
 		void GenerateMipmaps(const RenderContext& context);
 
-		ImageView GetImageView() const { return m_view; }
+		ImageView CreateView(const RenderContext& context, const tViewDescription& viewDesc);
+		ImageView GetView(uint32_t viewIndex) const;
+		uint32_t GetViewCount() const;
 		Sampler GetSampler() const { return m_sampler; }
 
 	private:
+		void Destroy(const RenderContext& context);
+		void AllocateImage(const RenderContext& context, const tImageDescription& desc);
+
 		tImageDescription m_description;
 		AllocatedImage m_image;
-		ImageView m_view;
+		tDynArray<ImageView> m_views;
 		Sampler m_sampler;
 	};
 	
@@ -130,6 +145,6 @@ namespace Mist
 #endif // 0
 
 
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture& texture, EFormat format);
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture** texture, EFormat format);
 
 }
