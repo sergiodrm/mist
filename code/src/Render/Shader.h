@@ -48,6 +48,35 @@ namespace Mist
 		std::unordered_map<VkShaderStageFlags, ShaderPushConstantBufferInfo> PushConstantMap;
 	};
 
+
+	struct tCompileMacroDefinition
+	{
+		char Macro[64];
+		char Value[64];
+		tCompileMacroDefinition()
+		{
+			*Macro = 0;
+			*Value = 0;
+		}
+	};
+
+	struct tCompileOptions
+	{
+		bool GenerateDebugInfo;
+		char EntryPointName[64];
+		Mist::tDynArray<tCompileMacroDefinition> MacroDefinitionArray;
+
+		tCompileOptions()
+			: GenerateDebugInfo(true), EntryPointName{ "main" }
+		{		}
+	};
+
+	struct ShaderFileDescription
+	{
+		std::string Filepath;
+		tCompileOptions CompileOptions;
+	};
+
 	class ShaderCompiler
 	{
 		struct CompiledShaderModule
@@ -60,7 +89,7 @@ namespace Mist
 		~ShaderCompiler();
 
 		void ClearCachedData();
-		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, bool forceCompilation = false);
+		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, const tCompileOptions& compileOptions);
 		bool GenerateReflectionResources(DescriptorLayoutCache& layoutCache);
 		void SetUniformBufferAsDynamic(const char* uniformBufferName);
 		VkShaderModule GetCompiledModule(VkShaderStageFlags shaderStage) const;
@@ -83,7 +112,7 @@ namespace Mist
 		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage);
 		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage);
 		static bool GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount);
-		static bool GetSpvBinaryFromFile(const char* shaderFilepath, uint32_t** binaryData, size_t* binaryCount);
+		static bool GetSpvBinaryFromFile(const char* shaderFilepath, const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount);
 	protected:
 		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount);
 		
@@ -100,18 +129,15 @@ namespace Mist
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 
-	struct ShaderDescription
-	{
-		std::string Filepath;
-		VkShaderStageFlagBits Stage;
-	};
+	
 
 	struct GraphicsShaderProgramDescription
 	{
 		/// Shader files
-		tString VertexShaderFile;
-		tString FragmentShaderFile;
+		ShaderFileDescription VertexShaderFile;
+		ShaderFileDescription FragmentShaderFile;
 
+		// Pipeline config
 		uint32_t SubpassIndex = 0;
 		const RenderTarget* RenderTarget = nullptr;
 		VertexInputLayout InputLayout;
@@ -129,7 +155,7 @@ namespace Mist
 
 	struct ComputeShaderProgramDescription
 	{
-		tString ComputeShaderFile;
+		ShaderFileDescription ComputeShaderFile;
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
@@ -184,15 +210,11 @@ namespace Mist
 	class ShaderFileDB
 	{
 	public:
-
-		template <size_t _KeySize>
-		static void GenerateKey(char(&key)[_KeySize], const char* vertexFile, const char* fragmentFile);
-
 		void Init(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
 		void AddShaderProgram(const RenderContext& context, ComputeShader* computeShader);
-		ShaderProgram* FindShaderProgram(const char* vertexFile, const char* fragmentFile) const;
+		ShaderProgram* FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const;
 		ShaderProgram* FindShaderProgram(const char* key) const;
 		void ReloadFromFile(const RenderContext& context);
 
@@ -206,17 +228,4 @@ namespace Mist
 		tDynArray<ComputeShader*> m_computeShaderArray;
 		tMap<tString, uint32_t> m_indexMap;
 	};
-
-	template <size_t _KeySize>
-	void ShaderFileDB::GenerateKey(char(&key)[_KeySize], const char* vertexFile, const char* fragmentFile)
-	{
-		strcpy_s(key, vertexFile);
-		strcat_s(key, fragmentFile);
-		char* i = key;
-		while (*i)
-		{
-			*i = tolower(*i);
-			++i;
-		}
-	}
 }

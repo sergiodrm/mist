@@ -16,6 +16,36 @@ namespace Mist
 {
 	CBoolVar CVar_HDREnable("HDREnable", true);
 
+	BloomEffect::BloomEffect()
+	{
+	}
+
+	void BloomEffect::Init(const RenderContext& context)
+	{
+		// Downscale
+		{
+			
+
+			tClearValue clearValue = { 1.f, 1.f, 1.f, 1.f };
+			RenderTargetDescription rtdesc;
+			rtdesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+			rtdesc.RenderArea.offset = { 0, 0 };
+			rtdesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+
+
+
+		}
+
+		// Upscale
+	}
+
+	void BloomEffect::InitFrameData(const tArray<RenderFrameContext*, globals::MaxOverlappedFrames>& frameContextArray)
+	{
+	}
+	void BloomEffect::Destroy(const RenderContext& context)
+	{
+	}
+
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
@@ -28,10 +58,11 @@ namespace Mist
 		{
 			// Deferred pipeline
 			GraphicsShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
-			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("deferred.frag");
+			shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
+			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
 			shaderDesc.RenderTarget = &m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			shaderDesc.ColorAttachmentBlendingArray.push_back(vkinit::PipelineColorBlendAttachmentState());
 			m_shader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
 
@@ -56,8 +87,8 @@ namespace Mist
 #if 0
 		{
 			ShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile = SHADER_FILEPATH("skybox.vert");
-			shaderDesc.FragmentShaderFile = SHADER_FILEPATH("skybox.frag");
+			shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("skybox.vert");
+			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			shaderDesc.RenderTarget = &m_renderTarget;
 			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
@@ -76,8 +107,8 @@ namespace Mist
 			m_ldrRenderTarget.Create(renderContext, ldrRtDesc);
 
 			GraphicsShaderProgramDescription hdrShaderDesc;
-			hdrShaderDesc.VertexShaderFile = SHADER_FILEPATH("quad.vert");
-			hdrShaderDesc.FragmentShaderFile = SHADER_FILEPATH("hdr.frag");
+			hdrShaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
+			hdrShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("hdr.frag");
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			hdrShaderDesc.RenderTarget = &m_ldrRenderTarget;
 			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
@@ -171,6 +202,8 @@ namespace Mist
 		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
 	}
 
+	CBoolVar CVar_ShaderTest("ShaderTest", false);
+
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
@@ -206,4 +239,5 @@ namespace Mist
 		ImGui::DragFloat("Exposure", &m_hdrParams.Exposure, 0.1f, 0.f, 5.f);
 		ImGui::End();
 	}
+	
 }

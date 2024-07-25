@@ -192,8 +192,8 @@ namespace Mist
 		GraphicsShaderProgramDescription shaderDesc;
 		shaderDesc.DynamicBuffers.push_back("u_model");
 		shaderDesc.DynamicBuffers.push_back("u_material");
-		shaderDesc.VertexShaderFile = SHADER_FILEPATH("mrt.vert");
-		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("mrt.frag");
+		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("mrt.vert");
+		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mrt.frag");
 		shaderDesc.RenderTarget = &m_renderTarget;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);

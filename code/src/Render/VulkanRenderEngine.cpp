@@ -120,8 +120,8 @@ namespace Mist
 
 		// Init shader
 		GraphicsShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile = globals::PostProcessVertexShader;
-		shaderDesc.FragmentShaderFile = globals::PostProcessFragmentShader;
+		shaderDesc.VertexShaderFile.Filepath= globals::PostProcessVertexShader;
+		shaderDesc.FragmentShaderFile.Filepath = globals::PostProcessFragmentShader;
 		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
 		shaderDesc.RenderTarget = &RenderTargetArray[0];
 		Shader = ShaderProgram::Create(context, shaderDesc);
@@ -165,8 +165,8 @@ namespace Mist
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{
 		GraphicsShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile = SHADER_FILEPATH("skybox.vert");
-		shaderDesc.FragmentShaderFile = SHADER_FILEPATH("skybox.frag");
+		shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("skybox.vert");
+		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = rt;
 		shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
@@ -313,7 +313,7 @@ namespace Mist
 
 	void VulkanRenderEngine::Shutdown()
 	{
-		Log(LogLevel::Info, "Shutdown render engine.\n");
+		loginfo("Shutdown render engine.\n");
 
 		ForceSync();
 
@@ -356,7 +356,7 @@ namespace Mist
 		
 
 
-		Log(LogLevel::Ok, "Render engine terminated.\n");
+		logok("Render engine terminated.\n");
 		Logf(MistDebug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
 			"Total vulkan layer validation errors: %u.\n", MistDebug::GVulkanLayerValidationErrors);
 		
@@ -618,9 +618,9 @@ namespace Mist
 				}
 				ImGui::NextColumn();
 				const GraphicsShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
-				ImGui::Text("%s", shaderDesc.VertexShaderFile.c_str());
+				ImGui::Text("%s", shaderDesc.VertexShaderFile.Filepath.c_str());
 				ImGui::NextColumn();
-				ImGui::Text("%s", shaderDesc.FragmentShaderFile.c_str());
+				ImGui::Text("%s", shaderDesc.FragmentShaderFile.Filepath.c_str());
 				ImGui::NextColumn();
 			}
 			ImGui::Columns();

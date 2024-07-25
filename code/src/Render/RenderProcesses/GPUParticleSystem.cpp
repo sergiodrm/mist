@@ -37,8 +37,8 @@ namespace Mist
 		}
 		{
 			GraphicsShaderProgramDescription description;
-			description.VertexShaderFile = SHADER_FILEPATH("particles.vert");
-			description.FragmentShaderFile = SHADER_FILEPATH("particles.frag");
+			description.VertexShaderFile.Filepath = SHADER_FILEPATH("particles.vert");
+			description.FragmentShaderFile.Filepath = SHADER_FILEPATH("particles.frag");
 			description.Topology = PRIMITIVE_TOPOLOGY_POINT_LIST;
 			description.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Float4 });
 			description.RenderTarget = rt;

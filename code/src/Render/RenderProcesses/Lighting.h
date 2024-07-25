@@ -18,6 +18,23 @@ namespace Mist
 		float Exposure = 1.f;
 	};
 
+	class BloomEffect
+	{
+	public:
+		BloomEffect();
+
+		void Init(const RenderContext& context);
+		void InitFrameData(const tArray<RenderFrameContext*, globals::MaxOverlappedFrames>& frameContextArray);
+		void Destroy(const RenderContext& context);
+
+	private:
+		RenderTarget m_downscaleRT;
+		RenderTarget m_upscaleRT;
+
+		ShaderProgram* m_downscaleShader;
+		ShaderProgram* m_upscaleShader;
+	};
+
 	class DeferredLighting : public RenderProcess
 	{
 		struct FrameData

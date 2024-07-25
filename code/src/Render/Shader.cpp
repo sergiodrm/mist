@@ -23,6 +23,7 @@
 
 //#define MIST_SHADER_REFLECTION_LOG
 //#define SHADER_FORCE_COMPILATION
+//#define SHADER_DUMP_PREPROCESS_RESULT
 #define SHADER_BINARY_FILE_EXTENSION ".spv"
 
 #include <shaderc/shaderc.hpp>  
@@ -88,28 +89,59 @@ namespace shader_compiler
 		return true;
 	}
 
-	tCompilationResult Compile(const char* filepath, VkShaderStageFlags stage)
+	tCompilationResult Compile(const char* filepath, VkShaderStageFlags stage, const Mist::tCompileOptions* compileOptions = nullptr)
 	{
 		char* source;
 		size_t s;
 		check(Mist::io::ReadFile(filepath, &source, s));
+#ifdef SHADER_DUMP_PREPROCESS_RESULT
+		Mist::Logf(Mist::LogLevel::Debug, "Preprocess: %s\n");
+#endif
 
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
+		const char* entryPoint = "main";
 
-		// Like -DMY_DEFINE=1
-		//options.AddMacroDefinition("MY_DEFINE", "1");
-		//options.SetOptimizationLevel(shaderc_optimization_level_size);
-		options.SetGenerateDebugInfo();
+		if (compileOptions)
+		{
+#ifdef SHADER_DUMP_PREPROCESS_RESULT
+			Mist::Logf(Mist::LogLevel::Debug, "Macro definition:\n");
+#endif
+			for (uint32_t i = 0; i < (size_t)compileOptions->MacroDefinitionArray.size(); ++i)
+			{
+				check(*compileOptions->MacroDefinitionArray[i].Macro);
+				if (*compileOptions->MacroDefinitionArray[i].Value)
+					options.AddMacroDefinition(compileOptions->MacroDefinitionArray[i].Macro, compileOptions->MacroDefinitionArray[i].Value);
+				else
+					options.AddMacroDefinition(compileOptions->MacroDefinitionArray[i].Macro);
+#ifdef SHADER_DUMP_PREPROCESS_RESULT
+				Mist::Logf(Mist::LogLevel::Debug, "> %s (%s)", compileOptions->MacroDefinitionArray[i].Macro, compileOptions->MacroDefinitionArray[i].Value);
+#endif
+			}
+			if (compileOptions->GenerateDebugInfo)
+				options.SetGenerateDebugInfo();
+			if (*compileOptions->EntryPointName)
+				entryPoint = compileOptions->EntryPointName;
+		}
+		else
+		{
+			options.SetGenerateDebugInfo();
+			//options.SetOptimizationLevel(shaderc_optimization_level_size);
+		}
+#ifdef SHADER_DUMP_PREPROCESS_RESULT
+		Mist::Logf(Mist::LogLevel::Debug, "Entry point: %s\n", entryPoint);
+#endif
+
 		shaderc_shader_kind kind = GetShaderType(stage);
-
-
 		shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, filepath, options);
 		if (!HandleError(prepRes, "preprocess"))
 			return tCompilationResult();
 
 		Mist::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
-		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, filepath, "main", options);
+#ifdef SHADER_DUMP_PREPROCESS_RESULT
+		Mist::Logf(Mist::LogLevel::Debug, "Preprocessed source:\n\n%s\n\n", preprocessSource.c_str());
+#endif
+		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, filepath, entryPoint, options);
 		if (!HandleError(result, "assembly"))
 			return tCompilationResult();
 		Mist::tString assemble{ result.begin(), result.end() };
@@ -122,6 +154,24 @@ namespace shader_compiler
 		compResult.binary = (uint32_t*)malloc(compResult.binaryCount * sizeof(uint32_t));
 		memcpy_s(compResult.binary, compResult.binaryCount * sizeof(uint32_t), spv.cbegin(), compResult.binaryCount * sizeof(uint32_t));
 		return compResult;
+	}
+
+	template <uint32_t Size>
+	void GenerateSpvFileName(char(&outFilepath)[Size], const char* srcFile, const Mist::tCompileOptions& options)
+	{
+		sprintf_s(outFilepath, Size, "%s.[%s]", srcFile, options.EntryPointName);
+		if (!options.MacroDefinitionArray.empty())
+		{
+			strcat_s(outFilepath, Size, ".[");
+			for (uint32_t i = 0; i < (uint32_t)options.MacroDefinitionArray.size(); ++i)
+			{
+				char buff[256];
+				sprintf_s(buff, "%s(%s).", options.MacroDefinitionArray[i].Macro, options.MacroDefinitionArray[i].Value);
+				strcat_s(outFilepath, Size, buff);
+			}
+			strcat_s(outFilepath, Size, "]");
+		}
+		strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
 	}
 }
 
@@ -185,7 +235,21 @@ namespace vkutils
 
 namespace Mist
 {
-
+	template <size_t _KeySize>
+	void GenerateKey(char(&key)[_KeySize], const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc)
+	{
+		char vertexKey[_KeySize/2];
+		shader_compiler::GenerateSpvFileName(vertexKey, vertexFileDesc.Filepath.c_str(), vertexFileDesc.CompileOptions);
+		char fragKey[_KeySize/2];
+		shader_compiler::GenerateSpvFileName(fragKey, fragFileDesc.Filepath.c_str(), fragFileDesc.CompileOptions);
+		sprintf_s(key, "%s%s", vertexKey, fragKey);
+		char* i = key;
+		while (*i)
+		{
+			*i = tolower(*i);
+			++i;
+		}
+	}
 
 	ShaderCompiler::ShaderCompiler(const RenderContext& renderContext) : m_renderContext(renderContext)
 	{}
@@ -206,24 +270,29 @@ namespace Mist
 		m_cachedPushConstantArray.clear();
 	}
 
-	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, bool forceCompilation)
+	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, const tCompileOptions& compileOptions)
 	{
 		PROFILE_SCOPE_LOG(ProcessShaderFile, "Shader file process");
 		Logf(LogLevel::Info, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+
+		check(!strcmp(compileOptions.EntryPointName, "main") && "Set shader entry point not supported yet.");
 
 		// integrity check: dont repeat shader stage and ensure correct file extension with shader stage.
 		check(GetCompiledModule(shaderStage) == VK_NULL_HANDLE);
 		check(CheckShaderFileExtension(filepath, shaderStage));
 
+		char binaryFilepath[1024];
+		shader_compiler::GenerateSpvFileName(binaryFilepath, filepath, compileOptions);
+
 #ifdef SHADER_RUNTIME_COMPILATION
 		shader_compiler::tCompilationResult bin;
 		if (
 #ifndef SHADER_FORCE_COMPILATION
-			!forceCompilation
+			GetSpvBinaryFromFile(filepath, binaryFilepath, &bin.binary, &bin.binaryCount)
 #else
 			false
 #endif // !SHADER_FORCE_COMPILATION
-			&& GetSpvBinaryFromFile(filepath, &bin.binary, &bin.binaryCount))
+			)
 		{
 			Logf(LogLevel::Info, "Loading shader binary from compiled file: %s.spv\n", filepath);
 		}
@@ -231,9 +300,9 @@ namespace Mist
 		{
 			PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
 			Logf(LogLevel::Warn, "Compiled binary not found for: %s\n", filepath);
-			bin = shader_compiler::Compile(filepath, shaderStage);
+			bin = shader_compiler::Compile(filepath, shaderStage, &compileOptions);
 			check(bin.IsCompilationSucceed());
-			GenerateCompiledFile(filepath, bin.binary, bin.binaryCount);
+			GenerateCompiledFile(binaryFilepath, bin.binary, bin.binaryCount);
 		}
 #else
 		// Read shader source and convert it to spirv binary
@@ -256,7 +325,7 @@ namespace Mist
 #endif // SHADER_RUNTIME_COMPILATION
 
 		char buff[256];
-		sprintf_s(buff, "ShaderModule_(%s)", filepath);
+		sprintf_s(buff, "ShaderModule_(%s)", binaryFilepath);
 		SetVkObjectName(m_renderContext, &data.CompiledModule, VK_OBJECT_TYPE_SHADER_MODULE, buff);
 
 		Logf(LogLevel::Ok, "Shader compiled successfully (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
@@ -492,35 +561,31 @@ namespace Mist
 		PROFILE_SCOPE_LOG(WriteShader, "Write file with binary spv shader");
 		check(shaderFilepath && *shaderFilepath && binaryData && binaryCount);
 		FILE* f;
-		char compiledName[256];
-		sprintf_s(compiledName, "%s" SHADER_BINARY_FILE_EXTENSION, shaderFilepath);
-		errno_t err = fopen_s(&f, compiledName, "wb");
+		errno_t err = fopen_s(&f, shaderFilepath, "wb");
 		check(!err && f && "Failed to write shader compiled file");
 		size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
 		check(writtenCount == binaryCount);
 		fclose(f);
-		Logf(LogLevel::Ok, "Shader binary compiled written: %s [%u bytes]\n", compiledName, writtenCount * sizeof(uint32_t));
+		Logf(LogLevel::Ok, "Shader binary compiled written: %s [%u bytes]\n", shaderFilepath, writtenCount * sizeof(uint32_t));
 		return true;
 	}
 
-	bool ShaderCompiler::GetSpvBinaryFromFile(const char* shaderFilepath, uint32_t** binaryData, size_t* binaryCount)
+	bool ShaderCompiler::GetSpvBinaryFromFile(const char* shaderFilepath, const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount)
 	{
-		check(shaderFilepath && *shaderFilepath && binaryData && binaryCount);
+		check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
 
-		char compiledFile[256];
-		sprintf_s(compiledFile, "%s" SHADER_BINARY_FILE_EXTENSION, shaderFilepath);
 		// Binary file is older than source file
 		struct stat attrFile;
 		stat(shaderFilepath, &attrFile);
 		struct stat attrCompiled;
-		stat(compiledFile, &attrCompiled);
+		stat(binaryFilepath, &attrCompiled);
 		if (attrFile.st_mtime > attrCompiled.st_mtime)
 			return false;
 
 		PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
 		// Binary file is created after last file modification, valid binary
 		FILE* f;
-		errno_t err = fopen_s(&f, compiledFile, "rb");
+		errno_t err = fopen_s(&f, binaryFilepath, "rb");
 		check(!err && f && "Failed to open shader compiled file");
 		fseek(f, 0L, SEEK_END);
 		size_t numbytes = ftell(f);
@@ -676,7 +741,7 @@ namespace Mist
 	bool ShaderProgram::Reload(const RenderContext& context)
 	{
 		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
-		check(!m_description.VertexShaderFile.empty() || !m_description.FragmentShaderFile.empty());
+		check(!m_description.VertexShaderFile.Filepath.empty() || !m_description.FragmentShaderFile.Filepath.empty());
 		check(m_description.RenderTarget);
 		RenderPipelineBuilder builder(context);
 		// Input configuration
@@ -693,17 +758,17 @@ namespace Mist
 #endif // 0
 
 		// Generate shader module stages
-		tArray<ShaderDescription, 2> descs;
-		descs[0] = { m_description.VertexShaderFile.c_str(), VK_SHADER_STAGE_VERTEX_BIT };
-		descs[1] = { m_description.FragmentShaderFile.c_str(), VK_SHADER_STAGE_FRAGMENT_BIT };
+		tArray<ShaderFileDescription*, 2> descs = { &m_description.VertexShaderFile, &m_description.FragmentShaderFile };
+		tArray<VkShaderStageFlagBits, 2> stages = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
+		tArray<const char*, 2> entryPoints = { m_description.VertexShaderFile.CompileOptions.EntryPointName, m_description.FragmentShaderFile.CompileOptions.EntryPointName };
 		ShaderCompiler compiler(context);
 		for (uint32_t i = 0; i < (uint32_t)descs.size(); ++i)
 		{
-			if (!descs[i].Filepath.empty())
+			if (!descs[i]->Filepath.empty())
 			{
-				compiler.ProcessShaderFile(descs[i].Filepath.c_str(), descs[i].Stage);
-				VkShaderModule compiled = compiler.GetCompiledModule(descs[i].Stage);
-				builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(descs[i].Stage, compiled));
+				compiler.ProcessShaderFile(descs[i]->Filepath.c_str(), stages[i], descs[i]->CompileOptions);
+				VkShaderModule compiled = compiler.GetCompiledModule(stages[i]);
+				builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(stages[i], compiled, entryPoints[i]));
 			}
 		}
 		// Generate shader reflection data
@@ -746,11 +811,14 @@ namespace Mist
 		// Free shader compiler cached data
 		compiler.ClearCachedData();
 
-		char buff[256];
-		sprintf_s(buff, "Pipeline_(%s)(%s)", m_description.VertexShaderFile.c_str(), m_description.FragmentShaderFile.c_str());
-		SetVkObjectName(context, &m_pipeline, VK_OBJECT_TYPE_PIPELINE, buff);
-		sprintf_s(buff, "PipelineLayout_(%s)(%s)", m_description.VertexShaderFile.c_str(), m_description.FragmentShaderFile.c_str());
-		SetVkObjectName(context, &m_pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, buff);
+		char buff[2][1024];
+		shader_compiler::GenerateSpvFileName(buff[0], m_description.VertexShaderFile.Filepath.c_str(), m_description.VertexShaderFile.CompileOptions);
+		shader_compiler::GenerateSpvFileName(buff[1], m_description.FragmentShaderFile.Filepath.c_str(), m_description.FragmentShaderFile.CompileOptions);
+		char vkName[2048];
+		sprintf_s(vkName, "Pipeline_(%s)(%s)", buff[0], buff[1]);
+		SetVkObjectName(context, &m_pipeline, VK_OBJECT_TYPE_PIPELINE, vkName);
+		sprintf_s(vkName, "PipelineLayout_(%s)(%s)", buff[0], buff[1]);
+		SetVkObjectName(context, &m_pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, vkName);
 
 		return true;
 	}
@@ -787,16 +855,12 @@ namespace Mist
 
 	bool ComputeShader::Reload(const RenderContext& context)
 	{
-		check(!m_description.ComputeShaderFile.empty());
+		check(!m_description.ComputeShaderFile.Filepath.empty());
 		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
 
 		VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
-
-		ShaderDescription fileDescription;
-		fileDescription.Filepath = m_description.ComputeShaderFile;
-		fileDescription.Stage = stage;
 		ShaderCompiler compiler(context);
-		compiler.ProcessShaderFile(m_description.ComputeShaderFile.c_str(), stage);
+		compiler.ProcessShaderFile(m_description.ComputeShaderFile.Filepath.c_str(), stage, m_description.ComputeShaderFile.CompileOptions);
 
 		for (uint32_t i = 0; i < (uint32_t)m_description.DynamicBuffers.size(); ++i)
 			compiler.SetUniformBufferAsDynamic(m_description.DynamicBuffers[i].c_str());
@@ -854,28 +918,28 @@ namespace Mist
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
 	{
 		const GraphicsShaderProgramDescription& description = program->GetDescription();
-		check(!FindShaderProgram(description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str()));
+		check(!FindShaderProgram(description.VertexShaderFile, description.FragmentShaderFile));
 
 		uint32_t index = (uint32_t)m_shaderArray.size();
 		m_shaderArray.push_back(program);
-		char key[512];
-		GenerateKey(key, description.VertexShaderFile.c_str(), description.FragmentShaderFile.c_str());
+		char key[2048];
+		GenerateKey(key, description.VertexShaderFile, description.FragmentShaderFile);
 		m_indexMap[key] = index;
 	}
 
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ComputeShader* computeShader)
 	{
 		const ComputeShaderProgramDescription& description = computeShader->GetDescription();
-		check(!FindShaderProgram(description.ComputeShaderFile.c_str()));
+		check(!FindShaderProgram(description.ComputeShaderFile.Filepath.c_str()));
 		uint32_t index = (uint32_t)m_computeShaderArray.size();
 		m_computeShaderArray.push_back(computeShader);
-		m_indexMap[description.ComputeShaderFile.c_str()] = index;
+		m_indexMap[description.ComputeShaderFile.Filepath.c_str()] = index;
 	}
 
-	ShaderProgram* ShaderFileDB::FindShaderProgram(const char* vertexFile, const char* fragmentFile) const
+	ShaderProgram* ShaderFileDB::FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const
 	{
-		char key[512];
-		GenerateKey(key, vertexFile, fragmentFile);
+		char key[2048];
+		GenerateKey(key, vertexFileDesc, fragFileDesc);
 		return FindShaderProgram(key);
 	}
 

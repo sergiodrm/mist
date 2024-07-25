@@ -81,14 +81,14 @@ namespace Mist
 			return semaphoreCreateInfo;
 		}
 
-		VkPipelineShaderStageCreateInfo PipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule)
+		VkPipelineShaderStageCreateInfo PipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char* entryPoint)
 		{
 			VkPipelineShaderStageCreateInfo info = {};
 			info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 			info.pName = nullptr;
 			info.stage = stage;
 			info.module = shaderModule;
-			info.pName = "main";
+			info.pName = entryPoint && *entryPoint ? entryPoint:"main";
 			return info;
 		}
 

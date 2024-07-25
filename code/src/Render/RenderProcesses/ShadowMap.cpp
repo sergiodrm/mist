@@ -40,12 +40,11 @@ namespace Mist
 		GraphicsShaderProgramDescription shaderDesc;
 
 		// CreatePipeline
-		ShaderDescription depthShader{ .Filepath = globals::DepthVertexShader, .Stage = VK_SHADER_STAGE_VERTEX_BIT };
 		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 
 		shaderDesc.DynamicBuffers.push_back("u_ubo");
 		shaderDesc.DynamicBuffers.push_back("u_model");
-		shaderDesc.VertexShaderFile = globals::DepthVertexShader;
+		shaderDesc.VertexShaderFile.Filepath = globals::DepthVertexShader;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = renderTarget;
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);

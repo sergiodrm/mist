@@ -29,7 +29,7 @@ namespace Mist
 		 * Pipeline related types builders.
 		 */
 		 // Build information to create a single shader stage for a pipeline.
-		VkPipelineShaderStageCreateInfo PipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule);
+		VkPipelineShaderStageCreateInfo PipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char* entryPoint = nullptr);
 		// Build information about vertex buffers and vertex formats, data layout, etc...
 		VkPipelineVertexInputStateCreateInfo PipelineVertexInputStageCreateInfo();
 		// Build information about what type of topology will be used in the pipeline. (triangles, lines, points...)
