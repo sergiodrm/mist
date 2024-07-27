@@ -611,6 +611,7 @@ namespace Mist
 		// Viewport configuration
 		VkViewport Viewport;
 		VkRect2D Scissor;
+		tDynArray<VkDynamicState> DynamicStates;
 
 		// Stages
 		std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
@@ -675,6 +676,11 @@ namespace Mist
 		viewportStateInfo.scissorCount = 1;
 		viewportStateInfo.pScissors = &Scissor;
 
+		VkPipelineDynamicStateCreateInfo dynamicStateInfo = { .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, .pNext = nullptr };
+		dynamicStateInfo.flags = 0;
+		dynamicStateInfo.pDynamicStates = DynamicStates.data();
+		dynamicStateInfo.dynamicStateCount = (uint32_t)DynamicStates.size();
+
 		// Blending info
 		VkPipelineColorBlendStateCreateInfo colorBlending = {};
 		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -693,6 +699,11 @@ namespace Mist
 		pipelineInfo.pVertexInputState = &inputInfo;
 		pipelineInfo.pInputAssemblyState = &assemblyInfo;
 		pipelineInfo.pViewportState = &viewportStateInfo;
+		if (DynamicStates.empty())
+			pipelineInfo.pDynamicState = nullptr;
+		else
+			pipelineInfo.pDynamicState = &dynamicStateInfo;
+
 		pipelineInfo.pRasterizationState = &Rasterizer;
 		pipelineInfo.pMultisampleState = &Multisampler;
 		pipelineInfo.pColorBlendState = &colorBlending;
@@ -750,12 +761,18 @@ namespace Mist
 		builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
 		builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
 		builder.Rasterizer.frontFace = tovk::GetFrontFace(m_description.FrontFaceMode);
-#if 1
 		builder.DepthStencil.depthWriteEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_WRITE ? VK_TRUE : VK_FALSE;
 		builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
 		builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
 		builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
-#endif // 0
+		builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
+		builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
+		builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
+		builder.Scissor.offset = {0, 0};
+		if (m_description.DynamicFlags & DYNAMIC_VIEWPORT)
+			builder.DynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+		if (m_description.DynamicFlags & DYNAMIC_SCISSOR)
+			builder.DynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
 
 		// Generate shader module stages
 		tArray<ShaderFileDescription*, 2> descs = { &m_description.VertexShaderFile, &m_description.FragmentShaderFile };
