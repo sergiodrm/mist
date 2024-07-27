@@ -12,12 +12,11 @@
 #include "Application/Application.h"
 #include "Application/CmdParser.h"
 
-#define BLOOM_MIPMAP_LEVELS 5
-
 
 namespace Mist
 {
 	CBoolVar CVar_HDREnable("HDREnable", true);
+	CIntVar CVar_BloomTex("BloomTex", 1);
 
 	BloomEffect::BloomEffect()
 	{
@@ -27,35 +26,92 @@ namespace Mist
 	{
 		// Downscale
 		{
-			tImageDescription description;
-			description.Width = context.Window->Width;
-			description.Height = context.Window->Height;
-			description.Depth = 1;
-			description.SampleCount = SAMPLE_COUNT_1_BIT;
-			description.Layers = 1;
-			description.MipLevels = BLOOM_MIPMAP_LEVELS;
-			description.Flags = 0;
-			m_downscaleRT.Image = Texture::Create(context, description);
+			uint32_t width = context.Window->Width /2;
+			uint32_t height = context.Window->Height/2;
+
+			for (uint32_t i = 0; i < (uint32_t)m_downscale.RenderTargetArray.size(); ++i)
+			{
+				check(width && height);
+				RenderTargetDescription rtdesc;
+				rtdesc.RenderArea.extent = { .width = width, .height = height };
+				rtdesc.RenderArea.offset = { 0, 0 };
+				rtdesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 1.f, 1.f, 1.f });
+				m_downscale.RenderTargetArray[i].Create(context, rtdesc);
+
+				width >>= 1;
+				height >>= 1;
+			}
 			
-			tClearValue clearValue = { 1.f, 1.f, 1.f, 1.f };
-			RenderTargetDescription rtdesc;
-			rtdesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
-			rtdesc.RenderArea.offset = { 0, 0 };
-			rtdesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+#if 0
+			for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
+			{
+				tViewDescription viewDesc;
+				viewDesc.BaseMipLevel = i;
+				viewDesc.LevelCount = 1;
+				ImageView view = m_downscale.Image->CreateView(context, viewDesc);
 
+				tClearValue clearValue = { 1.f, 1.f, 1.f, 1.f };
+				RenderTargetDescription rtdesc;
+				rtdesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+				rtdesc.RenderArea.offset = { 0, 0 };
+				rtdesc.AddExternalAttachment(view, FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+				m_downscale.RenderTargetArray[i].Create(context, rtdesc);
+			}
+#endif // 0
 
-
+			GraphicsShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
+			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
+			shaderDesc.DynamicFlags = DYNAMIC_VIEWPORT | DYNAMIC_SCISSOR;
+			tCompileMacroDefinition macrodef;
+			strcpy_s(macrodef.Macro, "BLOOM_DOWNSCALE");
+			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
+			shaderDesc.RenderTarget = &m_downscale.RenderTargetArray[0];
+			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			m_downscale.Shader = ShaderProgram::Create(context, shaderDesc);
 		}
 
 		// Upscale
 	}
 
-	void BloomEffect::InitFrameData(const tArray<RenderFrameContext*, globals::MaxOverlappedFrames>& frameContextArray)
+	void BloomEffect::InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView)
 	{
+		Sampler sampler = CreateSampler(context, FILTER_NEAREST, FILTER_NEAREST);
+		for (uint32_t i = 0; i < (uint32_t)m_downscale.FrameSets[frameIndex].SetArray.size(); ++i)
+		{
+			glm::vec2 texRes = { (float)m_downscale.RenderTargetArray[i].GetWidth(), (float)m_downscale.RenderTargetArray[i].GetHeight() };
+			char buff[64];
+			sprintf_s(buff, "BloomDownscaleTexRes_%d", i);
+			buffer->AllocUniform(context, buff, sizeof(glm::vec2));
+			buffer->SetUniform(context, buff, &texRes, sizeof(glm::vec2));
+			VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo(buff);
+
+			VkDescriptorImageInfo imageInfo;
+			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			imageInfo.sampler = sampler;
+			if (i == 0)
+			{
+				// First pass with hdr texture
+				imageInfo.imageView = hdrView;
+			}
+			else
+			{
+				// Others with the n-1 texture
+				imageInfo.imageView = m_downscale.RenderTargetArray[i - 1].GetRenderTarget(0);
+			}
+			DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.BindBuffer(1, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+				.Build(context, m_downscale.FrameSets[frameIndex].SetArray[i]);
+		}
 	}
 	void BloomEffect::Destroy(const RenderContext& context)
 	{
-		Texture::Destroy(context, m_downscaleRT.Image);
+#if 1
+		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
+			m_downscale.RenderTargetArray[i].Destroy(context);
+#endif // 0
+
 	}
 
 	void DeferredLighting::Init(const RenderContext& renderContext)
@@ -126,10 +182,12 @@ namespace Mist
 			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
 		}
 
+		m_bloomEffect.Init(renderContext);
 	}
 
 	void DeferredLighting::Destroy(const RenderContext& renderContext)
 	{
+		m_bloomEffect.Destroy(renderContext);
 		m_ldrRenderTarget.Destroy(renderContext);
 		m_renderTarget.Destroy(renderContext);
 		m_quadIB.Destroy(renderContext);
@@ -207,14 +265,13 @@ namespace Mist
 			.Build(renderContext, m_frameData[frameIndex].CameraSkyboxSet);
 #endif // 0
 
+		m_bloomEffect.InitFrameData(renderContext, &buffer, frameIndex, m_renderTarget.GetRenderTarget(0));
 	}
 
 	void DeferredLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
 		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
 	}
-
-	CBoolVar CVar_ShaderTest("ShaderTest", false);
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
@@ -230,6 +287,40 @@ namespace Mist
 		m_renderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 
+#if 1
+		uint32_t width = renderContext.Window->Width;
+		uint32_t height = renderContext.Window->Height;
+		width >>= 1;
+		height >>= 1;
+		VkViewport viewport{.x = 0.f, .y = 0.f};
+		viewport.width = (float)width;
+		viewport.height = (float)height;
+		viewport.minDepth = 0.f;
+		viewport.maxDepth = 1.f;
+		VkRect2D scissor;
+		scissor.offset = { 0, 0 };
+		scissor.extent = { width, height };
+		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
+		{
+			char buff[32];
+			sprintf_s(buff, "BloomDownscale_%d", i);
+			BeginGPUEvent(renderContext, cmd, buff);
+			m_bloomEffect.m_downscale.RenderTargetArray[i].BeginPass(cmd);
+			m_bloomEffect.m_downscale.Shader->UseProgram(cmd);
+			m_bloomEffect.m_downscale.Shader->BindDescriptorSets(cmd, &m_bloomEffect.m_downscale.FrameSets[frameContext.FrameIndex].SetArray[i], 1);
+			vkCmdSetViewport(cmd, 0, 1, &viewport);
+			vkCmdSetScissor(cmd, 0, 1, &scissor);
+			CmdDrawFullscreenQuad(cmd);
+			m_bloomEffect.m_downscale.RenderTargetArray[i].EndPass(cmd);
+			EndGPUEvent(renderContext, cmd);
+			viewport.width *= 0.5f;
+			viewport.height *= 0.5f;
+			scissor.extent.width >>= 1;
+			scissor.extent.height >>= 1;
+		}
+#endif // 0
+
+
 		// HDR and tone mapping
 		BeginGPUEvent(renderContext, cmd, "HDR");
 		m_ldrRenderTarget.BeginPass(cmd);
@@ -240,7 +331,13 @@ namespace Mist
 		RenderAPI::CmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 		m_ldrRenderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
+
+		if (CVar_BloomTex.Get() > -1 && CVar_BloomTex.Get() < BLOOM_MIPMAP_LEVELS)
+		{
+			DebugRender::DrawScreenQuad({ 1920.f *0.75f, 1080.f*0.f }, { 1920.f*0.25f, 1080.f*0.25f }, m_bloomEffect.m_downscale.RenderTargetArray[CVar_BloomTex.Get()].GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 	}
+
 	void DeferredLighting::ImGuiDraw()
 	{
 		ImGui::Begin("HDR");

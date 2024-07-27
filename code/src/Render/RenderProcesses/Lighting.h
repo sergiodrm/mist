@@ -6,6 +6,8 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
 
+#define BLOOM_MIPMAP_LEVELS 5
+
 
 namespace Mist
 {
@@ -18,11 +20,15 @@ namespace Mist
 		float Exposure = 1.f;
 	};
 
-	struct ExternalAttachmentRT
+	struct BloomStage
 	{
-		VkImageView View;
-		Texture* Image;
-		RenderTarget RT;
+		struct FrameData
+		{
+			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> SetArray;
+		};
+		ShaderProgram* Shader;
+		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
+		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
 	};
 
 	class BloomEffect
@@ -31,15 +37,11 @@ namespace Mist
 		BloomEffect();
 
 		void Init(const RenderContext& context);
-		void InitFrameData(const tArray<RenderFrameContext*, globals::MaxOverlappedFrames>& frameContextArray);
+		void InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView);
 		void Destroy(const RenderContext& context);
 
-	private:
-		ExternalAttachmentRT m_downscaleRT;
-		ExternalAttachmentRT m_upscaleRT;
-
-		ShaderProgram* m_downscaleShader;
-		ShaderProgram* m_upscaleShader;
+		BloomStage m_downscale;
+		BloomStage m_upscale;
 	};
 
 	class DeferredLighting : public RenderProcess
@@ -71,6 +73,8 @@ namespace Mist
 		ShaderProgram* m_hdrShader;
 		RenderTarget m_ldrRenderTarget;
 		HDRParams m_hdrParams;
+
+		BloomEffect m_bloomEffect;
 	};
 
 #if 0
