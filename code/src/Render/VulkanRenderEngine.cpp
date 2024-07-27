@@ -69,6 +69,51 @@ namespace Mist
 	CBoolVar CVar_ShowConsole("ShowConsole", false);
 	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
 
+	struct Quad
+	{
+		VertexBuffer VB;
+		IndexBuffer IB;
+
+		void Init(const RenderContext& context, float minx, float maxx, float miny, float maxy)
+		{
+			// Init vertexbuffer
+			float vertices[] =
+			{
+				// vkscreencoords	// uvs
+				minx, miny, 0.f,	0.f, 0.f,
+				maxx, miny, 0.f,	1.f, 0.f,
+				maxx, maxy, 0.f,	1.f, 1.f,
+				minx, maxy, 0.f,	0.f, 1.f
+			};
+			BufferCreateInfo quadInfo;
+			quadInfo.Data = vertices;
+			quadInfo.Size = sizeof(vertices);
+			VB.Init(context, quadInfo);
+
+			uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
+			quadInfo.Data = indices;
+			quadInfo.Size = sizeof(indices);
+			IB.Init(context, quadInfo);
+		}
+
+		void Draw(CommandBuffer cmd)
+		{
+			VB.Bind(cmd);
+			IB.Bind(cmd);
+			RenderAPI::CmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+		}
+
+		void Destroy(const RenderContext& context)
+		{
+			VB.Destroy(context);
+			IB.Destroy(context);
+		}
+	} FullscreenQuad;
+
+	void CmdDrawFullscreenQuad(CommandBuffer cmd)
+	{
+		FullscreenQuad.Draw(cmd);
+	}
 
 	RenderHandle GenerateRenderHandle()
 	{
@@ -105,16 +150,14 @@ namespace Mist
 
 	void ScreenQuadPipeline::Init(const RenderContext& context, const Swapchain& swapchain)
 	{
-		RenderTargetDescription rtDesc;
-		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
-		rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
-		rtDesc.ExternalAttachmentCount = 1;
-
 		uint32_t swapchainCount = swapchain.GetImageCount();
 		RenderTargetArray.resize(swapchainCount);
 		for (uint32_t i = 0; i < swapchainCount; ++i)
 		{
-			rtDesc.ExternalAttachments[0] = swapchain.GetImageViewAt(i);
+			RenderTargetDescription rtDesc;
+			rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+			rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
+			rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
 			RenderTargetArray[i].Create(context, rtDesc);
 		}
 
@@ -267,6 +310,8 @@ namespace Mist
 
 		AddConsoleCommand(ExecCommand_CVar);
 
+		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
+
 		return true;
 	}
 
@@ -316,6 +361,8 @@ namespace Mist
 		loginfo("Shutdown render engine.\n");
 
 		ForceSync();
+
+		FullscreenQuad.Destroy(m_renderContext);
 
 		if (m_scene)
 			IScene::DestroyScene(m_scene);
@@ -902,10 +949,10 @@ namespace Mist
 				fences.push_back(m_frameContextArray[i].RenderFence);
 				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
 			}
-			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE))
+			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
 			{
 				fences.push_back(m_frameContextArray[i].ComputeFence);
-				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
+				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
 			}
 
 		}

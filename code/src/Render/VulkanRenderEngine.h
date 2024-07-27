@@ -149,4 +149,5 @@ namespace Mist
 	};
 
 	extern RenderHandle GenerateRenderHandle();
+	extern void CmdDrawFullscreenQuad(CommandBuffer cmd);
 }
