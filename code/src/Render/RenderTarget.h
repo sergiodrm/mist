@@ -21,15 +21,18 @@ namespace Mist
 		inline bool IsValidAttachment() const { return Format != FORMAT_UNDEFINED && Layout != IMAGE_LAYOUT_UNDEFINED; }
 	};
 
+	struct RenderTargetExternalAttachmentDescription : public RenderTargetAttachmentDescription
+	{
+		VkImageView View = VK_NULL_HANDLE;
+	};
+
 	struct RenderTargetDescription
 	{
 		tRect2D RenderArea{ .offset = {.x=0, .y=0} };
 		tArray<RenderTargetAttachmentDescription, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> ColorAttachmentDescriptions;
 		uint32_t ColorAttachmentCount = 0;
 		RenderTargetAttachmentDescription DepthAttachmentDescription;
-#ifdef MIST_VULKAN
-		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> ExternalAttachments;
-#endif // MIST_VULKAN
+		tArray<RenderTargetExternalAttachmentDescription, MAX_RENDER_TARGET_ATTACHMENTS> ExternalAttachments;
 		uint32_t ExternalAttachmentCount = 0;
 
 		RenderTargetDescription()
@@ -58,10 +61,15 @@ namespace Mist
 			SetDepthAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
 		}
 
-		inline void AddExternalAttachment(VkImageView view)
+		inline void AddExternalAttachment(VkImageView view, EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
 		{
 			check(ExternalAttachmentCount < MAX_RENDER_TARGET_ATTACHMENTS);
-			ExternalAttachments[ExternalAttachmentCount++] = view;
+			ExternalAttachments[ExternalAttachmentCount].Format = format;
+			ExternalAttachments[ExternalAttachmentCount].Layout = layout;
+			ExternalAttachments[ExternalAttachmentCount].MultisampledBit = sampleCount;
+			ExternalAttachments[ExternalAttachmentCount].ClearValue = clearValue;
+			ExternalAttachments[ExternalAttachmentCount].View = view;
+			ExternalAttachmentCount++;
 		}
 	};
 
@@ -105,7 +113,7 @@ namespace Mist
 		void CreateResources(const RenderContext& renderContext);
 		void CreateRenderPass(const RenderContext& renderContext);
 		void CreateFramebuffer(const RenderContext& renderContext);
-		void CreateFramebuffer(const RenderContext& renderContext, const VkImageView* views, uint32_t viewCount);
+		void CreateFramebuffer(const RenderContext& renderContext, const RenderTargetExternalAttachmentDescription* externalAttachments, uint32_t externalAttachmentCount);
 		void CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const;
 	private:
 #ifdef MIST_VULKAN

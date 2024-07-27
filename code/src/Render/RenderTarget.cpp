@@ -119,7 +119,7 @@ namespace Mist
 		check(m_renderPass == VK_NULL_HANDLE);
 		check(m_framebuffer == VK_NULL_HANDLE);
 		CreateRenderPass(renderContext);
-		if (m_description.ExternalAttachments.at(0) == VK_NULL_HANDLE)
+		if (m_description.ExternalAttachmentCount == 0)
 			CreateFramebuffer(renderContext);
 		else
 			CreateFramebuffer(renderContext, m_description.ExternalAttachments.data(), m_description.ExternalAttachmentCount);
@@ -132,18 +132,33 @@ namespace Mist
 		tArray<VkAttachmentDescription, MAX_RENDER_TARGET_ATTACHMENTS> attachments;
 		// TODO: do we need to support multiple subpasses inside a RenderPass?
 		tArray<VkAttachmentReference, MAX_RENDER_TARGET_ATTACHMENTS> attachmentReferences;
-		for (uint32_t i = 0; i < m_description.ColorAttachmentCount;++i)
+		uint32_t attachmentCount;
+		if (m_description.ExternalAttachmentCount)
 		{
-			// Fill attachment info
-			attachments[i] = GetVkDescription(m_description.ColorAttachmentDescriptions[i]);
-
-			// References
-			attachmentReferences[i].attachment = i;
-			attachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			attachmentCount = m_description.ExternalAttachmentCount;
+			for (uint32_t i = 0; i < m_description.ExternalAttachmentCount; ++i)
+			{
+				// Fill attachment info
+				attachments[i] = GetVkDescription(m_description.ExternalAttachments[i]);
+				// References
+				attachmentReferences[i].attachment = i;
+				attachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			}
+		}
+		else
+		{
+			attachmentCount = m_description.ColorAttachmentCount;
+			for (uint32_t i = 0; i < m_description.ColorAttachmentCount; ++i)
+			{
+				// Fill attachment info
+				attachments[i] = GetVkDescription(m_description.ColorAttachmentDescriptions[i]);
+				// References
+				attachmentReferences[i].attachment = i;
+				attachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+			}
 		}
 
 		// Depth attachment
-		uint32_t attachmentCount = m_description.ColorAttachmentCount;
 		VkAttachmentReference* depthReference = VK_NULL_HANDLE;
 		if (m_description.DepthAttachmentDescription.IsValidAttachment())
 		{
@@ -155,6 +170,7 @@ namespace Mist
 			++attachmentCount;
 			depthReference = &attachmentReferences[depthAttachmentIndex];
 		}
+		check(attachmentCount > 0);
 
 		VkSubpassDescription subpass;
 		subpass.flags = 0;
@@ -283,19 +299,22 @@ namespace Mist
 		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
 	}
 
-	void RenderTarget::CreateFramebuffer(const RenderContext& renderContext, const VkImageView* views, uint32_t viewCount)
+	void RenderTarget::CreateFramebuffer(const RenderContext& renderContext, const RenderTargetExternalAttachmentDescription* externalAttachments, uint32_t viewCount)
 	{
 		check(viewCount && viewCount <= MAX_RENDER_TARGET_ATTACHMENTS);
+		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> views;
 		for (uint32_t i = 0; i < viewCount; ++i)
 		{
-			m_attachments[i].View = views[i];
+			m_attachments[i].View = externalAttachments[i].View;
 			m_attachments[i].Image.Alloc = VK_NULL_HANDLE;
 			m_attachments[i].Image.Image = VK_NULL_HANDLE;
+
+			views[i] = externalAttachments[i].View;
 		}
 		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass,
 			m_description.RenderArea.extent.width,
 			m_description.RenderArea.extent.height,
-			views, viewCount);
+			views.data(), viewCount);
 		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
 	}
 
