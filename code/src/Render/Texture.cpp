@@ -359,7 +359,7 @@ namespace Mist
 		info.arrayLayers = createInfo.Layers;
 		info.samples = tovk::GetSampleCount(createInfo.SampleCount);
 		info.tiling = VK_IMAGE_TILING_OPTIMAL;
-		info.usage = tovk::GetImageUsage(IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_SAMPLED_BIT);
+		info.usage = tovk::GetImageUsage(createInfo.Usage);
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.flags = createInfo.Flags;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;

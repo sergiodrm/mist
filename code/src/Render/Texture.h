@@ -33,6 +33,7 @@ namespace Mist
 		uint32_t MipLevels;
 		uint32_t Depth;
 		uint32_t Layers;
+		EImageUsage Usage = IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_SAMPLED_BIT;
 		VkImageCreateFlags Flags;
 		SamplerDescription SamplerDesc;
 	};
@@ -96,6 +97,7 @@ namespace Mist
 		ImageView GetView(uint32_t viewIndex) const;
 		uint32_t GetViewCount() const;
 		Sampler GetSampler() const { return m_sampler; }
+		const tImageDescription& GetDescription() const { return m_description; }
 
 	private:
 		void Destroy(const RenderContext& context);
