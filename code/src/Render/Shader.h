@@ -129,12 +129,6 @@ namespace Mist
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 
-	enum EDynamicFlags
-	{
-		DYNAMIC_VIEWPORT = 0x0001,
-		DYNAMIC_SCISSOR = 0x0002,
-	};
-	DEFINE_ENUM_BIT_OPERATORS(EDynamicFlags);
 
 	struct GraphicsShaderProgramDescription
 	{
@@ -151,7 +145,7 @@ namespace Mist
 		EFrontFace FrontFaceMode = FRONT_FACE_CLOCKWISE;
 		EDepthStencilState DepthStencilMode = DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_DEPTH_WRITE;
 		tDynArray<VkPipelineColorBlendAttachmentState> ColorAttachmentBlendingArray;
-		uint16_t DynamicFlags = 0;
+		tDynArray<EDynamicState> DynamicStates;
 
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.

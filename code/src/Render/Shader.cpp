@@ -769,10 +769,12 @@ namespace Mist
 		builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
 		builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
 		builder.Scissor.offset = {0, 0};
-		if (m_description.DynamicFlags & DYNAMIC_VIEWPORT)
-			builder.DynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-		if (m_description.DynamicFlags & DYNAMIC_SCISSOR)
-			builder.DynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR);
+		if (!m_description.DynamicStates.empty())
+		{
+			builder.DynamicStates.resize(m_description.DynamicStates.size());
+			for (uint32_t i = 0; i < (uint32_t)m_description.DynamicStates.size(); ++i)
+				builder.DynamicStates[i] = tovk::GetDynamicState(m_description.DynamicStates[i]);
+		}
 
 		// Generate shader module stages
 		tArray<ShaderFileDescription*, 2> descs = { &m_description.VertexShaderFile, &m_description.FragmentShaderFile };
@@ -842,14 +844,12 @@ namespace Mist
 
 	void ShaderProgram::UseProgram(VkCommandBuffer cmd) const
 	{
-		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
-		++Mist_profiling::GRenderStats.ShaderProgramCount;
+		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
 	}
 
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
-		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
-		++Mist_profiling::GRenderStats.SetBindingCount;
+		RenderAPI::CmdBindGraphicsDescriptorSet(cmd, m_pipelineLayout, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
 	}
 
 	ComputeShader* ComputeShader::Create(const RenderContext& context, const ComputeShaderProgramDescription& description)
@@ -922,13 +922,13 @@ namespace Mist
 	void ComputeShader::UseProgram(CommandBuffer cmd) const
 	{
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
-		++Mist_profiling::GRenderStats.ShaderProgramCount;
+		++Mist::Profiling::GRenderStats.ShaderProgramCount;
 	}
 
 	void ComputeShader::BindDescriptorSets(CommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
-		++Mist_profiling::GRenderStats.SetBindingCount;
+		++Mist::Profiling::GRenderStats.SetBindingCount;
 	}
 
 

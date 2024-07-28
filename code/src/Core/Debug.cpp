@@ -1,6 +1,7 @@
 // src file for Mist project 
 #include "Core/Debug.h"
 #include "Core/Logger.h"
+#include "Core/Types.h"
 
 #include <Windows.h>
 #include <string>
@@ -120,34 +121,34 @@ namespace win
 		Mist::Log(Mist::LogLevel::Debug, "\n=================================================\n\n");
 	}
 
-	UINT GetButtonType(MistDebug::eDialogButtonType type)
+	UINT GetButtonType(Mist::Debug::eDialogButtonType type)
 	{
 		switch (type)
 		{
-		case MistDebug::DIALOG_BUTTON_YESNO: return MB_YESNO;
-		case MistDebug::DIALOG_BUTTON_YESNOCANCEL: return MB_YESNOCANCEL;
-		case MistDebug::DIALOG_BUTTON_OK:return MB_OK;
-		case MistDebug::DIALOG_BUTTON_OKCANCEL: return MB_OKCANCEL;
+		case Mist::Debug::DIALOG_BUTTON_YESNO: return MB_YESNO;
+		case Mist::Debug::DIALOG_BUTTON_YESNOCANCEL: return MB_YESNOCANCEL;
+		case Mist::Debug::DIALOG_BUTTON_OK:return MB_OK;
+		case Mist::Debug::DIALOG_BUTTON_OKCANCEL: return MB_OKCANCEL;
 		}
 		return 0;
 	}
 
-	MistDebug::eDialogMessageResult GetResult(int res)
+	Mist::Debug::eDialogMessageResult GetResult(int res)
 	{
 		switch (res)
 		{
-		case IDCANCEL: return MistDebug::DIALOG_MESSAGE_RESULT_CANCEL;
-		case IDOK: return MistDebug::DIALOG_MESSAGE_RESULT_OK;
-		case IDYES: return MistDebug::DIALOG_MESSAGE_RESULT_YES;
-		case IDNO: return MistDebug::DIALOG_MESSAGE_RESULT_NO;
+		case IDCANCEL: return Mist::Debug::DIALOG_MESSAGE_RESULT_CANCEL;
+		case IDOK: return Mist::Debug::DIALOG_MESSAGE_RESULT_OK;
+		case IDYES: return Mist::Debug::DIALOG_MESSAGE_RESULT_YES;
+		case IDNO: return Mist::Debug::DIALOG_MESSAGE_RESULT_NO;
 		}
-		return MistDebug::DIALOG_MESSAGE_RESULT_NO;
+		return Mist::Debug::DIALOG_MESSAGE_RESULT_NO;
 	}
 }
 
-void MistDebug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
+void Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
-	MistDebug::PrintCallstack();
+	Mist::Debug::PrintCallstack();
 	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
 	Mist::Logf(Mist::LogLevel::Error, "Check failed: %s\n\n", txt);
 	Mist::Logf(Mist::LogLevel::Error, "File: %s\n", file);
@@ -158,10 +159,10 @@ void MistDebug::DebugCheck(const char* txt, const char* file, const char* fn, in
 	eDialogMessageResult res = DialogMsgErrorF(DIALOG_BUTTON_YESNO, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\n\nLine: %d\n\nDebug program?", txt, file, fn, line);
 	if (res == DIALOG_MESSAGE_RESULT_YES)
 		__debugbreak();
-	MistDebug::ExitError();
+	Mist::Debug::ExitError();
 }
 
-void MistDebug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
+void Mist::Debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
 {
 	VkResult vkres = (VkResult)res;
 	const char* vkstr = Mist::VkResultToStr(vkres);
@@ -169,27 +170,27 @@ void MistDebug::DebugVkCheck(int res, const char* txt, const char* file, const c
 	DebugCheck(txt, file, fn, line);
 }
 
-void MistDebug::PrintCallstack(size_t count, size_t offset)
+void Mist::Debug::PrintCallstack(size_t count, size_t offset)
 {
 #ifdef _WIN32
 	win::WriteStackDump();
 #endif
 }
 
-void MistDebug::ExitError()
+void Mist::Debug::ExitError()
 {
 	Mist::TerminateLog();
 	exit(EXIT_FAILURE);
 }
 
-MistDebug::eDialogMessageResult MistDebug::DialogMsgInfo(eDialogButtonType type, const char* msg)
+Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgInfo(eDialogButtonType type, const char* msg)
 {
 	UINT button = win::GetButtonType(type);
 	int res = MessageBoxA(NULL, msg, "Info message", button | MB_ICONINFORMATION);
 	return win::GetResult(res);
 }
 
-MistDebug::eDialogMessageResult MistDebug::DialogMsgInfoF(eDialogButtonType type, const char* msg, ...)
+Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgInfoF(eDialogButtonType type, const char* msg, ...)
 {
 	char buff[2048];
 	va_list lst;
@@ -199,14 +200,14 @@ MistDebug::eDialogMessageResult MistDebug::DialogMsgInfoF(eDialogButtonType type
 	return DialogMsgInfo(type, buff);
 }
 
-MistDebug::eDialogMessageResult MistDebug::DialogMsgWarning(eDialogButtonType type, const char* msg)
+Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgWarning(eDialogButtonType type, const char* msg)
 {
 	UINT button = win::GetButtonType(type);
 	int res = MessageBoxA(NULL, msg, "Warning message", button | MB_ICONWARNING);
 	return win::GetResult(res);
 }
 
-MistDebug::eDialogMessageResult MistDebug::DialogMsgWarningF(eDialogButtonType type, const char* msg, ...)
+Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgWarningF(eDialogButtonType type, const char* msg, ...)
 {
 	char buff[2048];
 	va_list lst;
@@ -216,14 +217,14 @@ MistDebug::eDialogMessageResult MistDebug::DialogMsgWarningF(eDialogButtonType t
 	return DialogMsgWarning(type, buff);
 }
 
-MistDebug::eDialogMessageResult MistDebug::DialogMsgError(eDialogButtonType type, const char* msg)
+Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgError(eDialogButtonType type, const char* msg)
 {
 	UINT button = win::GetButtonType(type);
 	int res = MessageBoxA(NULL, msg, "Error message", button | MB_ICONERROR);
 	return win::GetResult(res);
 }
 
-MistDebug::eDialogMessageResult MistDebug::DialogMsgErrorF(eDialogButtonType type, const char* msg, ...)
+Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgErrorF(eDialogButtonType type, const char* msg, ...)
 {
 	char buff[2048];
 	va_list lst;
@@ -235,188 +236,165 @@ MistDebug::eDialogMessageResult MistDebug::DialogMsgErrorF(eDialogButtonType typ
 
 #define PROFILING_AVERAGE_DATA_COUNT 64
 
-namespace MistDebug
+namespace Mist::Debug
 {
 	extern uint32_t GVulkanLayerValidationErrors;
 }
 
-namespace Mist_profiling
+namespace Mist
 {
-	sRenderStats GRenderStats;
-
-	template <typename T, uint32_t N>
-	struct sCircularBuffer
+	namespace Profiling
 	{
-		sCircularBuffer() : Index(0)
+		sRenderStats GRenderStats;
+
+
+
+		struct sProfilerKey
 		{
-			memset(Data, 0, sizeof(T) * N);
-		}
-
-		void Push(const T& value)
-		{
-			Data[Index] = value;
-			Index = GetIndex(Index + 1);
-		}
-
-		const T& Get(uint32_t i) const
-		{
-			return Data[GetIndex(i)];
-		}
-
-		const T& GetLast() const { return Get(Index - 1); }
-		uint32_t GetIndex(uint32_t i) const { return i % N; }
-		constexpr uint32_t GetCount() const { return N; }
-
-	private:
-		T Data[N];
-		uint32_t Index;
-	};
-
-	struct sProfilerKey
-	{
-		union
-		{
-			char Id[32];
-			uint32_t AsUint;
-		};
-
-		sProfilerKey() : AsUint(0) {}
-		sProfilerKey(const char* id) : AsUint(0) { strcpy_s(Id, id); }
-
-		bool operator==(const sProfilerKey& other) const { return AsUint == other.AsUint; }
-
-		struct Hasher
-		{
-			std::size_t operator()(const sProfilerKey& key) const
+			union
 			{
-				return std::hash<uint32_t>()(key.AsUint);
-			}
+				char Id[32];
+				uint32_t AsUint;
+			};
+
+			sProfilerKey() : AsUint(0) {}
+			sProfilerKey(const char* id) : AsUint(0) { strcpy_s(Id, id); }
+
+			bool operator==(const sProfilerKey& other) const { return AsUint == other.AsUint; }
+
+			struct Hasher
+			{
+				std::size_t operator()(const sProfilerKey& key) const
+				{
+					return std::hash<uint32_t>()(key.AsUint);
+				}
+			};
 		};
-	};
 
-	struct sProfilerEntry
-	{
-		sCircularBuffer<double, PROFILING_AVERAGE_DATA_COUNT> Data;
-		double Min = DBL_MAX;
-		double Max = -DBL_MAX;
-	};
-
-	struct sProfiler
-	{
-		float FPS = 0.f;
-		std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
-	} GProfiler;
-
-	void sProfilingTimer::Start()
-	{
-#ifdef _USE_CHRONO_PROFILING
-		StartPoint = std::chrono::high_resolution_clock::now();
-#endif
-	}
-
-	double sProfilingTimer::Stop()
-	{
-#ifdef _USE_CHRONO_PROFILING
-		auto stop = std::chrono::high_resolution_clock::now();
-		auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - StartPoint);
-		double s = (double)diff.count() * 1e-6;
-		return s;
-#endif // _USE_CHRONO_PROFILING
-	}
-
-	sScopedTimer::sScopedTimer(const char* nameId)
-	{
-		strcpy_s(Id, nameId);
-		Start();
-	}
-
-	sScopedTimer::~sScopedTimer()
-	{
-		double elapsed = Stop();
-		AddProfilerEntry(Id, elapsed);
-	}
-
-	void sRenderStats::Reset()
-	{
-		TrianglesCount = 0;
-		DrawCalls = 0;
-		SetBindingCount = 0;
-	}
-
-	void AddProfilerEntry(const char* key, double timeDiff)
-	{
-		if (!GProfiler.EntryMap.contains(key))
-			GProfiler.EntryMap[key] = sProfilerEntry();
-		sProfilerEntry& entry = GProfiler.EntryMap[key];
-		entry.Data.Push(timeDiff);
-		entry.Max = __max(timeDiff, entry.Max);
-		entry.Min = __min(timeDiff, entry.Min);
-	}
-
-	void ShowFps(float fps)
-	{
-		GProfiler.FPS = fps;
-	}
-
-	void ImGuiDraw()
-	{
-		ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-			//| ImGuiWindowFlags_NoDecoration
-			| ImGuiWindowFlags_AlwaysAutoResize
-			| ImGuiWindowFlags_NoResize
-			//| ImGuiWindowFlags_NoInputs
-			;
-		ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
-		ImGui::SetNextWindowBgAlpha(0.f);
-		ImGui::SetNextWindowPos({ 0.f, 0.f });
-		ImGui::SetNextWindowSize({ 400.f, 300.f });
-		ImGui::Begin("Render stats", nullptr, flags);
-		ImGui::Text("%.4f fps", GProfiler.FPS);
-		ImGui::Columns(5);
-		ImGui::Text("ID");
-		ImGui::NextColumn();
-		ImGui::Text("Last time");
-		ImGui::NextColumn();
-		ImGui::Text("Min time");
-		ImGui::NextColumn();
-		ImGui::Text("Max time");
-		ImGui::NextColumn();
-		ImGui::Text("Avg time");
-		ImGui::NextColumn();
-		for (const auto& item : GProfiler.EntryMap)
+		struct sProfilerEntry
 		{
-			ImGui::Text("%s", item.first);
-			ImGui::NextColumn();
-			ImGui::Text("%.4f ms", item.second.Data.GetLast());
-			ImGui::NextColumn();
-			ImGui::Text("%.4f ms", item.second.Min);
-			ImGui::NextColumn();
-			ImGui::Text("%.4f ms", item.second.Max);
-			ImGui::NextColumn();
-			double avg = 0.0;
-			for (uint32_t i = 0; i < item.second.Data.GetCount(); ++i)
-				avg += item.second.Data.Get(i);
-			avg /= (double)item.second.Data.GetCount();
-			ImGui::Text("%.4f ms", avg);
-			ImGui::NextColumn();
+			Mist::tCircularBuffer<double, PROFILING_AVERAGE_DATA_COUNT> Data;
+			double Min = DBL_MAX;
+			double Max = -DBL_MAX;
+		};
+
+		struct sProfiler
+		{
+			float FPS = 0.f;
+			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
+		} GProfiler;
+
+		void sProfilingTimer::Start()
+		{
+#ifdef _USE_CHRONO_PROFILING
+			StartPoint = std::chrono::high_resolution_clock::now();
+#endif
 		}
-		ImGui::Columns(2);
-		ImGui::Text("Draw calls");
-		ImGui::NextColumn();
-		ImGui::Text("%u", GRenderStats.DrawCalls);
-		ImGui::NextColumn();
-		ImGui::Text("Triangles");
-		ImGui::NextColumn();
-		ImGui::Text("%u", GRenderStats.TrianglesCount);
-		ImGui::NextColumn();
-		ImGui::Text("Binding count");
-		ImGui::NextColumn();
-		ImGui::Text("%u", GRenderStats.SetBindingCount);
-		ImGui::NextColumn();
-		ImGui::Columns();
-		if (MistDebug::GVulkanLayerValidationErrors)
-			ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", MistDebug::GVulkanLayerValidationErrors);
-		ImGui::End();
-		ImGui::PopStyleColor();
+
+		double sProfilingTimer::Stop()
+		{
+#ifdef _USE_CHRONO_PROFILING
+			auto stop = std::chrono::high_resolution_clock::now();
+			auto diff = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - StartPoint);
+			double s = (double)diff.count() * 1e-6;
+			return s;
+#endif // _USE_CHRONO_PROFILING
+		}
+
+		sScopedTimer::sScopedTimer(const char* nameId)
+		{
+			strcpy_s(Id, nameId);
+			Start();
+		}
+
+		sScopedTimer::~sScopedTimer()
+		{
+			double elapsed = Stop();
+			AddProfilerEntry(Id, elapsed);
+		}
+
+		void sRenderStats::Reset()
+		{
+			TrianglesCount = 0;
+			DrawCalls = 0;
+			SetBindingCount = 0;
+		}
+
+		void AddProfilerEntry(const char* key, double timeDiff)
+		{
+			if (!GProfiler.EntryMap.contains(key))
+				GProfiler.EntryMap[key] = sProfilerEntry();
+			sProfilerEntry& entry = GProfiler.EntryMap[key];
+			entry.Data.Push(timeDiff);
+			entry.Max = __max(timeDiff, entry.Max);
+			entry.Min = __min(timeDiff, entry.Min);
+		}
+
+		void ShowFps(float fps)
+		{
+			GProfiler.FPS = fps;
+		}
+
+		void ImGuiDraw()
+		{
+			ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
+				//| ImGuiWindowFlags_NoDecoration
+				| ImGuiWindowFlags_AlwaysAutoResize
+				| ImGuiWindowFlags_NoResize
+				//| ImGuiWindowFlags_NoInputs
+				;
+			ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
+			ImGui::SetNextWindowBgAlpha(0.f);
+			ImGui::SetNextWindowPos({ 0.f, 0.f });
+			ImGui::SetNextWindowSize({ 400.f, 300.f });
+			ImGui::Begin("Render stats", nullptr, flags);
+			ImGui::Text("%.4f fps", GProfiler.FPS);
+			ImGui::Columns(5);
+			ImGui::Text("ID");
+			ImGui::NextColumn();
+			ImGui::Text("Last time");
+			ImGui::NextColumn();
+			ImGui::Text("Min time");
+			ImGui::NextColumn();
+			ImGui::Text("Max time");
+			ImGui::NextColumn();
+			ImGui::Text("Avg time");
+			ImGui::NextColumn();
+			for (const auto& item : GProfiler.EntryMap)
+			{
+				ImGui::Text("%s", item.first);
+				ImGui::NextColumn();
+				ImGui::Text("%.4f ms", item.second.Data.GetLast());
+				ImGui::NextColumn();
+				ImGui::Text("%.4f ms", item.second.Min);
+				ImGui::NextColumn();
+				ImGui::Text("%.4f ms", item.second.Max);
+				ImGui::NextColumn();
+				double avg = 0.0;
+				for (uint32_t i = 0; i < item.second.Data.GetCount(); ++i)
+					avg += item.second.Data.Get(i);
+				avg /= (double)item.second.Data.GetCount();
+				ImGui::Text("%.4f ms", avg);
+				ImGui::NextColumn();
+			}
+			ImGui::Columns(2);
+			ImGui::Text("Draw calls");
+			ImGui::NextColumn();
+			ImGui::Text("%u", GRenderStats.DrawCalls);
+			ImGui::NextColumn();
+			ImGui::Text("Triangles");
+			ImGui::NextColumn();
+			ImGui::Text("%u", GRenderStats.TrianglesCount);
+			ImGui::NextColumn();
+			ImGui::Text("Binding count");
+			ImGui::NextColumn();
+			ImGui::Text("%u", GRenderStats.SetBindingCount);
+			ImGui::NextColumn();
+			ImGui::Columns();
+			if (Mist::Debug::GVulkanLayerValidationErrors)
+				ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", Mist::Debug::GVulkanLayerValidationErrors);
+			ImGui::End();
+			ImGui::PopStyleColor();
+		}
 	}
 }

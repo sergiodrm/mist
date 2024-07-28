@@ -62,7 +62,8 @@ namespace Mist
 			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
-			shaderDesc.DynamicFlags = DYNAMIC_VIEWPORT | DYNAMIC_SCISSOR;
+			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
+			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
 			tCompileMacroDefinition macrodef;
 			strcpy_s(macrodef.Macro, "BLOOM_DOWNSCALE");
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
@@ -275,6 +276,7 @@ namespace Mist
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
+		CPU_PROFILE_SCOPE(DeferredLighting);
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		// Composition
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
@@ -288,35 +290,52 @@ namespace Mist
 		EndGPUEvent(renderContext, cmd);
 
 #if 1
-		uint32_t width = renderContext.Window->Width;
-		uint32_t height = renderContext.Window->Height;
-		width >>= 1;
-		height >>= 1;
-		VkViewport viewport{.x = 0.f, .y = 0.f};
-		viewport.width = (float)width;
-		viewport.height = (float)height;
-		viewport.minDepth = 0.f;
-		viewport.maxDepth = 1.f;
-		VkRect2D scissor;
-		scissor.offset = { 0, 0 };
-		scissor.extent = { width, height };
-		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 		{
-			char buff[32];
-			sprintf_s(buff, "BloomDownscale_%d", i);
-			BeginGPUEvent(renderContext, cmd, buff);
-			m_bloomEffect.m_downscale.RenderTargetArray[i].BeginPass(cmd);
-			m_bloomEffect.m_downscale.Shader->UseProgram(cmd);
-			m_bloomEffect.m_downscale.Shader->BindDescriptorSets(cmd, &m_bloomEffect.m_downscale.FrameSets[frameContext.FrameIndex].SetArray[i], 1);
-			vkCmdSetViewport(cmd, 0, 1, &viewport);
-			vkCmdSetScissor(cmd, 0, 1, &scissor);
-			CmdDrawFullscreenQuad(cmd);
-			m_bloomEffect.m_downscale.RenderTargetArray[i].EndPass(cmd);
-			EndGPUEvent(renderContext, cmd);
-			viewport.width *= 0.5f;
-			viewport.height *= 0.5f;
-			scissor.extent.width >>= 1;
-			scissor.extent.height >>= 1;
+			CPU_PROFILE_SCOPE(BloomDownsampler);
+			uint32_t width = renderContext.Window->Width;
+			uint32_t height = renderContext.Window->Height;
+#if 0
+			VkViewport viewport{ .x = 0.f, .y = 0.f };
+			viewport.width = (float)width;
+			viewport.height = (float)height;
+			viewport.minDepth = 0.f;
+			viewport.maxDepth = 1.f;
+			VkRect2D scissor;
+			scissor.offset = { 0, 0 };
+			scissor.extent = { width, height };
+#endif // 0
+			for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
+			{
+				width >>= 1;
+				height >>= 1;
+				char buff[32];
+				sprintf_s(buff, "BloomDownscale_%d", i);
+				BeginGPUEvent(renderContext, cmd, buff);
+				m_bloomEffect.m_downscale.RenderTargetArray[i].BeginPass(cmd);
+				m_bloomEffect.m_downscale.Shader->UseProgram(cmd);
+				m_bloomEffect.m_downscale.Shader->BindDescriptorSets(cmd, &m_bloomEffect.m_downscale.FrameSets[frameContext.FrameIndex].SetArray[i], 1);
+#if 0
+				vkCmdSetViewport(cmd, 0, 1, &viewport);
+				vkCmdSetScissor(cmd, 0, 1, &scissor);
+#endif // 0
+
+				RenderAPI::CmdSetViewport(cmd, (float)width, (float)height);
+				RenderAPI::CmdSetScissor(cmd, width, height);
+				CmdDrawFullscreenQuad(cmd);
+				m_bloomEffect.m_downscale.RenderTargetArray[i].EndPass(cmd);
+				EndGPUEvent(renderContext, cmd);
+				if (CVar_BloomTex.Get())
+				{
+					float x = (float)renderContext.Window->Width * 0.75f;
+					float y = (float)renderContext.Window->Height / (float)BLOOM_MIPMAP_LEVELS * (float)i;
+					float w = (float)renderContext.Window->Width * 0.25f;
+					float h = (float)renderContext.Window->Height / (float)BLOOM_MIPMAP_LEVELS;
+					DebugRender::DrawScreenQuad({ x, y },
+						{ w, h }, 
+						m_bloomEffect.m_downscale.RenderTargetArray[i].GetRenderTarget(0), 
+						IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+				}
+			}
 		}
 #endif // 0
 
@@ -331,11 +350,6 @@ namespace Mist
 		RenderAPI::CmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 		m_ldrRenderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
-
-		if (CVar_BloomTex.Get() > -1 && CVar_BloomTex.Get() < BLOOM_MIPMAP_LEVELS)
-		{
-			DebugRender::DrawScreenQuad({ 1920.f *0.75f, 1080.f*0.f }, { 1920.f*0.25f, 1080.f*0.25f }, m_bloomEffect.m_downscale.RenderTargetArray[CVar_BloomTex.Get()].GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-		}
 	}
 
 	void DeferredLighting::ImGuiDraw()

@@ -478,20 +478,17 @@ namespace Mist
 			return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
 		}
 
-		VkSampleCountFlagBits GetSampleCount(ESampleCount sample)
+		VkSampleCountFlags GetSampleCount(ESampleCount sample)
 		{
-			switch (sample)
-			{
-			case SAMPLE_COUNT_1_BIT: return VK_SAMPLE_COUNT_1_BIT;
-			case SAMPLE_COUNT_2_BIT: return VK_SAMPLE_COUNT_2_BIT;
-			case SAMPLE_COUNT_4_BIT: return VK_SAMPLE_COUNT_4_BIT;
-			case SAMPLE_COUNT_8_BIT: return VK_SAMPLE_COUNT_8_BIT;
-			case SAMPLE_COUNT_16_BIT: return VK_SAMPLE_COUNT_16_BIT;
-			case SAMPLE_COUNT_32_BIT: return VK_SAMPLE_COUNT_32_BIT;
-			case SAMPLE_COUNT_64_BIT: return VK_SAMPLE_COUNT_64_BIT;
-			case SAMPLE_COUNT_MAX: return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
-			}
-			return VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+			VkSampleCountFlags res = 0;
+			if (sample & VK_SAMPLE_COUNT_1_BIT) res |= SAMPLE_COUNT_1_BIT;
+			if (sample & VK_SAMPLE_COUNT_2_BIT) res |= SAMPLE_COUNT_2_BIT;
+			if (sample & VK_SAMPLE_COUNT_4_BIT) res |= SAMPLE_COUNT_4_BIT;
+			if (sample & VK_SAMPLE_COUNT_8_BIT) res |= SAMPLE_COUNT_8_BIT;
+			if (sample & VK_SAMPLE_COUNT_16_BIT) res |= SAMPLE_COUNT_16_BIT;
+			if (sample & VK_SAMPLE_COUNT_32_BIT) res |= SAMPLE_COUNT_32_BIT;
+			if (sample & VK_SAMPLE_COUNT_64_BIT) res |= SAMPLE_COUNT_64_BIT;
+			return res;
 		}
 
 		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology)
@@ -509,9 +506,9 @@ namespace Mist
 		VkCullModeFlags GetCullMode(ECullMode mode)
 		{
 			VkCullModeFlags res = VK_CULL_MODE_NONE;
-			if (mode & CULL_MODE_FRONT_BIT) 
-				res |= VK_CULL_MODE_FRONT_BIT; 
-			if (mode & CULL_MODE_BACK_BIT) 
+			if (mode & CULL_MODE_FRONT_BIT)
+				res |= VK_CULL_MODE_FRONT_BIT;
+			if (mode & CULL_MODE_BACK_BIT)
 				res |= VK_CULL_MODE_BACK_BIT;
 			return res;
 		}
@@ -526,6 +523,27 @@ namespace Mist
 			}
 			check(false);
 			return (VkFrontFace)0;
+		}
+
+		VkDynamicState GetDynamicState(EDynamicState state)
+		{
+			switch (state)
+			{
+			case DYNAMIC_STATE_VIEWPORT:return VK_DYNAMIC_STATE_VIEWPORT;
+			case DYNAMIC_STATE_SCISSOR:return VK_DYNAMIC_STATE_SCISSOR;
+			case DYNAMIC_STATE_LINE_WIDTH:return VK_DYNAMIC_STATE_LINE_WIDTH;
+			case DYNAMIC_STATE_DEPTH_BIAS:return VK_DYNAMIC_STATE_DEPTH_BIAS;
+			case DYNAMIC_STATE_BLEND_CONSTANTS:return VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+			case DYNAMIC_STATE_DEPTH_BOUNDS:return VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+			case DYNAMIC_STATE_STENCIL_COMPARE_MASK:return VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
+			case DYNAMIC_STATE_STENCIL_WRITE_MASK:return VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
+			case DYNAMIC_STATE_STENCIL_REFERENCE:return VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+			case DYNAMIC_STATE_CULL_MODE:return VK_DYNAMIC_STATE_CULL_MODE;
+			case DYNAMIC_STATE_FRONT_FACE:return VK_DYNAMIC_STATE_FRONT_FACE;
+			case DYNAMIC_STATE_PRIMITIVE_TOPOLOGY:return VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY;
+			}
+			check(false);
+			return VK_DYNAMIC_STATE_MAX_ENUM;
 		}
 	}
 
@@ -922,20 +940,38 @@ namespace Mist
 			return (EFrontFace)0;
 		}
 
+		EDynamicState GetDynamicState(VkDynamicState state)
+		{
+			switch (state)
+			{
+			case VK_DYNAMIC_STATE_VIEWPORT: return DYNAMIC_STATE_VIEWPORT;
+			case VK_DYNAMIC_STATE_SCISSOR: return DYNAMIC_STATE_SCISSOR;
+			case VK_DYNAMIC_STATE_LINE_WIDTH: return DYNAMIC_STATE_LINE_WIDTH;
+			case VK_DYNAMIC_STATE_DEPTH_BIAS: return DYNAMIC_STATE_DEPTH_BIAS;
+			case VK_DYNAMIC_STATE_BLEND_CONSTANTS: return DYNAMIC_STATE_BLEND_CONSTANTS;
+			case VK_DYNAMIC_STATE_DEPTH_BOUNDS: return DYNAMIC_STATE_DEPTH_BOUNDS;
+			case VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK: return DYNAMIC_STATE_STENCIL_COMPARE_MASK;
+			case VK_DYNAMIC_STATE_STENCIL_WRITE_MASK: return DYNAMIC_STATE_STENCIL_WRITE_MASK;
+			case VK_DYNAMIC_STATE_STENCIL_REFERENCE: return DYNAMIC_STATE_STENCIL_REFERENCE;
+			case VK_DYNAMIC_STATE_CULL_MODE: return DYNAMIC_STATE_CULL_MODE;
+			case VK_DYNAMIC_STATE_FRONT_FACE: return DYNAMIC_STATE_FRONT_FACE;
+			case VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY: return DYNAMIC_STATE_PRIMITIVE_TOPOLOGY;
+			}
+			check(false);
+			return (EDynamicState)0x7fff;
+		}
+
 		ESampleCount GetSampleCount(VkSampleCountFlags sample)
 		{
-			switch (sample)
-			{
-			case VK_SAMPLE_COUNT_1_BIT: return SAMPLE_COUNT_1_BIT;
-			case VK_SAMPLE_COUNT_2_BIT: return SAMPLE_COUNT_2_BIT;
-			case VK_SAMPLE_COUNT_4_BIT: return SAMPLE_COUNT_4_BIT;
-			case VK_SAMPLE_COUNT_8_BIT: return SAMPLE_COUNT_8_BIT;
-			case VK_SAMPLE_COUNT_16_BIT: return SAMPLE_COUNT_16_BIT;
-			case VK_SAMPLE_COUNT_32_BIT: return SAMPLE_COUNT_32_BIT;
-			case VK_SAMPLE_COUNT_64_BIT: return SAMPLE_COUNT_64_BIT;
-			case VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM: return SAMPLE_COUNT_MAX;
-			}
-			return SAMPLE_COUNT_MAX;
+			ESampleCount res = 0;
+			if (sample & VK_SAMPLE_COUNT_1_BIT) res |= SAMPLE_COUNT_1_BIT;
+			if (sample & VK_SAMPLE_COUNT_2_BIT) res |= SAMPLE_COUNT_2_BIT;
+			if (sample & VK_SAMPLE_COUNT_4_BIT) res |= SAMPLE_COUNT_4_BIT;
+			if (sample & VK_SAMPLE_COUNT_8_BIT) res |= SAMPLE_COUNT_8_BIT;
+			if (sample & VK_SAMPLE_COUNT_16_BIT) res |= SAMPLE_COUNT_16_BIT;
+			if (sample & VK_SAMPLE_COUNT_32_BIT) res |= SAMPLE_COUNT_32_BIT;
+			if (sample & VK_SAMPLE_COUNT_64_BIT) res |= SAMPLE_COUNT_64_BIT;
+			return res;
 		}
 	}
 

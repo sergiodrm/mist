@@ -1248,7 +1248,7 @@ namespace Mist
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
 				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
-				++Mist_profiling::GRenderStats.SetBindingCount;
+				++Mist::Profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)

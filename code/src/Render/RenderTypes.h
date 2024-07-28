@@ -392,6 +392,22 @@ namespace Mist
 	};
 	DEFINE_FLAG_BITS_TYPE(EImageAspect);
 
+	enum EDynamicState
+	{
+		DYNAMIC_STATE_VIEWPORT = 0,
+		DYNAMIC_STATE_SCISSOR = 1,
+		DYNAMIC_STATE_LINE_WIDTH = 2,
+		DYNAMIC_STATE_DEPTH_BIAS = 3,
+		DYNAMIC_STATE_BLEND_CONSTANTS = 4,
+		DYNAMIC_STATE_DEPTH_BOUNDS = 5,
+		DYNAMIC_STATE_STENCIL_COMPARE_MASK = 6,
+		DYNAMIC_STATE_STENCIL_WRITE_MASK = 7,
+		DYNAMIC_STATE_STENCIL_REFERENCE = 8,
+		DYNAMIC_STATE_CULL_MODE = 1000267000,
+		DYNAMIC_STATE_FRONT_FACE = 1000267001,
+		DYNAMIC_STATE_PRIMITIVE_TOPOLOGY = 1000267002,
+	};
+
 	enum EFilterType
 	{
 		FILTER_NEAREST,
@@ -495,10 +511,11 @@ namespace Mist
 		VkImageAspectFlags GetImageAspect(EImageAspect aspect);
 		VkFilter GetFilter(EFilterType type);
 		VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode);
-		VkSampleCountFlagBits GetSampleCount(ESampleCount sample);
+		VkSampleCountFlags GetSampleCount(ESampleCount sample);
 		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology);
 		VkCullModeFlags GetCullMode(ECullMode mode);
 		VkFrontFace GetFrontFace(EFrontFace face);
+		VkDynamicState GetDynamicState(EDynamicState flags);
 	}
 	namespace fromvk
 	{
@@ -508,10 +525,11 @@ namespace Mist
 		EImageAspect GetImageAspect(VkImageAspectFlags aspect);
 		EFilterType GetFilter(VkFilter type);
 		ESamplerAddressMode GetSamplerAddressMode(VkSamplerAddressMode mode);
-		ESampleCount GetSampleCount(VkSampleCountFlagBits sample);
+		ESampleCount GetSampleCount(VkSampleCountFlags sample);
 		EPrimitiveTopology GetPrimitiveTopology(VkPrimitiveTopology topology);
 		ECullMode GetCullMode(VkCullModeFlags mode);
 		EFrontFace GetFrontFace(VkFrontFace face);
+		EDynamicState GetDynamicState(VkDynamicState state);
 	}
 
 	namespace utils

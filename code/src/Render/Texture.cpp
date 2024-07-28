@@ -357,7 +357,7 @@ namespace Mist
 		info.extent = extent;
 		info.mipLevels = createInfo.MipLevels;
 		info.arrayLayers = createInfo.Layers;
-		info.samples = tovk::GetSampleCount(createInfo.SampleCount);
+		info.samples = (VkSampleCountFlagBits)tovk::GetSampleCount(createInfo.SampleCount);
 		info.tiling = VK_IMAGE_TILING_OPTIMAL;
 		info.usage = tovk::GetImageUsage(createInfo.Usage);
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;

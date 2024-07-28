@@ -34,38 +34,39 @@
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
 
-namespace MistDebug
-{
-	uint32_t GVulkanLayerValidationErrors = 0;
-
-	VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-		VkDebugUtilsMessageTypeFlagsEXT type,
-		const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
-		void* userData)
-	{
-		Mist::LogLevel level = Mist::LogLevel::Info;
-		switch (severity)
-		{
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = Mist::LogLevel::Error; ++GVulkanLayerValidationErrors; break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = Mist::LogLevel::Debug; break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = Mist::LogLevel::Warn; break;
-		}
-		Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
-		if (level == Mist::LogLevel::Error)
-		{
-#if defined(_DEBUG)
-			PrintCallstack();
-#endif
-#ifdef MIST_CRASH_ON_VALIDATION_LAYER
-			check(false && "Validation layer error");
-#endif
-		}
-		return VK_FALSE;
-	}
-}
 
 namespace Mist
 {
+	namespace Debug
+	{
+		uint32_t GVulkanLayerValidationErrors = 0;
+
+		VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+			VkDebugUtilsMessageTypeFlagsEXT type,
+			const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
+			void* userData)
+		{
+			Mist::LogLevel level = Mist::LogLevel::Info;
+			switch (severity)
+			{
+			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: level = Mist::LogLevel::Error; ++GVulkanLayerValidationErrors; break;
+			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: level = Mist::LogLevel::Debug; break;
+			case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: level = Mist::LogLevel::Warn; break;
+			}
+			Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
+			if (level == Mist::LogLevel::Error)
+			{
+	#if defined(_DEBUG)
+				PrintCallstack();
+	#endif
+	#ifdef MIST_CRASH_ON_VALIDATION_LAYER
+				check(false && "Validation layer error");
+	#endif
+			}
+			return VK_FALSE;
+		}
+	}
+
 	CBoolVar CVar_ShowConsole("ShowConsole", false);
 	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
 
@@ -301,7 +302,7 @@ namespace Mist
 		}
 
 
-		AddImGuiCallback(&Mist_profiling::ImGuiDraw);
+		AddImGuiCallback(&Profiling::ImGuiDraw);
 		AddImGuiCallback([this]() { ImGuiDraw(); });
 		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(); });
 
@@ -322,7 +323,7 @@ namespace Mist
 		tTimePoint now = GetTimePoint();
 		float ms = GetMiliseconds(now - point);
 		point = now;
-		Mist_profiling::ShowFps(1000.f / (ms));
+		Profiling::ShowFps(1000.f / (ms));
 
 		bool exitFlag = false;
 		struct ProcessEventPayload
@@ -351,7 +352,7 @@ namespace Mist
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
 		//BeginFrame();
-		Mist_profiling::GRenderStats.Reset();
+		Mist::Profiling::GRenderStats.Reset();
 		Draw();
 		return !exitFlag;
 	}
@@ -404,8 +405,8 @@ namespace Mist
 
 
 		logok("Render engine terminated.\n");
-		Logf(MistDebug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
-			"Total vulkan layer validation errors: %u.\n", MistDebug::GVulkanLayerValidationErrors);
+		Logf(Mist::Debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
+			"Total vulkan layer validation errors: %u.\n", Mist::Debug::GVulkanLayerValidationErrors);
 		
 	}
 
@@ -744,7 +745,7 @@ namespace Mist
 			.request_validation_layers(true)
 			.require_api_version(1, 1, 0)
 			//.use_default_debug_messenger()
-			.set_debug_callback(&MistDebug::DebugVulkanCallback)
+			.set_debug_callback(&Mist::Debug::DebugVulkanCallback)
 			.build();
 		check(instanceReturn.has_value());
 		//check(instanceReturn.full_error().vk_result == VK_SUCCESS);
