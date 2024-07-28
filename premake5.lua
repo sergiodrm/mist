@@ -40,8 +40,29 @@ workspace "Mist"
     filter{}
 
     group "ThirdParty"
-    include "thirdparty"
+        include "thirdparty"
+        -- project "YamlCpp"
+        -- kind "StaticLib"
+        -- language "C++"
+        -- cppdialect "C++20"
+        
+        -- targetdir "%{outputdir}"
+        --     objdir "%{temporaldir}"
+        --     location "%{wks.location}/code"
+        --     targetname "YamlCpp"
+            
+        --     defines { "YAML_CPP_STATIC_DEFINE" }
+        --     files {
+        --         "thirdparty/yaml-cpp/include/**.h",
+        --         "thirdparty/yaml-cpp/src/**.h",
+        --         "thirdparty/yaml-cpp/src/**.cpp",
+        --     }
+        --     includedirs {
+        --         "%{includes.yaml}",
+        --     }
 
+    
+        
     group "Engine"
     project "MistEngine"
         kind "StaticLib"
@@ -55,9 +76,6 @@ workspace "Mist"
         defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE" }
         files { 
             "code/**.h", "code/**.cpp",
-            "thirdparty/yaml-cpp/include/**.h",
-            "thirdparty/yaml-cpp/src/**.h",
-            "thirdparty/yaml-cpp/src/**.cpp",
         }
 
         includedirs {
@@ -78,7 +96,7 @@ workspace "Mist"
             "glm",
             "ImGui",
             "VkBootstrap",
-            --"YamlCpp",
+            "YamlCpp",
             "%{libs.vulkan}",
             "%{libs.sdl}",
         }
