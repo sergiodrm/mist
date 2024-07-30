@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include "Render/RenderTypes.h"
+#include "Render/RenderContext.h"
 #include "Core/Debug.h"
 
 #define MAX_RENDER_TARGET_COLOR_ATTACHMENTS 4
@@ -34,6 +35,7 @@ namespace Mist
 		RenderTargetAttachmentDescription DepthAttachmentDescription;
 		tArray<RenderTargetExternalAttachmentDescription, MAX_RENDER_TARGET_ATTACHMENTS> ExternalAttachments;
 		uint32_t ExternalAttachmentCount = 0;
+		tRenderResourceName ResourceName;
 
 		RenderTargetDescription()
 		{

@@ -103,15 +103,20 @@ namespace Mist
 		uint32_t AllocDynamicUniform(const RenderContext& renderContext, const char* name, uint32_t elemSize, uint32_t elemCount);
 		void DestroyUniform(const char* name);
 		bool SetUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t dstOffset = 0);
-		bool SetDynamicUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t elemSize, uint32_t elemIndex, uint32_t elemOffset = 0);
+		bool SetDynamicUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t elemCount, uint32_t elemSize, uint32_t elemIndex);
 		ItemMapInfo GetLocationInfo(const char* name) const;
 		VkBuffer GetBuffer() const { return m_buffer.Buffer; }
 		VkDescriptorBufferInfo GenerateDescriptorBufferInfo(const char* name) const;
+
+	private:
+		void MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const;
 
 	private:
 		std::unordered_map<std::string, ItemMapInfo> m_infoMap;
 		uint32_t m_freeMemoryOffset;
 		uint32_t m_maxMemoryAllocated;
 		AllocatedBuffer m_buffer;
+		uint8_t* m_cpuDynamicBuffer;
+		uint32_t m_cpuDynamicBufferSize;
 	};
 }

@@ -1511,7 +1511,8 @@ namespace Mist
 
 			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
-			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
+			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
+			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
 
 			// Update materials
 			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
@@ -1549,7 +1550,7 @@ namespace Mist
 					MaterialUniform ubo;
 					ubo.Metallic = material.GetMetallic();
 					ubo.Roughness = material.GetRoughness();
-					buffer->SetDynamicUniform(renderContext, "Material", &ubo, sizeof(MaterialUniform), sizeof(MaterialUniform), h);
+					buffer->SetDynamicUniform(renderContext, "Material", &ubo, 1, sizeof(MaterialUniform), h);
 
 					if (mrd.MaterialSets[frameContext.FrameIndex].ParamsSet == VK_NULL_HANDLE)
 					{

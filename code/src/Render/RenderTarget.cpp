@@ -280,7 +280,7 @@ namespace Mist
 		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> views;
 		for (uint32_t i = 0; i < m_description.ColorAttachmentCount; ++i)
 		{
-			CreateAttachment(m_attachments[i], renderContext, m_description.ColorAttachmentDescriptions[i], IMAGE_ASPECT_COLOR_BIT, 
+			CreateAttachment(m_attachments[i], renderContext, m_description.ColorAttachmentDescriptions[i], IMAGE_ASPECT_COLOR_BIT,
 				IMAGE_USAGE_COLOR_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 			views[i] = m_attachments[i].View;
 			++viewCount;
@@ -292,8 +292,8 @@ namespace Mist
 			views[m_description.ColorAttachmentCount] = m_attachments[m_description.ColorAttachmentCount].View;
 			++viewCount;
 		}
-		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass, 
-			m_description.RenderArea.extent.width, 
+		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass,
+			m_description.RenderArea.extent.width,
 			m_description.RenderArea.extent.height,
 			views.data(), viewCount);
 		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
@@ -320,23 +320,30 @@ namespace Mist
 
 	void RenderTarget::CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const
 	{
-
 		tExtent3D extent{ .width = m_description.RenderArea.extent.width, .height = m_description.RenderArea.extent.height, .depth = 1 };
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(description.Format, imageUsage, extent);
 		attachment.Image = MemNewImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-		static int c = 0;
-		char buff[64];
-		sprintf_s(buff, "RT_Image_%d", c);
-		SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
-		Logf(LogLevel::Debug, "Render target: %s...\n", buff);
-
 		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(description.Format, attachment.Image.Image, aspect);
 		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &attachment.View));
-		sprintf_s(buff, "RT_ImageView_%d", c++);
-		SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
+		static int c = 0;
+		char buff[64];
+		if (!m_description.ResourceName.Length())
+		{
+			sprintf_s(buff, "RT_Image_%d", c);
+			SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
+			sprintf_s(buff, "RT_ImageView_%d", c++);
+			SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
+		}
+		else
+		{
+			sprintf_s(buff, "%s_Image", m_description.ResourceName.CStr());
+			SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
+			sprintf_s(buff, "%s_ImageView", m_description.ResourceName.CStr());
+			SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
+		}
 	}
 
-	bool RenderTarget::ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description) 
+	bool RenderTarget::ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description)
 	{
 		bool res = true;
 		for (uint32_t i = 0; i < description.ColorAttachmentCount; ++i)

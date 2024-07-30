@@ -229,6 +229,8 @@ namespace Mist
 		char buff[64];
 		sprintf_s(buff, "UniformBufferMemoryPool_%d", c++);
 		SetVkObjectName(renderContext, &m_buffer.Buffer, VK_OBJECT_TYPE_BUFFER, buff);
+		m_cpuDynamicBuffer = nullptr;
+		m_cpuDynamicBufferSize = 0;
 	}
 
 	void UniformBufferMemoryPool::Destroy(const RenderContext& renderContext)
@@ -236,6 +238,12 @@ namespace Mist
 		check(m_buffer.IsAllocated());
 		MemFreeBuffer(renderContext.Allocator, m_buffer);
 		m_infoMap.clear();
+		if (m_cpuDynamicBuffer)
+		{
+			delete[] m_cpuDynamicBuffer;
+			m_cpuDynamicBuffer = nullptr;
+			m_cpuDynamicBufferSize = 0;
+		}
 	}
 
 	uint32_t UniformBufferMemoryPool::AllocUniform(const RenderContext& renderContext, const char* name, uint32_t size)
@@ -259,8 +267,8 @@ namespace Mist
 
 	uint32_t UniformBufferMemoryPool::AllocDynamicUniform(const RenderContext& renderContext, const char* name, uint32_t elemSize, uint32_t elemCount)
 	{
-		uint32_t paddingSize = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
-		uint32_t chunkSize = paddingSize * elemCount;
+		uint32_t elemSizeWithPadding = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
+		uint32_t chunkSize = elemSizeWithPadding * elemCount;
 		return AllocUniform(renderContext, name, chunkSize);
 	}
 
@@ -278,18 +286,57 @@ namespace Mist
 		{
 			const ItemMapInfo& info = m_infoMap[name];
 			check(size <= dstOffset + info.Size);
-			Memory::MemCopy(renderContext.Allocator, m_buffer, source, size, dstOffset + info.Offset);
+			MemoryCopy(renderContext, info, source, size, dstOffset);
 			return true;
 		}
 		return false;
 	}
 
-	bool UniformBufferMemoryPool::SetDynamicUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t size, uint32_t elemSize, uint32_t elemIndex, uint32_t elemOffset)
+	bool UniformBufferMemoryPool::SetDynamicUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t elemCount, uint32_t elemSize, uint32_t elemIndex)
 	{
-		check(elemOffset + size <= elemSize);
-		uint32_t totalSize = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
-		uint32_t bufferOffset = totalSize * elemIndex + elemOffset;
-		return SetUniform(renderContext, name, source, size, bufferOffset);
+		uint32_t elemSizeWithPadding = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
+		check(elemSizeWithPadding >= elemSize);
+		uint32_t padding = elemSizeWithPadding - elemSize;
+		if (padding)
+		{
+			if (m_infoMap.contains(name))
+			{
+				const ItemMapInfo& info = m_infoMap[name];
+				const uint32_t& chunkSize = info.Size;
+				uint32_t chunkSizeToCopy = elemSizeWithPadding * elemCount;
+				check(chunkSizeToCopy <= chunkSize);
+
+				const uint8_t * srcData = reinterpret_cast<const uint8_t*>(source);
+				if (!m_cpuDynamicBuffer)
+				{
+					check(m_cpuDynamicBufferSize == 0);
+					m_cpuDynamicBuffer = new uint8_t[chunkSizeToCopy];
+					m_cpuDynamicBufferSize = chunkSizeToCopy;
+				}
+				else if (m_cpuDynamicBufferSize < chunkSizeToCopy)
+				{
+					check(m_cpuDynamicBuffer);
+					delete[] m_cpuDynamicBuffer;
+					m_cpuDynamicBuffer = new uint8_t[chunkSizeToCopy];
+					m_cpuDynamicBufferSize = chunkSizeToCopy;
+				}
+
+				uint8_t* it = m_cpuDynamicBuffer;
+				for (uint32_t i = 0; i < elemCount; ++i)
+				{
+					check(it - m_cpuDynamicBuffer < chunkSize);
+					memcpy_s(it, elemSize, &srcData[i], elemSize);
+					it += elemSizeWithPadding;
+				}
+				MemoryCopy(renderContext, info, m_cpuDynamicBuffer, chunkSizeToCopy, elemIndex * elemSizeWithPadding);
+				return true;
+			}
+		}
+		else
+		{
+			return SetUniform(renderContext, name, source, elemCount * elemSize, elemIndex * elemSize);
+		}
+		return false;
 	}
 
 	UniformBufferMemoryPool::ItemMapInfo UniformBufferMemoryPool::GetLocationInfo(const char* name) const
@@ -308,5 +355,11 @@ namespace Mist
 		descInfo.offset = locationInfo.Offset;
 		descInfo.range = locationInfo.Size;
 		return descInfo;
+	}
+
+	void UniformBufferMemoryPool::MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const
+	{
+		check(size + offset <= itemInfo.Size);
+		Memory::MemCopy(context.Allocator, m_buffer, source, size, itemInfo.Offset + offset);
 	}
 }

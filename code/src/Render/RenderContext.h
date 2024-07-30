@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <Memory.h>
 #include "Render/VulkanBuffer.h"
+#include "Core/Types.h"
 
 struct SDL_Window;
 
@@ -19,6 +20,8 @@ namespace Mist
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
 	class ShaderFileDB;
+
+	typedef tFixedString<64> tRenderResourceName;
 
 	struct TransferContext
 	{

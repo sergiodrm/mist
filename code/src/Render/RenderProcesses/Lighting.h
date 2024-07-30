@@ -20,17 +20,6 @@ namespace Mist
 		float Exposure = 1.f;
 	};
 
-	struct BloomStage
-	{
-		struct FrameData
-		{
-			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> SetArray;
-		};
-		ShaderProgram* Shader;
-		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
-		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
-	};
-
 	class BloomEffect
 	{
 	public:
@@ -40,8 +29,16 @@ namespace Mist
 		void InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView);
 		void Destroy(const RenderContext& context);
 
-		BloomStage m_downscale;
-		BloomStage m_upscale;
+		ShaderProgram* DownsampleShader;
+		ShaderProgram* UpsampleShader;
+		struct FrameData
+		{
+			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> TexturesArray;
+			VkDescriptorSet ResolutionsSet;
+			VkDescriptorSet HDRSet;
+		};
+		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
+		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
 	};
 
 	class DeferredLighting : public RenderProcess
