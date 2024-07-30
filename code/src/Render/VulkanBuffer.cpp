@@ -321,13 +321,8 @@ namespace Mist
 					m_cpuDynamicBufferSize = chunkSizeToCopy;
 				}
 
-				uint8_t* it = m_cpuDynamicBuffer;
 				for (uint32_t i = 0; i < elemCount; ++i)
-				{
-					check(it - m_cpuDynamicBuffer < chunkSize);
-					memcpy_s(it, elemSize, &srcData[i], elemSize);
-					it += elemSizeWithPadding;
-				}
+					memcpy_s(&m_cpuDynamicBuffer[i*elemSizeWithPadding], elemSize, &srcData[i*elemSize], elemSize);
 				MemoryCopy(renderContext, info, m_cpuDynamicBuffer, chunkSizeToCopy, elemIndex * elemSizeWithPadding);
 				return true;
 			}
