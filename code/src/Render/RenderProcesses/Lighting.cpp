@@ -318,21 +318,24 @@ namespace Mist
 			{
 				width >>= 1;
 				height >>= 1;
+
 				char buff[32];
 				sprintf_s(buff, "BloomDownscale_%d", i);
 				BeginGPUEvent(renderContext, cmd, buff);
+
 				m_bloomEffect.RenderTargetArray[i].BeginPass(cmd);
 				m_bloomEffect.DownsampleShader->UseProgram(cmd);
 				VkDescriptorSet texSet = i == 0 ? m_bloomEffect.FrameSets[frameContext.FrameIndex].HDRSet : m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i - 1];
 				m_bloomEffect.DownsampleShader->BindDescriptorSets(cmd, &texSet, 1);
-				uint32_t resolutionOffset = i * sizeof(glm::vec2);
-				resolutionOffset = Memory::PadOffsetAlignment(renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, resolutionOffset);
+				uint32_t resolutionOffset = i * Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(glm::vec2));
 				m_bloomEffect.DownsampleShader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ResolutionsSet, 1, 1, &resolutionOffset, 1);
 				RenderAPI::CmdSetViewport(cmd, (float)width, (float)height);
 				RenderAPI::CmdSetScissor(cmd, width, height);
 				CmdDrawFullscreenQuad(cmd);
 				m_bloomEffect.RenderTargetArray[i].EndPass(cmd);
+
 				EndGPUEvent(renderContext, cmd);
+
 				if (CVar_BloomTex.Get())
 				{
 					float x = (float)renderContext.Window->Width * 0.75f;
