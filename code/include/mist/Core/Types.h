@@ -1,18 +1,10 @@
 #pragma once
 
 #include <stdarg.h>
+#include <stdint.h>
 
 namespace Mist
 {
-	typedef char byte;
-	typedef unsigned char uint8_t;
-	typedef unsigned short int uint16_t;
-	typedef unsigned int uint32_t;
-	typedef unsigned long int uint64_t;
-	typedef char int8_t;
-	typedef short int int16_t;
-	typedef int int32_t;
-	typedef long int int64_t;
 
 	template <uint32_t Size>
 	class tFixedString
@@ -20,11 +12,18 @@ namespace Mist
 	public:
 		typedef tFixedString<Size> ThisType;
 
-		tFixedString() = default;
+		tFixedString() : m_string{0}
+		{}
+
 		~tFixedString() = default;
 
-		const char* Str() const { return m_string; }
-		uint32_t Length() const { return strlen(m_string); }
+		tFixedString(const tFixedString& other)
+		{
+			*this = other;
+		}
+
+		const char* CStr() const { return m_string; }
+		uint32_t Length() const { return (uint32_t)strlen(m_string); }
 
 		void Fmt(const char* fmt, ...)
 		{
@@ -41,10 +40,13 @@ namespace Mist
 
 		ThisType& operator=(const ThisType& other)
 		{
+			strcpy_s(m_string, other.m_string);
 			return *this;
 		}
+
 		ThisType& operator=(ThisType&& other)
 		{
+			strcpy_s(m_string, other.m_string);
 			return *this;
 		}
 
