@@ -1,10 +1,16 @@
 #version 460
 
 layout (set = 0, binding = 0) uniform sampler2D u_tex;
-layout (set = 0, binding = 1) uniform UBO
+layout (set = 1, binding = 0) uniform UBO
 {
-    vec2 u_TexResolution;
-};
+    vec2 Resolution;
+} u_ubo;
+
+#ifndef BLOOM_DOWNSAMPLE
+#ifndef BLOOM_UPSAMPLE
+#error Shader must be configured to downsample or upsample
+#endif
+#endif
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 0) in vec2 InTexCoords;
@@ -69,10 +75,14 @@ vec4 Upscale(vec2 TexCoords, vec2 TexResolution)
 
 void main()
 {
-    vec2 texres = u_TexResolution;
-#ifdef BLOOM_DOWNSCALE
+    vec2 texres = u_ubo.Resolution;
+#ifdef BLOOM_DOWNSAMPLE
     FragColor = Downscale(InTexCoords, texres);
 #else
+#ifdef BLOOM_UPSAMPLE
     FragColor = Upscale(InTexCoords, texres);
+#else
+#error
+#endif
 #endif
 }
