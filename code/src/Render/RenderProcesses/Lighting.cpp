@@ -82,13 +82,32 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
-			shaderDesc.DynamicBuffers.push_back("u_ubo");
+			//shaderDesc.DynamicBuffers.push_back("u_ubo");
 			tCompileMacroDefinition macrodef;
 			strcpy_s(macrodef.Macro, "BLOOM_UPSAMPLE");
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			UpsampleShader = ShaderProgram::Create(context, shaderDesc);
+		}
+		// Mix
+		{
+			RenderTargetDescription desc;
+			desc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+			desc.RenderArea.offset = { 0, 0 };
+			desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 1.f, 1.f,1.f });
+			FinalTarget.Create(context, desc);
+
+
+			// Create shader without BLOOM_DOWNSCALE macro
+			GraphicsShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
+			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mix.frag");
+			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
+			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
+			shaderDesc.RenderTarget = &FinalTarget;
+			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			MixShader = ShaderProgram::Create(context, shaderDesc);
 		}
 	}
 
@@ -125,15 +144,31 @@ namespace Mist
 				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(context, FrameSets[frameIndex].TexturesArray[i]);
 		}
+
+		VkDescriptorImageInfo imageInfo[2];
+		imageInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo[0].imageView = hdrView;
+		imageInfo[0].sampler = sampler;
+		imageInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo[1].imageView = RenderTargetArray[0].GetRenderTarget(0);
+		imageInfo[1].sampler = sampler;
+
+		buffer->AllocUniform(context, "BloomFinalMixAlpha", sizeof(float));
+		float alpha = 0.5f;
+		buffer->SetUniform(context, "BloomFinalMixAlpha", &alpha, sizeof(float));
+		VkDescriptorBufferInfo bufferAlphaInfo = buffer->GenerateDescriptorBufferInfo("BloomFinalMixAlpha");
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindImage(0, &imageInfo[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.BindImage(1, &imageInfo[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.BindBuffer(2, &bufferAlphaInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, FrameSets[frameIndex].MixSet);
 	}
 
 	void BloomEffect::Destroy(const RenderContext& context)
 	{
-#if 1
+		FinalTarget.Destroy(context);
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 			RenderTargetArray[i].Destroy(context);
-#endif // 0
-
 	}
 
 	void DeferredLighting::Init(const RenderContext& renderContext)
@@ -271,7 +306,8 @@ namespace Mist
 		VkDescriptorImageInfo hdrTex
 		{
 			.sampler = sampler,
-			.imageView = m_renderTarget.GetRenderTarget(0),
+			.imageView = m_bloomEffect.FinalTarget.GetRenderTarget(0),
+			//.imageView = m_renderTarget.GetRenderTarget(0),
 			.imageLayout = tovk::GetImageLayout(GBUFFER_COMPOSITION_LAYOUT)
 		};
 		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
@@ -312,29 +348,26 @@ namespace Mist
 
 		{
 			CPU_PROFILE_SCOPE(BloomDownsampler);
-			uint32_t width = renderContext.Window->Width;
-			uint32_t height = renderContext.Window->Height;
+			BeginGPUEvent(renderContext, cmd, "Bloom Downsample");
 			for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 			{
-				width >>= 1;
-				height >>= 1;
+				RenderTarget& rt = m_bloomEffect.RenderTargetArray[i];
 
-				char buff[32];
-				sprintf_s(buff, "BloomDownscale_%d", i);
-				BeginGPUEvent(renderContext, cmd, buff);
-
-				m_bloomEffect.RenderTargetArray[i].BeginPass(cmd);
+				rt.BeginPass(cmd);
 				m_bloomEffect.DownsampleShader->UseProgram(cmd);
+
 				VkDescriptorSet texSet = i == 0 ? m_bloomEffect.FrameSets[frameContext.FrameIndex].HDRSet : m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i - 1];
 				m_bloomEffect.DownsampleShader->BindDescriptorSets(cmd, &texSet, 1);
+
 				uint32_t resolutionOffset = i * Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(glm::vec2));
 				m_bloomEffect.DownsampleShader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ResolutionsSet, 1, 1, &resolutionOffset, 1);
-				RenderAPI::CmdSetViewport(cmd, (float)width, (float)height);
-				RenderAPI::CmdSetScissor(cmd, width, height);
-				CmdDrawFullscreenQuad(cmd);
-				m_bloomEffect.RenderTargetArray[i].EndPass(cmd);
 
-				EndGPUEvent(renderContext, cmd);
+				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
+				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+
+				CmdDrawFullscreenQuad(cmd);
+
+				rt.EndPass(cmd);
 
 				if (CVar_BloomTex.Get())
 				{
@@ -348,6 +381,39 @@ namespace Mist
 						IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 				}
 			}
+			EndGPUEvent(renderContext, cmd);
+
+			BeginGPUEvent(renderContext, cmd, "Bloom Upsample");
+			for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
+			{
+				RenderTarget& rt = m_bloomEffect.RenderTargetArray[i];
+				ShaderProgram* shader = m_bloomEffect.UpsampleShader;
+
+				rt.BeginPass(cmd);
+				shader->UseProgram(cmd);
+
+				VkDescriptorSet texSet = m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i + 1];
+				shader->BindDescriptorSets(cmd, &texSet, 1);
+
+				//uint32_t resolutionOffset = i * Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(glm::vec2));
+				//shader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ResolutionsSet, 1, 1, &resolutionOffset, 1);
+
+				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
+				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+
+				CmdDrawFullscreenQuad(cmd);
+
+				rt.EndPass(cmd);
+			}
+			EndGPUEvent(renderContext, cmd);
+
+			BeginGPUEvent(renderContext, cmd, "Bloom mix");
+			m_bloomEffect.FinalTarget.BeginPass(cmd);
+			m_bloomEffect.MixShader->UseProgram(cmd);
+			m_bloomEffect.MixShader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].MixSet, 1);
+			CmdDrawFullscreenQuad(cmd);
+			m_bloomEffect.FinalTarget.EndPass(cmd);
+			EndGPUEvent(renderContext, cmd);
 		}
 
 

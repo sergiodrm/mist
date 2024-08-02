@@ -30,7 +30,6 @@ namespace Mist
 		struct FrameData
 		{
 			VkDescriptorSet TextureSet;
-			VkDescriptorSet ParamsSet;
 		};
 
 		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
@@ -232,5 +231,6 @@ namespace Mist
 		tMap<tString, tDynArray<uint32_t>> m_meshNameIndexMap;
 		Skybox m_skybox;
 		uint32_t m_defaultMaterialIndex = 0;
+		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> m_materialSetArray;
 	};
 }

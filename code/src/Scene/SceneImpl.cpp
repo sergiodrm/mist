@@ -501,11 +501,21 @@ namespace Mist
 		DescriptorAllocator& descAllocator = *renderContext.DescAllocator;
 		DescriptorLayoutCache& layoutCache = *renderContext.LayoutCache;
 		Layout = GetDescriptorSetLayout(renderContext);
+
+		// TODO Descriptor abstraction
+		VkDescriptorSetLayoutBinding binding;
+		binding.binding = 0;
+		binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		binding.descriptorCount = 1;
+		binding.pImmutableSamplers = nullptr;
+		binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		VkDescriptorSetLayoutCreateInfo info{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .pNext = nullptr };
+		info.bindingCount = 1;
+		info.pBindings = &binding;
+		info.flags = 0;
+
 		for (uint32_t i = 0; i < (uint32_t)MaterialSets.size(); ++i)
-		{
-			descAllocator.Allocate(&MaterialSets[i].TextureSet, Layout);
-			MaterialSets[i].ParamsSet = VK_NULL_HANDLE;
-		}
+			descAllocator.Allocate(&MaterialSets[i].TextureSet, Layout,info);
 	}
 
 	void MaterialRenderData::Destroy(const RenderContext& renderContext)
@@ -610,6 +620,10 @@ namespace Mist
 	void Scene::InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
 		frameContext.GlobalBuffer.AllocDynamicUniform(renderContext, "Material", sizeof(MaterialUniform), MIST_MAX_MATERIALS);
+		VkDescriptorBufferInfo info = frameContext.GlobalBuffer.GenerateDescriptorBufferInfo("Material");
+		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
+			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(renderContext, m_materialSetArray[frameContext.FrameIndex]);
 	}
 
 	RenderObject Scene::CreateRenderObject(RenderObject parent)
@@ -1248,7 +1262,6 @@ namespace Mist
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
 				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
-				++Mist::Profiling::GRenderStats.SetBindingCount;
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)
@@ -1269,7 +1282,7 @@ namespace Mist
 						uint32_t bufferOffset = materialPadding * drawData.MaterialIndex;
 						const MaterialRenderData& mtl = m_materialRenderDataArray[lastMaterialIndex];
 						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetFrameIndex()].TextureSet, 1, materialSetIndex);
-						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetFrameIndex()].ParamsSet, 1, materialSetIndex + 1, &bufferOffset, 1);
+						shader->BindDescriptorSets(cmd, &m_materialSetArray[0], 1, materialSetIndex + 1, &bufferOffset, 1);
 					}
 					RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
 				}
@@ -1515,6 +1528,8 @@ namespace Mist
 			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
 
 			// Update materials
+			tArray<MaterialUniform, MIST_MAX_MATERIALS> materialUniformBuffer;
+			check((uint32_t)m_materialArray.size() <= MIST_MAX_MATERIALS);
 			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
 			{
 				//check(m_dirtyMaterials[i] < (uint32_t)m_materialArray.size());
@@ -1547,22 +1562,14 @@ namespace Mist
 						submitTexture(material.GetRoughnessTexture(), 0, 5);
 					}
 
-					MaterialUniform ubo;
-					ubo.Metallic = material.GetMetallic();
-					ubo.Roughness = material.GetRoughness();
-					buffer->SetDynamicUniform(renderContext, "Material", &ubo, 1, sizeof(MaterialUniform), h);
-
-					if (mrd.MaterialSets[frameContext.FrameIndex].ParamsSet == VK_NULL_HANDLE)
-					{
-						VkDescriptorBufferInfo info = buffer->GenerateDescriptorBufferInfo("Material");
-						DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-							.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-							.Build(renderContext, mrd.MaterialSets[frameContext.FrameIndex].ParamsSet);
-					}
-
+					check(i < MIST_MAX_MATERIALS);
+					materialUniformBuffer[i].Metallic = material.GetMetallic();
+					materialUniformBuffer[i].Roughness = material.GetRoughness();
+					
 					material.SetDirty(false);
 				}
 			}
+			buffer->SetDynamicUniform(renderContext, "Material", materialUniformBuffer.data(), MIST_MAX_MATERIALS, sizeof(MaterialUniform), 0);
 
 			// Integrity check
 			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)

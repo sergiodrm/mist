@@ -31,14 +31,18 @@ namespace Mist
 
 		ShaderProgram* DownsampleShader;
 		ShaderProgram* UpsampleShader;
+		ShaderProgram* MixShader;
 		struct FrameData
 		{
 			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> TexturesArray;
 			VkDescriptorSet ResolutionsSet;
+			VkDescriptorSet FilterRadius;
+			VkDescriptorSet MixSet;
 			VkDescriptorSet HDRSet;
 		};
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
+		RenderTarget FinalTarget;
 	};
 
 	class DeferredLighting : public RenderProcess
