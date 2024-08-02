@@ -151,14 +151,12 @@ namespace Mist
 		{
 			if (allocator->AllocInfoArray[i].Alloc)
 			{
-				logerror("Allocated memory leaked:\n");
-				logferror("> Alloc: 0x%p\n", allocator->AllocInfoArray[i].Alloc);
-				logferror("> File:  %s\n", allocator->AllocInfoArray[i].File);
-				logferror("> Line:  %d\n", allocator->AllocInfoArray[i].Line);
+				logferror("> Alloc: 0x%p [%s(%d)]\n", allocator->AllocInfoArray[i].Alloc, allocator->AllocInfoArray[i].File, allocator->AllocInfoArray[i].Line);
 				failure = true;
 			}
 		}
 		check(!failure && "Memory leak found.");
+		logok("Memory cleaned.\n");
 		delete[] allocator->AllocInfoArray;
 		allocator->AllocInfoArray = nullptr;
 		allocator->AllocInfoIndex = UINT16_MAX;
