@@ -498,10 +498,34 @@ namespace Mist
 	};
 	DEFINE_ENUM_BIT_OPERATORS(EDepthStencilState);
 
+	enum EDescriptorType : uint8_t
+	{
+		DESCRIPTOR_TYPE_SAMPLER,
+		DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+		DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		DESCRIPTOR_TYPE_STORAGE_IMAGE,
+		DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
+		DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+		DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+		DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+		DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+		DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK,
+		DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+		DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV,
+		DESCRIPTOR_TYPE_MUTABLE_VALVE,
+		DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
+
+		DESCRIPTOR_TYPE_NUM,
+	};
+	
+
 #ifdef MIST_VULKAN
 
 	const char* VkResultToStr(VkResult res);
 	const char* FormatToStr(EFormat format);
+	const char* DescriptorTypeToStr(EDescriptorType type);
 
 	namespace tovk
 	{
@@ -516,6 +540,7 @@ namespace Mist
 		VkCullModeFlags GetCullMode(ECullMode mode);
 		VkFrontFace GetFrontFace(EFrontFace face);
 		VkDynamicState GetDynamicState(EDynamicState flags);
+		VkDescriptorType GetDescriptorType(EDescriptorType type);
 	}
 	namespace fromvk
 	{
@@ -530,6 +555,7 @@ namespace Mist
 		ECullMode GetCullMode(VkCullModeFlags mode);
 		EFrontFace GetFrontFace(VkFrontFace face);
 		EDynamicState GetDynamicState(VkDynamicState state);
+		EDescriptorType GetDescriptorType(VkDescriptorType type);
 	}
 
 	namespace utils
