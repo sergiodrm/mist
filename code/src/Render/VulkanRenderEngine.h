@@ -97,7 +97,6 @@ namespace Mist
 		virtual RenderHandle GetDefaultTexture() const;
 		virtual Material GetDefaultMaterial() const;
 		const RenderContext& GetContext() const { return m_renderContext; }
-		VkDescriptorSet AllocateDescriptorSet(VkDescriptorSetLayout layout);
 		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
 		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
 		inline uint32_t GetFrameIndex() const { return m_frameCounter % globals::MaxOverlappedFrames; }

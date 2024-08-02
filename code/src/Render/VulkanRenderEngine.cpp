@@ -704,13 +704,6 @@ namespace Mist
 		return m_frameContextArray[m_frameCounter % globals::MaxOverlappedFrames];
 	}
 
-	VkDescriptorSet VulkanRenderEngine::AllocateDescriptorSet(VkDescriptorSetLayout layout)
-	{
-		VkDescriptorSet set;
-		m_descriptorAllocator.Allocate(&set, layout);
-		return set;
-	}
-
 	bool VulkanRenderEngine::InitVulkan()
 	{
 #if 0
