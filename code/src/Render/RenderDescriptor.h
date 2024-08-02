@@ -1,14 +1,15 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <vector>
 #include <unordered_map>
+#include "Render/RenderTypes.h"
 
 namespace Mist
 {
 	struct RenderContext;
 	struct ShaderDescriptorSet;
 	struct ShaderReflectionProperties;
+	struct DescriptorLayoutInfo;
 
 	struct DescriptorPoolTypeInfo
 	{
@@ -18,9 +19,18 @@ namespace Mist
 
 	struct DescriptorPoolSizes
 	{
-		std::vector<DescriptorPoolTypeInfo> Sizes;
-
+		tDynArray<DescriptorPoolTypeInfo> Sizes;
 		static const DescriptorPoolSizes& GetDefault();
+	};
+
+	struct DescriptorPool
+	{
+		VkDescriptorPool Pool{VK_NULL_HANDLE};
+		// Stats info
+		uint32_t UsedSize[DESCRIPTOR_TYPE_NUM];
+		uint32_t AllocSize[DESCRIPTOR_TYPE_NUM];
+
+		void Reset() { memset(this, 0, sizeof(*this)); }
 	};
 
 	class DescriptorAllocator
@@ -29,17 +39,17 @@ namespace Mist
 		void Init(const RenderContext& rc, const DescriptorPoolSizes& sizes);
 		void Destroy();
 
-		bool Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);
+		bool Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);
 		void ResetPools();
 	private:
 		VkDescriptorPool UsePool();
 
 		static constexpr uint32_t MaxPoolCount = 200;
 		const RenderContext* m_renderContext;
-		VkDescriptorPool m_pool{ VK_NULL_HANDLE };
+		DescriptorPool m_pool;
 		DescriptorPoolSizes m_poolSizes;
-		std::vector<VkDescriptorPool> m_usedPools;
-		std::vector<VkDescriptorPool> m_freePools;
+		tDynArray<VkDescriptorPool> m_freePools;
+		tDynArray<VkDescriptorPool> m_usedPools;
 	};
 
 	VkDescriptorPool CreatePool(

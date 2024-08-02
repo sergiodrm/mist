@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "Render/Shader.h"
+#include "Core/Logger.h"
+
+//#define MIST_LOG_DESCRIPTOR_POOL_USAGE
 
 namespace Mist
 {
@@ -36,35 +39,54 @@ namespace Mist
 			};
 		destroyPool(*m_renderContext, m_usedPools);
 		destroyPool(*m_renderContext, m_freePools);
-		m_pool = VK_NULL_HANDLE;
+		m_pool.Reset();
 	}
 
-	bool DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout)
+	bool DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout, const VkDescriptorSetLayoutCreateInfo& info)
 	{
-		if (m_pool == VK_NULL_HANDLE)
+		auto fnNewPool = [&]()
+			{
+				m_pool.Reset();
+				m_pool.Pool = UsePool();
+				for (uint32_t i = 0; i < (uint32_t)m_poolSizes.Sizes.size(); ++i)
+					m_pool.AllocSize[m_poolSizes.Sizes[i].Type] = (uint32_t)((float)MaxPoolCount * m_poolSizes.Sizes[i].Multiplier);
+				m_usedPools.push_back(m_pool.Pool);
+			};
+
+		if (m_pool.Pool == VK_NULL_HANDLE)
 		{
-			m_pool = UsePool();
-			m_usedPools.push_back(m_pool);
+			fnNewPool();
 		}
 
 		VkDescriptorSetAllocateInfo allocInfo
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
 			.pNext = nullptr,
-			.descriptorPool = m_pool,
+			.descriptorPool = m_pool.Pool,
 			.descriptorSetCount = 1,
 			.pSetLayouts = &layout
 		};
 
 		VkResult allocResult = vkAllocateDescriptorSets(m_renderContext->Device, &allocInfo, set);
+#ifdef MIST_LOG_DESCRIPTOR_POOL_USAGE
+		for (uint32_t i = 0; i < info.bindingCount; ++i)
+		{
+			const VkDescriptorSetLayoutBinding& binding = info.pBindings[i];
+			EDescriptorType type = fromvk::GetDescriptorType(binding.descriptorType);
+			check(type < DESCRIPTOR_TYPE_NUM);
+			m_pool.UsedSize[type] += binding.descriptorCount;
+			logfdebug("Descriptor type [%40s] [%4d/%4d]\n", DescriptorTypeToStr(type), m_pool.UsedSize[type], m_pool.AllocSize[type]);
+		}
+#endif // MIST_LOG_DESCRIPTOR_POOL_USAGE
+
 		switch (allocResult)
 		{
-		case VK_SUCCESS: return true;
+		case VK_SUCCESS: 
+			return true;
 		case VK_ERROR_FRAGMENTED_POOL:
 		case VK_ERROR_OUT_OF_POOL_MEMORY:
 			// Try again
-			m_pool = UsePool();
-			m_usedPools.push_back(m_pool);
+			fnNewPool();
 			allocResult = vkAllocateDescriptorSets(m_renderContext->Device, &allocInfo, set);
 			check(allocResult == VK_SUCCESS && "Couldn't reallocate, big problem.");
 			break;
@@ -83,7 +105,8 @@ namespace Mist
 			m_freePools.push_back(m_usedPools[i]);
 		}
 		m_usedPools.clear();
-		m_pool = VK_NULL_HANDLE;
+		m_pool.Pool = VK_NULL_HANDLE;
+
 	}
 
 	VkDescriptorPool DescriptorAllocator::UsePool()
@@ -117,6 +140,7 @@ namespace Mist
 		};
 		VkDescriptorPool pool;
 		vkcheck(vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool));
+
 		return pool;
 	}
 
@@ -313,7 +337,7 @@ namespace Mist
 		};
 		layout = m_cache->CreateLayout(layoutInfo);
 
-		bool res = m_allocator->Allocate(&set, layout);
+		bool res = m_allocator->Allocate(&set, layout, layoutInfo);
 		check(res);
 		for (VkWriteDescriptorSet& it : m_writes)
 		{
