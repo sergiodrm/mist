@@ -16,7 +16,7 @@
 namespace Mist
 {
 	CBoolVar CVar_HDREnable("HDREnable", true);
-	CIntVar CVar_BloomTex("BloomTex", 1);
+	CBoolVar CVar_BloomTex("BloomTex", false);
 
 	BloomEffect::BloomEffect()
 	{
@@ -115,6 +115,7 @@ namespace Mist
 	{
 		Sampler sampler = CreateSampler(context, FILTER_NEAREST, FILTER_NEAREST);
 
+		// Tex resolutions for downsampler
 		tArray<glm::vec2, BLOOM_MIPMAP_LEVELS> texSizes;
 		for (uint32_t i = 0; i < (uint32_t)texSizes.size(); ++i)
 		{
@@ -129,11 +130,13 @@ namespace Mist
 			.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, FrameSets[frameIndex].ResolutionsSet);
 
+		// Initial image from deferred lighting stage.
 		VkDescriptorImageInfo hdrInfo{ .sampler = sampler, .imageView = hdrView, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
 			.BindImage(0, &hdrInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, FrameSets[frameIndex].HDRSet);
 
+		// Render Target array descriptors for each substage of downsampler/upsampler
 		for (uint32_t i = 0; i < (uint32_t)FrameSets[frameIndex].TexturesArray.size(); ++i)
 		{
 			VkDescriptorImageInfo imageInfo;
@@ -145,6 +148,14 @@ namespace Mist
 				.Build(context, FrameSets[frameIndex].TexturesArray[i]);
 		}
 
+		// Filter radius for upsampler stage.
+		buffer->AllocUniform(context, "BloomFilterRadius", sizeof(float));
+		VkDescriptorBufferInfo bufferFilterInfo = buffer->GenerateDescriptorBufferInfo("BloomFilterRadius");
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindBuffer(0, &bufferFilterInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, FrameSets[frameIndex].FilterRadiusSet);
+
+		// Final composed render target with mix shader
 		VkDescriptorImageInfo imageInfo[2];
 		imageInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo[0].imageView = hdrView;
@@ -154,8 +165,6 @@ namespace Mist
 		imageInfo[1].sampler = sampler;
 
 		buffer->AllocUniform(context, "BloomFinalMixAlpha", sizeof(float));
-		float alpha = 0.5f;
-		buffer->SetUniform(context, "BloomFinalMixAlpha", &alpha, sizeof(float));
 		VkDescriptorBufferInfo bufferAlphaInfo = buffer->GenerateDescriptorBufferInfo("BloomFinalMixAlpha");
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
 			.BindImage(0, &imageInfo[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -328,7 +337,12 @@ namespace Mist
 
 	void DeferredLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
+		// HDR
 		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
+
+		// Bloom
+		frameContext.GlobalBuffer.SetUniform(renderContext, "BloomFilterRadius", &m_bloomEffect.FilterRadius, sizeof(float));
+		frameContext.GlobalBuffer.SetUniform(renderContext, "BloomFinalMixAlpha", &m_bloomEffect.MixAlpha, sizeof(float));
 	}
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -392,8 +406,10 @@ namespace Mist
 				rt.BeginPass(cmd);
 				shader->UseProgram(cmd);
 
-				VkDescriptorSet texSet = m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i + 1];
-				shader->BindDescriptorSets(cmd, &texSet, 1);
+				VkDescriptorSet sets[2];
+				sets[0] = m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i + 1];
+				sets[1] = m_bloomEffect.FrameSets[frameContext.FrameIndex].FilterRadiusSet;
+				shader->BindDescriptorSets(cmd, sets, 2);
 
 				//uint32_t resolutionOffset = i * Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(glm::vec2));
 				//shader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ResolutionsSet, 1, 1, &resolutionOffset, 1);
@@ -437,6 +453,10 @@ namespace Mist
 			CVar_HDREnable.Set(enabled);*/
 		ImGui::DragFloat("Gamma correction", &m_hdrParams.GammaCorrection, 0.1f, 0.f, 5.f);
 		ImGui::DragFloat("Exposure", &m_hdrParams.Exposure, 0.1f, 0.f, 5.f);
+		ImGui::Separator();
+		ImGui::Text("Bloom");
+		ImGui::DragFloat("Upsampler filter radius", &m_bloomEffect.FilterRadius, 0.001f, 0.001f, 0.1f);
+		ImGui::DragFloat("Mix alpha", &m_bloomEffect.MixAlpha, 0.02f, 0.f, 1.f);
 		ImGui::End();
 	}
 	

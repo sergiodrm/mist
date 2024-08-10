@@ -9,12 +9,10 @@ layout (set = 1, binding = 0) uniform UBO
 } u_ubo;
 #else
 #ifdef BLOOM_UPSAMPLE
-#if 0
 layout (set = 1, binding = 0) uniform UBO
 {
     float FilterRadius;
 } u_ubo;
-#endif
 
 #else
 #error
@@ -128,7 +126,7 @@ void main()
     FragColor = Downscale(InTexCoords, texres);
 #else
 #ifdef BLOOM_UPSAMPLE
-    float filterRadius = 0.005f; //u_ubo.FilterRadius
+    float filterRadius = u_ubo.FilterRadius;
     FragColor = Upscale(InTexCoords, filterRadius);
 #else
 #error

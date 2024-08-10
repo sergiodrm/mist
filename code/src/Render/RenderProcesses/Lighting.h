@@ -36,13 +36,15 @@ namespace Mist
 		{
 			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> TexturesArray;
 			VkDescriptorSet ResolutionsSet;
-			VkDescriptorSet FilterRadius;
+			VkDescriptorSet FilterRadiusSet;
 			VkDescriptorSet MixSet;
 			VkDescriptorSet HDRSet;
 		};
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
 		RenderTarget FinalTarget;
+		float MixAlpha = 0.5f;
+		float FilterRadius = 0.005f;
 	};
 
 	class DeferredLighting : public RenderProcess
