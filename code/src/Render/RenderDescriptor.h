@@ -126,4 +126,5 @@ namespace Mist
 		DescriptorLayoutCache* m_cache{ nullptr };
 		DescriptorAllocator* m_allocator{ nullptr };
 	};
+
 }

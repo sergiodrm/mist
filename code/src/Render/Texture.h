@@ -110,7 +110,7 @@ namespace Mist
 	};
 	
 
-	struct TextureDescriptor
+	struct TextureBindingDescriptor
 	{
 		ImageView View;
 		EImageLayout Layout;

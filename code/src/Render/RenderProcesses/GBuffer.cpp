@@ -121,7 +121,7 @@ namespace Mist
 		float factor = 0.5f;
 		glm::vec2 pos = { w * factor, 0.f };
 		glm::vec2 size = glm::vec2{ w, h } *factor;
-		TextureDescriptor tex;
+		TextureBindingDescriptor tex;
 		switch (m_debugMode)
 		{
 		case DEBUG_NONE:

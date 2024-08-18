@@ -165,7 +165,7 @@ namespace Mist
 
 		if (m_flags & GPU_PARTICLES_SHOW_RT)
 		{
-			TextureDescriptor tex;
+			TextureBindingDescriptor tex;
 			tex.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			tex.View = m_renderTarget.GetRenderTarget(0);
 			tex.Sampler = m_sampler;

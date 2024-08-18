@@ -57,7 +57,7 @@ namespace Mist
 			static constexpr int32_t MaxViews = 8;
 			QuadVertex QuadArray[MaxQuads*4];
 			uint32_t Index;
-			TextureDescriptor TexDescriptors[MaxViews];
+			TextureBindingDescriptor TexDescriptors[MaxViews];
 			int32_t ViewIndex = 0;
 		} GQuadBatch;
 
@@ -65,7 +65,7 @@ namespace Mist
 		float NearClip = 1.f;
 		float FarClip = 100.f;
 
-		int32_t SubmitQuadTexture(QuadBatch& batch, const TextureDescriptor& texDescriptor)
+		int32_t SubmitQuadTexture(QuadBatch& batch, const TextureBindingDescriptor& texDescriptor)
 		{
 			for (int32_t i = 0; i < batch.ViewIndex; ++i)
 			{
@@ -107,7 +107,7 @@ namespace Mist
 		void Init(const RenderContext& context)
 		{
 			check(LoadTextureFromFile(context, ASSET_PATH("textures/checkerboard.jpg"), &DefaultTexture, FORMAT_R8G8B8A8_SRGB));
-			TextureDescriptor texDescriptor;
+			TextureBindingDescriptor texDescriptor;
 			tViewDescription viewDesc;
 			texDescriptor.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			texDescriptor.Sampler = CreateSampler(context);
@@ -168,7 +168,7 @@ namespace Mist
 			FarClip = farClip;
 		}
 
-		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const TextureDescriptor& texDescriptor)
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const TextureBindingDescriptor& texDescriptor)
 		{
 			if (GQuadBatch.Index < QuadBatch::MaxQuads)
 			{
@@ -192,7 +192,7 @@ namespace Mist
 
 		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, ImageView view, EImageLayout layout, Sampler sampler)
 		{
-			DrawScreenQuad(screenPos, size, TextureDescriptor{.View = view, .Layout = layout, .Sampler = sampler});
+			DrawScreenQuad(screenPos, size, TextureBindingDescriptor{.View = view, .Layout = layout, .Sampler = sampler});
 		}
 
 		void UpdateQuadTexDescriptorSet(const RenderContext& context, const QuadBatch& batch, VkDescriptorSet set, bool updateAll = false)
