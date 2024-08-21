@@ -3,6 +3,12 @@
 #include <stdarg.h>
 #include <stdint.h>
 
+#define DELETE_COPY_CONSTRUCTORS(_type) \
+	_type(const _type&) = delete; \
+	_type(_type&&) = delete; \
+	_type& operator=(const _type&) = delete; \
+	_type& operator=(_type&&) = delete
+
 namespace Mist
 {
 
