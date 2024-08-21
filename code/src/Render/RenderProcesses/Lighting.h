@@ -29,6 +29,7 @@ namespace Mist
 		void InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView);
 		void Destroy(const RenderContext& context);
 
+		ShaderProgram* ThresholdFilterShader;
 		ShaderProgram* DownsampleShader;
 		ShaderProgram* UpsampleShader;
 		ShaderProgram* MixShader;
@@ -39,7 +40,9 @@ namespace Mist
 			VkDescriptorSet FilterRadiusSet;
 			VkDescriptorSet MixSet;
 			VkDescriptorSet HDRSet;
+			VkDescriptorSet ThresholdSet;
 		};
+		RenderTarget TempRT;
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
 		RenderTarget FinalTarget;

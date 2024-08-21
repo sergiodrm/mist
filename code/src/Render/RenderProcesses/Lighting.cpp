@@ -24,11 +24,26 @@ namespace Mist
 
 	void BloomEffect::Init(const RenderContext& context)
 	{
+		// Threshold filter
+		{
+			RenderTargetDescription rtDesc;
+			rtDesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 1.f, 1.f, 1.f });
+			rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+			rtDesc.RenderArea.offset = { 0, 0 };
+			TempRT.Create(context, rtDesc);
+
+			GraphicsShaderProgramDescription shaderDesc;
+			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
+			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("threshold.frag");
+			shaderDesc.RenderTarget = &TempRT;
+			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			ThresholdFilterShader = ShaderProgram::Create(context, shaderDesc);
+		}
+
 		// Downscale
 		uint32_t width = context.Window->Width /2;
 		uint32_t height = context.Window->Height/2;
 		{
-
 			for (uint32_t i = 0; i < (uint32_t)RenderTargetArray.size(); ++i)
 			{
 				check(width && height);
@@ -42,23 +57,6 @@ namespace Mist
 				width >>= 1;
 				height >>= 1;
 			}
-			
-#if 0
-			for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
-			{
-				tViewDescription viewDesc;
-				viewDesc.BaseMipLevel = i;
-				viewDesc.LevelCount = 1;
-				ImageView view = m_downscale.Image->CreateView(context, viewDesc);
-
-				tClearValue clearValue = { 1.f, 1.f, 1.f, 1.f };
-				RenderTargetDescription rtdesc;
-				rtdesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
-				rtdesc.RenderArea.offset = { 0, 0 };
-				rtdesc.AddExternalAttachment(view, FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-				m_downscale.RenderTargetArray[i].Create(context, rtdesc);
-			}
-#endif // 0
 
 			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
@@ -109,6 +107,7 @@ namespace Mist
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			MixShader = ShaderProgram::Create(context, shaderDesc);
 		}
+		
 	}
 
 	void BloomEffect::InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView)
@@ -131,7 +130,7 @@ namespace Mist
 			.Build(context, FrameSets[frameIndex].ResolutionsSet);
 
 		// Initial image from deferred lighting stage.
-		VkDescriptorImageInfo hdrInfo{ .sampler = sampler, .imageView = hdrView, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+		VkDescriptorImageInfo hdrInfo{ .sampler = sampler, .imageView = TempRT.GetRenderTarget(0), .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
 			.BindImage(0, &hdrInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, FrameSets[frameIndex].HDRSet);
@@ -171,10 +170,24 @@ namespace Mist
 			.BindImage(1, &imageInfo[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindBuffer(2, &bufferAlphaInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, FrameSets[frameIndex].MixSet);
+
+		buffer->AllocUniform(context, "ThresholdFilter", sizeof(glm::vec4));
+		VkDescriptorBufferInfo thresholdFilterBufferInfo = buffer->GenerateDescriptorBufferInfo("ThresholdFilter");
+		VkDescriptorImageInfo thresholdFilterImageInfo;
+		thresholdFilterImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		thresholdFilterImageInfo.sampler = sampler;
+		thresholdFilterImageInfo.imageView = hdrView;
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindImage(0, &thresholdFilterImageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.BindBuffer(1, &thresholdFilterBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, FrameSets[frameIndex].ThresholdSet);
+		glm::vec4 threshold(1.f);
+		buffer->SetUniform(context, "ThresholdFilter", &threshold[0], sizeof(glm::vec4));
 	}
 
 	void BloomEffect::Destroy(const RenderContext& context)
 	{
+		TempRT.Destroy(context);
 		FinalTarget.Destroy(context);
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 			RenderTargetArray[i].Destroy(context);
@@ -362,6 +375,14 @@ namespace Mist
 
 		{
 			CPU_PROFILE_SCOPE(BloomDownsampler);
+			BeginGPUEvent(renderContext, cmd, "Bloom Threshold");
+			m_bloomEffect.TempRT.BeginPass(cmd);
+			m_bloomEffect.ThresholdFilterShader->UseProgram(cmd);
+			m_bloomEffect.ThresholdFilterShader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ThresholdSet, 1);
+			CmdDrawFullscreenQuad(cmd);
+			m_bloomEffect.TempRT.EndPass(cmd);
+			EndGPUEvent(renderContext, cmd);
+
 			BeginGPUEvent(renderContext, cmd, "Bloom Downsample");
 			for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 			{
