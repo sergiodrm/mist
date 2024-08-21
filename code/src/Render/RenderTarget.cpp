@@ -14,11 +14,16 @@ namespace Mist
 	void RenderTargetAttachment::Destroy(const RenderContext& renderContext)
 	{
 		// Destroy resources only if there is an image allocated. Otherwise is external framebuffer.
+#if 0
 		if (Image.IsAllocated())
 		{
 			vkDestroyImageView(renderContext.Device, View, nullptr);
 			MemFreeImage(renderContext.Allocator, Image);
 		}
+#endif // 0
+		if (Tex)
+			Texture::Destroy(renderContext, Tex);
+		Tex = nullptr;
 	}
 
 	RenderTarget::RenderTarget()
@@ -306,9 +311,10 @@ namespace Mist
 		for (uint32_t i = 0; i < viewCount; ++i)
 		{
 			m_attachments[i].View = externalAttachments[i].View;
+#if 0
 			m_attachments[i].Image.Alloc = VK_NULL_HANDLE;
 			m_attachments[i].Image.Image = VK_NULL_HANDLE;
-
+#endif // 0
 			views[i] = externalAttachments[i].View;
 		}
 		VkFramebufferCreateInfo fbInfo = vkinit::FramebufferCreateInfo(m_renderPass,
@@ -320,6 +326,20 @@ namespace Mist
 
 	void RenderTarget::CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const
 	{
+		tImageDescription imageDesc;
+		imageDesc.Width = m_description.RenderArea.extent.width;
+		imageDesc.Height = m_description.RenderArea.extent.height;
+		imageDesc.Format = description.Format;
+		imageDesc.Usage = imageUsage;
+		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
+		attachment.Tex = Texture::Create(renderContext, imageDesc);
+
+		tViewDescription viewDesc;
+		viewDesc.AspectMask = aspect;
+		attachment.View = attachment.Tex->CreateView(renderContext, viewDesc);
+		
+
+#if 0
 		tExtent3D extent{ .width = m_description.RenderArea.extent.width, .height = m_description.RenderArea.extent.height, .depth = 1 };
 		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(description.Format, imageUsage, extent);
 		attachment.Image = MemNewImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
@@ -341,6 +361,8 @@ namespace Mist
 			sprintf_s(buff, "%s_ImageView", m_description.ResourceName.CStr());
 			SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 		}
+#endif // 0
+
 	}
 
 	bool RenderTarget::ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description)

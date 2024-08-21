@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "Render/RenderTypes.h"
 #include "Render/RenderContext.h"
+#include "Render/Texture.h"
 #include "Core/Debug.h"
 
 #define MAX_RENDER_TARGET_COLOR_ATTACHMENTS 4
@@ -77,11 +78,13 @@ namespace Mist
 
 	struct RenderTargetAttachment
 	{
+#if 0
 		AllocatedImage Image;
+#endif // 0
 #ifdef MIST_VULKAN
 		VkImageView View;
-#endif // MIST_VULKAN
-
+#endif // MIST_VULKAN  
+		Texture* Tex = nullptr;
 		void Destroy(const RenderContext& renderContext);
 	};
 
