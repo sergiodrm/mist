@@ -60,13 +60,6 @@ namespace Mist
 		m_description = desc;
 		check(CreateImage(context, desc, m_image));
 
-		// Format requirement check
-		{
-			VkImageFormatProperties imageFormatProperties;
-			vkcheck(vkGetPhysicalDeviceImageFormatProperties(context.GPUDevice, tovk::GetFormat(desc.Format),
-				VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-				0, &imageFormatProperties));
-		}
 
 		VkSamplerCreateInfo samplerCreateInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR, SAMPLER_ADDRESS_MODE_REPEAT);
 		samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
@@ -129,17 +122,15 @@ namespace Mist
 		viewInfo.subresourceRange.levelCount = viewDesc.LevelCount;
 		viewInfo.subresourceRange.baseArrayLayer = viewDesc.BaseArrayLayer;
 		viewInfo.subresourceRange.layerCount = viewDesc.LayerCount;
-		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		viewInfo.subresourceRange.aspectMask = tovk::GetImageAspect(viewDesc.AspectMask);
 		ImageView view;
 		vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &view));
 		m_views.push_back(view);
 
 		static int c = 0;
 		char buff[256];
-		if (c == 90) __debugbreak();
 		sprintf_s(buff, "ImageView_%d", c++);
 		SetVkObjectName(context, &view, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
-
 
 		return view;
 	}
@@ -344,6 +335,7 @@ namespace Mist
 	bool CreateImage(const RenderContext& context, const tImageDescription& createInfo, AllocatedImage& imageOut)
 	{
 		check(!imageOut.IsAllocated());
+
 		// Prepare image creation
 		VkExtent3D extent;
 		extent.width = createInfo.Width;
@@ -363,6 +355,15 @@ namespace Mist
 		info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		info.flags = createInfo.Flags;
 		info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		info.pQueueFamilyIndices = nullptr;
+		info.queueFamilyIndexCount = 0;
+		// Format requirement check
+		{
+			VkImageFormatProperties imageFormatProperties;
+			vkcheck(vkGetPhysicalDeviceImageFormatProperties(context.GPUDevice, info.format,
+				info.imageType, info.tiling, info.usage,
+				0, &imageFormatProperties));
+		}
 		imageOut = MemNewImage(context.Allocator, info, MEMORY_USAGE_GPU);
 		return imageOut.IsAllocated();
 	}

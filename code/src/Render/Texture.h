@@ -27,14 +27,14 @@ namespace Mist
 	struct tImageDescription
 	{
 		EFormat Format;
-		ESampleCountBit SampleCount;
-		uint32_t Width;
-		uint32_t Height;
-		uint32_t MipLevels;
-		uint32_t Depth;
-		uint32_t Layers;
+		uint32_t Width = 0;
+		uint32_t Height = 0;
+		uint32_t MipLevels = 1;
+		uint32_t Depth = 1;
+		uint32_t Layers = 1;
+		ESampleCountBit SampleCount = SAMPLE_COUNT_1_BIT;
 		EImageUsage Usage = IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_SAMPLED_BIT;
-		VkImageCreateFlags Flags;
+		VkImageCreateFlags Flags = 0;
 		SamplerDescription SamplerDesc;
 	};
 
@@ -44,6 +44,7 @@ namespace Mist
 		uint32_t LevelCount = 1;
 		uint32_t BaseArrayLayer = 0;
 		uint32_t LayerCount = 1;
+		EImageAspect AspectMask = IMAGE_ASPECT_COLOR_BIT;
 		VkImageViewType ViewType = VK_IMAGE_VIEW_TYPE_2D;
 		VkImageViewCreateFlags Flags = 0;
 	};
@@ -98,6 +99,7 @@ namespace Mist
 		uint32_t GetViewCount() const;
 		Sampler GetSampler() const { return m_sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
+
 
 	private:
 		void Destroy(const RenderContext& context);
