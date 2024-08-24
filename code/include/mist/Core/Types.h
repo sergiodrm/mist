@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <cassert>
 
 #define DELETE_COPY_CONSTRUCTORS(_type) \
 	_type(const _type&) = delete; \
@@ -99,5 +100,61 @@ namespace Mist
 	private:
 		T Data[N];
 		uint32_t Index;
+	};
+
+	template <typename T, uint32_t Size>
+	struct tStaticArray
+	{
+		typedef tStaticArray<T, Size> tThisType;
+	public:
+		tStaticArray() = default;
+		tStaticArray(const T& defaultValue)
+		{
+			for (uint32_t i = 0; i < Size; ++i)
+				Data[i] = defaultValue;
+		}
+		tStaticArray(const tThisType& other)
+		{
+			for (uint32_t i = 0; i < other.GetSize(); ++i)
+				Data[i] = other[i];
+		}
+
+		const T& operator[](uint32_t index) const { assert(index < PushIndex); return Data[index]; }
+		T& operator[](uint32_t index) { assert(index < PushIndex); return Data[index]; }
+
+		inline void Resize(uint32_t newSize)
+		{
+			assert(newSize <= Size);
+			PushIndex = PushIndex > newSize ? PushIndex : newSize;
+		}
+
+		inline uint32_t GetSize() const { return PushIndex; }
+		inline bool IsEmpty() const { return GetSize(); }
+		inline constexpr uint32_t GetCapacity() const { return Size; }
+		inline void Clear() { PushIndex = 0; }
+		inline void Clear(const T& clearValue)
+		{
+			for (uint32_t i = 0; i < Size; ++i)
+				Data[Size] = clearValue;
+		}
+
+		void Push(const T& value)
+		{
+			check(PushIndex < Size);
+			Data[PushIndex++] = value;
+		}
+
+		void Pop() { check(PushIndex > 0); --PushIndex; }
+
+		inline const T& GetBack() const { assert(PushIndex); return Data[PushIndex - 1]; }
+		inline T& GetBack() { assert(PushIndex); return Data[PushIndex - 1]; }
+
+		inline const T* GetData() const { return Data; }
+		inline T* GetData() { return Data; }
+
+
+	private:
+		T Data[Size];
+		uint32_t PushIndex = 0;
 	};
 }
