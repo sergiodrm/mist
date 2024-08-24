@@ -16,6 +16,7 @@ namespace Mist
 	class DescriptorLayoutCache;
 	class RenderPipeline;
 	class RenderTarget;
+	class Texture;
 
 
 	struct ShaderBindingDescriptorInfo
@@ -172,10 +173,17 @@ namespace Mist
 
 		void Destroy(const RenderContext& context);
 		bool Reload(const RenderContext& context);
+		void SetupDescriptors(const RenderContext& context);
 		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
 
-		void UseProgram(VkCommandBuffer cmd) const;
+		[[deprecated]]
+		void UseProgram(CommandBuffer cmd) const;
+
+		void UseProgram(const RenderContext& context);
 		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
+		void SetDynamicBufferOffset(const char* bufferName, uint32_t offset);
+		void SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
+		void FlushDescriptors(const RenderContext& context);
 
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 
@@ -184,8 +192,11 @@ namespace Mist
 	private:
 		bool _Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
 		GraphicsShaderProgramDescription m_description;
+		ShaderReflectionProperties m_reflectionProperties;
 		VkPipeline m_pipeline;
 		VkPipelineLayout m_pipelineLayout;
+		tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
+		uint32_t m_descriptorSetBatchIndex = UINT32_MAX;
 	};
 
 	class ComputeShader

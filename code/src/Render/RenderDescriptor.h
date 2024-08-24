@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include "Render/RenderTypes.h"
+#include "Core/Types.h"
 
 namespace Mist
 {
@@ -122,4 +123,50 @@ namespace Mist
 		DescriptorAllocator* m_allocator{ nullptr };
 	};
 
+	struct tDescriptorSetUnit
+	{
+		bool Dirty = false;
+		uint32_t SetIndex = UINT32_MAX;
+		tStaticArray<uint32_t, 8> DynamicOffsets;
+	};
+
+	struct tDescriptorSetBatch
+	{
+		static constexpr uint32_t MaxDescriptors = 8;
+		tStaticArray<tDescriptorSetUnit, MaxDescriptors> PersistentDescriptors;
+		tStaticArray<uint32_t, MaxDescriptors> VolatileDescriptorIndices;
+	};
+
+	class tDescriptorSetCache
+	{
+	public:
+		tDescriptorSetCache(uint32_t initialSize = 200);
+
+		uint32_t NewBatch();
+		uint32_t NewPersistentDescriptorSet();
+		uint32_t NewVolatileDescriptorSet();
+
+		inline tDescriptorSetBatch& GetBatch(uint32_t batch) { return m_batches[batch]; }
+		inline tDescriptorSetBatch* GetBatches() { return m_batches.data(); }
+		inline uint32_t GetBatchCount() const { return (uint32_t)m_batches.size(); }
+
+		inline VkDescriptorSet& GetPersistentDescriptorSet(uint32_t index) { return m_persistentDescriptors[index]; }
+		inline VkDescriptorSet& GetVolatileDescriptorSet(uint32_t index) { return m_volatileDescriptors[index]; }
+
+	protected:
+
+		template <typename ElementType>
+		static uint32_t NewElementInPool(tDynArray<ElementType>& pool, const ElementType& defaultValue)
+		{
+			check(pool.size() < pool.capacity());
+			uint32_t index = (uint32_t)pool.size();
+			pool.push_back(defaultValue);
+			return index;
+		}
+
+	public:
+		tDynArray<tDescriptorSetBatch> m_batches;
+		tDynArray<VkDescriptorSet> m_volatileDescriptors;
+		tDynArray<VkDescriptorSet> m_persistentDescriptors;
+	};
 }

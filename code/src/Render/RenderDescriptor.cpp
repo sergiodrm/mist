@@ -270,7 +270,7 @@ namespace Mist
 		};
 		layout = m_cache->CreateLayout(layoutInfo);
 
-		bool res = m_allocator->Allocate(&set, layout, layoutInfo);
+		bool res = m_allocator->Allocate(&set, layout);
 		check(res);
 		for (VkWriteDescriptorSet& it : m_writes)
 		{
@@ -286,4 +286,33 @@ namespace Mist
 		return Build(rc, set, bypass);
 	}
 
+	tDescriptorSetCache::tDescriptorSetCache(uint32_t initialSize)
+	{
+		m_batches.reserve(initialSize);
+		m_persistentDescriptors.reserve(initialSize * tDescriptorSetBatch::MaxDescriptors * 2);
+		m_volatileDescriptors.reserve(initialSize * tDescriptorSetBatch::MaxDescriptors * 2);
+	}
+
+	uint32_t tDescriptorSetCache::NewBatch()
+	{
+		if (m_batches.size() == m_batches.capacity())
+		{
+			uint32_t newsize = (uint32_t)m_batches.size() + 100;
+			logfwarn("Reallocating descriptor set cache. Descriptor batches increased %d -> %d\n", m_batches.size(), newsize);
+			m_batches.reserve(newsize);
+			m_volatileDescriptors.reserve(newsize * tDescriptorSetBatch::MaxDescriptors * 2);
+			m_persistentDescriptors.reserve(newsize * tDescriptorSetBatch::MaxDescriptors * 2);
+		}
+		return NewElementInPool(m_batches, tDescriptorSetBatch());
+	}
+
+	uint32_t tDescriptorSetCache::NewPersistentDescriptorSet()
+	{
+		return NewElementInPool<VkDescriptorSet>(m_persistentDescriptors, VK_NULL_HANDLE);
+	}
+
+	uint32_t tDescriptorSetCache::NewVolatileDescriptorSet()
+	{
+		return NewElementInPool<VkDescriptorSet>(m_volatileDescriptors, VK_NULL_HANDLE);
+	}
 }
