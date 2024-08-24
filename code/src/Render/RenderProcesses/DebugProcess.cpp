@@ -231,7 +231,7 @@ namespace Mist
 			binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 			VkDescriptorSetLayoutCreateInfo layoutInfo = vkinit::DescriptorSetLayoutCreateInfo(&binding, 1);
 			VkDescriptorSetLayout layout = layoutCache.CreateLayout(layoutInfo);
-			check(descriptorAllocator.Allocate(&set, layout, layoutInfo));
+			check(descriptorAllocator.Allocate(&set, layout));
 			DebugRender::UpdateQuadTexDescriptorSet(context, batch, set, true);
 		}
 
