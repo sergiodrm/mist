@@ -7,125 +7,11 @@
 #include "Render/Shader.h"
 #include "Core/Logger.h"
 
-//#define MIST_LOG_DESCRIPTOR_POOL_USAGE
-
 namespace Mist
 {
-	const DescriptorPoolSizes& DescriptorPoolSizes::GetDefault()
-	{
-		static const DescriptorPoolSizes sizes({
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f},
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f},
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f},
-			{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f}
-		});
-		return sizes;
-	}
-
-	void DescriptorAllocator::Init(const RenderContext& rc, const DescriptorPoolSizes& sizes)
-	{
-		m_renderContext = &rc;
-		m_poolSizes = sizes;
-	}
-
-	void DescriptorAllocator::Destroy()
-	{
-		auto destroyPool = [](const RenderContext& rc, std::vector<VkDescriptorPool>& pools) 
-			{
-				for (VkDescriptorPool& pool : pools)
-					vkDestroyDescriptorPool(rc.Device, pool, nullptr);
-				pools.clear();
-			};
-		destroyPool(*m_renderContext, m_usedPools);
-		destroyPool(*m_renderContext, m_freePools);
-		m_pool.Reset();
-	}
-
-	bool DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout, const VkDescriptorSetLayoutCreateInfo& info)
-	{
-		auto fnNewPool = [&]()
-			{
-				m_pool.Reset();
-				m_pool.Pool = UsePool();
-				for (uint32_t i = 0; i < (uint32_t)m_poolSizes.Sizes.size(); ++i)
-					m_pool.AllocSize[m_poolSizes.Sizes[i].Type] = (uint32_t)((float)MaxPoolCount * m_poolSizes.Sizes[i].Multiplier);
-				m_usedPools.push_back(m_pool.Pool);
-			};
-
-		if (m_pool.Pool == VK_NULL_HANDLE)
-		{
-			fnNewPool();
-		}
-
-		VkDescriptorSetAllocateInfo allocInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-			.pNext = nullptr,
-			.descriptorPool = m_pool.Pool,
-			.descriptorSetCount = 1,
-			.pSetLayouts = &layout
-		};
-
-		VkResult allocResult = vkAllocateDescriptorSets(m_renderContext->Device, &allocInfo, set);
-#ifdef MIST_LOG_DESCRIPTOR_POOL_USAGE
-		for (uint32_t i = 0; i < info.bindingCount; ++i)
-		{
-			const VkDescriptorSetLayoutBinding& binding = info.pBindings[i];
-			EDescriptorType type = fromvk::GetDescriptorType(binding.descriptorType);
-			check(type < DESCRIPTOR_TYPE_NUM);
-			m_pool.UsedSize[type] += binding.descriptorCount;
-			logfdebug("Descriptor type [%40s] [%4d/%4d]\n", DescriptorTypeToStr(type), m_pool.UsedSize[type], m_pool.AllocSize[type]);
-		}
-#endif // MIST_LOG_DESCRIPTOR_POOL_USAGE
-
-		switch (allocResult)
-		{
-		case VK_SUCCESS: 
-			return true;
-		case VK_ERROR_FRAGMENTED_POOL:
-		case VK_ERROR_OUT_OF_POOL_MEMORY:
-			// Try again
-			fnNewPool();
-			allocResult = vkAllocateDescriptorSets(m_renderContext->Device, &allocInfo, set);
-			check(allocResult == VK_SUCCESS && "Couldn't reallocate, big problem.");
-			break;
-		default:
-			check(false && "Failed to allocate new descriptor.");
-			return false;
-		}
-		return true;
-	}
-
-	void DescriptorAllocator::ResetPools()
-	{
-		for (uint32_t i = 0; i < m_usedPools.size(); ++i)
-		{
-			vkResetDescriptorPool(m_renderContext->Device, m_usedPools[i], 0);
-			m_freePools.push_back(m_usedPools[i]);
-		}
-		m_usedPools.clear();
-		m_pool.Pool = VK_NULL_HANDLE;
-
-	}
-
-	VkDescriptorPool DescriptorAllocator::UsePool()
-	{
-		// free pool? or create new one?
-		if (m_freePools.empty())
-		{
-			return CreatePool(m_renderContext->Device, m_poolSizes, MaxPoolCount);
-		}
-		else
-		{
-			VkDescriptorPool pool = m_freePools.back();
-			m_freePools.pop_back();
-			return pool;
-		}
-	}
-
 	VkDescriptorPool CreatePool(VkDevice device, const DescriptorPoolSizes& sizes, uint32_t count, VkDescriptorPoolCreateFlags flags)
 	{
+		logdebug("New VkDescriptorPool\n");
 		std::vector<VkDescriptorPoolSize> vulkanSizes(sizes.Sizes.size());
 		for (uint32_t i = 0; i < sizes.Sizes.size(); ++i)
 			vulkanSizes[i] = { sizes.Sizes[i].Type, (uint32_t)(sizes.Sizes[i].Multiplier * count) };
@@ -140,8 +26,55 @@ namespace Mist
 		};
 		VkDescriptorPool pool;
 		vkcheck(vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool));
-
 		return pool;
+	}
+
+	const DescriptorPoolSizes& DescriptorPoolSizes::GetDefault()
+	{
+		static const DescriptorPoolSizes sizes({
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f},
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f},
+			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f},
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f},
+			{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f}
+		});
+		return sizes;
+	}
+
+	void DescriptorAllocator::Init(const RenderContext& rc, const DescriptorPoolSizes& sizes)
+	{
+		check(m_pool.Pool == VK_NULL_HANDLE);
+		m_renderContext = &rc;
+		m_poolSizes = sizes;
+		m_pool.Reset();
+		m_pool.Pool = CreatePool(rc.Device, sizes, 200, 0);
+	}
+
+	void DescriptorAllocator::Destroy()
+	{
+		vkDestroyDescriptorPool(m_renderContext->Device, m_pool.Pool, nullptr);
+		m_pool.Reset();
+	}
+
+	bool DescriptorAllocator::Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout)
+	{
+		check(m_pool.Pool);
+
+		VkDescriptorSetAllocateInfo allocInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+			.pNext = nullptr,
+			.descriptorPool = m_pool.Pool,
+			.descriptorSetCount = 1,
+			.pSetLayouts = &layout
+		};
+
+		vkcheck(vkAllocateDescriptorSets(m_renderContext->Device, &allocInfo, set));
+		static uint32_t c = 0;
+		char buff[32];
+		sprintf_s(buff, "DescriptorSet_%d", c++);
+		SetVkObjectName(*m_renderContext, set, VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
+		return true;
 	}
 
 	bool DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const

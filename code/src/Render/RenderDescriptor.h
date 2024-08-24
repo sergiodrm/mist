@@ -39,17 +39,12 @@ namespace Mist
 		void Init(const RenderContext& rc, const DescriptorPoolSizes& sizes);
 		void Destroy();
 
-		bool Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout, const VkDescriptorSetLayoutCreateInfo& layoutInfo);
-		void ResetPools();
+		bool Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);
+		inline VkDescriptorPool GetPool() const { return m_pool.Pool; }
 	private:
-		VkDescriptorPool UsePool();
-
-		static constexpr uint32_t MaxPoolCount = 200;
 		const RenderContext* m_renderContext;
 		DescriptorPool m_pool;
 		DescriptorPoolSizes m_poolSizes;
-		tDynArray<VkDescriptorPool> m_freePools;
-		tDynArray<VkDescriptorPool> m_usedPools;
 	};
 
 	VkDescriptorPool CreatePool(
