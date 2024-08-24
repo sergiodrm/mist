@@ -29,7 +29,7 @@
 #include "Application/Application.h"
 #include "Application/Event.h"
 
-//#define MIST_CRASH_ON_VALIDATION_LAYER
+#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -242,10 +242,15 @@ namespace Mist
 
 		// Descriptor layout and allocator
 		m_descriptorLayoutCache.Init(m_renderContext);
-		m_descriptorAllocator.Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			m_descriptorAllocators[i].Init(m_renderContext, DescriptorPoolSizes::GetDefault());
+			m_renderContext.FrameContextArray[i].DescriptorAllocator = &m_descriptorAllocators[i];
+			m_renderContext.FrameContextArray[i].FrameIndex = i;
+		}
 		m_shaderDb.Init(m_renderContext);
 		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
-		m_renderContext.DescAllocator = &m_descriptorAllocator;
+		m_renderContext.DescAllocator = &m_descriptorAllocators[0];
 		m_renderContext.ShaderDB = &m_shaderDb;
 
 		// Swapchain
@@ -261,14 +266,14 @@ namespace Mist
 		m_screenPipeline.Init(m_renderContext, m_swapchain);
 		m_cubemapPipeline.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 		// Initialize render processes after instantiate render context
-		m_renderer.Init(m_renderContext, m_frameContextArray, sizeof(m_frameContextArray) / sizeof(RenderFrameContext));
+		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, sizeof(m_renderContext.FrameContextArray) / sizeof(RenderFrameContext));
 		DebugRender::Init(m_renderContext);
 
 		const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
 		const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
-			UniformBufferMemoryPool& buffer = m_frameContextArray[i].GlobalBuffer;
+			UniformBufferMemoryPool& buffer = m_renderContext.FrameContextArray[i].GlobalBuffer;
 
 			// Screen quad pipeline
 			{
@@ -276,7 +281,7 @@ namespace Mist
 				buffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(int));
 				VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCREEN_QUAD_INDEX);
 
-				DescriptorBuilder builder = DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator);
+				DescriptorBuilder builder = DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocators[i]);
 				builder.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT);
 				builder.Build(m_renderContext, m_screenPipeline.QuadSets[i]);
 
@@ -284,7 +289,7 @@ namespace Mist
 				quadImageInfoArray.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				quadImageInfoArray.imageView = lightingRT.GetRenderTarget(0);
 				quadImageInfoArray.sampler = CreateSampler(m_renderContext);
-				DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+				DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocators[i])
 					.BindImage(0, &quadImageInfoArray, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 					.Build(m_renderContext, m_screenPipeline.PresentTexSets[i]);
 
@@ -307,7 +312,7 @@ namespace Mist
 		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(); });
 
 		m_gpuParticleSystem.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
-		m_gpuParticleSystem.InitFrameData(m_renderContext, m_frameContextArray);
+		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
 
 		AddConsoleCommand(ExecCommand_CVar);
 
@@ -379,20 +384,21 @@ namespace Mist
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			m_frameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
+			m_renderContext.FrameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
 
-			vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].ComputeFence, nullptr);
-			vkDestroyFence(m_renderContext.Device, m_frameContextArray[i].RenderFence, nullptr);
-			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].ComputeSemaphore, nullptr);
-			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].RenderSemaphore, nullptr);
-			vkDestroySemaphore(m_renderContext.Device, m_frameContextArray[i].PresentSemaphore, nullptr);
-			vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].GraphicsCommandPool, nullptr);
-			vkDestroyCommandPool(m_renderContext.Device, m_frameContextArray[i].ComputeCommandPool, nullptr);
+			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeFence, nullptr);
+			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].RenderFence, nullptr);
+			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeSemaphore, nullptr);
+			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].RenderSemaphore, nullptr);
+			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].PresentSemaphore, nullptr);
+			vkDestroyCommandPool(m_renderContext.Device, m_renderContext.FrameContextArray[i].GraphicsCommandPool, nullptr);
+			vkDestroyCommandPool(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeCommandPool, nullptr);
 		}
 
 		m_swapchain.Destroy(m_renderContext);
 		m_shaderDb.Destroy(m_renderContext);
-		m_descriptorAllocator.Destroy();
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+			m_descriptorAllocators[i].Destroy();
 		m_descriptorLayoutCache.Destroy();
 
 		Memory::Destroy(m_renderContext.Allocator);
@@ -433,9 +439,9 @@ namespace Mist
 
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{ 
-			m_frameContextArray[i].Scene = m_scene;
+			m_renderContext.FrameContextArray[i].Scene = m_scene;
 			if (scene)
-				m_scene->InitFrameData(m_renderContext, m_frameContextArray[i]);
+				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
 		}
 	}
 
@@ -460,7 +466,11 @@ namespace Mist
 	void VulkanRenderEngine::BeginFrame()
 	{
 		// Update scene graph data
+		RenderContext_NewFrame(m_renderContext);
+		// TODO descriptor allocators must be instanciated on each frame context.
+		m_renderContext.DescAllocator = &m_descriptorAllocators[m_renderContext.GetFrameIndex()];
 		RenderFrameContext& frameContext = GetFrameContext();
+		frameContext.DescriptorAllocator = m_renderContext.DescAllocator;
 
 		glm::mat4 viewRot = m_cameraData.InvView;
 		viewRot[3] = { 0.f,0.f,0.f,1.f };
@@ -474,7 +484,7 @@ namespace Mist
 		UBOTime time{ 0.033f, 0.f};
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_TIME, &time, sizeof(UBOTime));
 
-		frameContext.PresentTex = m_screenPipeline.PresentTexSets[GetFrameIndex()];
+		frameContext.PresentTex = m_screenPipeline.PresentTexSets[m_renderContext.GetFrameIndex()];
 		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_renderer.UpdateRenderData(m_renderContext, frameContext);
@@ -484,7 +494,7 @@ namespace Mist
 	void VulkanRenderEngine::Draw()
 	{
 		CPU_PROFILE_SCOPE(Draw);
-		uint32_t frameIndex = GetFrameIndex();
+		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 
@@ -559,7 +569,7 @@ namespace Mist
 			m_screenPipeline.VB.Bind(cmd);
 			m_screenPipeline.IB.Bind(cmd);
 			m_screenPipeline.Shader->UseProgram(cmd);
-			VkDescriptorSet sets[] = { m_screenPipeline.QuadSets[frameIndex], frameContext.PresentTex };
+			VkDescriptorSet sets[] = { m_screenPipeline.QuadSets[frameIndex], m_screenPipeline.PresentTexSets[frameIndex]};
 			m_screenPipeline.Shader->BindDescriptorSets(cmd, sets, sizeof(sets) / sizeof(VkDescriptorSet));
 			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 			// Flush debug draw list
@@ -701,7 +711,7 @@ namespace Mist
 
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
-		return m_frameContextArray[m_frameCounter % globals::MaxOverlappedFrames];
+		return m_renderContext.GetFrameContext();
 	}
 
 	bool VulkanRenderEngine::InitVulkan()
@@ -841,7 +851,7 @@ namespace Mist
 		VkCommandPoolCreateInfo computePoolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.ComputeQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			RenderFrameContext& frameContext = m_frameContextArray[i];
+			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
 
 			// Graphics commands
 			{
@@ -869,7 +879,7 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			RenderFrameContext& frameContext = m_frameContextArray[i];
+			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
 			// Render fence
 			VkFenceCreateInfo fenceInfo = vkinit::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
 			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
@@ -904,7 +914,7 @@ namespace Mist
 	{
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			RenderFrameContext& frameContext = m_frameContextArray[i];
+			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
 			frameContext.CameraData = &m_cameraData;
 
 			// Size for uniform frame buffer
@@ -918,7 +928,7 @@ namespace Mist
 			bufferInfo.buffer = frameContext.GlobalBuffer.GetBuffer();
 			bufferInfo.offset = cameraBufferOffset;
 			bufferInfo.range = cameraBufferSize;
-			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocator)
+			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocators[i])
 				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 
@@ -936,17 +946,17 @@ namespace Mist
 		tDynArray<VkFence> fences;
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			check(!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			check(!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
+			check(!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
+			check(!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
+			if (!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
 			{
-				fences.push_back(m_frameContextArray[i].RenderFence);
-				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
+				fences.push_back(m_renderContext.FrameContextArray[i].RenderFence);
+				m_renderContext.FrameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
 			}
-			if (!(m_frameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
+			if (!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
 			{
-				fences.push_back(m_frameContextArray[i].ComputeFence);
-				m_frameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
+				fences.push_back(m_renderContext.FrameContextArray[i].ComputeFence);
+				m_renderContext.FrameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
 			}
 
 		}

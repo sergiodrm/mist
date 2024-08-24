@@ -515,7 +515,7 @@ namespace Mist
 		info.flags = 0;
 
 		for (uint32_t i = 0; i < (uint32_t)MaterialSets.size(); ++i)
-			descAllocator.Allocate(&MaterialSets[i].TextureSet, Layout,info);
+			descAllocator.Allocate(&MaterialSets[i].TextureSet, Layout);
 	}
 
 	void MaterialRenderData::Destroy(const RenderContext& renderContext)
@@ -1281,7 +1281,7 @@ namespace Mist
 						uint32_t materialPadding = Memory::PadOffsetAlignment((uint32_t)m_engine->GetContext().GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(MaterialUniform));
 						uint32_t bufferOffset = materialPadding * drawData.MaterialIndex;
 						const MaterialRenderData& mtl = m_materialRenderDataArray[lastMaterialIndex];
-						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetFrameIndex()].TextureSet, 1, materialSetIndex);
+						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetContext().GetFrameIndex()].TextureSet, 1, materialSetIndex);
 						shader->BindDescriptorSets(cmd, &m_materialSetArray[0], 1, materialSetIndex + 1, &bufferOffset, 1);
 					}
 					RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
@@ -1538,7 +1538,7 @@ namespace Mist
 				{
 					RenderHandle h = material.GetHandle();
 					MaterialRenderData& mrd = m_materialRenderDataArray[h];
-					if (material.IsDirty())
+					//if (material.IsDirty())
 					{
 						auto submitTexture = [&](RenderHandle texHandle, uint32_t binding, uint32_t arrayIndex)
 							{

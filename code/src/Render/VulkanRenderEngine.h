@@ -97,10 +97,13 @@ namespace Mist
 		virtual RenderHandle GetDefaultTexture() const;
 		virtual Material GetDefaultMaterial() const;
 		const RenderContext& GetContext() const { return m_renderContext; }
+#if 0
 		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
 		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
 		inline uint32_t GetFrameIndex() const { return m_frameCounter % globals::MaxOverlappedFrames; }
 		inline uint32_t GetFrameCounter() const { return m_frameCounter; }
+#endif // 0
+
 	protected:
 		void BeginFrame();
 		void Draw();
@@ -125,12 +128,15 @@ namespace Mist
 		ScreenQuadPipeline m_screenPipeline;
 		CubemapPipeline m_cubemapPipeline;
 		Renderer m_renderer;
+#if 0
 
 		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
 		uint32_t m_frameCounter;
+#endif // 0
+
 		uint32_t m_currentSwapchainIndex;
 
-		DescriptorAllocator m_descriptorAllocator;
+		tArray<DescriptorAllocator, globals::MaxOverlappedFrames> m_descriptorAllocators;
 		DescriptorLayoutCache m_descriptorLayoutCache;
 		ShaderFileDB m_shaderDb;
 
