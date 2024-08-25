@@ -6,13 +6,13 @@ layout (set = 0, binding = 0) uniform sampler2D u_tex;
 layout (set = 1, binding = 0) uniform UBO
 {
     vec2 Resolution;
-} u_ubo;
+} u_BloomDownsampleParams;
 #else
 #ifdef BLOOM_UPSAMPLE
 layout (set = 1, binding = 0) uniform UBO
 {
     float FilterRadius;
-} u_ubo;
+} u_BloomUpsampleParams;
 
 #else
 #error
@@ -122,11 +122,11 @@ vec4 Upscale(vec2 TexCoords, float FilterRadius)
 void main()
 {
 #ifdef BLOOM_DOWNSAMPLE
-    vec2 texres = u_ubo.Resolution;
+    vec2 texres = u_BloomDownsampleParams.Resolution;
     FragColor = Downscale(InTexCoords, texres);
 #else
 #ifdef BLOOM_UPSAMPLE
-    float filterRadius = u_ubo.FilterRadius;
+    float filterRadius = u_BloomUpsampleParams.FilterRadius;
     FragColor = Upscale(InTexCoords, filterRadius);
 #else
 #error

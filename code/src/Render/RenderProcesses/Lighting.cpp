@@ -63,13 +63,33 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
-			shaderDesc.DynamicBuffers.push_back("u_ubo");
+			shaderDesc.DynamicBuffers.push_back("u_BloomDownsampleParams");
 			tCompileMacroDefinition macrodef;
 			strcpy_s(macrodef.Macro, "BLOOM_DOWNSAMPLE");
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			DownsampleShader = ShaderProgram::Create(context, shaderDesc);
+
+			// Tex resolutions for downsampler
+			tArray<glm::vec2, BLOOM_MIPMAP_LEVELS> texSizes;
+			for (uint32_t i = 0; i < (uint32_t)texSizes.size(); ++i)
+			{
+				uint32_t width = context.Window->Width >> (i + 1);
+				uint32_t height = context.Window->Height >> (i + 1);
+				texSizes[i] = { (float)width, (float)height };
+			}
+
+			// init dynamic buffers before setup shader descriptors
+			for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+			{
+				RenderFrameContext& frameContext = context.FrameContextArray[i];
+				UniformBufferMemoryPool& buffer = frameContext.GlobalBuffer;
+				buffer.AllocDynamicUniform(context, "u_BloomDownsampleParams", sizeof(glm::vec2), (uint32_t)texSizes.size());
+				buffer.SetDynamicUniform(context, "u_BloomDownsampleParams", texSizes.data(), (uint32_t)texSizes.size(), sizeof(glm::vec2), 0);
+			}
+			
+			DownsampleShader->SetupDescriptors(context);
 		}
 
 		// Upscale
@@ -122,12 +142,15 @@ namespace Mist
 			uint32_t height = context.Window->Height >> (i + 1);
 			texSizes[i] = { (float)width, (float)height };
 		}
+#if 0
 		buffer->AllocDynamicUniform(context, "BloomTexResolutions", sizeof(glm::vec2), (uint32_t)texSizes.size());
 		buffer->SetDynamicUniform(context, "BloomTexResolutions", texSizes.data(), (uint32_t)texSizes.size(), sizeof(glm::vec2), 0);
 		VkDescriptorBufferInfo bufferInfo = buffer->GenerateDescriptorBufferInfo("BloomTexResolutions");
 		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
 			.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, FrameSets[frameIndex].ResolutionsSet);
+#endif // 0
+
 
 		// Initial image from deferred lighting stage.
 		VkDescriptorImageInfo hdrInfo{ .sampler = sampler, .imageView = TempRT.GetRenderTarget(0), .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
@@ -262,6 +285,7 @@ namespace Mist
 		}
 
 		m_bloomEffect.Init(renderContext);
+		m_bloomEffect.HDRRT = &m_renderTarget;
 	}
 
 	void DeferredLighting::Destroy(const RenderContext& renderContext)
@@ -389,17 +413,21 @@ namespace Mist
 				RenderTarget& rt = m_bloomEffect.RenderTargetArray[i];
 
 				rt.BeginPass(cmd);
-				m_bloomEffect.DownsampleShader->UseProgram(cmd);
-
-				VkDescriptorSet texSet = i == 0 ? m_bloomEffect.FrameSets[frameContext.FrameIndex].HDRSet : m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i - 1];
-				m_bloomEffect.DownsampleShader->BindDescriptorSets(cmd, &texSet, 1);
-
-				uint32_t resolutionOffset = i * Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(glm::vec2));
-				m_bloomEffect.DownsampleShader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ResolutionsSet, 1, 1, &resolutionOffset, 1);
-
+				m_bloomEffect.DownsampleShader->UseProgram(renderContext);
 				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
 				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
 
+				Texture* textureInput = nullptr;
+				if (i == 0)
+					textureInput = m_bloomEffect.HDRRT->GetAttachment(0).Tex;
+				else
+					textureInput = m_bloomEffect.RenderTargetArray[i - 1].GetAttachment(0).Tex;
+				m_bloomEffect.DownsampleShader->SetTextureSlot(renderContext, 0, *textureInput);
+
+				uint32_t resolutionOffset = i * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, sizeof(glm::vec2));
+				m_bloomEffect.DownsampleShader->SetDynamicBufferOffset(renderContext, "u_BloomDownsampleParams", resolutionOffset);
+
+				m_bloomEffect.DownsampleShader->FlushDescriptors(renderContext);
 				CmdDrawFullscreenQuad(cmd);
 
 				rt.EndPass(cmd);

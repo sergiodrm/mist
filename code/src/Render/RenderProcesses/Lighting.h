@@ -43,6 +43,7 @@ namespace Mist
 			VkDescriptorSet ThresholdSet;
 		};
 		RenderTarget TempRT;
+		RenderTarget* HDRRT;
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
 		RenderTarget FinalTarget;
