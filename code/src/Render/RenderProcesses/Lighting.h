@@ -36,11 +36,9 @@ namespace Mist
 		struct FrameData
 		{
 			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> TexturesArray;
-			VkDescriptorSet ResolutionsSet;
 			VkDescriptorSet FilterRadiusSet;
 			VkDescriptorSet MixSet;
 			VkDescriptorSet HDRSet;
-			VkDescriptorSet ThresholdSet;
 		};
 		RenderTarget TempRT;
 		RenderTarget* HDRRT;
