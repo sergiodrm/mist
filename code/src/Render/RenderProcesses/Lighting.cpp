@@ -108,6 +108,7 @@ namespace Mist
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			UpsampleShader = ShaderProgram::Create(context, shaderDesc);
+			UpsampleShader->SetupDescriptors(context);
 		}
 		// Mix
 		{
@@ -152,13 +153,6 @@ namespace Mist
 				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(context, FrameSets[frameIndex].TexturesArray[i]);
 		}
-
-		// Filter radius for upsampler stage.
-		buffer->AllocUniform(context, "BloomFilterRadius", sizeof(float));
-		VkDescriptorBufferInfo bufferFilterInfo = buffer->GenerateDescriptorBufferInfo("BloomFilterRadius");
-		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-			.BindBuffer(0, &bufferFilterInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, FrameSets[frameIndex].FilterRadiusSet);
 
 		// Final composed render target with mix shader
 		VkDescriptorImageInfo imageInfo[2];
@@ -352,7 +346,7 @@ namespace Mist
 		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
 
 		// Bloom
-		frameContext.GlobalBuffer.SetUniform(renderContext, "BloomFilterRadius", &m_bloomEffect.FilterRadius, sizeof(float));
+		frameContext.GlobalBuffer.SetUniform(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.FilterRadius, sizeof(float));
 		frameContext.GlobalBuffer.SetUniform(renderContext, "BloomFinalMixAlpha", &m_bloomEffect.MixAlpha, sizeof(float));
 	}
 
@@ -427,21 +421,12 @@ namespace Mist
 				ShaderProgram* shader = m_bloomEffect.UpsampleShader;
 
 				rt.BeginPass(cmd);
-				shader->UseProgram(cmd);
-
-				VkDescriptorSet sets[2];
-				sets[0] = m_bloomEffect.FrameSets[frameContext.FrameIndex].TexturesArray[i + 1];
-				sets[1] = m_bloomEffect.FrameSets[frameContext.FrameIndex].FilterRadiusSet;
-				shader->BindDescriptorSets(cmd, sets, 2);
-
-				//uint32_t resolutionOffset = i * Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(glm::vec2));
-				//shader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].ResolutionsSet, 1, 1, &resolutionOffset, 1);
-
+				shader->UseProgram(renderContext);
 				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
 				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
-
+				shader->SetTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
+				shader->FlushDescriptors(renderContext);
 				CmdDrawFullscreenQuad(cmd);
-
 				rt.EndPass(cmd);
 			}
 			EndGPUEvent(renderContext, cmd);
