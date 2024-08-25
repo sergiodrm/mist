@@ -41,6 +41,7 @@ namespace Mist
 		void Destroy();
 
 		bool Allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);
+		void FreeDescriptors(VkDescriptorSet* set, uint32_t count);
 		inline VkDescriptorPool GetPool() const { return m_pool.Pool; }
 	private:
 		const RenderContext* m_renderContext;
@@ -134,7 +135,6 @@ namespace Mist
 	{
 		static constexpr uint32_t MaxDescriptors = 8;
 		tStaticArray<tDescriptorSetUnit, MaxDescriptors> PersistentDescriptors;
-		tStaticArray<uint32_t, MaxDescriptors> VolatileDescriptorIndices;
 	};
 
 	class tDescriptorSetCache

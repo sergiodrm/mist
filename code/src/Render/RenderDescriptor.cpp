@@ -47,7 +47,7 @@ namespace Mist
 		m_renderContext = &rc;
 		m_poolSizes = sizes;
 		m_pool.Reset();
-		m_pool.Pool = CreatePool(rc.Device, sizes, 200, 0);
+		m_pool.Pool = CreatePool(rc.Device, sizes, 200, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 	}
 
 	void DescriptorAllocator::Destroy()
@@ -75,6 +75,12 @@ namespace Mist
 		sprintf_s(buff, "DescriptorSet_%d", c++);
 		SetVkObjectName(*m_renderContext, set, VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
 		return true;
+	}
+
+	void DescriptorAllocator::FreeDescriptors(VkDescriptorSet* set, uint32_t count)
+	{
+		check(set && count);
+		vkFreeDescriptorSets(m_renderContext->Device, m_pool.Pool, count, set);
 	}
 
 	bool DescriptorLayoutInfo::operator==(const DescriptorLayoutInfo& other) const
