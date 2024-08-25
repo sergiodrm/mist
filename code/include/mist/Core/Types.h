@@ -129,7 +129,7 @@ namespace Mist
 		}
 
 		inline uint32_t GetSize() const { return PushIndex; }
-		inline bool IsEmpty() const { return GetSize(); }
+		inline bool IsEmpty() const { return !GetSize(); }
 		inline constexpr uint32_t GetCapacity() const { return Size; }
 		inline void Clear() { PushIndex = 0; }
 		inline void Clear(const T& clearValue)
