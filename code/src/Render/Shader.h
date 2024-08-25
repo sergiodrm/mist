@@ -181,7 +181,7 @@ namespace Mist
 
 		void UseProgram(const RenderContext& context);
 		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
-		void SetDynamicBufferOffset(const char* bufferName, uint32_t offset);
+		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
 		void SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
 		void FlushDescriptors(const RenderContext& context);
 

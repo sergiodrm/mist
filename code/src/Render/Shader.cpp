@@ -891,8 +891,10 @@ namespace Mist
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 						check(mapInfo.Size > 0);
 						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(binding.Name.c_str());
-						dynamicOffsets.Push(0);
+						dynamicOffsets.Resize(binding.Binding + 1);
+						dynamicOffsets[binding.Binding] = 0;
 						generateSet = true;
+						builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
 						break;
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 						if (!mapInfo.Size)
@@ -903,6 +905,8 @@ namespace Mist
 						}
 						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(binding.Name.c_str());
 						generateSet = true;
+						builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
+						break;
 					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 						// created on demmand.
 						check(bindingCount == 1);
@@ -911,7 +915,6 @@ namespace Mist
 						break;
 					}
 
-					builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
 				}
 			}
 			if (generateSet)
@@ -954,12 +957,49 @@ namespace Mist
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
 
-		FlushDescriptors(context);
+		// Mark as dirty the default descriptor sets
+		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
+		check(m_descriptorSetBatchIndex != UINT32_MAX);
+		tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
+		for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
+		{
+			tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
+			if (setUnit.SetIndex != UINT32_MAX)
+				setUnit.Dirty = true;
+		}
 	}
 
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
 		RenderAPI::CmdBindGraphicsDescriptorSet(cmd, m_pipelineLayout, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
+	}
+
+	void ShaderProgram::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)
+	{
+		check(m_descriptorSetBatchIndex != UINT32_MAX);
+		RenderFrameContext& frameContext = renderContext.GetFrameContext();
+		tDescriptorSetBatch& batch = frameContext.DescriptorSetCache.GetBatch(m_descriptorSetBatchIndex);
+
+		uint32_t descriptorCount = (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size();
+		for (uint32_t i = 0; i < descriptorCount; ++i)
+		{
+			const ShaderDescriptorSetInfo& setInfo = m_reflectionProperties.DescriptorSetInfoArray[i];
+			uint32_t bindingCount = (uint32_t)setInfo.BindingArray.size();
+			for (uint32_t j = 0; j < bindingCount; ++j)
+			{
+				const ShaderBindingDescriptorInfo& bindingInfo = setInfo.BindingArray[j];
+				if (!strcmp(bindingInfo.Name.c_str(), bufferName))
+				{
+					check(batch.PersistentDescriptors.GetSize() > setInfo.SetIndex);
+					tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[setInfo.SetIndex];
+					check(bindingInfo.Binding < setUnit.DynamicOffsets.GetSize());
+					setUnit.DynamicOffsets[bindingInfo.Binding] = offset;
+					setUnit.Dirty = true;
+					return;
+				}
+			}
+		}
+		check(false);
 	}
 
 	void ShaderProgram::SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture)
@@ -995,6 +1035,7 @@ namespace Mist
 			tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
 			if (setUnit.Dirty)
 			{
+				check(setUnit.SetIndex != UINT32_MAX);
 				if (!setsToBind.IsEmpty() && i - lastSet > 1)
 				{
 					BindDescriptorSets(cmd, setsToBind.GetData(), setsToBind.GetSize(), firstSet,
@@ -1009,7 +1050,7 @@ namespace Mist
 				uint32_t setIndex = setUnit.SetIndex;
 				VkDescriptorSet set = setCache.GetPersistentDescriptorSet(setIndex);
 				setsToBind.Push(set);
-				for (uint32_t j = 0; j < setUnit.DynamicOffsets.GetSize(); ++i)
+				for (uint32_t j = 0; j < setUnit.DynamicOffsets.GetSize(); ++j)
 					dynamicOffsets.Push(setUnit.DynamicOffsets[j]);
 				setUnit.Dirty = false;
 			}
