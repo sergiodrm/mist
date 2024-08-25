@@ -18,6 +18,7 @@ namespace Mist
 
 		bool WaitFences(Device device, const Fence* fences, uint32_t fenceCount, bool waitAll = true, uint32_t timeoutNs = 1000000000);
 		void ResetFences(Device device, const Fence* fences, uint32_t fenceCount);
+		void WaitAndResetFences(Device device, const Fence* fences, uint32_t fenceCount, bool waitAll = true, uint32_t timeoutNs = 1000000000 /*1 sec*/);
 
 
 		void ResetCommandBuffer(CommandBuffer cmd, uint32_t flags);

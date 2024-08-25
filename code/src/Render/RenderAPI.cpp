@@ -13,13 +13,19 @@ namespace Mist
     {
         bool WaitFences(Device device, const Fence* fences, uint32_t fenceCount, bool waitAll, uint32_t timeoutNs)
         {
-            VkResult res = vkWaitForFences(device, fenceCount, fences, waitAll, timeoutNs);
-            return res == VK_SUCCESS;
+            vkcheck(vkWaitForFences(device, fenceCount, fences, waitAll, timeoutNs));
+            return true;
         }
 
         void ResetFences(Device device, const Fence* fences, uint32_t fenceCount)
         {
-            vkResetFences(device, fenceCount, fences);
+            vkcheck(vkResetFences(device, fenceCount, fences));
+        }
+
+        void WaitAndResetFences(Device device, const Fence* fences, uint32_t fenceCount, bool waitAll, uint32_t timeoutNs)
+        {
+            WaitFences(device, fences, fenceCount, waitAll, timeoutNs);
+            ResetFences(device, fences, fenceCount);
         }
 
         void ResetCommandBuffer(CommandBuffer cmd, uint32_t flags)
