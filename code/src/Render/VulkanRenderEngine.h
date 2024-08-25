@@ -108,7 +108,6 @@ namespace Mist
 		void BeginFrame();
 		void Draw();
 		void ImGuiDraw();
-		void WaitFences(VkFence* fence, uint32_t fenceCount, uint64_t timeoutSeconds = 1e9, bool waitAll = true);
 		RenderFrameContext& GetFrameContext();
 
 
@@ -117,9 +116,6 @@ namespace Mist
 		bool InitCommands();
 		bool InitSync();
 		bool InitPipeline();
-
-		void ForceSync();
-
 	private:
 
 		RenderContext m_renderContext;

@@ -134,5 +134,6 @@ namespace Mist
 
 
 	void RenderContext_NewFrame(RenderContext& context);
-
+	void RenderContext_ForceFrameSync(RenderContext& context);
+	uint32_t RenderContext_PadUniformMemoryOffsetAlignment(const RenderContext& context, uint32_t size);
 }

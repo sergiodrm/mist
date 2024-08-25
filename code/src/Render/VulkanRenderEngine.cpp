@@ -366,7 +366,7 @@ namespace Mist
 	{
 		loginfo("Shutdown render engine.\n");
 
-		ForceSync();
+		RenderContext_ForceFrameSync(m_renderContext);
 
 		FullscreenQuad.Destroy(m_renderContext);
 
@@ -465,8 +465,6 @@ namespace Mist
 
 	void VulkanRenderEngine::BeginFrame()
 	{
-		// Update scene graph data
-		RenderContext_NewFrame(m_renderContext);
 		// TODO descriptor allocators must be instanciated on each frame context.
 		m_renderContext.DescAllocator = &m_descriptorAllocators[m_renderContext.GetFrameIndex()];
 		RenderFrameContext& frameContext = GetFrameContext();
@@ -494,33 +492,12 @@ namespace Mist
 	void VulkanRenderEngine::Draw()
 	{
 		CPU_PROFILE_SCOPE(Draw);
+		RenderContext_NewFrame(m_renderContext);
 		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 
-//#define MIST_FORCE_SYNC
-#ifndef MIST_FORCE_SYNC
-		VkFence waitFences[2];
-		uint32_t waitFencesCount = 0;
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
-		{
-			waitFences[waitFencesCount++] = frameContext.RenderFence;
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
-		}
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE))
-		{
-			waitFences[waitFencesCount++] = frameContext.ComputeFence;
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
-		}
-		if (waitFencesCount > 0)
-			WaitFences(waitFences, waitFencesCount);
-#else
-		ForceSync();
-#endif // !MIST_FORCE_SYNC
-
 		BeginFrame();
-
-
 		{
 			CPU_PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
@@ -670,7 +647,7 @@ namespace Mist
 				sprintf_s(label, "Reload_%d", i);
 				if (ImGui::Button(label))
 				{
-					ForceSync();
+					RenderContext_ForceFrameSync(m_renderContext);
 					shaderArray[i]->Destroy(m_renderContext);
 					shaderArray[i]->Reload(m_renderContext);
 				}
@@ -686,7 +663,7 @@ namespace Mist
 		}
 		if (ImGui::Button("Reload all"))
 		{
-			ForceSync();
+			RenderContext_ForceFrameSync(m_renderContext);
 			for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
 			{
 				m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
@@ -703,11 +680,6 @@ namespace Mist
 		m_gpuParticleSystem.ImGuiDraw();
 	}
 
-	void VulkanRenderEngine::WaitFences(VkFence* fences, uint32_t fenceCount, uint64_t timeoutSeconds, bool waitAll)
-	{
-		vkcheck(vkWaitForFences(m_renderContext.Device, fenceCount, fences, waitAll, timeoutSeconds));
-		vkcheck(vkResetFences(m_renderContext.Device, fenceCount, fences));
-	}
 
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
@@ -938,29 +910,5 @@ namespace Mist
 			frameContext.GlobalBuffer.AllocUniform(m_renderContext, UNIFORM_ID_TIME, sizeof(UBOTime));
 		}
 		return true;
-	}
-
-	void VulkanRenderEngine::ForceSync()
-	{
-		PROFILE_SCOPE_LOG(ForceSync, "Force sync operation");
-		tDynArray<VkFence> fences;
-		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			check(!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			check(!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			if (!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
-			{
-				fences.push_back(m_renderContext.FrameContextArray[i].RenderFence);
-				m_renderContext.FrameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
-			}
-			if (!(m_renderContext.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
-			{
-				fences.push_back(m_renderContext.FrameContextArray[i].ComputeFence);
-				m_renderContext.FrameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
-			}
-
-		}
-		if (!fences.empty())
-			WaitFences(fences.data(), (uint32_t)fences.size());
 	}
 }
