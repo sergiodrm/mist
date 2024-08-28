@@ -42,8 +42,18 @@ namespace Mist
 		// CreatePipeline
 		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 
-		shaderDesc.DynamicBuffers.push_back("u_ubo");
-		shaderDesc.DynamicBuffers.push_back("u_model");
+		tShaderDynamicBufferDescription modelDynDesc;
+		modelDynDesc.Name = "u_model";
+		modelDynDesc.ElemCount = globals::MaxRenderObjects;
+		modelDynDesc.IsShared = true;
+
+		tShaderDynamicBufferDescription uboDynDesc;
+		uboDynDesc.Name = "u_ubo";
+		uboDynDesc.ElemCount = globals::MaxShadowMapAttachments;
+		uboDynDesc.IsShared = false;
+
+		shaderDesc.DynamicBuffers.push_back(uboDynDesc);
+		shaderDesc.DynamicBuffers.push_back(modelDynDesc);
 		shaderDesc.VertexShaderFile.Filepath = globals::DepthVertexShader;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = renderTarget;

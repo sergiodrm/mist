@@ -190,8 +190,17 @@ namespace Mist
 	{
 		// MRT pipeline
 		GraphicsShaderProgramDescription shaderDesc;
-		shaderDesc.DynamicBuffers.push_back("u_model");
-		shaderDesc.DynamicBuffers.push_back("u_material");
+
+		tShaderDynamicBufferDescription modelDynDesc;
+		modelDynDesc.Name = "u_model";
+		modelDynDesc.ElemCount = globals::MaxRenderObjects;
+		modelDynDesc.IsShared = true;
+
+		tShaderDynamicBufferDescription materialDynDesc = modelDynDesc;
+		materialDynDesc.Name = "u_material";
+
+		shaderDesc.DynamicBuffers.push_back(modelDynDesc);
+		shaderDesc.DynamicBuffers.push_back(materialDynDesc);
 		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("mrt.vert");
 		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mrt.frag");
 		shaderDesc.RenderTarget = &m_renderTarget;

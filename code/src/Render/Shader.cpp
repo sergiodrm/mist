@@ -251,6 +251,14 @@ namespace Mist
 		}
 	}
 
+	template <size_t _KeySize>
+	void GenerateShaderParamKey(char(&key)[_KeySize], const char* paramName, const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc)
+	{
+		GenerateKey(key, vertexFileDesc, fragFileDesc);
+		strcat_s(key, "_");
+		strcat_s(key, paramName);
+	}
+
 	ShaderCompiler::ShaderCompiler(const RenderContext& renderContext) : m_renderContext(renderContext)
 	{}
 
@@ -733,6 +741,25 @@ namespace Mist
 		return program;
 	}
 
+	void ShaderProgram::NewShaderParam(const char* name, bool isShared)
+	{
+		if (!m_paramMap.contains(name))
+		{
+			tShaderParam param;
+			if (isShared)
+			{
+				param.Name = name;
+			}
+			else
+			{
+				char buff[256];
+				GenerateShaderParamKey(buff, name, m_description.VertexShaderFile, m_description.FragmentShaderFile);
+				param.Name = buff;
+			}
+			m_paramMap[name] = param;
+		}
+	}
+
 	bool ShaderProgram::_Create(const RenderContext& context, const GraphicsShaderProgramDescription& description)
 	{
 		check(!IsLoaded());
@@ -792,8 +819,8 @@ namespace Mist
 		}
 		// Generate shader reflection data
 		// Override with external info
-		for (const tString& dynBuffer : m_description.DynamicBuffers)
-			compiler.SetUniformBufferAsDynamic(dynBuffer.c_str());
+		for (const tShaderDynamicBufferDescription& dynBuffer : m_description.DynamicBuffers)
+			compiler.SetUniformBufferAsDynamic(dynBuffer.Name.c_str());
 		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
 
 		// Blending info for color attachments
@@ -883,30 +910,49 @@ namespace Mist
 				// At the moment dont support array binding on shader resources;
 				check(binding.ArrayCount == 1);
 
+				static uint32_t paramId = 0;
+				tStaticArray<uint32_t, 8> ids;
 				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
 				{
-					const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(binding.Name.c_str());
 					switch (binding.Type)
 					{
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-						check(mapInfo.Size > 0);
-						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(binding.Name.c_str());
+					{
+						for (uint32_t propertyIndex = 0; propertyIndex < (uint32_t)m_description.DynamicBuffers.size(); ++propertyIndex)
+						{
+							const tShaderDynamicBufferDescription& dynamicDesc = m_description.DynamicBuffers[propertyIndex];
+							if (!strcmp(dynamicDesc.Name.c_str(), binding.Name.c_str()))
+							{
+								check(dynamicDesc.ElemCount > 0);
+								NewShaderParam(binding.Name.c_str(), dynamicDesc.IsShared);
+								const tShaderParam& param = GetParam(binding.Name.c_str());
+								const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
+								if (!mapInfo.Size)
+									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), dynamicDesc.ElemCount, binding.Size);
+								break;
+							}
+						}
+						const tShaderParam& param = GetParam(binding.Name.c_str());
+						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
 						dynamicOffsets.Resize(binding.Binding + 1);
 						dynamicOffsets[binding.Binding] = 0;
-						generateSet = true;
 						builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
+						generateSet = true;
+					}
 						break;
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-						if (!mapInfo.Size)
-						{
-							check(binding.Size > 0);
-							memoryPoolArray[frameContextIndex]->AllocUniform(context, binding.Name.c_str(), binding.Size);
-							logfwarn("Shader buffer binding not created previously. Allocating uniform on binding. [%s]\n", binding.Name.c_str());
-						}
-						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(binding.Name.c_str());
-						generateSet = true;
+					{
+						NewShaderParam(binding.Name.c_str(), false);
+						const tShaderParam& param = GetParam(binding.Name.c_str());
+						check(binding.Size > 0);
+						const UniformBufferMemoryPool::ItemMapInfo info = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
+						check(info.Size == 0);
+						memoryPoolArray[frameContextIndex]->AllocUniform(context, param.Name.CStr(), binding.Size);
+						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
 						builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
-						break;
+						generateSet = true;
+					}
+					break;
 					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 						// created on demmand.
 						check(bindingCount == 1);
@@ -972,6 +1018,22 @@ namespace Mist
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
 		RenderAPI::CmdBindGraphicsDescriptorSet(cmd, m_pipelineLayout, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
+	}
+
+	void ShaderProgram::SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size)
+	{
+		check(m_paramMap.contains(bufferName) && data && size);
+		const tShaderParam& param = m_paramMap.at(bufferName);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		frameContext.GlobalBuffer.SetUniform(context, param.Name.CStr(), data, size);
+	}
+
+	void ShaderProgram::SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset)
+	{
+		check(m_paramMap.contains(bufferName) && data && elemSize && elemCount);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		const tShaderParam& param = m_paramMap.at(bufferName);
+		frameContext.GlobalBuffer.SetDynamicUniform(context, param.Name.CStr(), data, elemCount, elemSize, elemIndexOffset);
 	}
 
 	void ShaderProgram::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)

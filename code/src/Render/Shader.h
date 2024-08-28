@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <Core/Types.h>
 #include "Render/RenderTypes.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/RenderAPI.h"
@@ -130,6 +131,12 @@ namespace Mist
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 
+	struct tShaderDynamicBufferDescription
+	{
+		bool IsShared = true;
+		uint32_t ElemCount = 0;
+		tString Name;
+	};
 
 	struct GraphicsShaderProgramDescription
 	{
@@ -151,7 +158,7 @@ namespace Mist
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
 		tDynArray<VkPushConstantRange> PushConstantArray;
-		tDynArray<tString> DynamicBuffers;
+		tDynArray<tShaderDynamicBufferDescription> DynamicBuffers;
 	};
 
 	struct ComputeShaderProgramDescription
@@ -162,6 +169,11 @@ namespace Mist
 		/// Use to specify dynamic uniform buffers.
 		tDynArray<VkPushConstantRange> PushConstantArray;
 		tDynArray<tString> DynamicBuffers;
+	};
+
+	struct tShaderParam
+	{
+		tFixedString<256> Name;
 	};
 
 	class ShaderProgram
@@ -181,15 +193,21 @@ namespace Mist
 
 		void UseProgram(const RenderContext& context);
 		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
+
+		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size);
+		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
 		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
 		void SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
 		void FlushDescriptors(const RenderContext& context);
+
+		inline const tShaderParam GetParam(const char* paramName) const { check(m_paramMap.contains(paramName)); return m_paramMap.at(paramName); }
 
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 
 		const GraphicsShaderProgramDescription& GetDescription() const { return m_description; }
 
 	private:
+		void NewShaderParam(const char* name, bool isShared);
 		bool _Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
 		GraphicsShaderProgramDescription m_description;
 		ShaderReflectionProperties m_reflectionProperties;
@@ -197,6 +215,9 @@ namespace Mist
 		VkPipelineLayout m_pipelineLayout;
 		tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
 		uint32_t m_descriptorSetBatchIndex = UINT32_MAX;
+
+		// TODO use this map to find faster a param in SetDynamicBufferOffset.
+		tMap<tString, tShaderParam> m_paramMap;
 	};
 
 	class ComputeShader

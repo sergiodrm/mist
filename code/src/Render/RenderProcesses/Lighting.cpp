@@ -59,37 +59,23 @@ namespace Mist
 				height >>= 1;
 			}
 
+			tShaderDynamicBufferDescription dynamicDesc;
+			dynamicDesc.Name = "u_BloomDownsampleParams";
+			dynamicDesc.IsShared = false;
+			dynamicDesc.ElemCount = BLOOM_MIPMAP_LEVELS;
+
 			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
-			shaderDesc.DynamicBuffers.push_back("u_BloomDownsampleParams");
+			shaderDesc.DynamicBuffers.push_back(dynamicDesc);
 			tCompileMacroDefinition macrodef;
 			strcpy_s(macrodef.Macro, "BLOOM_DOWNSAMPLE");
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			DownsampleShader = ShaderProgram::Create(context, shaderDesc);
-
-			// Tex resolutions for downsampler
-			tArray<glm::vec2, BLOOM_MIPMAP_LEVELS> texSizes;
-			for (uint32_t i = 0; i < (uint32_t)texSizes.size(); ++i)
-			{
-				uint32_t width = context.Window->Width >> (i + 1);
-				uint32_t height = context.Window->Height >> (i + 1);
-				texSizes[i] = { (float)width, (float)height };
-			}
-
-			// init dynamic buffers before setup shader descriptors
-			for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-			{
-				RenderFrameContext& frameContext = context.FrameContextArray[i];
-				UniformBufferMemoryPool& buffer = frameContext.GlobalBuffer;
-				buffer.AllocDynamicUniform(context, "u_BloomDownsampleParams", sizeof(glm::vec2), (uint32_t)texSizes.size());
-				buffer.SetDynamicUniform(context, "u_BloomDownsampleParams", texSizes.data(), (uint32_t)texSizes.size(), sizeof(glm::vec2), 0);
-			}
-			
 			DownsampleShader->SetupDescriptors(context);
 		}
 
@@ -128,8 +114,31 @@ namespace Mist
 			shaderDesc.RenderTarget = &FinalTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			MixShader = ShaderProgram::Create(context, shaderDesc);
+			MixShader->SetupDescriptors(context);
 		}
-		
+
+#if 1
+		// Tex resolutions for downsampler
+		tArray<glm::vec2, BLOOM_MIPMAP_LEVELS> texSizes;
+		for (uint32_t i = 0; i < (uint32_t)texSizes.size(); ++i)
+		{
+			uint32_t width = context.Window->Width >> (i + 1);
+			uint32_t height = context.Window->Height >> (i + 1);
+			texSizes[i] = { (float)width, (float)height };
+		}
+
+		// init dynamic buffers before setup shader descriptors
+		const tShaderParam& downscaleParam = DownsampleShader->GetParam("u_BloomDownsampleParams");
+		const tShaderParam& mixParam = MixShader->GetParam("u_Mix");
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		{
+			RenderFrameContext& frameContext = context.FrameContextArray[i];
+			UniformBufferMemoryPool& buffer = frameContext.GlobalBuffer;
+			buffer.SetDynamicUniform(context, downscaleParam.Name.CStr(), texSizes.data(), (uint32_t)texSizes.size(), sizeof(glm::vec2), 0);
+			float alphaMix = 0.5f;
+			buffer.SetUniform(context, mixParam.Name.CStr(), &alphaMix, sizeof(float));
+		}
+#endif // 0
 	}
 
 	void BloomEffect::InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView)
@@ -153,6 +162,7 @@ namespace Mist
 				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 				.Build(context, FrameSets[frameIndex].TexturesArray[i]);
 		}
+#if 0
 
 		// Final composed render target with mix shader
 		VkDescriptorImageInfo imageInfo[2];
@@ -170,6 +180,8 @@ namespace Mist
 			.BindImage(1, &imageInfo[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindBuffer(2, &bufferAlphaInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, FrameSets[frameIndex].MixSet);
+#endif // 0
+
 
 		glm::vec4 threshold(1.f);
 		buffer->AllocUniform(context, "u_ThresholdParams", sizeof(glm::vec4));
@@ -344,10 +356,13 @@ namespace Mist
 	{
 		// HDR
 		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
+#if 0
 
 		// Bloom
 		frameContext.GlobalBuffer.SetUniform(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.FilterRadius, sizeof(float));
 		frameContext.GlobalBuffer.SetUniform(renderContext, "BloomFinalMixAlpha", &m_bloomEffect.MixAlpha, sizeof(float));
+#endif // 0
+
 	}
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -433,8 +448,11 @@ namespace Mist
 
 			BeginGPUEvent(renderContext, cmd, "Bloom mix");
 			m_bloomEffect.FinalTarget.BeginPass(cmd);
-			m_bloomEffect.MixShader->UseProgram(cmd);
-			m_bloomEffect.MixShader->BindDescriptorSets(cmd, &m_bloomEffect.FrameSets[frameContext.FrameIndex].MixSet, 1);
+			m_bloomEffect.MixShader->UseProgram(renderContext);
+			m_bloomEffect.MixShader->SetTextureSlot(renderContext, 0, *m_bloomEffect.HDRRT->GetAttachment(0).Tex);
+			m_bloomEffect.MixShader->SetTextureSlot(renderContext, 1, *m_bloomEffect.RenderTargetArray[0].GetAttachment(0).Tex);
+			m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &m_bloomEffect.MixAlpha, sizeof(m_bloomEffect.MixAlpha));
+			m_bloomEffect.MixShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 			m_bloomEffect.FinalTarget.EndPass(cmd);
 			EndGPUEvent(renderContext, cmd);
