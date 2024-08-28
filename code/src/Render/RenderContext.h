@@ -62,7 +62,9 @@ namespace Mist
 		tDescriptorSetCache DescriptorSetCache;
 
 		// Push constants
+		[[deprecated]]
 		const void* PushConstantData{ nullptr };
+		[[deprecated]]
 		uint32_t PushConstantSize{ 0 };
 
 		// Scene to draw
