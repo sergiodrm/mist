@@ -229,8 +229,8 @@ namespace Mist
 		char buff[64];
 		sprintf_s(buff, "UniformBufferMemoryPool_%d", c++);
 		SetVkObjectName(renderContext, &m_buffer.Buffer, VK_OBJECT_TYPE_BUFFER, buff);
-		m_cpuDynamicBuffer = nullptr;
-		m_cpuDynamicBufferSize = 0;
+		m_cacheBuffer = nullptr;
+		m_cacheSize = 0;
 	}
 
 	void UniformBufferMemoryPool::Destroy(const RenderContext& renderContext)
@@ -238,11 +238,11 @@ namespace Mist
 		check(m_buffer.IsAllocated());
 		MemFreeBuffer(renderContext.Allocator, m_buffer);
 		m_infoMap.clear();
-		if (m_cpuDynamicBuffer)
+		if (m_cacheBuffer)
 		{
-			delete[] m_cpuDynamicBuffer;
-			m_cpuDynamicBuffer = nullptr;
-			m_cpuDynamicBufferSize = 0;
+			delete[] m_cacheBuffer;
+			m_cacheBuffer = nullptr;
+			m_cacheSize = 0;
 		}
 	}
 
@@ -258,8 +258,8 @@ namespace Mist
 			info.Size = size;
 			info.Offset = m_freeMemoryOffset;
 			m_infoMap[name] = info;
-			// TODO: padding already has size accumulated...
-			m_freeMemoryOffset += Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, size);
+			// TODO: padding already has size accumulated... (?)
+			m_freeMemoryOffset += RenderContext_PadUniformMemoryOffsetAlignment(renderContext, size);
 			return info.Offset;
 		}
 		return UINT32_MAX;
@@ -289,12 +289,13 @@ namespace Mist
 			MemoryCopy(renderContext, info, source, size, dstOffset);
 			return true;
 		}
+		logferror("UniformBufferMemoryPool::SetUniform trying to write data in a non created buffer [%s]\n", name);
 		return false;
 	}
 
 	bool UniformBufferMemoryPool::SetDynamicUniform(const RenderContext& renderContext, const char* name, const void* source, uint32_t elemCount, uint32_t elemSize, uint32_t elemIndex)
 	{
-		uint32_t elemSizeWithPadding = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
+		uint32_t elemSizeWithPadding = RenderContext_PadUniformMemoryOffsetAlignment(renderContext, elemSize);
 		check(elemSizeWithPadding >= elemSize);
 		uint32_t padding = elemSizeWithPadding - elemSize;
 		if (padding)
@@ -307,23 +308,11 @@ namespace Mist
 				check(chunkSizeToCopy <= chunkSize);
 
 				const uint8_t * srcData = reinterpret_cast<const uint8_t*>(source);
-				if (!m_cpuDynamicBuffer)
-				{
-					check(m_cpuDynamicBufferSize == 0);
-					m_cpuDynamicBuffer = new uint8_t[chunkSizeToCopy];
-					m_cpuDynamicBufferSize = chunkSizeToCopy;
-				}
-				else if (m_cpuDynamicBufferSize < chunkSizeToCopy)
-				{
-					check(m_cpuDynamicBuffer);
-					delete[] m_cpuDynamicBuffer;
-					m_cpuDynamicBuffer = new uint8_t[chunkSizeToCopy];
-					m_cpuDynamicBufferSize = chunkSizeToCopy;
-				}
-
+				AllocCacheBuffer(chunkSizeToCopy);
+				
 				for (uint32_t i = 0; i < elemCount; ++i)
-					memcpy_s(&m_cpuDynamicBuffer[i*elemSizeWithPadding], elemSize, &srcData[i*elemSize], elemSize);
-				MemoryCopy(renderContext, info, m_cpuDynamicBuffer, chunkSizeToCopy, elemIndex * elemSizeWithPadding);
+					memcpy_s(&m_cacheBuffer[i*elemSizeWithPadding], elemSize, &srcData[i*elemSize], elemSize);
+				MemoryCopy(renderContext, info, m_cacheBuffer, chunkSizeToCopy, elemIndex * elemSizeWithPadding);
 				return true;
 			}
 		}
@@ -331,6 +320,7 @@ namespace Mist
 		{
 			return SetUniform(renderContext, name, source, elemCount * elemSize, elemIndex * elemSize);
 		}
+		logferror("UniformBufferMemoryPool::SetDynamicUniform trying to write data in a non created buffer [%s]\n", name);
 		return false;
 	}
 
@@ -356,5 +346,16 @@ namespace Mist
 	{
 		check(size + offset <= itemInfo.Size);
 		Memory::MemCopy(context.Allocator, m_buffer, source, size, itemInfo.Offset + offset);
+	}
+
+	void UniformBufferMemoryPool::AllocCacheBuffer(uint32_t size)
+	{
+		if (m_cacheSize < size)
+		{
+			if (m_cacheBuffer)
+				delete[] m_cacheBuffer;
+			m_cacheBuffer = new uint8_t[size];
+			m_cacheSize = size;
+		}
 	}
 }

@@ -96,6 +96,13 @@ namespace Mist
 			uint32_t Offset = 0;
 		};
 
+		UniformBufferMemoryPool() = default;
+		UniformBufferMemoryPool(const UniformBufferMemoryPool&) = delete;
+		UniformBufferMemoryPool(UniformBufferMemoryPool&&) = delete;
+		UniformBufferMemoryPool& operator=(const UniformBufferMemoryPool&) = delete;
+		UniformBufferMemoryPool& operator=(UniformBufferMemoryPool&&) = delete;
+
+
 		void Init(const RenderContext& renderContext, uint32_t bufferSize, EBufferUsageBits usage);
 		void Destroy(const RenderContext& renderContext);
 
@@ -110,13 +117,14 @@ namespace Mist
 
 	private:
 		void MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const;
+		void AllocCacheBuffer(uint32_t size);
 
 	private:
 		std::unordered_map<std::string, ItemMapInfo> m_infoMap;
 		uint32_t m_freeMemoryOffset;
 		uint32_t m_maxMemoryAllocated;
 		AllocatedBuffer m_buffer;
-		uint8_t* m_cpuDynamicBuffer;
-		uint32_t m_cpuDynamicBufferSize;
+		uint8_t* m_cacheBuffer;
+		uint32_t m_cacheSize;
 	};
 }
