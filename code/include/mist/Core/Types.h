@@ -29,6 +29,13 @@ namespace Mist
 			*this = other;
 		}
 
+		ThisType& operator=(const char* str)
+		{
+			assert(strlen(str) < Size);
+			strcpy_s(m_string, str);
+			return *this;
+		}
+
 		const char* CStr() const { return m_string; }
 		uint32_t Length() const { return (uint32_t)strlen(m_string); }
 
@@ -140,11 +147,11 @@ namespace Mist
 
 		void Push(const T& value)
 		{
-			check(PushIndex < Size);
+			assert(PushIndex < Size);
 			Data[PushIndex++] = value;
 		}
 
-		void Pop() { check(PushIndex > 0); --PushIndex; }
+		void Pop() { assert(PushIndex > 0); --PushIndex; }
 
 		inline const T& GetBack() const { assert(PushIndex); return Data[PushIndex - 1]; }
 		inline T& GetBack() { assert(PushIndex); return Data[PushIndex - 1]; }
