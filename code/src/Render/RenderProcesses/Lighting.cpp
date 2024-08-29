@@ -109,8 +109,6 @@ namespace Mist
 			GraphicsShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mix.frag");
-			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
-			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
 			shaderDesc.RenderTarget = &FinalTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			MixShader = ShaderProgram::Create(context, shaderDesc);
@@ -129,63 +127,13 @@ namespace Mist
 
 		// init dynamic buffers before setup shader descriptors
 		const tShaderParam& downscaleParam = DownsampleShader->GetParam("u_BloomDownsampleParams");
-		const tShaderParam& mixParam = MixShader->GetParam("u_Mix");
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = context.FrameContextArray[i];
 			UniformBufferMemoryPool& buffer = frameContext.GlobalBuffer;
 			buffer.SetDynamicUniform(context, downscaleParam.Name.CStr(), texSizes.data(), (uint32_t)texSizes.size(), sizeof(glm::vec2), 0);
-			float alphaMix = 0.5f;
-			buffer.SetUniform(context, mixParam.Name.CStr(), &alphaMix, sizeof(float));
 		}
 #endif // 0
-	}
-
-	void BloomEffect::InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView)
-	{
-		Sampler sampler = CreateSampler(context, FILTER_NEAREST, FILTER_NEAREST);
-
-		// Initial image from deferred lighting stage.
-		VkDescriptorImageInfo hdrInfo{ .sampler = sampler, .imageView = TempRT.GetRenderTarget(0), .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-			.BindImage(0, &hdrInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, FrameSets[frameIndex].HDRSet);
-
-		// Render Target array descriptors for each substage of downsampler/upsampler
-		for (uint32_t i = 0; i < (uint32_t)FrameSets[frameIndex].TexturesArray.size(); ++i)
-		{
-			VkDescriptorImageInfo imageInfo;
-			imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			imageInfo.sampler = sampler;
-			imageInfo.imageView = RenderTargetArray[i].GetRenderTarget(0);
-			DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(context, FrameSets[frameIndex].TexturesArray[i]);
-		}
-#if 0
-
-		// Final composed render target with mix shader
-		VkDescriptorImageInfo imageInfo[2];
-		imageInfo[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo[0].imageView = hdrView;
-		imageInfo[0].sampler = sampler;
-		imageInfo[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo[1].imageView = RenderTargetArray[0].GetRenderTarget(0);
-		imageInfo[1].sampler = sampler;
-
-		buffer->AllocUniform(context, "BloomFinalMixAlpha", sizeof(float));
-		VkDescriptorBufferInfo bufferAlphaInfo = buffer->GenerateDescriptorBufferInfo("BloomFinalMixAlpha");
-		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-			.BindImage(0, &imageInfo[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(1, &imageInfo[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindBuffer(2, &bufferAlphaInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, FrameSets[frameIndex].MixSet);
-#endif // 0
-
-
-		glm::vec4 threshold(1.f);
-		buffer->AllocUniform(context, "u_ThresholdParams", sizeof(glm::vec4));
-		buffer->SetUniform(context, "u_ThresholdParams", &threshold[0], sizeof(glm::vec4));
 	}
 
 	void BloomEffect::Destroy(const RenderContext& context)
@@ -262,6 +210,7 @@ namespace Mist
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			hdrShaderDesc.RenderTarget = &m_ldrRenderTarget;
 			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
+			m_hdrShader->SetupDescriptors(renderContext);
 		}
 
 		m_bloomEffect.Init(renderContext);
@@ -325,44 +274,10 @@ namespace Mist
 			.BindImage(5, shadowMapTex, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.BindBuffer(6, &shadowMapBuffer, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_frameData[frameIndex].Set);
-
-		buffer.AllocUniform(renderContext, "HDRParams", sizeof(HDRParams));
-		VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("HDRParams");
-
-		VkDescriptorImageInfo hdrTex
-		{
-			.sampler = sampler,
-			.imageView = m_bloomEffect.FinalTarget.GetRenderTarget(0),
-			//.imageView = m_renderTarget.GetRenderTarget(0),
-			.imageLayout = tovk::GetImageLayout(GBUFFER_COMPOSITION_LAYOUT)
-		};
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindImage(0, &hdrTex, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindBuffer(1, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(renderContext, m_frameData[frameIndex].HdrSet);
-
-#if 0
-		// Skybox
-		VkDescriptorBufferInfo cameraBufferInfo = buffer.GenerateDescriptorBufferInfo("ProjViewRot");
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &cameraBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-			.Build(renderContext, m_frameData[frameIndex].CameraSkyboxSet);
-#endif // 0
-
-		m_bloomEffect.InitFrameData(renderContext, &buffer, frameIndex, m_renderTarget.GetRenderTarget(0));
 	}
 
 	void DeferredLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
-		// HDR
-		frameContext.GlobalBuffer.SetUniform(renderContext, "HDRParams", &m_hdrParams, sizeof(HDRParams));
-#if 0
-
-		// Bloom
-		frameContext.GlobalBuffer.SetUniform(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.FilterRadius, sizeof(float));
-		frameContext.GlobalBuffer.SetUniform(renderContext, "BloomFinalMixAlpha", &m_bloomEffect.MixAlpha, sizeof(float));
-#endif // 0
-
 	}
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
@@ -440,6 +355,7 @@ namespace Mist
 				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
 				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
 				shader->SetTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
+				shader->SetBufferData(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.FilterRadius, sizeof(m_bloomEffect.FilterRadius));
 				shader->FlushDescriptors(renderContext);
 				CmdDrawFullscreenQuad(cmd);
 				rt.EndPass(cmd);
@@ -462,11 +378,12 @@ namespace Mist
 		// HDR and tone mapping
 		BeginGPUEvent(renderContext, cmd, "HDR");
 		m_ldrRenderTarget.BeginPass(cmd);
-		m_hdrShader->UseProgram(cmd);
-		m_hdrShader->BindDescriptorSets(cmd, &m_frameData[frameContext.FrameIndex].HdrSet, 1);
-		m_quadVB.Bind(cmd);
-		m_quadIB.Bind(cmd);
-		RenderAPI::CmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
+		m_hdrShader->UseProgram(renderContext);
+		//m_hdrShader->BindDescriptorSets(cmd, &m_frameData[frameContext.FrameIndex].HdrSet, 1);
+		m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
+		m_hdrShader->SetTextureSlot(renderContext, 0, *m_bloomEffect.FinalTarget.GetAttachment(0).Tex);
+		m_hdrShader->FlushDescriptors(renderContext);
+		CmdDrawFullscreenQuad(cmd);
 		m_ldrRenderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 	}

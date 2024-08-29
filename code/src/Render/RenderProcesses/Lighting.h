@@ -26,24 +26,15 @@ namespace Mist
 		BloomEffect();
 
 		void Init(const RenderContext& context);
-		void InitFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer, uint32_t frameIndex, ImageView hdrView);
 		void Destroy(const RenderContext& context);
 
 		ShaderProgram* ThresholdFilterShader;
 		ShaderProgram* DownsampleShader;
 		ShaderProgram* UpsampleShader;
 		ShaderProgram* MixShader;
-		struct FrameData
-		{
-			tArray<VkDescriptorSet, BLOOM_MIPMAP_LEVELS> TexturesArray;
-			VkDescriptorSet FilterRadiusSet;
-			VkDescriptorSet MixSet;
-			VkDescriptorSet HDRSet;
-		};
 		RenderTarget TempRT;
 		RenderTarget* HDRRT;
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
-		tArray<FrameData, globals::MaxOverlappedFrames> FrameSets;
 		RenderTarget FinalTarget;
 		float MixAlpha = 0.5f;
 		float FilterRadius = 0.005f;
@@ -55,7 +46,6 @@ namespace Mist
 		{
 			VkDescriptorSet Set;
 			VkDescriptorSet CameraSkyboxSet;
-			VkDescriptorSet HdrSet;
 		};
 	public:
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_LIGHTING; }
