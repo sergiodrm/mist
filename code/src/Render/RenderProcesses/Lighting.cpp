@@ -379,7 +379,6 @@ namespace Mist
 		BeginGPUEvent(renderContext, cmd, "HDR");
 		m_ldrRenderTarget.BeginPass(cmd);
 		m_hdrShader->UseProgram(renderContext);
-		//m_hdrShader->BindDescriptorSets(cmd, &m_frameData[frameContext.FrameIndex].HdrSet, 1);
 		m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
 		m_hdrShader->SetTextureSlot(renderContext, 0, *m_bloomEffect.FinalTarget.GetAttachment(0).Tex);
 		m_hdrShader->FlushDescriptors(renderContext);
