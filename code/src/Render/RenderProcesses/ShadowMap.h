@@ -47,6 +47,7 @@ namespace Mist
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
 		void RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
+		const glm::mat4& GetLightVP(uint32_t index) const;
 		void SetDepthVP(uint32_t index, const glm::mat4& mat);
 		void SetLightVP(uint32_t index, const glm::mat4& mat);
 		uint32_t GetBufferSize() const;
@@ -87,6 +88,9 @@ namespace Mist
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
 		virtual void ImGuiDraw() override;
 		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override;
+
+		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
+
 	private:
 		virtual void DebugDraw(const RenderContext& context) override;
 	private:

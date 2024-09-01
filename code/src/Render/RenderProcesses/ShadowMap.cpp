@@ -171,6 +171,12 @@ namespace Mist
 		return m_depthMVPCache[index];
 	}
 
+	const glm::mat4& ShadowMapPipeline::GetLightVP(uint32_t index) const
+	{
+		check(index < globals::MaxShadowMapAttachments);
+		return m_lightMVPCache[index];
+	}
+
 	void ShadowMapPipeline::SetDepthVP(uint32_t index, const glm::mat4& mat)
 	{
 		check(index < globals::MaxShadowMapAttachments);
