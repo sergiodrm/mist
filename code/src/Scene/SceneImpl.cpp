@@ -1519,11 +1519,10 @@ namespace Mist
 			RecalculateTransforms();
 			check(!IsDirty());
 			const glm::mat4& viewMat = frameContext.CameraData->InvView;
-			EnvironmentData renderData;
-			ProcessEnvironmentData(viewMat, renderData);
+			ProcessEnvironmentData(viewMat, m_environmentData);
 
 			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
-			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &renderData, sizeof(EnvironmentData)));
+			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
 			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
 

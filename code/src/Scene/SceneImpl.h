@@ -200,6 +200,7 @@ namespace Mist
 
 		void ImGuiDraw();
 		bool IsDirty() const;
+		const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
 	protected:
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
@@ -232,5 +233,6 @@ namespace Mist
 		Skybox m_skybox;
 		uint32_t m_defaultMaterialIndex = 0;
 		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> m_materialSetArray;
+		EnvironmentData m_environmentData;
 	};
 }
