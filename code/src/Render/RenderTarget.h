@@ -111,6 +111,7 @@ namespace Mist
 
 		uint32_t GetAttachmentCount() const;
 		const RenderTargetAttachment& GetAttachment(uint32_t index) const;
+		inline const RenderTargetAttachment& GetDepthAttachment() const { check(HasDepthBufferAttachment()); return GetAttachment(m_description.ColorAttachmentCount); }
 		const RenderTargetDescription& GetDescription() const;
 		inline bool HasDepthBufferAttachment() const { return m_description.DepthAttachmentDescription.IsValidAttachment(); }
 		static bool ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description);
