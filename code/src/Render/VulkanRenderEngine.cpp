@@ -29,7 +29,7 @@
 #include "Application/Application.h"
 #include "Application/Event.h"
 
-#define MIST_CRASH_ON_VALIDATION_LAYER
+//#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -247,11 +247,15 @@ namespace Mist
 			m_descriptorAllocators[i].Init(m_renderContext, DescriptorPoolSizes::GetDefault());
 			m_renderContext.FrameContextArray[i].DescriptorAllocator = &m_descriptorAllocators[i];
 			m_renderContext.FrameContextArray[i].FrameIndex = i;
+			m_renderContext.FrameContextArray[i].Renderer = &m_renderer;
+			m_renderContext.FrameContextArray[i].StatusFlags = 0;
 		}
 		m_shaderDb.Init(m_renderContext);
 		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
 		m_renderContext.DescAllocator = &m_descriptorAllocators[0];
 		m_renderContext.ShaderDB = &m_shaderDb;
+
+		m_renderContext.FrameIndex = 0;
 
 		// Swapchain
 		check(m_swapchain.Init(m_renderContext, { window.Width, window.Height }));
