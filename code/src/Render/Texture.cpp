@@ -590,6 +590,15 @@ namespace Mist
 		return true;
 	}
 
+	bool IsDepthFormat(EFormat format)
+	{
+		return format == FORMAT_D16_UNORM
+			|| format == FORMAT_D16_UNORM_S8_UINT
+			|| format == FORMAT_D24_UNORM_S8_UINT
+			|| format == FORMAT_D32_SFLOAT
+			|| format == FORMAT_D32_SFLOAT_S8_UINT;
+	}
+
 	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture** texture, EFormat format)
 	{
 		check(texture);
