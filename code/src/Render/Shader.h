@@ -198,6 +198,7 @@ namespace Mist
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
 		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
 		void SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
+		void SetTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount);
 		void FlushDescriptors(const RenderContext& context);
 
 		inline const tShaderParam GetParam(const char* paramName) const { check(m_paramMap.contains(paramName)); return m_paramMap.at(paramName); }

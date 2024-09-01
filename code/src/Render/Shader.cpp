@@ -879,7 +879,6 @@ namespace Mist
 		check(m_descriptorSetBatchIndex == UINT32_MAX);
 
 		// Frame context vars
-		RenderFrameContext& frameContext = context.GetFrameContext();
 		RenderFrameContext* frameContextArray = context.FrameContextArray;
 		constexpr uint32_t frameContextCount = globals::MaxOverlappedFrames;
 
@@ -888,7 +887,7 @@ namespace Mist
 		tArray<UniformBufferMemoryPool*, frameContextCount> memoryPoolArray;
 		for (uint32_t i = 0; i < frameContextCount; ++i)
 		{
-			builders.push_back(DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator));
+			builders.push_back(DescriptorBuilder::Create(*context.LayoutCache, *frameContextArray[i].DescriptorAllocator));
 			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
 		}
 
@@ -907,8 +906,6 @@ namespace Mist
 			{
 				const ShaderBindingDescriptorInfo& binding = setInfo.BindingArray[j];
 
-				// At the moment dont support array binding on shader resources;
-				check(binding.ArrayCount == 1);
 
 				static uint32_t paramId = 0;
 				tStaticArray<uint32_t, 8> ids;
@@ -918,6 +915,8 @@ namespace Mist
 					{
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 					{
+						// At the moment dont support array binding on shader resources;
+						check(binding.ArrayCount == 1);
 						for (uint32_t propertyIndex = 0; propertyIndex < (uint32_t)m_description.DynamicBuffers.size(); ++propertyIndex)
 						{
 							const tShaderDynamicBufferDescription& dynamicDesc = m_description.DynamicBuffers[propertyIndex];
@@ -942,6 +941,8 @@ namespace Mist
 						break;
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 					{
+						// At the moment dont support array binding on shader resources;
+						check(binding.ArrayCount == 1);
 						NewShaderParam(binding.Name.c_str(), false);
 						const tShaderParam& param = GetParam(binding.Name.c_str());
 						check(binding.Size > 0);
@@ -1071,12 +1072,45 @@ namespace Mist
 
 		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
 		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
-		VkDescriptorImageInfo imageInfo = { .sampler = texture.GetSampler(), .imageView = texture.GetView(0), .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+		VkDescriptorImageInfo imageInfo = 
+		{ 
+			.sampler = texture.GetSampler(), 
+			.imageView = texture.GetView(0), 
+			.imageLayout = IsDepthFormat(texture.GetDescription().Format)
+				? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		};
 		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
 			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, set);
 
 		BindDescriptorSets(frameContext.GraphicsCommand, &set, 1, slot, nullptr, 0);
+	}
+
+	void ShaderProgram::SetTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount)
+	{
+		check(textureArray && textureCount);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
+
+		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
+		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
+
+		check(textureCount <= 8);
+		tArray<VkDescriptorImageInfo, 8> infos;
+		for (uint32_t i = 0; i < textureCount; ++i)
+		{
+			check(textureArray[i]);
+			infos[i].imageLayout = IsDepthFormat(textureArray[i]->GetDescription().Format) 
+				? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			infos[i].imageView = textureArray[i]->GetView(0);
+			infos[i].sampler = textureArray[i]->GetSampler();
+		}
+		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
+			.BindImage(0, infos.data(), textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, set);
+		BindDescriptorSets(frameContext.GraphicsCommand, &set, 1, slot);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
