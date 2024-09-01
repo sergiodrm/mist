@@ -279,8 +279,8 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
 
     vec3 Ambient = vec3(u_Env.AmbientColor) * Albedo * AO;
     vec3 Color = Ambient + Lo;
-    Color = Color / (Color + vec3(1.f));
-    Color = pow(Color, vec3(1.f/2.2f));
+    //Color = Color / (Color + vec3(1.f));
+    //Color = pow(Color, vec3(1.f/2.2f));
 
     return vec4(Color, 1.f);
 }
