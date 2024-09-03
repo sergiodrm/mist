@@ -882,21 +882,22 @@ namespace Mist
 		RenderFrameContext* frameContextArray = context.FrameContextArray;
 		constexpr uint32_t frameContextCount = globals::MaxOverlappedFrames;
 
-		// TODO this shouldnt be dynamic. This is because DescriptorBuilder has private constructor.
-		tDynArray<DescriptorBuilder> builders;
 		tArray<UniformBufferMemoryPool*, frameContextCount> memoryPoolArray;
 		for (uint32_t i = 0; i < frameContextCount; ++i)
-		{
-			builders.push_back(DescriptorBuilder::Create(*context.LayoutCache, *frameContextArray[i].DescriptorAllocator));
 			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
-		}
 
 		uint32_t descriptionSize = (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size();
 		for (uint32_t i = 0; i < descriptionSize; ++i)
 		{
+			// TODO this shouldnt be dynamic. This is because DescriptorBuilder has private constructor.
+			tDynArray<DescriptorBuilder> builders;
+			for (uint32_t i = 0; i < frameContextCount; ++i)
+				builders.push_back(DescriptorBuilder::Create(*context.LayoutCache, *frameContextArray[i].DescriptorAllocator));
+
 			const ShaderDescriptorSetInfo& setInfo = m_reflectionProperties.DescriptorSetInfoArray[i];
 			uint32_t bindingCount = (uint32_t)setInfo.BindingArray.size();
 
+			// needs to store the buffer info structs because DescriptorBuilder uses pointers... it shouldnt be like that
 			tArray<VkDescriptorBufferInfo, 8> bufferInfoArray;
 			tStaticArray<uint32_t, 8> dynamicOffsets;
 			check(bindingCount < (uint32_t)bufferInfoArray.size());
@@ -905,9 +906,6 @@ namespace Mist
 			for (uint32_t j = 0; j < bindingCount; ++j)
 			{
 				const ShaderBindingDescriptorInfo& binding = setInfo.BindingArray[j];
-
-
-				static uint32_t paramId = 0;
 				tStaticArray<uint32_t, 8> ids;
 				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
 				{
@@ -928,6 +926,11 @@ namespace Mist
 								const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
 								if (!mapInfo.Size)
 									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), dynamicDesc.ElemCount, binding.Size);
+								else
+								{
+									uint32_t totalSize = RenderContext_PadUniformMemoryOffsetAlignment(context, binding.Size * dynamicDesc.ElemCount);
+									check(totalSize == mapInfo.Size);
+								}
 								break;
 							}
 						}
@@ -935,13 +938,13 @@ namespace Mist
 						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
 						dynamicOffsets.Resize(binding.Binding + 1);
 						dynamicOffsets[binding.Binding] = 0;
-						builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
+						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
 						generateSet = true;
 					}
 						break;
 					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 					{
-						// At the moment dont support array binding on shader resources;
+						// At the moment dont support array binding on shader resources
 						check(binding.ArrayCount == 1);
 						NewShaderParam(binding.Name.c_str(), false);
 						const tShaderParam& param = GetParam(binding.Name.c_str());
@@ -950,7 +953,7 @@ namespace Mist
 						check(info.Size == 0);
 						memoryPoolArray[frameContextIndex]->AllocUniform(context, param.Name.CStr(), binding.Size);
 						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
-						builders[frameContextIndex].BindBuffer(j, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
+						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
 						generateSet = true;
 					}
 					break;
@@ -966,11 +969,12 @@ namespace Mist
 			}
 			if (generateSet)
 			{
+				bool batchGenerated = m_descriptorSetBatchIndex != UINT32_MAX;
 				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
 				{
 					// Get frame context and batch
 					tDescriptorSetCache& setCache = frameContextArray[frameContextIndex].DescriptorSetCache;
-					uint32_t batchIndex = setCache.NewBatch();
+					uint32_t batchIndex = !batchGenerated ? setCache.NewBatch() : m_descriptorSetBatchIndex;
 					// Batch must match with the others frame contexts
 					check(m_descriptorSetBatchIndex == UINT32_MAX || m_descriptorSetBatchIndex == batchIndex);
 					m_descriptorSetBatchIndex = batchIndex;
@@ -989,6 +993,7 @@ namespace Mist
 					VkDescriptorSet& set = setCache.GetPersistentDescriptorSet(batchSetIndex);
 					builders[frameContextIndex].Build(context, set);
 				}
+				builders.clear();
 			}
 		}	
 	}
