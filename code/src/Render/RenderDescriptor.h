@@ -118,8 +118,12 @@ namespace Mist
 		bool Build(const RenderContext& rc, VkDescriptorSet& set, VkDescriptorSetLayout& layout);
 		bool Build(const RenderContext& rc, VkDescriptorSet& set);
 	private:
-		std::vector<VkWriteDescriptorSet> m_writes;
-		std::vector<VkDescriptorSetLayoutBinding> m_bindings;
+		tDynArray<VkWriteDescriptorSet> m_writes;
+		tDynArray<VkDescriptorSetLayoutBinding> m_bindings;
+
+		static constexpr uint32_t MaxBindings = 16;
+		tStaticArray<VkDescriptorBufferInfo, MaxBindings> m_bufferInfoArray;
+		tStaticArray<VkDescriptorImageInfo, MaxBindings> m_imageInfoArray;
 		DescriptorLayoutCache* m_cache{ nullptr };
 		DescriptorAllocator* m_allocator{ nullptr };
 	};

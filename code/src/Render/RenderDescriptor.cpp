@@ -225,6 +225,12 @@ namespace Mist
 		};
 		m_bindings.push_back(bindingInfo);
 
+		uint32_t size = m_bufferInfoArray.GetSize();
+		uint32_t newSize = size + bufferInfoCount;
+		m_bufferInfoArray.Resize(newSize);
+		for (uint32_t i = 0; i < bufferInfoCount; ++i)
+			m_bufferInfoArray[size + i] = bufferInfo[i];
+
 		VkWriteDescriptorSet newWrite
 		{
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -233,7 +239,7 @@ namespace Mist
 			.dstArrayElement = arrayIndex,
 			.descriptorCount = bufferInfoCount,
 			.descriptorType = type,
-			.pBufferInfo = bufferInfo
+			.pBufferInfo = &m_bufferInfoArray[size]
 		};
 		m_writes.push_back(newWrite);
 		return *this;
@@ -251,6 +257,12 @@ namespace Mist
 		};
 		m_bindings.push_back(bindingInfo);
 
+		uint32_t size = (uint32_t)m_imageInfoArray.GetSize();
+		uint32_t newSize = size + imageInfoCount;
+		m_imageInfoArray.Resize(newSize);
+		for (uint32_t i = 0; i < imageInfoCount; ++i)
+			m_imageInfoArray[size + i] = imageInfo[i];
+
 		VkWriteDescriptorSet newWrite
 		{
 			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -259,7 +271,7 @@ namespace Mist
 			.dstArrayElement = arrayIndex,
 			.descriptorCount = imageInfoCount,
 			.descriptorType = type,
-			.pImageInfo = imageInfo
+			.pImageInfo = &m_imageInfoArray[size]
 		};
 		m_writes.push_back(newWrite);
 		return *this;
