@@ -42,11 +42,6 @@ namespace Mist
 
 	class DeferredLighting : public RenderProcess
 	{
-		struct FrameData
-		{
-			VkDescriptorSet Set;
-			VkDescriptorSet CameraSkyboxSet;
-		};
 	public:
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_LIGHTING; }
 		virtual void Init(const RenderContext& renderContext) override;
@@ -59,15 +54,15 @@ namespace Mist
 	private:
 		RenderTarget m_renderTarget;
 		ShaderProgram* m_shader;
-		FrameData m_frameData[globals::MaxOverlappedFrames];
-		VertexBuffer m_quadVB;
-		IndexBuffer m_quadIB;
-		Sampler m_sampler;
 		ShaderProgram* m_skyboxShader;
 
 		ShaderProgram* m_hdrShader;
 		RenderTarget m_ldrRenderTarget;
 		HDRParams m_hdrParams;
+
+		const RenderTarget* m_gbufferRenderTarget;
+		tArray<const RenderTarget*, globals::MaxShadowMapAttachments> m_shadowMapRenderTargetArray;
+		const RenderTarget* m_ssaoRenderTarget;
 
 		BloomEffect m_bloomEffect;
 	};

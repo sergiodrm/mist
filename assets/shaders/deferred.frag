@@ -16,6 +16,8 @@ struct SpotLightData
     vec4 Pos; // w: outer cutoff
 };
 
+#define MAX_SHADOW_MAPS 3
+
 // Per frame data
 layout (std140, set = 0, binding = 0) uniform Environment
 {
@@ -25,20 +27,19 @@ layout (std140, set = 0, binding = 0) uniform Environment
     LightData DirectionalLight;
     SpotLightData SpotLights[8];
 } u_Env;
-
-// GBuffer textures
-layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
-layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
-layout(set = 0, binding = 3) uniform sampler2D u_GBufferAlbedo;
-// SSAO texture
-layout(set = 0, binding = 4) uniform sampler2D u_ssao;
-// Shadow map textures
-#define MAX_SHADOW_MAPS 3
-layout(set = 0, binding = 5) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
-layout(set = 0, binding = 6) uniform ShadowMapInfo
+layout(set = 0, binding = 1) uniform ShadowMapInfo
 {
     mat4 LightViewMat[MAX_SHADOW_MAPS];
 } u_ShadowMapInfo;
+
+// GBuffer textures
+layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
+layout(set = 2, binding = 0) uniform sampler2D u_GBufferNormal;
+layout(set = 3, binding = 0) uniform sampler2D u_GBufferAlbedo;
+// SSAO texture
+layout(set = 4, binding = 0) uniform sampler2D u_ssao;
+// Shadow map textures
+layout(set = 5, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
 
 #define LightRadius(l) l.Pos.a
 #define LightCompression(l) l.Color.w
@@ -227,6 +228,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 A
         lighting = CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);
         //lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
     }
+    //intensity *= 100.f;
     return lighting * intensity;
 }
 
@@ -266,6 +268,7 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     }
     spotLightColor *= (1.f-spotLightShadow);
     Lo += spotLightColor;
+    //return vec4(spotLightColor, 1.f);
 
     // Directional light
     vec3 directionalLightColor = ProcessDirectionalLight(FragViewPos, N, u_Env.DirectionalLight, Albedo, Metallic, Roughness);

@@ -11,6 +11,8 @@
 #include "imgui_internal.h"
 #include "Application/Application.h"
 #include "Application/CmdParser.h"
+#include "ShadowMap.h"
+#include "Render/RendererBase.h"
 
 
 namespace Mist
@@ -162,25 +164,8 @@ namespace Mist
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			shaderDesc.ColorAttachmentBlendingArray.push_back(vkinit::PipelineColorBlendAttachmentState());
 			m_shader = ShaderProgram::Create(renderContext, shaderDesc);
+			m_shader->SetupDescriptors(renderContext);
 		}
-
-		// init quad
-		float vertices[] =
-		{
-			// vkscreencoords	// uvs
-			-1.f, -1.f, 0.f,	0.f, 0.f,
-			1.f, -1.f, 0.f,		1.f, 0.f,
-			1.f, 1.f, 0.f,		1.f, 1.f,
-			-1.f, 1.f, 0.f,		0.f, 1.f
-		};
-		uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
-		BufferCreateInfo bufferInfo;
-		bufferInfo.Data = vertices;
-		bufferInfo.Size = sizeof(vertices);
-		m_quadVB.Init(renderContext, bufferInfo);
-		bufferInfo.Data = indices;
-		bufferInfo.Size = sizeof(indices);
-		m_quadIB.Init(renderContext, bufferInfo);
 
 #if 0
 		{
@@ -222,73 +207,67 @@ namespace Mist
 		m_bloomEffect.Destroy(renderContext);
 		m_ldrRenderTarget.Destroy(renderContext);
 		m_renderTarget.Destroy(renderContext);
-		m_quadIB.Destroy(renderContext);
-		m_quadVB.Destroy(renderContext);
 	}
 
 	void DeferredLighting::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
-		// Composition
-		VkDescriptorBufferInfo info = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_ENV_DATA);
-
-		// image sampler
-		Sampler sampler = CreateSampler(renderContext);
-
 		// GBuffer textures binding
 		const RenderProcess* gbuffer = renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
-		const RenderTarget& rt = *gbuffer->GetRenderTarget();
-		GBuffer::EGBufferTarget rts[3] = { GBuffer::EGBufferTarget::RT_POSITION, GBuffer::EGBufferTarget::RT_NORMAL, GBuffer::EGBufferTarget::RT_ALBEDO };
-		tArray<VkDescriptorImageInfo, 3> infoArray;
-		for (uint32_t i = 0; i < 3; ++i)
-		{
-			infoArray[i].sampler = sampler;
-			infoArray[i].imageLayout = tovk::GetImageLayout(rt.GetDescription().ColorAttachmentDescriptions[rts[i]].Layout);
-			infoArray[i].imageView = rt.GetRenderTarget(rts[i]);
-		}
+		check(gbuffer);
+		const RenderTarget& gbufferRt = *gbuffer->GetRenderTarget();
+		m_gbufferRenderTarget = &gbufferRt;
 
 		// SSAO texture binding
 		const RenderProcess* ssao = renderer.GetRenderProcess(RENDERPROCESS_SSAO);
-		VkDescriptorImageInfo ssaoInfo;
-		ssaoInfo.sampler = sampler;
-		ssaoInfo.imageLayout = tovk::GetImageLayout(ssao->GetRenderTarget()->GetDescription().ColorAttachmentDescriptions[0].Layout);
-		ssaoInfo.imageView = ssao->GetRenderTarget()->GetRenderTarget(0);
-
+		check(ssao);
+		m_ssaoRenderTarget = ssao->GetRenderTarget(0);
 		// Shadow mapping
 		const RenderProcess* shadowMapProcess = renderer.GetRenderProcess(RENDERPROCESS_SHADOWMAP);
-		VkDescriptorImageInfo shadowMapTex[globals::MaxShadowMapAttachments];
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
 			const RenderTarget& rt = *shadowMapProcess->GetRenderTarget(i);
-			shadowMapTex[i].sampler = sampler;
-			shadowMapTex[i].imageLayout = tovk::GetImageLayout(rt.GetDescription().DepthAttachmentDescription.Layout);
-			shadowMapTex[i].imageView = rt.GetDepthBuffer();
+			m_shadowMapRenderTargetArray[i] = &rt;
 		}
-		VkDescriptorBufferInfo shadowMapBuffer = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_LIGHT_VP);
-
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(1, &infoArray[0], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(2, &infoArray[1], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(3, &infoArray[2], 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(4, &ssaoInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindImage(5, shadowMapTex, globals::MaxShadowMapAttachments, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.BindBuffer(6, &shadowMapBuffer, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(renderContext, m_frameData[frameIndex].Set);
 	}
 
 	void DeferredLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
+
+
 	}
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(DeferredLighting);
+
+		tArray<const Texture*, globals::MaxShadowMapAttachments> shadowMapTextures;
+		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+			shadowMapTextures[i] = m_shadowMapRenderTargetArray[i]->GetDepthAttachment().Tex;
+
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		// Composition
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
 		m_renderTarget.BeginPass(cmd);
-		m_shader->UseProgram(cmd);
-		m_shader->BindDescriptorSets(cmd, &m_frameData[frameContext.FrameIndex].Set, 1);
+		m_shader->UseProgram(renderContext);
+		m_shader->SetTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
+		m_shader->SetTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
+		m_shader->SetTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
+		m_shader->SetTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
+		m_shader->SetTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
+
+		// Use shared buffer for avoiding doing this here (?)
+		const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
+		tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
+		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+			shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
+		m_shader->SetBufferData(renderContext, "u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+
+		EnvironmentData env = frameContext.Scene->GetEnvironmentData();
+		env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
+		m_shader->SetBufferData(renderContext, "u_Env", &env, sizeof(env));
+
+		m_shader->FlushDescriptors(renderContext);
+
 		CmdDrawFullscreenQuad(cmd);
 		m_renderTarget.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
