@@ -45,7 +45,7 @@ namespace Mist
 		void SetProjection(float minX, float maxX, float minY, float maxY);
 		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType, const glm::mat4& viewMatrix);
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
-		void RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
+		void RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
 		const glm::mat4& GetLightVP(uint32_t index) const;
 		void SetDepthVP(uint32_t index, const glm::mat4& mat);

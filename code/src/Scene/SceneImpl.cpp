@@ -1242,9 +1242,10 @@ namespace Mist
 		return m_materialRenderDataArray.at(handle);
 	}
 
-	void Scene::Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
+	void Scene::Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
 		// Iterate scene graph to render models.
 		uint32_t lastMaterialIndex = UINT32_MAX;
 		const Mesh* lastMesh = nullptr;
@@ -1261,7 +1262,7 @@ namespace Mist
 
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
-				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
+				shader->SetDynamicBufferOffset(context, "u_model", modelDynamicOffset);
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)
@@ -1280,18 +1281,21 @@ namespace Mist
 						lastMaterialIndex = drawData.MaterialIndex;
 						uint32_t materialPadding = Memory::PadOffsetAlignment((uint32_t)m_engine->GetContext().GPUProperties.limits.minUniformBufferOffsetAlignment, sizeof(MaterialUniform));
 						uint32_t bufferOffset = materialPadding * drawData.MaterialIndex;
-						const MaterialRenderData& mtl = m_materialRenderDataArray[lastMaterialIndex];
-						shader->BindDescriptorSets(cmd, &mtl.MaterialSets[m_engine->GetContext().GetFrameIndex()].TextureSet, 1, materialSetIndex);
-						shader->BindDescriptorSets(cmd, &m_materialSetArray[0], 1, materialSetIndex + 1, &bufferOffset, 1);
+						MaterialRenderData& mtl = *const_cast<MaterialRenderData*>(&m_materialRenderDataArray[lastMaterialIndex]);
+						const Texture** textures = const_cast<const Texture**>(&mtl.Textures[0]);
+						shader->SetTextureArraySlot(context, materialSetIndex, textures, 6);
+						shader->SetDynamicBufferOffset(context, "u_material", bufferOffset);
 					}
+					shader->FlushDescriptors(context);
 					RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
 				}
 			}
 		}
 	}
 
-	void Scene::Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
+	void Scene::Draw(const RenderContext& context, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
 		CPU_PROFILE_SCOPE(Scene_Draw);
 		// Iterate scene graph to render models.
 		uint32_t lastMaterialIndex = UINT32_MAX;
@@ -1309,7 +1313,7 @@ namespace Mist
 
 				// BaseOffset in buffer is already setted when descriptor was created.
 				uint32_t modelDynamicOffset = i * sizeof(glm::mat4);
-				shader->BindDescriptorSets(cmd, &modelSet, 1, modelSetIndex, &modelDynamicOffset, 1);
+				shader->SetDynamicBufferOffset(context, "u_model", modelDynamicOffset);
 
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)
@@ -1318,6 +1322,8 @@ namespace Mist
 					lastMesh = mesh;
 					mrd.BindBuffers(cmd);
 				}
+				shader->FlushDescriptors(context);
+
 				RenderAPI::CmdDrawIndexed(cmd, mrd.IndexCount, 1, 0, 0, 0);
 #if 0
 				for (uint32_t j = 0; j < (uint32_t)mrd.PrimitiveArray.size(); ++j)
@@ -1552,6 +1558,7 @@ namespace Mist
 									texture = m_renderData.Textures[defTex];
 								}
 								BindDescriptorTexture(m_engine->GetContext(), texture, mrd.MaterialSets[frameContext.FrameIndex].TextureSet, binding, arrayIndex);
+								mrd.Textures[arrayIndex] = texture;
 							};
 						submitTexture(material.GetAlbedoTexture(), 0, 0);
 						submitTexture(material.GetNormalTexture(), 0, 1);
@@ -1632,3 +1639,4 @@ namespace Mist
 	}
 
 }
+

@@ -58,6 +58,7 @@ namespace Mist
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = renderTarget;
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
+		m_shader->SetupDescriptors(renderContext);
 	}
 
 	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
@@ -153,16 +154,19 @@ namespace Mist
 	{
 		buffer->SetUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, m_depthMVPCache, GetBufferSize());
 		buffer->SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, m_lightMVPCache, GetBufferSize());
+		m_shader->SetDynamicBufferData(renderContext, "u_ubo", m_depthMVPCache, sizeof(glm::mat4), globals::MaxShadowMapAttachments);
 	}
 
-	void ShadowMapPipeline::RenderShadowMap(VkCommandBuffer cmd, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
+	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
 	{
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
 		check(lightIndex < globals::MaxShadowMapAttachments);
-		m_shader->UseProgram(cmd);
+		m_shader->UseProgram(context);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
-		m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
+		//m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
+		m_shader->SetDynamicBufferOffset(context, "u_ubo", depthVPOffset);
 
-		scene->Draw(cmd, m_shader, 1, m_frameData[frameIndex].ModelSet);
+		scene->Draw(context, m_shader, 1, m_frameData[frameIndex].ModelSet);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -330,7 +334,7 @@ namespace Mist
 			m_shadowMapTargetArray[i].BeginPass(cmd);
 			if (i < m_lightCount)
 			{
-				m_shadowMapPipeline.RenderShadowMap(cmd, renderFrameContext.Scene, renderFrameContext.FrameIndex, i);
+				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, renderFrameContext.FrameIndex, i);
 			}
 			m_shadowMapTargetArray[i].EndPass(cmd);
 		}

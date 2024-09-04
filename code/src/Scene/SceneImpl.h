@@ -7,6 +7,7 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
 #include "Render/Globals.h"
+#include "Core/Types.h"
 
 #define MIST_MAX_MATERIALS 50
 
@@ -18,6 +19,7 @@ namespace Mist
 	class ShaderProgram;
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
+	class Texture;
 
 	struct MaterialUniform
 	{
@@ -34,6 +36,9 @@ namespace Mist
 
 		VkDescriptorSetLayout Layout{ VK_NULL_HANDLE };
 		tArray<FrameData, globals::MaxOverlappedFrames> MaterialSets;
+		Texture* Textures[6];
+
+
 
 		static VkDescriptorSetLayout GetDescriptorSetLayout(const RenderContext& renderContext);
 		void Init(const RenderContext& renderContext);
@@ -193,9 +198,9 @@ namespace Mist
 		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
 
 		// Draw with materials
-		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 		// Draw without materials
-		void Draw(VkCommandBuffer cmd, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
 		void DrawSkybox(CommandBuffer cmd, ShaderProgram* shader);
 
 		void ImGuiDraw();

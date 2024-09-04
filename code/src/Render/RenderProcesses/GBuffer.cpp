@@ -12,9 +12,6 @@
 
 namespace Mist
 {
-	CFloatVar CVar_GBufferRenderTargetResolution("GBufferRenderTargetResolutionFactor", 1.f);
-
-
 	void GBuffer::Init(const RenderContext& renderContext)
 	{
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
@@ -82,9 +79,10 @@ namespace Mist
 		// MRT
 		BeginGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
 		m_renderTarget.BeginPass(cmd);
-		m_shader->UseProgram(cmd);
-		m_shader->BindDescriptorSets(cmd, &frameContext.CameraDescriptorSet, 1);
-		frameContext.Scene->Draw(cmd, m_shader, 2, 1, m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
+		m_shader->UseProgram(renderContext);
+		m_shader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
+
+		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
 		m_renderTarget.EndPass(frameContext.GraphicsCommand);
 		EndGPUEvent(renderContext, cmd);
 	}
@@ -206,5 +204,6 @@ namespace Mist
 		shaderDesc.RenderTarget = &m_renderTarget;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
+		m_shader->SetupDescriptors(renderContext);
 	}
 }
