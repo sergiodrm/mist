@@ -29,7 +29,7 @@
 #include "Application/Application.h"
 #include "Application/Event.h"
 
-//#define MIST_CRASH_ON_VALIDATION_LAYER
+#define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -37,6 +37,8 @@
 
 namespace Mist
 {
+	CBoolVar CVar_ExitValidationLayer("ExitValidationLayer", true);
+
 	namespace Debug
 	{
 		uint32_t GVulkanLayerValidationErrors = 0;
@@ -60,7 +62,7 @@ namespace Mist
 				PrintCallstack();
 	#endif
 	#ifdef MIST_CRASH_ON_VALIDATION_LAYER
-				check(false && "Validation layer error");
+				check(!CVar_ExitValidationLayer.Get() && "Validation layer error");
 	#endif
 			}
 			return VK_FALSE;
