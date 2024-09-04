@@ -28,26 +28,6 @@ namespace Mist
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		m_renderTarget.Create(renderContext, description);
 		InitPipeline(renderContext);
-
-		Sampler sampler = CreateSampler(renderContext);
-
-		for (uint32_t i = 0; i < 3; ++i)
-		{
-			VkDescriptorImageInfo info;
-			info.imageLayout = tovk::GetImageLayout(description.ColorAttachmentDescriptions[i].Layout);
-			info.imageView = m_renderTarget.GetRenderTarget(i);
-			info.sampler = sampler;
-			DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-				.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(renderContext, m_debugTexDescriptors[i]);
-		}
-		VkDescriptorImageInfo info;
-		info.imageLayout = tovk::GetImageLayout(description.DepthAttachmentDescription.Layout);
-		info.imageView = m_renderTarget.GetDepthBuffer();
-		info.sampler = sampler;
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(renderContext, m_debugTexDescriptors[3]);
 	}
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
@@ -57,15 +37,6 @@ namespace Mist
 
 	void GBuffer::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
-		// MRT
-		VkDescriptorBufferInfo modelSetInfo = buffer.GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &modelSetInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-			.Build(renderContext, m_frameData[frameIndex].DescriptorSetArray[0]);
-		static int c = 0;
-		char buff[64];
-		sprintf_s(buff, "DescriptorSet_GBuffer_%d", c++);
-		SetVkObjectName(renderContext, &m_frameData[frameIndex].DescriptorSetArray[0], VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
 	}
 
 	void GBuffer::UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext)
@@ -82,7 +53,7 @@ namespace Mist
 		m_shader->UseProgram(renderContext);
 		m_shader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
 
-		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, m_frameData[frameContext.FrameIndex].DescriptorSetArray[0]);
+		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, VK_NULL_HANDLE);
 		m_renderTarget.EndPass(frameContext.GraphicsCommand);
 		EndGPUEvent(renderContext, cmd);
 	}

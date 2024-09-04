@@ -28,11 +28,6 @@ namespace Mist
 
 	class GBuffer : public RenderProcess
 	{
-		struct FrameData
-		{
-			tArray<VkDescriptorSet, 4> DescriptorSetArray;
-		};
-
 		enum EDebugMode
 		{
 			DEBUG_NONE,
@@ -68,8 +63,6 @@ namespace Mist
 	public:
 		RenderTarget m_renderTarget;
 		ShaderProgram* m_shader;
-		FrameData m_frameData[globals::MaxOverlappedFrames];
 		EDebugMode m_debugMode = DEBUG_NONE;
-		tArray<VkDescriptorSet, 4> m_debugTexDescriptors;
 	};
 }

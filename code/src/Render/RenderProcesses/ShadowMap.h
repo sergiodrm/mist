@@ -18,11 +18,6 @@ namespace Mist
 
 	class ShadowMapPipeline
 	{
-		struct FrameData
-		{
-			VkDescriptorSet ModelSet;
-			VkDescriptorSet DepthMVPSet;
-		};
 	public:
 		enum EShadowMapProjectionType
 		{
@@ -62,16 +57,10 @@ namespace Mist
 		// Projection params
 		float m_perspectiveParams[4];
 		float m_orthoParams[6];
-		// Per frame info
-		std::vector<FrameData> m_frameData;
 	};
 
 	class ShadowMapProcess : public RenderProcess
 	{
-		struct FrameData
-		{
-			VkDescriptorSet DebugShadowMapTextureSet[globals::MaxShadowMapAttachments];
-		};
 		enum EDebugMode
 		{
 			DEBUG_NONE,
@@ -96,7 +85,6 @@ namespace Mist
 	private:
 		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
-		FrameData m_frameData[globals::MaxOverlappedFrames];
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;

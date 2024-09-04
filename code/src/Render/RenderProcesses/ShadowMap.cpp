@@ -66,22 +66,6 @@ namespace Mist
 
 	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
 	{
-		// Alloc info for depthVP matrix
-		buffer->AllocUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, GetBufferSize());
-
-		FrameData fd;
-		// Alloc desc set pointing to buffer
-		VkDescriptorBufferInfo depthBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SHADOW_MAP_VP);
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &depthBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-			.Build(renderContext, fd.DepthMVPSet);
-
-		// create descriptor set for model matrix array
-		VkDescriptorBufferInfo modelsBufferInfo = buffer->GenerateDescriptorBufferInfo(UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY);
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &modelsBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_VERTEX_BIT)
-			.Build(renderContext, fd.ModelSet);
-		m_frameData.push_back(fd);
 	}
 
 	void ShadowMapPipeline::SetPerspectiveClip(float nearClip, float farClip)
@@ -152,8 +136,6 @@ namespace Mist
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
 	{
-		buffer->SetUniform(renderContext, UNIFORM_ID_SHADOW_MAP_VP, m_depthMVPCache, GetBufferSize());
-		buffer->SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, m_lightMVPCache, GetBufferSize());
 		m_shader->SetDynamicBufferData(renderContext, "u_ubo", m_depthMVPCache, sizeof(glm::mat4), globals::MaxShadowMapAttachments);
 	}
 
@@ -166,7 +148,7 @@ namespace Mist
 		//m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
 		m_shader->SetDynamicBufferOffset(context, "u_ubo", depthVPOffset);
 
-		scene->Draw(context, m_shader, 1, m_frameData[frameIndex].ModelSet);
+		scene->Draw(context, m_shader, 1, VK_NULL_HANDLE);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -232,22 +214,6 @@ namespace Mist
 
 	void ShadowMapProcess::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
-		// Configure frame data for shadowmap
-		m_shadowMapPipeline.AddFrameData(renderContext, &buffer);
-
-		buffer.AllocUniform(renderContext, UNIFORM_ID_LIGHT_VP, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
-
-		VkDescriptorImageInfo imageInfo;
-		imageInfo.sampler = CreateSampler(renderContext);
-		imageInfo.imageLayout = tovk::GetImageLayout(SHADOW_MAP_RT_LAYOUT);
-		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-		{
-			// Shadow map descriptors for debug
-			imageInfo.imageView = m_shadowMapTargetArray[j].GetDepthBuffer();
-			DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-				.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-				.Build(renderContext, m_frameData[frameIndex].DebugShadowMapTextureSet[j]);
-		}
 	}
 
 	void ShadowMapProcess::Destroy(const RenderContext& renderContext)
