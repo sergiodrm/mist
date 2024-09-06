@@ -18,11 +18,19 @@ layout(set = 0, binding = 0) uniform SSAOUniform
 #define ssao_radius u_ssao.Params.x
 #define ssao_bias   u_ssao.Params.y
 
-layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
-layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
-layout(set = 0, binding = 3) uniform sampler2D u_GBufferAlbedo;
-layout(set = 0, binding = 4) uniform sampler2D u_DepthBuffer;
-layout(set = 0, binding = 5) uniform sampler2D u_SSAONoise;
+layout(set=1, binding=0) uniform sampler2D u_textures[5];
+//layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
+//layout(set = 0, binding = 2) uniform sampler2D u_GBufferNormal;
+//layout(set = 0, binding = 3) uniform sampler2D u_GBufferAlbedo;
+//layout(set = 0, binding = 4) uniform sampler2D u_DepthBuffer;
+//layout(set = 0, binding = 5) uniform sampler2D u_SSAONoise;
+
+
+#define u_GBufferPosition u_textures[0]
+#define u_GBufferNormal u_textures[1]
+#define u_GBufferAlbedo u_textures[2]
+#define u_DepthBuffer u_textures[3]
+#define u_SSAONoise u_textures[4]
 
 vec3 GetPosVSFromDepth(vec2 uv, mat4 invProj)
 {
