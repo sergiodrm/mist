@@ -1009,15 +1009,17 @@ namespace Mist
 		VkCommandBuffer cmd = frameContext.GraphicsCommand;
 		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
 
-		// Mark as dirty the default descriptor sets
-		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
-		check(m_descriptorSetBatchIndex != UINT32_MAX);
-		tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
-		for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
+		if (HasDescriptorSetBatched())
 		{
-			tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
-			if (setUnit.SetIndex != UINT32_MAX)
-				setUnit.Dirty = true;
+			// Mark as dirty the default descriptor sets
+			tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
+			tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
+			for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
+			{
+				tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
+				if (setUnit.SetIndex != UINT32_MAX)
+					setUnit.Dirty = true;
+			}
 		}
 	}
 
@@ -1028,6 +1030,7 @@ namespace Mist
 
 	void ShaderProgram::SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size)
 	{
+		check(HasDescriptorSetBatched());
 		check(m_paramMap.contains(bufferName) && data && size);
 		const tShaderParam& param = m_paramMap.at(bufferName);
 		RenderFrameContext& frameContext = context.GetFrameContext();
@@ -1036,6 +1039,7 @@ namespace Mist
 
 	void ShaderProgram::SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset)
 	{
+		check(HasDescriptorSetBatched());
 		check(m_paramMap.contains(bufferName) && data && elemSize && elemCount);
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		const tShaderParam& param = m_paramMap.at(bufferName);
@@ -1044,7 +1048,7 @@ namespace Mist
 
 	void ShaderProgram::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)
 	{
-		check(m_descriptorSetBatchIndex != UINT32_MAX);
+		check(HasDescriptorSetBatched());
 		RenderFrameContext& frameContext = renderContext.GetFrameContext();
 		tDescriptorSetBatch& batch = frameContext.DescriptorSetCache.GetBatch(m_descriptorSetBatchIndex);
 
@@ -1120,10 +1124,12 @@ namespace Mist
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
 	{
+		if (!HasDescriptorSetBatched())
+			return;
+
 		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
 		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
 
-		check(m_descriptorSetBatchIndex != UINT32_MAX);
 		tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
 
 		tStaticArray<VkDescriptorSet, 8> setsToBind;

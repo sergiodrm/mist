@@ -200,6 +200,7 @@ namespace Mist
 		void SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
 		void SetTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount);
 		void FlushDescriptors(const RenderContext& context);
+		inline bool HasDescriptorSetBatched() const { return m_descriptorSetBatchIndex != UINT32_MAX; }
 
 		inline const tShaderParam GetParam(const char* paramName) const { check(m_paramMap.contains(paramName)); return m_paramMap.at(paramName); }
 
