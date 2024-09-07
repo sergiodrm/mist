@@ -7,8 +7,10 @@
 #include "Render/RenderDescriptor.h"
 #include "DebugProcess.h"
 #include "Core/Debug.h"
+#include "Application/Application.h"
 #include "Render/Texture.h"
 #include "Utils/GenericUtils.h"
+#include "Application/Event.h"
 
 #define PARTICLE_COUNT 512 * 256
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
@@ -25,7 +27,7 @@ namespace Mist
 			tClearValue clearValue{ 0.f, 0.f, 0.f, 0.f };
 			RenderTargetDescription description;
 			description.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-			description.RenderArea.extent = { 800, 800 };
+			description.RenderArea.extent = { context.Window->Width, context.Window->Height };
 			description.RenderArea.offset = { 0,0 };
 			m_renderTarget.Create(context, description);
 		}
@@ -56,6 +58,7 @@ namespace Mist
 			description.ColorAttachmentBlendingArray[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 			description.ColorAttachmentBlendingArray[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 			m_graphicsShader = ShaderProgram::Create(context, description);
+			m_graphicsShader->SetupDescriptors(context);
 		}
 
 		// Initialize particles
@@ -137,12 +140,30 @@ namespace Mist
 
 	void GPUParticleSystem::UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext)
 	{
-		frameContext.GlobalBuffer.SetUniform(context, "GPUParticles", &m_params, sizeof(ParameterUBO));
+		ParameterUBO params = m_params;
+		if (m_flags & GPU_PARTICLES_FOLLOW_MOUSE)
+		{
+			uint32_t x, y;
+			GetMousePosition(&x, &y);
+			float normx = (2.f * static_cast<float>(x) / static_cast<float>(context.Window->Width)) -1.f;
+			float normy = (2.f * static_cast<float>(y) / static_cast<float>(context.Window->Height)) -1.f;
+			params.Point = { normx, normy };
+		}
+		if (!(m_flags & GPU_PARTICLES_COMPUTE_ACTIVE))
+		{
+			params.Speed = 0.f;
+			params.MovementMode = 0;
+		}
+		else
+		{
+			params.MovementMode = m_flags & GPU_PARTICLES_ATTRACTION ? 1 : -1;
+		}
+		frameContext.GlobalBuffer.SetUniform(context, "GPUParticles", &params, sizeof(ParameterUBO));
 	}
 
 	void GPUParticleSystem::Dispatch(CommandBuffer cmd, uint32_t frameIndex)
 	{
-		if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
+		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
 		{
 			m_computeShader->UseProgram(cmd);
 			m_computeShader->BindDescriptorSets(cmd, &m_ssboDescriptorArray[frameIndex], 1);
@@ -150,26 +171,28 @@ namespace Mist
 		}
 	}
 
-	void GPUParticleSystem::Draw(CommandBuffer cmd, const RenderFrameContext& frameContext)
+	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
+		CommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
 		m_renderTarget.BeginPass(cmd);
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
-			m_graphicsShader->UseProgram(cmd);
-			m_graphicsShader->BindDescriptorSets(cmd, &m_circleSet, 1, 0);
+			m_graphicsShader->UseProgram(context);
 			VkDeviceSize offset = 0;
 			vkCmdBindVertexBuffers(cmd, 0, 1, &m_ssboArray[frameContext.FrameIndex].Buffer, &offset);
+			m_graphicsShader->SetTextureSlot(context, 0, *m_circleGradientTexture);
+			m_graphicsShader->FlushDescriptors(context);
 			RenderAPI::CmdDraw(cmd, m_particleCount, 1, 0, 0);
 		}
 		m_renderTarget.EndPass(cmd);
 
 		if (m_flags & GPU_PARTICLES_SHOW_RT)
 		{
-			TextureBindingDescriptor tex;
-			tex.Layout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			tex.View = m_renderTarget.GetRenderTarget(0);
-			tex.Sampler = m_sampler;
-			DebugRender::DrawScreenQuad(glm::vec2{ 1920.f * 0.25f, 1080.f * 0.25f }, glm::vec2{ 800.f, 800.f }, tex);
+			float width = (float)context.Window->Width;
+			float height = (float)context.Window->Height;
+			float wprop = 0.f;
+			float hprop = 0.f;
+			DebugRender::DrawScreenQuad(glm::vec2{ width * wprop, height * hprop }, glm::vec2{ width * (1.f-wprop), height * (1.f-hprop)}, m_renderTarget.GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 	}
 
@@ -191,6 +214,9 @@ namespace Mist
 		ImGuiUtils::CheckboxBitField("ShowRt", &m_flags, GPU_PARTICLES_SHOW_RT);
 		ImGuiUtils::CheckboxBitField("Compute active", &m_flags, GPU_PARTICLES_COMPUTE_ACTIVE);
 		ImGuiUtils::CheckboxBitField("Graphics active", &m_flags, GPU_PARTICLES_GRAPHICS_ACTIVE);
+		ImGuiUtils::CheckboxBitField("Follow mouse", &m_flags, GPU_PARTICLES_FOLLOW_MOUSE);
+		ImGuiUtils::CheckboxBitField("Attraction", &m_flags, GPU_PARTICLES_ATTRACTION);
+		ImGuiUtils::CheckboxBitField("Repulsion", &m_flags, GPU_PARTICLES_REPULSE);
 		ImGui::DragFloat("DeltaTime", &m_params.DeltaTime, 0.005f, 0.f, 2.f);
 		ImGui::DragFloat("Speed", &m_params.Speed, 0.001f, 0.f, 10.f);
 		ImGui::DragFloat("Max speed", &m_params.MaxSpeed, 0.001f, 0.f, 10.f);

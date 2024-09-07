@@ -34,7 +34,8 @@ vec2 Repulsion(vec2 Position, vec2 Center)
 {
     vec2 Diff = Center - Position;
     float Distance = length(Diff);
-    return Diff / (Distance*Distance*Distance) * REPULSION_FACTOR;
+    float dir = float(MovementMode) * -1.f;
+    return Diff / (Distance*Distance*Distance) * REPULSION_FACTOR * dir;
 }
 
 void main()

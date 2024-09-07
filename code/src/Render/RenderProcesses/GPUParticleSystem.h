@@ -20,7 +20,7 @@ namespace Mist
 		float DeltaTime = 0.033f;
 		float Speed = 1.f;
 		float MaxSpeed = 10.f;
-		int32_t MovementMode = 0;
+		int32_t MovementMode = -1;
 		glm::vec2 Point = glm::vec2(0.f, 0.f);
 	};
 
@@ -39,7 +39,10 @@ namespace Mist
 			GPU_PARTICLES_COMPUTE_ACTIVE = 0x01,
 			GPU_PARTICLES_GRAPHICS_ACTIVE = 0x02,
 			GPU_PARTICLES_ACTIVE = GPU_PARTICLES_COMPUTE_ACTIVE | GPU_PARTICLES_GRAPHICS_ACTIVE,
-			GPU_PARTICLES_SHOW_RT = 0x04
+			GPU_PARTICLES_SHOW_RT = 0x04,
+			GPU_PARTICLES_FOLLOW_MOUSE = 0x08,
+			GPU_PARTICLES_REPULSE = 0x10,
+			GPU_PARTICLES_ATTRACTION = 0x20
 		};
 	public:
 
@@ -48,7 +51,7 @@ namespace Mist
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
 		void UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext);
 		void Dispatch(CommandBuffer cmd, uint32_t frameIndex);
-		void Draw(CommandBuffer cmd, const RenderFrameContext& frameContext);
+		void Draw(const RenderContext& context, const RenderFrameContext& frameContext);
 		void Destroy(const RenderContext& context);
 		void ImGuiDraw();
 

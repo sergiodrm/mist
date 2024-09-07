@@ -532,9 +532,7 @@ namespace Mist
 			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE;
 			m_renderer.Draw(m_renderContext, frameContext);
 
-
-
-			m_gpuParticleSystem.Draw(cmd, frameContext);
+			m_gpuParticleSystem.Draw(m_renderContext, frameContext);
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
 
