@@ -61,59 +61,23 @@ namespace Mist
 			m_graphicsShader->SetupDescriptors(context);
 		}
 
-		// Initialize particles
-		Particle* particles = new Particle[PARTICLE_COUNT];
-		std::default_random_engine rndEng((uint32_t)time(nullptr));
-		std::uniform_real_distribution<float> rndDist(0.f, 1.f);
-		for (uint32_t i = 0; i < PARTICLE_COUNT; ++i)
-		{
-			float r = 1.f * sqrtf(rndDist(rndEng));
-			float theta = rndDist(rndEng) * 2.f * (float)M_PI;
-			float x = r * cosf(theta);// *1080.f / 1920.f;
-			float y = r * sinf(theta);
-			particles[i].Position = { x, y };
-			particles[i].Velocity = glm::normalize(glm::vec2(rndDist(rndEng), rndDist(rndEng))) * rndDist(rndEng) * 0.025f;
-			particles[i].Color = { rndDist(rndEng), rndDist(rndEng) , rndDist(rndEng) , 1.f };
-		}
-
-		// Create staging buffer to copy from system memory to host memory
-		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, EMemUsage::MEMORY_USAGE_CPU);
-		Memory::MemCopy(context.Allocator, stageBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
-
+		// Create ssbo per frame
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
-			// Create ssbo
 			m_ssboArray[i] = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
 				VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 				| VK_BUFFER_USAGE_TRANSFER_DST_BIT
 				| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 				EMemUsage::MEMORY_USAGE_GPU);
-			// Copy particles info
-			utils::CmdCopyBuffer(context, stageBuffer, m_ssboArray[i], PARTICLE_STORAGE_BUFFER_SIZE);
-
 			char buff[256];
 			sprintf_s(buff, "SSBOCompute_%u", i);
 			SetVkObjectName(context, &m_ssboArray[i].Buffer, VK_OBJECT_TYPE_BUFFER, buff);
 		}
-
-		// Destroy stage buffer
-		MemFreeBuffer(context.Allocator, stageBuffer);
-
-		delete[] particles;
-
-		m_sampler = CreateSampler(context);
-
+		// Fill particles
+		ResetParticles(context);
 
 		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), &m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
-		tViewDescription viewDesc;
-		ImageView view = m_circleGradientTexture->CreateView(context, viewDesc);
-		VkDescriptorImageInfo imageInfo;
-		imageInfo.sampler = m_sampler;
-		imageInfo.imageView = view;
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, m_circleSet);
+		m_circleGradientTexture->CreateView(context, tViewDescription());
 	}
 
 	void GPUParticleSystem::InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray)
@@ -156,9 +120,15 @@ namespace Mist
 		}
 		else
 		{
-			params.MovementMode = m_flags & GPU_PARTICLES_ATTRACTION ? 1 : -1;
+			params.MovementMode = m_flags & GPU_PARTICLES_REPULSE ? 1 : -1;
 		}
 		frameContext.GlobalBuffer.SetUniform(context, "GPUParticles", &params, sizeof(ParameterUBO));
+
+		if (m_flags & GPU_PARTICLES_RESET_PARTICLES)
+		{
+			m_flags &= ~GPU_PARTICLES_RESET_PARTICLES;
+			ResetParticles(context);
+		}
 	}
 
 	void GPUParticleSystem::Dispatch(CommandBuffer cmd, uint32_t frameIndex)
@@ -211,11 +181,12 @@ namespace Mist
 	void GPUParticleSystem::ImGuiDraw()
 	{
 		ImGui::Begin("GPU Particles");
+		if (ImGui::Button("Reset particles"))
+			m_flags &= GPU_PARTICLES_RESET_PARTICLES;
 		ImGuiUtils::CheckboxBitField("ShowRt", &m_flags, GPU_PARTICLES_SHOW_RT);
 		ImGuiUtils::CheckboxBitField("Compute active", &m_flags, GPU_PARTICLES_COMPUTE_ACTIVE);
 		ImGuiUtils::CheckboxBitField("Graphics active", &m_flags, GPU_PARTICLES_GRAPHICS_ACTIVE);
 		ImGuiUtils::CheckboxBitField("Follow mouse", &m_flags, GPU_PARTICLES_FOLLOW_MOUSE);
-		ImGuiUtils::CheckboxBitField("Attraction", &m_flags, GPU_PARTICLES_ATTRACTION);
 		ImGuiUtils::CheckboxBitField("Repulsion", &m_flags, GPU_PARTICLES_REPULSE);
 		ImGui::DragFloat("DeltaTime", &m_params.DeltaTime, 0.005f, 0.f, 2.f);
 		ImGui::DragFloat("Speed", &m_params.Speed, 0.001f, 0.f, 10.f);
@@ -223,5 +194,35 @@ namespace Mist
 		ImGui::DragFloat2("Point", &m_params.Point[0], 0.05f);
 		ImGui::DragInt("Particle count", (int*)(&m_particleCount), 1.f, 0, PARTICLE_COUNT);
 		ImGui::End();
+	}
+
+	void GPUParticleSystem::ResetParticles(const RenderContext& context)
+	{
+		// Initialize particles
+		Particle* particles = new Particle[PARTICLE_COUNT];
+		std::default_random_engine rndEng((uint32_t)time(nullptr));
+		std::uniform_real_distribution<float> rndDist(0.f, 1.f);
+		for (uint32_t i = 0; i < PARTICLE_COUNT; ++i)
+		{
+			float r = 1.f * sqrtf(rndDist(rndEng));
+			float theta = rndDist(rndEng) * 2.f * (float)M_PI;
+			float x = r * cosf(theta);// *1080.f / 1920.f;
+			float y = r * sinf(theta);
+			particles[i].Position = { x, y };
+			particles[i].Velocity = glm::normalize(glm::vec2(rndDist(rndEng), rndDist(rndEng))) * rndDist(rndEng) * 0.025f;
+			particles[i].Color = { rndDist(rndEng), rndDist(rndEng) , rndDist(rndEng) , 1.f };
+		}
+
+		// Create staging buffer to copy from system memory to host memory
+		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, EMemUsage::MEMORY_USAGE_CPU);
+		Memory::MemCopy(context.Allocator, stageBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
+
+		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
+			utils::CmdCopyBuffer(context, stageBuffer, m_ssboArray[i], PARTICLE_STORAGE_BUFFER_SIZE);
+
+		// Destroy stage buffer
+		MemFreeBuffer(context.Allocator, stageBuffer);
+
+		delete[] particles;
 	}
 }

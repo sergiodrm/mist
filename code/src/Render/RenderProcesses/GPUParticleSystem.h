@@ -54,17 +54,16 @@ namespace Mist
 		void Draw(const RenderContext& context, const RenderFrameContext& frameContext);
 		void Destroy(const RenderContext& context);
 		void ImGuiDraw();
+		void ResetParticles(const RenderContext& context);
 
 	private:
 		ComputeShader* m_computeShader;
 		AllocatedBuffer m_ssboArray[globals::MaxOverlappedFrames];
 		VkDescriptorSet m_ssboDescriptorArray[globals::MaxOverlappedFrames];
 		Texture* m_circleGradientTexture;
-		VkDescriptorSet m_circleSet;
 
 		ShaderProgram* m_graphicsShader;
 		RenderTarget m_renderTarget;
-		Sampler m_sampler;
 
 		ParameterUBO m_params;
 		int32_t m_flags;
