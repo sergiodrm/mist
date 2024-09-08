@@ -100,6 +100,8 @@ namespace Mist
 			return Data[GetIndex(i)];
 		}
 
+		const T& GetFromOldest(uint32_t i) const { return Data[GetIndex(Index + 1 + i)]; }
+
 		const T& GetLast() const { return Get(Index - 1); }
 		uint32_t GetIndex(uint32_t i) const { return i % N; }
 		constexpr uint32_t GetCount() const { return N; }
