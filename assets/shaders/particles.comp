@@ -29,6 +29,7 @@ layout(std140, binding = 2) buffer ParticleSSBOOut
 layout (local_size_x= 256, local_size_y = 1, local_size_z = 1) in;
 
 #define REPULSION_FACTOR 0.00035f
+#define ALPHA_RADIUS 0.33f
 
 vec2 Repulsion(vec2 Position, vec2 Center)
 {
@@ -47,6 +48,7 @@ void main()
     velocity += (Repulsion(particleIn.Position, Point));
     ParticlesOut[index].Position = particleIn.Position + velocity * DeltaTime;
     ParticlesOut[index].Velocity = particleIn.Velocity;
+    ParticlesOut[index].Color.a = clamp(length(particleIn.Position - Point) / ALPHA_RADIUS, 0.f, 1.f);
     if (ParticlesOut[index].Position.x > 1.f)
     {
         ParticlesOut[index].Position.x = -1.f;

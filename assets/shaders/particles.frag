@@ -15,7 +15,7 @@ void main()
         discard;
 #else
     float alpha = texture(u_gradientTex, gl_PointCoord).r;
-    FragColor = vec4(InColor.rgb, alpha);
+    FragColor = vec4(InColor.rgb, 1.f - InColor.a * alpha);
     if (alpha <= 0.1f)
         discard;
 #endif
