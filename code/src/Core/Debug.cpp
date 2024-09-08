@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include "Render/RenderTypes.h"
+#include "Application/CmdParser.h"
 
 #pragma comment(lib,"Dbghelp.lib")
 
@@ -243,6 +244,8 @@ namespace Mist::Debug
 
 namespace Mist
 {
+	CIntVar CVar_ShowStats("ShowStats", 1);
+
 	namespace Profiling
 	{
 		sRenderStats GRenderStats;
@@ -280,7 +283,9 @@ namespace Mist
 
 		struct sProfiler
 		{
-			float FPS = 0.f;
+			tCircularBuffer<float, 128> FPSArray;
+
+
 			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 		} GProfiler;
 
@@ -332,69 +337,161 @@ namespace Mist
 
 		void ShowFps(float fps)
 		{
-			GProfiler.FPS = fps;
+			GProfiler.FPSArray.Push(fps);
+		}
+
+		void GetFpsStats(float& minFps, float& maxFps, float& meanFps, float& lastFps)
+		{
+			meanFps = 0.f;
+			minFps = FLT_MAX;
+			maxFps = -FLT_MAX;
+			lastFps = GProfiler.FPSArray.GetLast();
+			for (uint32_t i = 0; i < GProfiler.FPSArray.GetCount(); ++i)
+			{
+				float value = GProfiler.FPSArray.GetFromOldest(i);
+				minFps = __min(minFps, value);
+				maxFps = __max(maxFps, value);
+				meanFps += value;
+			}
+			meanFps /= GProfiler.FPSArray.GetCount();
+		}
+
+		void GetMsStats(float& minMs, float& maxMs, float& meanMs, float& lastMs)
+		{
+			meanMs = 0.f;
+			minMs = FLT_MAX;
+			maxMs = -FLT_MAX;
+			lastMs = 1.f/GProfiler.FPSArray.GetLast();
+			for (uint32_t i = 0; i < GProfiler.FPSArray.GetCount(); ++i)
+			{
+				float value = 1.f/GProfiler.FPSArray.GetFromOldest(i);
+				minMs = __min(minMs, value);
+				maxMs = __max(maxMs, value);
+				meanMs += value;
+			}
+			meanMs /= GProfiler.FPSArray.GetCount();
+			meanMs *= 1000.f;
+			minMs *= 1000.f;
+			maxMs *= 1000.f;
+			lastMs *= 1000.f;
+		}
+
+		float ImGuiGetFpsPlotValue(void* data, int index)
+		{
+			sProfiler& prof = *(sProfiler*)data;
+			return prof.FPSArray.GetFromOldest(index);
+		}
+
+		float ImGuiGetMsPlotValue(void* data, int index)
+		{
+			sProfiler& prof = *(sProfiler*)data;
+			return 1000.f/prof.FPSArray.GetFromOldest(index);
 		}
 
 		void ImGuiDraw()
 		{
-			ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-				//| ImGuiWindowFlags_NoDecoration
-				| ImGuiWindowFlags_AlwaysAutoResize
-				| ImGuiWindowFlags_NoResize
-				//| ImGuiWindowFlags_NoInputs
-				;
-			ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
-			ImGui::SetNextWindowBgAlpha(0.f);
-			ImGui::SetNextWindowPos({ 0.f, 0.f });
-			ImGui::SetNextWindowSize({ 400.f, 300.f });
-			ImGui::Begin("Render stats", nullptr, flags);
-			ImGui::Text("%.4f fps", GProfiler.FPS);
-			ImGui::Columns(5);
-			ImGui::Text("ID");
-			ImGui::NextColumn();
-			ImGui::Text("Last time");
-			ImGui::NextColumn();
-			ImGui::Text("Min time");
-			ImGui::NextColumn();
-			ImGui::Text("Max time");
-			ImGui::NextColumn();
-			ImGui::Text("Avg time");
-			ImGui::NextColumn();
-			for (const auto& item : GProfiler.EntryMap)
+			float minFps, maxFps, meanFps, lastFps;
+			float minMs, maxMs, meanMs, lastMs;
+			if (CVar_ShowStats.Get())
 			{
-				ImGui::Text("%s", item.first);
-				ImGui::NextColumn();
-				ImGui::Text("%.4f ms", item.second.Data.GetLast());
-				ImGui::NextColumn();
-				ImGui::Text("%.4f ms", item.second.Min);
-				ImGui::NextColumn();
-				ImGui::Text("%.4f ms", item.second.Max);
-				ImGui::NextColumn();
-				double avg = 0.0;
-				for (uint32_t i = 0; i < item.second.Data.GetCount(); ++i)
-					avg += item.second.Data.Get(i);
-				avg /= (double)item.second.Data.GetCount();
-				ImGui::Text("%.4f ms", avg);
-				ImGui::NextColumn();
+				GetFpsStats(minFps, maxFps, meanFps, lastFps);
+				GetMsStats(minMs, maxMs, meanMs, lastMs);
 			}
-			ImGui::Columns(2);
-			ImGui::Text("Draw calls");
-			ImGui::NextColumn();
-			ImGui::Text("%u", GRenderStats.DrawCalls);
-			ImGui::NextColumn();
-			ImGui::Text("Triangles");
-			ImGui::NextColumn();
-			ImGui::Text("%u", GRenderStats.TrianglesCount);
-			ImGui::NextColumn();
-			ImGui::Text("Binding count");
-			ImGui::NextColumn();
-			ImGui::Text("%u", GRenderStats.SetBindingCount);
-			ImGui::NextColumn();
-			ImGui::Columns();
-			if (Mist::Debug::GVulkanLayerValidationErrors)
-				ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", Mist::Debug::GVulkanLayerValidationErrors);
-			ImGui::End();
-			ImGui::PopStyleColor();
+
+			if (CVar_ShowStats.Get() == 1)
+			{
+#if 0
+
+				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
+					//| ImGuiWindowFlags_NoDecoration
+					| ImGuiWindowFlags_AlwaysAutoResize
+					| ImGuiWindowFlags_NoResize
+					//| ImGuiWindowFlags_NoInputs
+					;
+				ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
+				ImGui::SetNextWindowBgAlpha(0.f);
+				ImGui::SetNextWindowSize({ 400.f, 300.f });
+#endif // 0
+				ImGui::SetNextWindowPos({ 0.f, 0.f });
+				ImGui::SetNextWindowBgAlpha(0.2f);
+				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
+
+				char buff[32];
+				sprintf(buff, "%3.2f fps", lastFps);
+				char buff2[32];
+				sprintf(buff2, "%.4f ms", lastMs);
+				ImGui::Begin("fps", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+				ImGui::Text("Min [%3.2f fps] Max [%3.2f fps] Mean [%3.2f fps] Last [%3.2f fps]", minFps, maxFps, meanFps, lastFps);
+				ImVec2 availRegion = ImGui::GetContentRegionAvail();
+				availRegion.y *= 0.3f;
+				ImGui::PlotLines("##fpschar", &ImGuiGetFpsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff, 0.f, 200.f, availRegion);
+				ImGui::Text("Min [%.4f ms] Max [%.4f ms] Mean [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
+				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
+				ImGui::End();
+				ImGui::PopStyleColor(2);
+			}
+			if (CVar_ShowStats.Get() == 2)
+			{
+				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
+					//| ImGuiWindowFlags_NoDecoration
+					| ImGuiWindowFlags_AlwaysAutoResize
+					| ImGuiWindowFlags_NoResize
+					//| ImGuiWindowFlags_NoInputs
+					;
+				ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
+				ImGui::SetNextWindowBgAlpha(0.f);
+				ImGui::SetNextWindowPos({ 0.f, 0.f });
+				ImGui::SetNextWindowSize({ 400.f, 300.f });
+				ImGui::Begin("Render stats", nullptr, flags);
+				ImGui::Text("%.4f fps", meanFps);
+				ImGui::Columns(5);
+				ImGui::Text("ID");
+				ImGui::NextColumn();
+				ImGui::Text("Last time");
+				ImGui::NextColumn();
+				ImGui::Text("Min time");
+				ImGui::NextColumn();
+				ImGui::Text("Max time");
+				ImGui::NextColumn();
+				ImGui::Text("Avg time");
+				ImGui::NextColumn();
+				for (const auto& item : GProfiler.EntryMap)
+				{
+					ImGui::Text("%s", item.first);
+					ImGui::NextColumn();
+					ImGui::Text("%.4f ms", item.second.Data.GetLast());
+					ImGui::NextColumn();
+					ImGui::Text("%.4f ms", item.second.Min);
+					ImGui::NextColumn();
+					ImGui::Text("%.4f ms", item.second.Max);
+					ImGui::NextColumn();
+					double avg = 0.0;
+					for (uint32_t i = 0; i < item.second.Data.GetCount(); ++i)
+						avg += item.second.Data.Get(i);
+					avg /= (double)item.second.Data.GetCount();
+					ImGui::Text("%.4f ms", avg);
+					ImGui::NextColumn();
+				}
+				ImGui::Columns(2);
+				ImGui::Text("Draw calls");
+				ImGui::NextColumn();
+				ImGui::Text("%u", GRenderStats.DrawCalls);
+				ImGui::NextColumn();
+				ImGui::Text("Triangles");
+				ImGui::NextColumn();
+				ImGui::Text("%u", GRenderStats.TrianglesCount);
+				ImGui::NextColumn();
+				ImGui::Text("Binding count");
+				ImGui::NextColumn();
+				ImGui::Text("%u", GRenderStats.SetBindingCount);
+				ImGui::NextColumn();
+				ImGui::Columns();
+				if (Mist::Debug::GVulkanLayerValidationErrors)
+					ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", Mist::Debug::GVulkanLayerValidationErrors);
+				ImGui::End();
+				ImGui::PopStyleColor();
+			}
 		}
 	}
 }
