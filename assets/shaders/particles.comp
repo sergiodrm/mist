@@ -48,7 +48,6 @@ void main()
     velocity += (Repulsion(particleIn.Position, Point));
     ParticlesOut[index].Position = particleIn.Position + velocity * DeltaTime;
     ParticlesOut[index].Velocity = particleIn.Velocity;
-    ParticlesOut[index].Color.a = clamp(length(particleIn.Position - Point) / ALPHA_RADIUS, 0.f, 1.f);
     if (ParticlesOut[index].Position.x > 1.f)
     {
         ParticlesOut[index].Position.x = -1.f;
