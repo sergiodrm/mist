@@ -42,7 +42,7 @@ namespace Mist
 			GPU_PARTICLES_SHOW_RT = 0x04,
 			GPU_PARTICLES_FOLLOW_MOUSE = 0x08,
 			GPU_PARTICLES_REPULSE = 0x10,
-			GPU_PARTICLES_ATTRACTION = 0x20
+			GPU_PARTICLES_RESET_PARTICLES = 0x80
 		};
 	public:
 
@@ -50,7 +50,7 @@ namespace Mist
 		void Init(const RenderContext& context, RenderTarget* rt);
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
 		void UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext);
-		void Dispatch(CommandBuffer cmd, uint32_t frameIndex);
+		void Dispatch(const RenderContext& context, uint32_t frameIndex);
 		void Draw(const RenderContext& context, const RenderFrameContext& frameContext);
 		void Destroy(const RenderContext& context);
 		void ImGuiDraw();

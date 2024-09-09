@@ -517,7 +517,7 @@ namespace Mist
 			RenderAPI::BeginCommandBuffer(frameContext.ComputeCommand, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 			BeginGPUEvent(m_renderContext, frameContext.ComputeCommand, "Begin Compute");
 			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
-			m_gpuParticleSystem.Dispatch(frameContext.ComputeCommand, frameIndex);
+			m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
 			RenderAPI::EndCommandBuffer(frameContext.ComputeCommand);
 			EndGPUEvent(m_renderContext, frameContext.ComputeCommand);
 		}

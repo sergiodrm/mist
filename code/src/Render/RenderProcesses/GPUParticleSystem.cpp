@@ -131,13 +131,24 @@ namespace Mist
 		}
 	}
 
-	void GPUParticleSystem::Dispatch(CommandBuffer cmd, uint32_t frameIndex)
+	void GPUParticleSystem::Dispatch(const RenderContext& context, uint32_t frameIndex)
 	{
+		CommandBuffer cmd = context.GetFrameContext().ComputeCommand;
 		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
 		{
 			m_computeShader->UseProgram(cmd);
 			m_computeShader->BindDescriptorSets(cmd, &m_ssboDescriptorArray[frameIndex], 1);
 			RenderAPI::CmdDispatch(cmd, PARTICLE_COUNT / 256, 1, 1);
+
+			VkBufferMemoryBarrier memoryBarrier{ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr };
+			memoryBarrier.buffer = m_ssboArray[frameIndex].Buffer;
+			memoryBarrier.offset = 0;
+			memoryBarrier.size = PARTICLE_STORAGE_BUFFER_SIZE;
+			memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+			memoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			memoryBarrier.dstQueueFamilyIndex = context.GraphicsQueueFamily;
+			memoryBarrier.srcQueueFamilyIndex = 0;
+			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 0, nullptr, 1, &memoryBarrier, 0, nullptr);
 		}
 	}
 
