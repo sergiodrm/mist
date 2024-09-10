@@ -45,7 +45,7 @@ namespace Mist
 
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
-		VkCommandBuffer cmd = frameContext.GraphicsCommand;
+		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 
 		// MRT
 		BeginGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
@@ -54,7 +54,7 @@ namespace Mist
 		m_shader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
 
 		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, VK_NULL_HANDLE);
-		m_renderTarget.EndPass(frameContext.GraphicsCommand);
+		m_renderTarget.EndPass(frameContext.GraphicsCommandContext.CommandBuffer);
 		EndGPUEvent(renderContext, cmd);
 	}
 

@@ -244,7 +244,7 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 			shadowMapTextures[i] = m_shadowMapRenderTargetArray[i]->GetDepthAttachment().Tex;
 
-		VkCommandBuffer cmd = frameContext.GraphicsCommand;
+		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		// Composition
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
 		m_renderTarget.BeginPass(cmd);

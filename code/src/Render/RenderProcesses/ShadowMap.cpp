@@ -141,7 +141,7 @@ namespace Mist
 
 	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
 	{
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		check(lightIndex < globals::MaxShadowMapAttachments);
 		m_shader->UseProgram(context);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
@@ -291,7 +291,7 @@ namespace Mist
 
 	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
-		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
 
 		check(m_lightCount < globals::MaxShadowMapAttachments);

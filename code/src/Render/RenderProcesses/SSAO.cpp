@@ -104,7 +104,7 @@ namespace Mist
 
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
-		VkCommandBuffer cmd = frameContext.GraphicsCommand;
+		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "SSAO");
 		m_rt.BeginPass(cmd);
 		m_ssaoShader->UseProgram(renderContext);

@@ -6,6 +6,27 @@
 
 namespace Mist
 {
+	void CommandBufferContext::BeginCommandBuffer(uint32_t flags)
+	{
+		check(!(Flags & (CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE)) && Flags & CMD_CONTEXT_FLAG_FENCE_READY);
+		RenderAPI::BeginCommandBuffer(CommandBuffer, flags);
+		Flags |= CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE;
+		Flags &= ~CMD_CONTEXT_FLAG_FENCE_READY;
+	}
+
+	void CommandBufferContext::ResetCommandBuffer(uint32_t flags)
+	{
+		check(!(Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE));
+		RenderAPI::ResetCommandBuffer(CommandBuffer, flags);
+	}
+
+	void CommandBufferContext::EndCommandBuffer()
+	{
+		check(Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE);
+		RenderAPI::EndCommandBuffer(CommandBuffer);
+		Flags &= ~(CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE);
+	}
+
     void BeginGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color)
     {
         VkDebugUtilsLabelEXT label{ .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pNext = nullptr };
@@ -37,6 +58,29 @@ namespace Mist
         vkcheck(renderContext.pfn_vkSetDebugUtilsObjectNameEXT(renderContext.Device, &info));
     }
 
+	template <uint16_t N>
+	void ProcessCommandBufferContextFence(CommandBufferContext& cmdContext, tStaticArray<VkFence, N>& outFences)
+	{
+		check(!(cmdContext.Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
+		if (!(cmdContext.Flags & CMD_CONTEXT_FLAG_FENCE_READY))
+		{
+			cmdContext.Flags |= CMD_CONTEXT_FLAG_FENCE_READY;
+			outFences.Push(cmdContext.Fence);
+		}
+	}
+
+	void ProcessAndWaitFrameCommandContextFences(const VkDevice device, RenderFrameContext* frameContextArray, uint32_t frameContextCount)
+	{
+		tStaticArray<VkFence, 16> fences;
+		for (size_t i = 0; i < frameContextCount; ++i)
+		{
+			ProcessCommandBufferContextFence(frameContextArray[i].ComputeCommandContext, fences);
+			ProcessCommandBufferContextFence(frameContextArray[i].GraphicsCommandContext, fences);
+		}
+		if (!fences.IsEmpty())
+			RenderAPI::WaitAndResetFences(device, fences.GetData(), fences.GetSize());
+	}
+
 	void RenderContext_NewFrame(RenderContext& context)
 	{
         ++context.FrameIndex;
@@ -45,20 +89,7 @@ namespace Mist
         // wait for current frame to end gpu work
 //#define MIST_FORCE_SYNC
 #ifndef MIST_FORCE_SYNC
-		VkFence waitFences[2];
-		uint32_t waitFencesCount = 0;
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
-		{
-			waitFences[waitFencesCount++] = frameContext.RenderFence;
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
-		}
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
-		{
-			waitFences[waitFencesCount++] = frameContext.ComputeFence;
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
-		}
-		if (waitFencesCount > 0)
-			RenderAPI::WaitAndResetFences(context.Device, waitFences, waitFencesCount);
+		ProcessAndWaitFrameCommandContextFences(context.Device, &frameContext, 1);
 #else
 		RenderContext_ForceFrameSync(context);
 #endif // !MIST_FORCE_SYNC
@@ -72,32 +103,16 @@ namespace Mist
         }
 	}
 
+
     void RenderContext_ForceFrameSync(RenderContext& context)
     {
 		PROFILE_SCOPE_LOG(RenderContext_ForceFrameSync, "Force sync operation");
-		tDynArray<VkFence> fences;
-		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			check(!(context.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			check(!(context.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-			if (!(context.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_RENDER_FENCE_READY))
-			{
-				fences.push_back(context.FrameContextArray[i].RenderFence);
-				context.FrameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
-			}
-			if (!(context.FrameContextArray[i].StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
-			{
-				fences.push_back(context.FrameContextArray[i].ComputeFence);
-				context.FrameContextArray[i].StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
-			}
-
-		}
-		if (!fences.empty())
-			RenderAPI::WaitAndResetFences(context.Device, fences.data(), (uint32_t)fences.size());
+		ProcessAndWaitFrameCommandContextFences(context.Device, context.FrameContextArray, globals::MaxOverlappedFrames);
     }
 
 	uint32_t RenderContext_PadUniformMemoryOffsetAlignment(const RenderContext& context, uint32_t size)
 	{
 		return Memory::PadOffsetAlignment((uint32_t)context.GPUProperties.limits.minUniformBufferOffsetAlignment, size);
 	}
+	
 }

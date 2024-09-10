@@ -132,7 +132,7 @@ namespace Mist
     void UIProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
     {
 #if 0
-		VkCommandBuffer cmd = renderFrameContext.GraphicsCommand;
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 		m_renderTarget.BeginPass(cmd);
 		m_debugPipeline.Draw(renderContext, cmd, renderFrameContext.FrameIndex);
 		m_imgui.Draw(renderContext, cmd);

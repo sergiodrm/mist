@@ -1245,7 +1245,7 @@ namespace Mist
 	void Scene::Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		// Iterate scene graph to render models.
 		uint32_t lastMaterialIndex = UINT32_MAX;
 		const Mesh* lastMesh = nullptr;
@@ -1295,7 +1295,7 @@ namespace Mist
 
 	void Scene::Draw(const RenderContext& context, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const
 	{
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		CPU_PROFILE_SCOPE(Scene_Draw);
 		// Iterate scene graph to render models.
 		uint32_t lastMaterialIndex = UINT32_MAX;

@@ -12,10 +12,9 @@
 
 struct SDL_Window;
 
-#define FRAME_CONTEXT_FLAG_RENDER_FENCE_READY 0x1
-#define FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE 0x2
-#define FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY 0x4
-#define FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE 0x8
+#define CMD_CONTEXT_FLAG_NONE 0x0
+#define CMD_CONTEXT_FLAG_FENCE_READY 0x1
+#define CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE 0x2
 
 namespace Mist
 {
@@ -27,11 +26,16 @@ namespace Mist
 
 	typedef tFixedString<64> tRenderResourceName;
 
-	struct TransferContext
+	struct CommandBufferContext
 	{
+		byte Flags = 0;
 		VkFence Fence;
 		VkCommandPool CommandPool;
 		VkCommandBuffer CommandBuffer;
+
+		void BeginCommandBuffer(uint32_t flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		void ResetCommandBuffer(uint32_t flags = 0);
+		void EndCommandBuffer();
 	};
 
 
@@ -39,21 +43,13 @@ namespace Mist
 	{
 		uint8_t StatusFlags = 0;
 		// Sync vars
-		VkFence RenderFence{};
 		VkSemaphore RenderSemaphore{};
-
-		VkFence ComputeFence{};
 		VkSemaphore ComputeSemaphore{};
-
 		VkSemaphore PresentSemaphore{};
 
-		// Graphics Commands
-		VkCommandPool GraphicsCommandPool{};
-		VkCommandBuffer GraphicsCommand{};
-
-		// Compute Commands (TODO: can share command pool between frames in flight?)
-		VkCommandPool ComputeCommandPool{};
-		VkCommandBuffer ComputeCommand{};
+		// Commands
+		CommandBufferContext GraphicsCommandContext;
+		CommandBufferContext ComputeCommandContext;
 
 		// Descriptors
 		[[deprecated]]
@@ -114,7 +110,7 @@ namespace Mist
 		VkQueue ComputeQueue;
 		uint32_t ComputeQueueFamily;
 
-		TransferContext TransferContext;
+		CommandBufferContext TransferContext;
 
 		mutable RenderFrameContext FrameContextArray[globals::MaxOverlappedFrames];
 		uint32_t FrameIndex = 0;

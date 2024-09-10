@@ -1006,7 +1006,7 @@ namespace Mist
 	void ShaderProgram::UseProgram(const RenderContext& context)
 	{
 		RenderFrameContext& frameContext = context.GetFrameContext();
-		VkCommandBuffer cmd = frameContext.GraphicsCommand;
+		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
 
 		if (HasDescriptorSetBatched())
@@ -1093,7 +1093,7 @@ namespace Mist
 			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, set);
 
-		BindDescriptorSets(frameContext.GraphicsCommand, &set, 1, slot, nullptr, 0);
+		BindDescriptorSets(frameContext.GraphicsCommandContext.CommandBuffer, &set, 1, slot, nullptr, 0);
 	}
 
 	void ShaderProgram::SetTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount)
@@ -1119,7 +1119,7 @@ namespace Mist
 		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
 			.BindImage(0, infos.data(), textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, set);
-		BindDescriptorSets(frameContext.GraphicsCommand, &set, 1, slot);
+		BindDescriptorSets(frameContext.GraphicsCommandContext.CommandBuffer, &set, 1, slot);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
@@ -1127,7 +1127,7 @@ namespace Mist
 		if (!HasDescriptorSetBatched())
 			return;
 
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
 
 		tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);

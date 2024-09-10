@@ -392,13 +392,13 @@ namespace Mist
 		{
 			m_renderContext.FrameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
 
-			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeFence, nullptr);
-			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].RenderFence, nullptr);
+			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeCommandContext.Fence, nullptr);
+			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].GraphicsCommandContext.Fence, nullptr);
 			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeSemaphore, nullptr);
 			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].RenderSemaphore, nullptr);
 			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].PresentSemaphore, nullptr);
-			vkDestroyCommandPool(m_renderContext.Device, m_renderContext.FrameContextArray[i].GraphicsCommandPool, nullptr);
-			vkDestroyCommandPool(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeCommandPool, nullptr);
+			vkDestroyCommandPool(m_renderContext.Device, m_renderContext.FrameContextArray[i].GraphicsCommandContext.CommandPool, nullptr);
+			vkDestroyCommandPool(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeCommandContext.CommandPool, nullptr);
 		}
 
 		m_swapchain.Destroy(m_renderContext);
@@ -513,23 +513,20 @@ namespace Mist
 
 		// Compute
 		{
-			RenderAPI::ResetCommandBuffer(frameContext.ComputeCommand, 0);
-			RenderAPI::BeginCommandBuffer(frameContext.ComputeCommand, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-			BeginGPUEvent(m_renderContext, frameContext.ComputeCommand, "Begin Compute");
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
+			frameContext.ComputeCommandContext.ResetCommandBuffer();
+			frameContext.ComputeCommandContext.BeginCommandBuffer();
+			BeginGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer, "Begin Compute");
 			m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
-			RenderAPI::EndCommandBuffer(frameContext.ComputeCommand);
-			EndGPUEvent(m_renderContext, frameContext.ComputeCommand);
+			frameContext.ComputeCommandContext.EndCommandBuffer();
+			EndGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer);
 		}
-
 
 		// Graphics
 		{
-			VkCommandBuffer cmd = frameContext.GraphicsCommand;
-			RenderAPI::ResetCommandBuffer(frameContext.GraphicsCommand, 0);
-			RenderAPI::BeginCommandBuffer(cmd, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+			frameContext.GraphicsCommandContext.ResetCommandBuffer();
+			frameContext.GraphicsCommandContext.BeginCommandBuffer();
+			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 			BeginGPUEvent(m_renderContext, cmd, "Begin Graphics", 0xff0000ff);
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE;
 			m_renderer.Draw(m_renderContext, frameContext);
 
 			m_gpuParticleSystem.Draw(m_renderContext, frameContext);
@@ -559,15 +556,10 @@ namespace Mist
 			m_screenPipeline.UIInstance.Draw(m_renderContext, cmd);
 
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].EndPass(cmd);
-			EndGPUEvent(m_renderContext, cmd);
 			// Terminate command buffer
-			RenderAPI::EndCommandBuffer(cmd);
+			frameContext.GraphicsCommandContext.EndCommandBuffer();
 			EndGPUEvent(m_renderContext, cmd);
-			frameContext.StatusFlags &= ~(FRAME_CONTEXT_FLAG_GRAPHICS_CMDBUFFER_ACTIVE | FRAME_CONTEXT_FLAG_RENDER_FENCE_READY | FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE | FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY);
 		}
-
-
-
 
 		{
 			CPU_PROFILE_SCOPE(QueueSubmit);
@@ -586,8 +578,8 @@ namespace Mist
 			computeSubmitInfo.pSignalSemaphores = &frameContext.ComputeSemaphore;
 			// The command buffer will be procesed
 			computeSubmitInfo.commandBufferCount = 1;
-			computeSubmitInfo.pCommandBuffers = &frameContext.ComputeCommand;
-			vkcheck(vkQueueSubmit(m_renderContext.ComputeQueue, 1, &computeSubmitInfo, frameContext.ComputeFence));
+			computeSubmitInfo.pCommandBuffers = &frameContext.ComputeCommandContext.CommandBuffer;
+			vkcheck(vkQueueSubmit(m_renderContext.ComputeQueue, 1, &computeSubmitInfo, frameContext.ComputeCommandContext.Fence));
 
 			// Submit command buffer
 			VkSemaphore graphicsWaitSemaphores[] = { frameContext.PresentSemaphore, frameContext.ComputeSemaphore };
@@ -605,8 +597,8 @@ namespace Mist
 			graphicsSubmitInfo.pSignalSemaphores = &frameContext.RenderSemaphore;
 			// The command buffer will be procesed
 			graphicsSubmitInfo.commandBufferCount = 1;
-			graphicsSubmitInfo.pCommandBuffers = &frameContext.GraphicsCommand;
-			vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &graphicsSubmitInfo, frameContext.RenderFence));
+			graphicsSubmitInfo.pCommandBuffers = &frameContext.GraphicsCommandContext.CommandBuffer;
+			vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &graphicsSubmitInfo, frameContext.GraphicsCommandContext.Fence));
 		}
 
 		{
@@ -770,6 +762,14 @@ namespace Mist
 		Log(LogLevel::Ok, "Vulkan graphics queue instance created...\n");
 
 		// Compute queue from device
+#if 1
+		m_renderContext.ComputeQueue = device.get_queue(vkb::QueueType::compute).value();
+		m_renderContext.ComputeQueueFamily = device.get_queue_index(vkb::QueueType::compute).value();
+		check(m_renderContext.ComputeQueue != VK_NULL_HANDLE);
+		check(m_renderContext.ComputeQueueFamily != (uint32_t)vkb::QueueError::invalid_queue_family_index
+			&& m_renderContext.ComputeQueueFamily != vkb::detail::QUEUE_INDEX_MAX_VALUE);
+
+#else
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, nullptr);
 		VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyCount];
@@ -785,6 +785,7 @@ namespace Mist
 				break;
 			}
 		}
+
 		check(graphicsComputeQueueIndex != UINT32_MAX);
 		delete[] queueFamilyProperties;
 		queueFamilyProperties = nullptr;
@@ -792,6 +793,7 @@ namespace Mist
 		m_renderContext.ComputeQueueFamily = graphicsComputeQueueIndex;
 		vkGetDeviceQueue(m_renderContext.Device, graphicsComputeQueueIndex, 0, &m_renderContext.ComputeQueue);
 		check(m_renderContext.ComputeQueue);
+#endif // 0
 
 
 		// Dump physical device info
@@ -831,16 +833,16 @@ namespace Mist
 
 			// Graphics commands
 			{
-				vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &frameContext.GraphicsCommandPool));
-				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandPool);
-				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommand));
+				vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &frameContext.GraphicsCommandContext.CommandPool));
+				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandContext.CommandPool);
+				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommandContext.CommandBuffer));
 			}
 
 			// Compute commands
 			{
-				vkcheck(vkCreateCommandPool(m_renderContext.Device, &computePoolInfo, nullptr, &frameContext.ComputeCommandPool));
-				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.ComputeCommandPool);
-				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.ComputeCommand));
+				vkcheck(vkCreateCommandPool(m_renderContext.Device, &computePoolInfo, nullptr, &frameContext.ComputeCommandContext.CommandPool));
+				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.ComputeCommandContext.CommandPool);
+				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.ComputeCommandContext.CommandBuffer));
 			}
 		}
 
@@ -858,8 +860,8 @@ namespace Mist
 			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
 			// Render fence
 			VkFenceCreateInfo fenceInfo = vkinit::FenceCreateInfo(VK_FENCE_CREATE_SIGNALED_BIT);
-			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.RenderFence));
-			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.ComputeFence));
+			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.GraphicsCommandContext.Fence));
+			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.ComputeCommandContext.Fence));
 
 			// Render semaphore
 			VkSemaphoreCreateInfo semaphoreInfo = vkinit::SemaphoreCreateInfo();
@@ -870,9 +872,9 @@ namespace Mist
 
 			char buff[256];
 			sprintf_s(buff, "GraphicsFence_%u", i);
-			SetVkObjectName(m_renderContext, &frameContext.RenderFence, VK_OBJECT_TYPE_FENCE, buff);
+			SetVkObjectName(m_renderContext, &frameContext.GraphicsCommandContext.Fence, VK_OBJECT_TYPE_FENCE, buff);
 			sprintf_s(buff, "ComputeFence_%u", i);
-			SetVkObjectName(m_renderContext, &frameContext.ComputeFence, VK_OBJECT_TYPE_FENCE, buff);
+			SetVkObjectName(m_renderContext, &frameContext.ComputeCommandContext.Fence, VK_OBJECT_TYPE_FENCE, buff);
 			sprintf_s(buff, "RenderSemaphore_%u", i);
 			SetVkObjectName(m_renderContext, &frameContext.RenderSemaphore, VK_OBJECT_TYPE_SEMAPHORE, buff);
 			sprintf_s(buff, "ComputeSemaphore_%u", i);

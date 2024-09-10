@@ -133,7 +133,7 @@ namespace Mist
 
 	void GPUParticleSystem::Dispatch(const RenderContext& context, uint32_t frameIndex)
 	{
-		CommandBuffer cmd = context.GetFrameContext().ComputeCommand;
+		CommandBuffer cmd = context.GetFrameContext().ComputeCommandContext.CommandBuffer;
 		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
 		{
 			m_computeShader->UseProgram(cmd);
@@ -154,7 +154,7 @@ namespace Mist
 
 	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
-		CommandBuffer cmd = context.GetFrameContext().GraphicsCommand;
+		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		m_renderTarget.BeginPass(cmd);
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
