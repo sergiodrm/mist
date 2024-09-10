@@ -52,10 +52,10 @@ namespace Mist
 			waitFences[waitFencesCount++] = frameContext.RenderFence;
 			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_RENDER_FENCE_READY;
 		}
-		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE))
+		if (!(frameContext.StatusFlags & FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY))
 		{
 			waitFences[waitFencesCount++] = frameContext.ComputeFence;
-			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_CMDBUFFER_ACTIVE;
+			frameContext.StatusFlags |= FRAME_CONTEXT_FLAG_COMPUTE_FENCE_READY;
 		}
 		if (waitFencesCount > 0)
 			RenderAPI::WaitAndResetFences(context.Device, waitFences, waitFencesCount);
