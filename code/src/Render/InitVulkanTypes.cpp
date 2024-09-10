@@ -81,6 +81,19 @@ namespace Mist
 			return semaphoreCreateInfo;
 		}
 
+		VkBufferMemoryBarrier BufferMemoryBarrier(VkBuffer buffer, uint32_t size, uint32_t offset, VkAccessFlags srcAccess, VkAccessFlags dstAccess, uint32_t srcQueueIndex, uint32_t dstQueueIndex)
+		{
+			VkBufferMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr };
+			barrier.buffer = buffer;
+			barrier.size = size;
+			barrier.offset = offset;
+			barrier.srcQueueFamilyIndex = srcQueueIndex;
+			barrier.dstQueueFamilyIndex = dstQueueIndex;
+			barrier.srcAccessMask = srcAccess;
+			barrier.dstAccessMask = dstAccess;
+			return barrier;
+		}
+
 		VkPipelineShaderStageCreateInfo PipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule shaderModule, const char* entryPoint)
 		{
 			VkPipelineShaderStageCreateInfo info = {};

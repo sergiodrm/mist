@@ -24,6 +24,7 @@ namespace Mist
 		 */
 		VkFenceCreateInfo FenceCreateInfo(VkFenceCreateFlags flags = 0);
 		VkSemaphoreCreateInfo SemaphoreCreateInfo(VkSemaphoreCreateFlags flags = 0);
+		VkBufferMemoryBarrier BufferMemoryBarrier(VkBuffer buffer, uint32_t size, uint32_t offset, VkAccessFlags srcAccess, VkAccessFlags dstAccess, uint32_t srcQueueIndex, uint32_t dstQueueIndex);
 
 		/**
 		 * Pipeline related types builders.
