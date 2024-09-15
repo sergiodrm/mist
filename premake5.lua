@@ -31,10 +31,12 @@ workspace "Mist"
     filter "configurations:Debug"
         defines {"_DEBUG"}
         symbols "On"
+        optimize "Off"
     
     filter "configurations:Release"
         defines {"_NDEBUG"}
         symbols "On"
+        optimize "On"
 
     -- deactive filter
     filter{}
@@ -70,6 +72,7 @@ workspace "Mist"
         cppdialect "C++20"
 
         targetdir "%{outputdir}"
+        targetname "Mist"
         objdir "%{temporaldir}"
         location "%{wks.location}/code"
 
@@ -103,7 +106,7 @@ workspace "Mist"
         
         filter "configurations:Debug"
         links {
-                "%{libs.spirv}",
+                "%{libs.spirvd}",
                 "%{libs.spirvcrossd}",
                 "%{libs.spirvcrosscppd}",
                 "%{libs.spirvcrosscored}",
@@ -118,11 +121,11 @@ workspace "Mist"
                 "%{libs.shadercd}",
                 "%{libs.shadercutild}",
             }
-            targetname "Mist_dbg"
+            targetsuffix "d"
             
-            filter "configurations:Release"
-            links {
-                "%{libs.spirvd}",
+        filter "configurations:Release"
+        links {
+                "%{libs.spirv}",
                 "%{libs.spirvcross}",
                 "%{libs.spirvcrosscore}",
                 "%{libs.spirvcrosscpp}",
@@ -137,7 +140,6 @@ workspace "Mist"
                 "%{libs.shaderc}",
                 "%{libs.shadercutil}",
             }
-            targetname "Mist"
         
     
     group "Test"
