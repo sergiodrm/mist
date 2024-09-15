@@ -236,13 +236,16 @@ namespace vkutils
 namespace Mist
 {
 	template <size_t _KeySize>
-	void GenerateKey(char(&key)[_KeySize], const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc)
+	void GenerateKey(char(&key)[_KeySize], const ShaderFileDescription** descriptions, uint32_t count)
 	{
-		char vertexKey[_KeySize/2];
-		shader_compiler::GenerateSpvFileName(vertexKey, vertexFileDesc.Filepath.c_str(), vertexFileDesc.CompileOptions);
-		char fragKey[_KeySize/2];
-		shader_compiler::GenerateSpvFileName(fragKey, fragFileDesc.Filepath.c_str(), fragFileDesc.CompileOptions);
-		sprintf_s(key, "%s%s", vertexKey, fragKey);
+		*key = 0;
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			char temp[_KeySize];
+			shader_compiler::GenerateSpvFileName(temp, descriptions[i]->Filepath.c_str(), descriptions[i]->CompileOptions);
+			strcat_s(key, temp);
+		}
+
 		char* i = key;
 		while (*i)
 		{
@@ -254,7 +257,8 @@ namespace Mist
 	template <size_t _KeySize>
 	void GenerateShaderParamKey(char(&key)[_KeySize], const char* paramName, const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc)
 	{
-		GenerateKey(key, vertexFileDesc, fragFileDesc);
+		const ShaderFileDescription* descs[] = { &vertexFileDesc, &fragFileDesc };
+		GenerateKey(key, descs, 2);
 		strcat_s(key, "_");
 		strcat_s(key, paramName);
 	}
@@ -1255,14 +1259,15 @@ namespace Mist
 		uint32_t index = (uint32_t)m_shaderArray.size();
 		m_shaderArray.push_back(program);
 		char key[2048];
-		GenerateKey(key, description.VertexShaderFile, description.FragmentShaderFile);
+		const ShaderFileDescription* descs[] = { &description.VertexShaderFile, &description.FragmentShaderFile };
+		GenerateKey(key, descs, 2);
 		m_indexMap[key] = index;
 	}
 
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ComputeShader* computeShader)
 	{
 		const ComputeShaderProgramDescription& description = computeShader->GetDescription();
-		check(!FindShaderProgram(description.ComputeShaderFile.Filepath.c_str()));
+		check(!FindShaderProgram(description.ComputeShaderFile));
 		uint32_t index = (uint32_t)m_computeShaderArray.size();
 		m_computeShaderArray.push_back(computeShader);
 		m_indexMap[description.ComputeShaderFile.Filepath.c_str()] = index;
@@ -1271,7 +1276,16 @@ namespace Mist
 	ShaderProgram* ShaderFileDB::FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const
 	{
 		char key[2048];
-		GenerateKey(key, vertexFileDesc, fragFileDesc);
+		const ShaderFileDescription* descs[] = { &vertexFileDesc, &fragFileDesc };
+		GenerateKey(key, descs, 2);
+		return FindShaderProgram(key);
+	}
+
+	ShaderProgram* ShaderFileDB::FindShaderProgram(const ShaderFileDescription& fileDesc) const
+	{
+		char key[2048];
+		const ShaderFileDescription* desc = &fileDesc;
+		GenerateKey(key, &desc, 1);
 		return FindShaderProgram(key);
 	}
 

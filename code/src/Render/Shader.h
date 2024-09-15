@@ -60,6 +60,16 @@ namespace Mist
 			*Macro = 0;
 			*Value = 0;
 		}
+		tCompileMacroDefinition(const char* str)
+		{
+			strcpy_s(Macro, str);
+			*Value = 0;
+		}
+		tCompileMacroDefinition(const char* str, const char* value)
+		{
+			strcpy_s(Macro, str);
+			strcpy_s(Value, value);
+		}
 	};
 
 	struct tCompileOptions
@@ -249,6 +259,7 @@ namespace Mist
 		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
 		void AddShaderProgram(const RenderContext& context, ComputeShader* computeShader);
 		ShaderProgram* FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const;
+		ShaderProgram* FindShaderProgram(const ShaderFileDescription& fileDesc) const;
 		ShaderProgram* FindShaderProgram(const char* key) const;
 		void ReloadFromFile(const RenderContext& context);
 
