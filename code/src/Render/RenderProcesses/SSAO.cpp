@@ -100,6 +100,7 @@ namespace Mist
 	void SSAO::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
 		m_uboData.Projection = frameContext.CameraData->Projection;
+		m_uboData.InverseProjection = glm::inverse(m_uboData.Projection);
 	}
 
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)

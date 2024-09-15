@@ -12,6 +12,7 @@ layout(set = 0, binding = 0) uniform SSAOUniform
 {
     vec4 Params;
     mat4 Projection;
+    mat4 InverseProjection;
     vec4 Samples[KERNEL_SIZE];
 } u_ssao;
 
@@ -52,7 +53,7 @@ float linearDepth(float depth, float near, float far)
 void main()
 {
 	//vec3 fragPos = texture(u_GBufferPosition, inTexCoords).xyz;
-    vec3 fragPos = GetPosVSFromDepth(inTexCoords, inverse(u_ssao.Projection));
+    vec3 fragPos = GetPosVSFromDepth(inTexCoords, u_ssao.InverseProjection);
     vec3 normal = normalize(texture(u_GBufferNormal, inTexCoords).xyz);
     ivec2 texDim = textureSize(u_GBufferNormal, 0); 
 	ivec2 noiseDim = textureSize(u_SSAONoise, 0);
@@ -65,6 +66,7 @@ void main()
     float occlusion = 0.f;
     float bias = ssao_bias;
     float radius = ssao_radius;
+#if 1
     for (int i = 0; i < KernelSize; ++i)
     {
         vec3 samplePos = TBN * u_ssao.Samples[i].xyz;
@@ -75,10 +77,11 @@ void main()
         offset.xyz /= offset.w;
         offset.xyz = offset.xyz * 0.5f + 0.5f;
         //float sampleDepth = texture(u_GBufferPosition, offset.xy).b;
-        float sampleDepth = GetPosVSFromDepth(offset.xy, inverse(u_ssao.Projection)).z;
+        float sampleDepth = GetPosVSFromDepth(offset.xy, u_ssao.InverseProjection).z;
         float rangeCheck = smoothstep(0.f, 1.f, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.f : 0.f) * rangeCheck;
     }
+    #endif
     occlusion = 1.f - (occlusion / float(KernelSize));
     fragColor = occlusion;
     //fragColor = linearDepth(fragPos.z, 1.f, 1000.f);

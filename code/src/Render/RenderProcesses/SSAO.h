@@ -24,6 +24,7 @@ namespace Mist
 			float Bias;
 			float __padding[2];
 			glm::mat4 Projection;
+			glm::mat4 InverseProjection;
 			glm::vec4 KernelSamples[SSAO_KERNEL_SAMPLES];
 		};
 	public:
