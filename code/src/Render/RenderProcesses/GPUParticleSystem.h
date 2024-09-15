@@ -58,8 +58,8 @@ namespace Mist
 
 	private:
 		ComputeShader* m_computeShader;
-		AllocatedBuffer m_ssboArray[globals::MaxOverlappedFrames];
-		VkDescriptorSet m_ssboDescriptorArray[globals::MaxOverlappedFrames];
+		VkDescriptorSet m_singleBufferDescriptorSet;
+		AllocatedBuffer m_particlesBuffer;
 		Texture* m_circleGradientTexture;
 
 		ShaderProgram* m_graphicsShader;

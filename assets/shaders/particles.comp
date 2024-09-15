@@ -16,19 +16,14 @@ layout (std140, binding = 0) uniform ParameterUBO
     vec2 Point;
 };
 
-layout (std140, binding = 1) readonly buffer ParticleSSBOIn
+layout(std140, binding = 1) buffer ParticleBuffer
 {
-    Particle ParticlesIn[];
-};
-
-layout(std140, binding = 2) buffer ParticleSSBOOut
-{
-    Particle ParticlesOut[];
+    Particle Particles[];
 };
 
 layout (local_size_x= 256, local_size_y = 1, local_size_z = 1) in;
 
-#define REPULSION_FACTOR 0.00035f
+#define REPULSION_FACTOR 0.01035f
 #define ALPHA_RADIUS 0.33f
 
 vec2 Repulsion(vec2 Position, vec2 Center)
@@ -39,21 +34,27 @@ vec2 Repulsion(vec2 Position, vec2 Center)
     return Diff / (Distance*Distance*Distance) * REPULSION_FACTOR * dir;
 }
 
+
+#define particleIn Particles[index]
+#define particleOut Particles[index]
+
+
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
 
-    Particle particleIn = ParticlesIn[index];
     vec2 velocity = min(particleIn.Velocity * Speed, vec2(MaxSpeed));
     velocity += (Repulsion(particleIn.Position, Point));
-    ParticlesOut[index].Position = particleIn.Position + velocity * DeltaTime;
-    ParticlesOut[index].Velocity = particleIn.Velocity;
-    if (ParticlesOut[index].Position.x > 1.f)
+    particleOut.Position = particleIn.Position + velocity * DeltaTime;
+    particleOut.Velocity = particleIn.Velocity;
+    if (particleOut.Position.x > 1.f || particleOut.Position.x < -1.f)
     {
-        ParticlesOut[index].Position.x = -1.f;
+        //particleOut.Position.x = -1.f;
+        particleOut.Velocity.x *= -1.f; 
     }
-    if (ParticlesOut[index].Position.y > 1.f)
+    if (particleOut.Position.y > 1.f || particleOut.Position.y < -1.f)
     {
-        ParticlesOut[index].Position.y = -1.f;
+        //particleOut.Position.y = -1.f;
+        particleOut.Velocity.y *= -1.f;
     }
 }
