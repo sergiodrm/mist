@@ -85,7 +85,7 @@ namespace Mist
 
 	struct ShaderFileDescription
 	{
-		std::string Filepath;
+		tString Filepath;
 		tCompileOptions CompileOptions;
 	};
 
@@ -184,6 +184,33 @@ namespace Mist
 	struct tShaderParam
 	{
 		tFixedString<256> Name;
+		uint32_t SetIndex;
+		uint32_t Binding;
+	};
+
+	class tShaderParamAccess
+	{
+	public:
+		void SetupBatch(const RenderContext& context, const ShaderReflectionProperties& reflection, const tShaderDynamicBufferDescription* dynamicBuffers, uint32_t dynamicBuffersCount);
+		inline bool HasBatch() const { return m_batchId != UINT32_MAX; }
+
+		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t dataSize);
+		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
+		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
+
+		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture);
+		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount);
+
+		void MarkAsDirty(const RenderContext& context);
+		void FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout);
+
+		const tShaderParam& GetParam(const char* str) const;
+	protected:
+		void NewShaderParam(const char* name, bool isShared, uint32_t setIndex, uint32_t binding);
+
+	private:
+		uint32_t m_batchId = UINT32_MAX;
+		tMap<tString, tShaderParam> m_paramMap;
 	};
 
 	class ShaderProgram
@@ -207,29 +234,25 @@ namespace Mist
 		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size);
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
 		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
-		void SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
-		void SetTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount);
+		void BindTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
+		void BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount);
 		void FlushDescriptors(const RenderContext& context);
-		inline bool HasDescriptorSetBatched() const { return m_descriptorSetBatchIndex != UINT32_MAX; }
 
-		inline const tShaderParam GetParam(const char* paramName) const { check(m_paramMap.contains(paramName)); return m_paramMap.at(paramName); }
+		inline const tShaderParam GetParam(const char* paramName) const { return m_paramAccess.GetParam(paramName); }
 
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 
 		const GraphicsShaderProgramDescription& GetDescription() const { return m_description; }
 
 	private:
-		void NewShaderParam(const char* name, bool isShared);
 		bool _Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
 		GraphicsShaderProgramDescription m_description;
 		ShaderReflectionProperties m_reflectionProperties;
 		VkPipeline m_pipeline;
 		VkPipelineLayout m_pipelineLayout;
 		tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
-		uint32_t m_descriptorSetBatchIndex = UINT32_MAX;
 
-		// TODO use this map to find faster a param in SetDynamicBufferOffset.
-		tMap<tString, tShaderParam> m_paramMap;
+		tShaderParamAccess m_paramAccess;
 	};
 
 	class ComputeShader

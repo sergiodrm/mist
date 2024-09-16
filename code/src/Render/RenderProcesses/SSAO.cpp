@@ -111,7 +111,7 @@ namespace Mist
 		m_ssaoShader->UseProgram(renderContext);
 		m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
 		const Texture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
-		m_ssaoShader->SetTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(Texture*));
+		m_ssaoShader->BindTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(Texture*));
 		m_ssaoShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);
 		m_rt.EndPass(cmd);
@@ -121,7 +121,7 @@ namespace Mist
 		m_blurRT.BeginPass(cmd);
 		m_blurShader->UseProgram(renderContext);
 		const Texture* tex = m_rt.GetAttachment(0).Tex;
-		m_blurShader->SetTextureSlot(renderContext, 0, *tex);
+		m_blurShader->BindTextureSlot(renderContext, 0, *tex);
 		m_ssaoShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);
 		m_blurRT.EndPass(cmd);

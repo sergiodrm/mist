@@ -249,11 +249,11 @@ namespace Mist
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
 		m_renderTarget.BeginPass(cmd);
 		m_shader->UseProgram(renderContext);
-		m_shader->SetTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
-		m_shader->SetTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
-		m_shader->SetTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
-		m_shader->SetTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
-		m_shader->SetTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
+		m_shader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
+		m_shader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
+		m_shader->BindTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
+		m_shader->BindTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
+		m_shader->BindTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
 
 		// Use shared buffer for avoiding doing this here (?)
 		const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
@@ -278,7 +278,7 @@ namespace Mist
 			m_bloomEffect.TempRT.BeginPass(cmd);
 			m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
 			Texture* lightingFinalTexture = m_renderTarget.GetAttachment(0).Tex;
-			m_bloomEffect.ThresholdFilterShader->SetTextureSlot(renderContext, 0, *lightingFinalTexture);
+			m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
 			m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 			m_bloomEffect.TempRT.EndPass(cmd);
@@ -299,7 +299,7 @@ namespace Mist
 					textureInput = m_bloomEffect.HDRRT->GetAttachment(0).Tex;
 				else
 					textureInput = m_bloomEffect.RenderTargetArray[i - 1].GetAttachment(0).Tex;
-				m_bloomEffect.DownsampleShader->SetTextureSlot(renderContext, 0, *textureInput);
+				m_bloomEffect.DownsampleShader->BindTextureSlot(renderContext, 0, *textureInput);
 
 				uint32_t resolutionOffset = i * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, sizeof(glm::vec2));
 				m_bloomEffect.DownsampleShader->SetDynamicBufferOffset(renderContext, "u_BloomDownsampleParams", resolutionOffset);
@@ -333,7 +333,7 @@ namespace Mist
 				shader->UseProgram(renderContext);
 				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
 				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
-				shader->SetTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
+				shader->BindTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
 				shader->SetBufferData(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.FilterRadius, sizeof(m_bloomEffect.FilterRadius));
 				shader->FlushDescriptors(renderContext);
 				CmdDrawFullscreenQuad(cmd);
@@ -344,8 +344,8 @@ namespace Mist
 			BeginGPUEvent(renderContext, cmd, "Bloom mix");
 			m_bloomEffect.FinalTarget.BeginPass(cmd);
 			m_bloomEffect.MixShader->UseProgram(renderContext);
-			m_bloomEffect.MixShader->SetTextureSlot(renderContext, 0, *m_bloomEffect.HDRRT->GetAttachment(0).Tex);
-			m_bloomEffect.MixShader->SetTextureSlot(renderContext, 1, *m_bloomEffect.RenderTargetArray[0].GetAttachment(0).Tex);
+			m_bloomEffect.MixShader->BindTextureSlot(renderContext, 0, *m_bloomEffect.HDRRT->GetAttachment(0).Tex);
+			m_bloomEffect.MixShader->BindTextureSlot(renderContext, 1, *m_bloomEffect.RenderTargetArray[0].GetAttachment(0).Tex);
 			m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &m_bloomEffect.MixAlpha, sizeof(m_bloomEffect.MixAlpha));
 			m_bloomEffect.MixShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
@@ -359,7 +359,7 @@ namespace Mist
 		m_ldrRenderTarget.BeginPass(cmd);
 		m_hdrShader->UseProgram(renderContext);
 		m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
-		m_hdrShader->SetTextureSlot(renderContext, 0, *m_bloomEffect.FinalTarget.GetAttachment(0).Tex);
+		m_hdrShader->BindTextureSlot(renderContext, 0, *m_bloomEffect.FinalTarget.GetAttachment(0).Tex);
 		m_hdrShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);
 		m_ldrRenderTarget.EndPass(cmd);

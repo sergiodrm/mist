@@ -1283,7 +1283,7 @@ namespace Mist
 						uint32_t bufferOffset = materialPadding * drawData.MaterialIndex;
 						MaterialRenderData& mtl = *const_cast<MaterialRenderData*>(&m_materialRenderDataArray[lastMaterialIndex]);
 						const Texture** textures = const_cast<const Texture**>(&mtl.Textures[0]);
-						shader->SetTextureArraySlot(context, materialSetIndex, textures, 6);
+						shader->BindTextureArraySlot(context, materialSetIndex, textures, 6);
 						shader->SetDynamicBufferOffset(context, "u_material", bufferOffset);
 					}
 					shader->FlushDescriptors(context);

@@ -610,6 +610,293 @@ namespace Mist
 		return true;
 	}
 
+
+	void tShaderParamAccess::SetupBatch(const RenderContext& context, const ShaderReflectionProperties& reflection, const tShaderDynamicBufferDescription* dynamicBuffers, uint32_t dynamicBuffersCount)
+	{
+		check(m_batchId == UINT32_MAX);
+
+		// Frame context vars
+		RenderFrameContext* frameContextArray = context.FrameContextArray;
+		constexpr uint32_t frameContextCount = globals::MaxOverlappedFrames;
+
+		tArray<UniformBufferMemoryPool*, frameContextCount> memoryPoolArray;
+		for (uint32_t i = 0; i < frameContextCount; ++i)
+			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
+
+		uint32_t descriptionSize = (uint32_t)reflection.DescriptorSetInfoArray.size();
+		for (uint32_t i = 0; i < descriptionSize; ++i)
+		{
+			// TODO this shouldnt be dynamic. This is because DescriptorBuilder has private constructor.
+			tDynArray<DescriptorBuilder> builders;
+			for (uint32_t i = 0; i < frameContextCount; ++i)
+				builders.push_back(DescriptorBuilder::Create(*context.LayoutCache, *frameContextArray[i].DescriptorAllocator));
+
+			const ShaderDescriptorSetInfo& setInfo = reflection.DescriptorSetInfoArray[i];
+			uint32_t bindingCount = (uint32_t)setInfo.BindingArray.size();
+
+			// needs to store the buffer info structs because DescriptorBuilder uses pointers... it shouldnt be like that
+			tArray<VkDescriptorBufferInfo, 8> bufferInfoArray;
+			tStaticArray<uint32_t, 8> dynamicOffsets;
+			check(bindingCount < (uint32_t)bufferInfoArray.size());
+
+			bool generateSet = false;
+			for (uint32_t j = 0; j < bindingCount; ++j)
+			{
+				const ShaderBindingDescriptorInfo& binding = setInfo.BindingArray[j];
+				tStaticArray<uint32_t, 8> ids;
+				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
+				{
+					switch (binding.Type)
+					{
+					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+					{
+						// At the moment dont support array binding on shader resources;
+						check(binding.ArrayCount == 1);
+						check(dynamicBuffersCount && dynamicBuffers);
+						for (uint32_t propertyIndex = 0; propertyIndex < dynamicBuffersCount; ++propertyIndex)
+						{
+							const tShaderDynamicBufferDescription& dynamicDesc = dynamicBuffers[propertyIndex];
+							if (!strcmp(dynamicDesc.Name.c_str(), binding.Name.c_str()))
+							{
+								check(dynamicDesc.ElemCount > 0);
+								NewShaderParam(binding.Name.c_str(), dynamicDesc.IsShared, setInfo.SetIndex, binding.Binding);
+								const tShaderParam& param = GetParam(binding.Name.c_str());
+								const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
+								if (!mapInfo.Size)
+									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), dynamicDesc.ElemCount, binding.Size);
+								else
+								{
+									uint32_t totalSize = RenderContext_PadUniformMemoryOffsetAlignment(context, binding.Size * dynamicDesc.ElemCount);
+									check(totalSize == mapInfo.Size);
+								}
+								break;
+							}
+						}
+						const tShaderParam& param = GetParam(binding.Name.c_str());
+						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
+						dynamicOffsets.Resize(binding.Binding + 1);
+						dynamicOffsets[binding.Binding] = 0;
+						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
+						generateSet = true;
+					}
+					break;
+					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+					{
+						// At the moment dont support array binding on shader resources
+						check(binding.ArrayCount == 1);
+						NewShaderParam(binding.Name.c_str(), false, setInfo.SetIndex, binding.Binding);
+
+						const tShaderParam& param = GetParam(binding.Name.c_str());
+						check(binding.Size > 0);
+						const UniformBufferMemoryPool::ItemMapInfo info = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
+						check(info.Size == 0);
+						memoryPoolArray[frameContextIndex]->AllocUniform(context, param.Name.CStr(), binding.Size);
+						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
+						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
+						generateSet = true;
+					}
+					break;
+					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+						// created on demmand.
+						check(bindingCount == 1);
+						break;
+					default:
+						break;
+					}
+
+				}
+			}
+			if (generateSet)
+			{
+				bool batchGenerated = m_batchId != UINT32_MAX;
+				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
+				{
+					// Get frame context and batch
+					tDescriptorSetCache& setCache = frameContextArray[frameContextIndex].DescriptorSetCache;
+					uint32_t batchIndex = !batchGenerated ? setCache.NewBatch() : m_batchId;
+					// Batch must match with the others frame contexts
+					check(m_batchId == UINT32_MAX || m_batchId == batchIndex);
+					m_batchId = batchIndex;
+					tDescriptorSetBatch& batch = setCache.GetBatch(m_batchId);
+
+					// New persistent descriptor set for buffers
+					uint32_t batchSetIndex = setCache.NewPersistentDescriptorSet();
+
+					// fill batch data
+					batch.PersistentDescriptors.Resize(setInfo.SetIndex + 1);
+					batch.PersistentDescriptors[setInfo.SetIndex].Dirty = true;
+					batch.PersistentDescriptors[setInfo.SetIndex].DynamicOffsets = dynamicOffsets;
+					batch.PersistentDescriptors[setInfo.SetIndex].SetIndex = batchSetIndex;
+
+					// Generate set with the bindings
+					VkDescriptorSet& set = setCache.GetPersistentDescriptorSet(batchSetIndex);
+					builders[frameContextIndex].Build(context, set);
+				}
+				builders.clear();
+			}
+		}
+	}
+
+	void tShaderParamAccess::SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t dataSize)
+	{
+		check(HasBatch());
+		check(m_paramMap.contains(bufferName) && data && dataSize);
+		const tShaderParam& param = m_paramMap.at(bufferName);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		frameContext.GlobalBuffer.SetUniform(context, param.Name.CStr(), data, dataSize);
+	}
+
+	void tShaderParamAccess::SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset)
+	{
+		check(HasBatch());
+		check(m_paramMap.contains(bufferName) && data && elemSize && elemCount);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		const tShaderParam& param = m_paramMap.at(bufferName);
+		frameContext.GlobalBuffer.SetDynamicUniform(context, param.Name.CStr(), data, elemCount, elemSize, elemIndexOffset);
+	}
+
+	void tShaderParamAccess::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)
+	{
+		check(HasBatch());
+		RenderFrameContext& frameContext = renderContext.GetFrameContext();
+		tDescriptorSetBatch& batch = frameContext.DescriptorSetCache.GetBatch(m_batchId);
+
+		const tShaderParam& param = GetParam(bufferName);
+		check(batch.PersistentDescriptors.GetSize() > param.SetIndex);
+		tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[param.SetIndex];
+		check(param.Binding < setUnit.DynamicOffsets.GetSize());
+		setUnit.DynamicOffsets[param.Binding] = offset;
+		setUnit.Dirty = true;
+	}
+
+	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture)
+	{
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
+
+		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
+		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
+		VkDescriptorImageInfo imageInfo =
+		{
+			.sampler = texture.GetSampler(),
+			.imageView = texture.GetView(0),
+			.imageLayout = IsDepthFormat(texture.GetDescription().Format)
+				? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		};
+		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
+			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, set);
+
+		RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, &set, 1, slot, nullptr, 0);
+	}
+
+	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount)
+	{
+		check(textures && textureCount);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
+
+		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
+		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
+
+		check(textureCount <= 8);
+		tArray<VkDescriptorImageInfo, 8> infos;
+		for (uint32_t i = 0; i < textureCount; ++i)
+		{
+			check(textures[i]);
+			infos[i].imageLayout = IsDepthFormat(textures[i]->GetDescription().Format) 
+				? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			infos[i].imageView = textures[i]->GetView(0);
+			infos[i].sampler = textures[i]->GetSampler();
+		}
+		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
+			.BindImage(0, infos.data(), textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, set);
+		RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, &set, 1, slot, nullptr, 0);
+	}
+
+	void tShaderParamAccess::MarkAsDirty(const RenderContext& context)
+	{
+		if (!HasBatch())
+			return;
+		// Mark as dirty the default descriptor sets
+		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
+		tDescriptorSetBatch& batch = setCache.GetBatch(m_batchId);
+		for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
+		{
+			tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
+			if (setUnit.SetIndex != UINT32_MAX)
+				setUnit.Dirty = true;
+		}
+	}
+
+	void tShaderParamAccess::FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout)
+	{
+		if (!HasBatch())
+			return;
+
+		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
+
+		tDescriptorSetBatch& batch = setCache.GetBatch(m_batchId);
+
+		tStaticArray<VkDescriptorSet, 8> setsToBind;
+		tStaticArray<uint32_t, 16> dynamicOffsets;
+		uint32_t firstSet = UINT32_MAX;
+		uint32_t lastSet = 0;
+		check(setsToBind.GetCapacity() >= batch.PersistentDescriptors.GetSize());
+		for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
+		{
+			tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
+			if (setUnit.Dirty)
+			{
+				check(setUnit.SetIndex != UINT32_MAX);
+				if (!setsToBind.IsEmpty() && i - lastSet > 1)
+				{
+					RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, setsToBind.GetData(), setsToBind.GetSize(),
+						firstSet, dynamicOffsets.GetSize() ? dynamicOffsets.GetData() : nullptr, dynamicOffsets.GetSize());
+					firstSet = UINT32_MAX;
+					setsToBind.Clear();
+					dynamicOffsets.Clear();
+				}
+				lastSet = i;
+				firstSet = __min(firstSet, i);
+
+				uint32_t setIndex = setUnit.SetIndex;
+				VkDescriptorSet set = setCache.GetPersistentDescriptorSet(setIndex);
+				setsToBind.Push(set);
+				for (uint32_t j = 0; j < setUnit.DynamicOffsets.GetSize(); ++j)
+					dynamicOffsets.Push(setUnit.DynamicOffsets[j]);
+				setUnit.Dirty = false;
+			}
+		}
+		if (!setsToBind.IsEmpty())
+			RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, setsToBind.GetData(), setsToBind.GetSize(),
+				firstSet, dynamicOffsets.GetSize() ? dynamicOffsets.GetData() : nullptr, dynamicOffsets.GetSize());
+	}
+
+	const tShaderParam& tShaderParamAccess::GetParam(const char* str) const
+	{
+		check(m_paramMap.contains(str));
+		return m_paramMap.at(str);
+	}
+
+	void tShaderParamAccess::NewShaderParam(const char* name, bool isShared, uint32_t setIndex, uint32_t binding)
+	{
+		if (!m_paramMap.contains(name))
+		{
+			tShaderParam param;
+			if (isShared)
+				param.Name = name;
+			else
+				param.Name.Fmt("%s_%d", name, m_batchId);
+			param.Binding = binding;
+			param.SetIndex = setIndex;
+			m_paramMap[name] = param;
+		}
+	}
+
 	class RenderPipelineBuilder
 	{
 	public:
@@ -745,25 +1032,6 @@ namespace Mist
 		return program;
 	}
 
-	void ShaderProgram::NewShaderParam(const char* name, bool isShared)
-	{
-		if (!m_paramMap.contains(name))
-		{
-			tShaderParam param;
-			if (isShared)
-			{
-				param.Name = name;
-			}
-			else
-			{
-				char buff[256];
-				GenerateShaderParamKey(buff, name, m_description.VertexShaderFile, m_description.FragmentShaderFile);
-				param.Name = buff;
-			}
-			m_paramMap[name] = param;
-		}
-	}
-
 	bool ShaderProgram::_Create(const RenderContext& context, const GraphicsShaderProgramDescription& description)
 	{
 		check(!IsLoaded());
@@ -880,126 +1148,7 @@ namespace Mist
 
 	void ShaderProgram::SetupDescriptors(const RenderContext& context)
 	{
-		check(m_descriptorSetBatchIndex == UINT32_MAX);
-
-		// Frame context vars
-		RenderFrameContext* frameContextArray = context.FrameContextArray;
-		constexpr uint32_t frameContextCount = globals::MaxOverlappedFrames;
-
-		tArray<UniformBufferMemoryPool*, frameContextCount> memoryPoolArray;
-		for (uint32_t i = 0; i < frameContextCount; ++i)
-			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
-
-		uint32_t descriptionSize = (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size();
-		for (uint32_t i = 0; i < descriptionSize; ++i)
-		{
-			// TODO this shouldnt be dynamic. This is because DescriptorBuilder has private constructor.
-			tDynArray<DescriptorBuilder> builders;
-			for (uint32_t i = 0; i < frameContextCount; ++i)
-				builders.push_back(DescriptorBuilder::Create(*context.LayoutCache, *frameContextArray[i].DescriptorAllocator));
-
-			const ShaderDescriptorSetInfo& setInfo = m_reflectionProperties.DescriptorSetInfoArray[i];
-			uint32_t bindingCount = (uint32_t)setInfo.BindingArray.size();
-
-			// needs to store the buffer info structs because DescriptorBuilder uses pointers... it shouldnt be like that
-			tArray<VkDescriptorBufferInfo, 8> bufferInfoArray;
-			tStaticArray<uint32_t, 8> dynamicOffsets;
-			check(bindingCount < (uint32_t)bufferInfoArray.size());
-
-			bool generateSet = false;
-			for (uint32_t j = 0; j < bindingCount; ++j)
-			{
-				const ShaderBindingDescriptorInfo& binding = setInfo.BindingArray[j];
-				tStaticArray<uint32_t, 8> ids;
-				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
-				{
-					switch (binding.Type)
-					{
-					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-					{
-						// At the moment dont support array binding on shader resources;
-						check(binding.ArrayCount == 1);
-						for (uint32_t propertyIndex = 0; propertyIndex < (uint32_t)m_description.DynamicBuffers.size(); ++propertyIndex)
-						{
-							const tShaderDynamicBufferDescription& dynamicDesc = m_description.DynamicBuffers[propertyIndex];
-							if (!strcmp(dynamicDesc.Name.c_str(), binding.Name.c_str()))
-							{
-								check(dynamicDesc.ElemCount > 0);
-								NewShaderParam(binding.Name.c_str(), dynamicDesc.IsShared);
-								const tShaderParam& param = GetParam(binding.Name.c_str());
-								const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
-								if (!mapInfo.Size)
-									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), dynamicDesc.ElemCount, binding.Size);
-								else
-								{
-									uint32_t totalSize = RenderContext_PadUniformMemoryOffsetAlignment(context, binding.Size * dynamicDesc.ElemCount);
-									check(totalSize == mapInfo.Size);
-								}
-								break;
-							}
-						}
-						const tShaderParam& param = GetParam(binding.Name.c_str());
-						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
-						dynamicOffsets.Resize(binding.Binding + 1);
-						dynamicOffsets[binding.Binding] = 0;
-						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
-						generateSet = true;
-					}
-						break;
-					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-					{
-						// At the moment dont support array binding on shader resources
-						check(binding.ArrayCount == 1);
-						NewShaderParam(binding.Name.c_str(), false);
-						const tShaderParam& param = GetParam(binding.Name.c_str());
-						check(binding.Size > 0);
-						const UniformBufferMemoryPool::ItemMapInfo info = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
-						check(info.Size == 0);
-						memoryPoolArray[frameContextIndex]->AllocUniform(context, param.Name.CStr(), binding.Size);
-						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
-						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
-						generateSet = true;
-					}
-					break;
-					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-						// created on demmand.
-						check(bindingCount == 1);
-						break;
-					default:
-						break;
-					}
-
-				}
-			}
-			if (generateSet)
-			{
-				bool batchGenerated = m_descriptorSetBatchIndex != UINT32_MAX;
-				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
-				{
-					// Get frame context and batch
-					tDescriptorSetCache& setCache = frameContextArray[frameContextIndex].DescriptorSetCache;
-					uint32_t batchIndex = !batchGenerated ? setCache.NewBatch() : m_descriptorSetBatchIndex;
-					// Batch must match with the others frame contexts
-					check(m_descriptorSetBatchIndex == UINT32_MAX || m_descriptorSetBatchIndex == batchIndex);
-					m_descriptorSetBatchIndex = batchIndex;
-					tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
-
-					// New persistent descriptor set for buffers
-					uint32_t batchSetIndex = setCache.NewPersistentDescriptorSet();
-
-					// fill batch data
-					batch.PersistentDescriptors.Resize(setInfo.SetIndex + 1);
-					batch.PersistentDescriptors[setInfo.SetIndex].Dirty = true;
-					batch.PersistentDescriptors[setInfo.SetIndex].DynamicOffsets = dynamicOffsets;
-					batch.PersistentDescriptors[setInfo.SetIndex].SetIndex = batchSetIndex;
-
-					// Generate set with the bindings
-					VkDescriptorSet& set = setCache.GetPersistentDescriptorSet(batchSetIndex);
-					builders[frameContextIndex].Build(context, set);
-				}
-				builders.clear();
-			}
-		}	
+		m_paramAccess.SetupBatch(context, m_reflectionProperties, m_description.DynamicBuffers.data(), (uint32_t)m_description.DynamicBuffers.size());
 	}
 
 	void ShaderProgram::UseProgram(CommandBuffer cmd) const
@@ -1012,19 +1161,7 @@ namespace Mist
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
-
-		if (HasDescriptorSetBatched())
-		{
-			// Mark as dirty the default descriptor sets
-			tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
-			tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
-			for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
-			{
-				tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
-				if (setUnit.SetIndex != UINT32_MAX)
-					setUnit.Dirty = true;
-			}
-		}
+		m_paramAccess.MarkAsDirty(context);
 	}
 
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
@@ -1034,141 +1171,32 @@ namespace Mist
 
 	void ShaderProgram::SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size)
 	{
-		check(HasDescriptorSetBatched());
-		check(m_paramMap.contains(bufferName) && data && size);
-		const tShaderParam& param = m_paramMap.at(bufferName);
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		frameContext.GlobalBuffer.SetUniform(context, param.Name.CStr(), data, size);
+		m_paramAccess.SetBufferData(context, bufferName, data, size);
 	}
 
 	void ShaderProgram::SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset)
 	{
-		check(HasDescriptorSetBatched());
-		check(m_paramMap.contains(bufferName) && data && elemSize && elemCount);
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		const tShaderParam& param = m_paramMap.at(bufferName);
-		frameContext.GlobalBuffer.SetDynamicUniform(context, param.Name.CStr(), data, elemCount, elemSize, elemIndexOffset);
+		m_paramAccess.SetDynamicBufferData(context, bufferName, data, elemSize, elemCount, elemIndexOffset);
 	}
 
 	void ShaderProgram::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)
 	{
-		check(HasDescriptorSetBatched());
-		RenderFrameContext& frameContext = renderContext.GetFrameContext();
-		tDescriptorSetBatch& batch = frameContext.DescriptorSetCache.GetBatch(m_descriptorSetBatchIndex);
-
-		uint32_t descriptorCount = (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size();
-		for (uint32_t i = 0; i < descriptorCount; ++i)
-		{
-			const ShaderDescriptorSetInfo& setInfo = m_reflectionProperties.DescriptorSetInfoArray[i];
-			uint32_t bindingCount = (uint32_t)setInfo.BindingArray.size();
-			for (uint32_t j = 0; j < bindingCount; ++j)
-			{
-				const ShaderBindingDescriptorInfo& bindingInfo = setInfo.BindingArray[j];
-				if (!strcmp(bindingInfo.Name.c_str(), bufferName))
-				{
-					check(batch.PersistentDescriptors.GetSize() > setInfo.SetIndex);
-					tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[setInfo.SetIndex];
-					check(bindingInfo.Binding < setUnit.DynamicOffsets.GetSize());
-					setUnit.DynamicOffsets[bindingInfo.Binding] = offset;
-					setUnit.Dirty = true;
-					return;
-				}
-			}
-		}
-		check(false);
+		m_paramAccess.SetDynamicBufferOffset(renderContext, bufferName, offset);
 	}
 
-	void ShaderProgram::SetTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture)
+	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture)
 	{
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
-
-		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
-		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
-		VkDescriptorImageInfo imageInfo = 
-		{ 
-			.sampler = texture.GetSampler(), 
-			.imageView = texture.GetView(0), 
-			.imageLayout = IsDepthFormat(texture.GetDescription().Format)
-				? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		};
-		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
-			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, set);
-
-		BindDescriptorSets(frameContext.GraphicsCommandContext.CommandBuffer, &set, 1, slot, nullptr, 0);
+		m_paramAccess.BindTextureSlot(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, slot, texture);
 	}
 
-	void ShaderProgram::SetTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount)
+	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount)
 	{
-		check(textureArray && textureCount);
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
-
-		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
-		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
-
-		check(textureCount <= 8);
-		tArray<VkDescriptorImageInfo, 8> infos;
-		for (uint32_t i = 0; i < textureCount; ++i)
-		{
-			check(textureArray[i]);
-			infos[i].imageLayout = IsDepthFormat(textureArray[i]->GetDescription().Format) 
-				? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-			infos[i].imageView = textureArray[i]->GetView(0);
-			infos[i].sampler = textureArray[i]->GetSampler();
-		}
-		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
-			.BindImage(0, infos.data(), textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, set);
-		BindDescriptorSets(frameContext.GraphicsCommandContext.CommandBuffer, &set, 1, slot);
+		m_paramAccess.BindTextureArraySlot(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, slot, textureArray, textureCount);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
 	{
-		if (!HasDescriptorSetBatched())
-			return;
-
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
-		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
-
-		tDescriptorSetBatch& batch = setCache.GetBatch(m_descriptorSetBatchIndex);
-
-		tStaticArray<VkDescriptorSet, 8> setsToBind;
-		tStaticArray<uint32_t, 16> dynamicOffsets;
-		uint32_t firstSet = UINT32_MAX;
-		uint32_t lastSet = 0;
-		check(setsToBind.GetCapacity() >= batch.PersistentDescriptors.GetSize());
-		for (uint32_t i = 0; i < batch.PersistentDescriptors.GetSize(); ++i)
-		{
-			tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[i];
-			if (setUnit.Dirty)
-			{
-				check(setUnit.SetIndex != UINT32_MAX);
-				if (!setsToBind.IsEmpty() && i - lastSet > 1)
-				{
-					BindDescriptorSets(cmd, setsToBind.GetData(), setsToBind.GetSize(), firstSet,
-						dynamicOffsets.GetSize() > 0 ? dynamicOffsets.GetData() : nullptr, dynamicOffsets.GetSize());
-					firstSet = UINT32_MAX;
-					setsToBind.Clear();
-					dynamicOffsets.Clear();
-				}
-				lastSet = i;
-				firstSet = __min(firstSet, i);
-
-				uint32_t setIndex = setUnit.SetIndex;
-				VkDescriptorSet set = setCache.GetPersistentDescriptorSet(setIndex);
-				setsToBind.Push(set);
-				for (uint32_t j = 0; j < setUnit.DynamicOffsets.GetSize(); ++j)
-					dynamicOffsets.Push(setUnit.DynamicOffsets[j]);
-				setUnit.Dirty = false;
-			}
-		}
-		if (!setsToBind.IsEmpty())
-			BindDescriptorSets(cmd, setsToBind.GetData(), setsToBind.GetSize(), firstSet,
-				dynamicOffsets.GetSize() > 0 ? dynamicOffsets.GetData() : nullptr, dynamicOffsets.GetSize());
+		m_paramAccess.FlushBatch(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout);
 	}
 
 	ComputeShader* ComputeShader::Create(const RenderContext& context, const ComputeShaderProgramDescription& description)
