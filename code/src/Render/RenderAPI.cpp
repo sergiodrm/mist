@@ -65,15 +65,36 @@ namespace Mist
             vkCmdDispatch(cmd, groupCountX, groupCountY, groupCountZ);
         }
 
-        void CmdBindGraphicsPipeline(CommandBuffer cmd, Pipeline pipeline)
-        {
-			vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        void CmdBindPipeline(CommandBuffer cmd, Pipeline pipeline, VkPipelineBindPoint bindPoint)
+		{
+			vkCmdBindPipeline(cmd, bindPoint, pipeline);
 			++Profiling::GRenderStats.ShaderProgramCount;
         }
+
+        void CmdBindDescriptorSet(CommandBuffer cmd, PipelineLayout pipelineLayout, VkPipelineBindPoint bindPoint, const DescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsets, uint32_t dynamicOffsetCount)
+        {
+			vkCmdBindDescriptorSets(cmd, bindPoint, pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsets);
+			++Profiling::GRenderStats.SetBindingCount;
+        }
+
+        void CmdBindGraphicsPipeline(CommandBuffer cmd, Pipeline pipeline)
+		{
+            CmdBindPipeline(cmd, pipeline, VK_PIPELINE_BIND_POINT_GRAPHICS);
+        }
+
         void CmdBindGraphicsDescriptorSet(CommandBuffer cmd, PipelineLayout pipelineLayout, const DescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsets, uint32_t dynamicOffsetCount)
         {
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsets);
-            ++Profiling::GRenderStats.SetBindingCount;
+            CmdBindDescriptorSet(cmd, pipelineLayout, VK_PIPELINE_BIND_POINT_GRAPHICS, setArray, setCount, firstSet, dynamicOffsets, dynamicOffsetCount);
+        }
+
+        void CmdBindComputePipeline(CommandBuffer cmd, Pipeline pipeline)
+        {
+            CmdBindPipeline(cmd, pipeline, VK_PIPELINE_BIND_POINT_COMPUTE);
+        }
+
+        void CmdBindComputeDescriptorSet(CommandBuffer cmd, PipelineLayout pipelineLayout, const DescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsets, uint32_t dynamicOffsetCount)
+        {
+            CmdBindDescriptorSet(cmd, pipelineLayout, VK_PIPELINE_BIND_POINT_COMPUTE, setArray, setCount, firstSet, dynamicOffsets, dynamicOffsetCount);
         }
 
         void CmdSetViewport(CommandBuffer cmd, float width, float height, float minDepth, float maxDepth, float x, float y, uint32_t viewportIndex)
