@@ -418,9 +418,9 @@ namespace Mist
 				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
 
 				char buff[32];
-				sprintf(buff, "%3.2f fps", lastFps);
+				sprintf_s(buff, "%3.2f fps", lastFps);
 				char buff2[32];
-				sprintf(buff2, "%.4f ms", lastMs);
+				sprintf_s(buff2, "%.4f ms", lastMs);
 				ImGui::Begin("fps", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 				ImGui::Text("Min [%3.2f fps] Max [%3.2f fps] Mean [%3.2f fps] Last [%3.2f fps]", minFps, maxFps, meanFps, lastFps);
 				ImVec2 availRegion = ImGui::GetContentRegionAvail();
