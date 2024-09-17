@@ -165,7 +165,7 @@ namespace Mist
 		}
 
 		// Init shader
-		GraphicsShaderProgramDescription shaderDesc;
+		tShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile.Filepath= globals::PostProcessVertexShader;
 		shaderDesc.FragmentShaderFile.Filepath = globals::PostProcessFragmentShader;
 		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
@@ -210,7 +210,7 @@ namespace Mist
 
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{
-		GraphicsShaderProgramDescription shaderDesc;
+		tShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("skybox.vert");
 		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
@@ -648,7 +648,7 @@ namespace Mist
 					shaderArray[i]->Reload(m_renderContext);
 				}
 				ImGui::NextColumn();
-				const GraphicsShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
+				const tShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
 				ImGui::Text("%s", shaderDesc.VertexShaderFile.Filepath.c_str());
 				ImGui::NextColumn();
 				ImGui::Text("%s", shaderDesc.FragmentShaderFile.Filepath.c_str());
@@ -664,11 +664,6 @@ namespace Mist
 			{
 				m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
 				m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
-			}
-			for (uint32_t i = 0; i < m_shaderDb.GetComputeShaderCount(); ++i)
-			{
-				m_shaderDb.GetComputeShaderArray()[i]->Destroy(m_renderContext);
-				m_shaderDb.GetComputeShaderArray()[i]->Reload(m_renderContext);
 			}
 		}
 		ImGui::End();

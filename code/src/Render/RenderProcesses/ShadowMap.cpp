@@ -37,7 +37,7 @@ namespace Mist
 
 	void ShadowMapPipeline::Init(const RenderContext& renderContext, const RenderTarget* renderTarget)
 	{
-		GraphicsShaderProgramDescription shaderDesc;
+		tShaderProgramDescription shaderDesc;
 
 		// CreatePipeline
 		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();

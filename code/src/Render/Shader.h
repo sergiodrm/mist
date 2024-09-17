@@ -141,6 +141,12 @@ namespace Mist
 		ShaderReflectionProperties m_reflectionProperties;
 	};
 
+	enum class tShaderType
+	{
+		Graphics,
+		Compute
+	};
+
 	struct tShaderDynamicBufferDescription
 	{
 		bool IsShared = true;
@@ -148,11 +154,13 @@ namespace Mist
 		tString Name;
 	};
 
-	struct GraphicsShaderProgramDescription
+	struct tShaderProgramDescription
 	{
+		tShaderType Type = tShaderType::Graphics;
 		/// Shader files
 		ShaderFileDescription VertexShaderFile;
 		ShaderFileDescription FragmentShaderFile;
+		ShaderFileDescription ComputeShaderFile;
 
 		// Pipeline config
 		uint32_t SubpassIndex = 0;
@@ -169,16 +177,6 @@ namespace Mist
 		/// Use to specify dynamic uniform buffers.
 		tDynArray<VkPushConstantRange> PushConstantArray;
 		tDynArray<tShaderDynamicBufferDescription> DynamicBuffers;
-	};
-
-	struct ComputeShaderProgramDescription
-	{
-		ShaderFileDescription ComputeShaderFile;
-
-		/// Leave empty to run shader reflexion on shader file content.
-		/// Use to specify dynamic uniform buffers.
-		tDynArray<VkPushConstantRange> PushConstantArray;
-		tDynArray<tString> DynamicBuffers;
 	};
 
 	struct tShaderParam
@@ -218,7 +216,7 @@ namespace Mist
 	public:
 		ShaderProgram();
 
-		static ShaderProgram* Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
+		static ShaderProgram* Create(const RenderContext& context, const tShaderProgramDescription& description);
 
 		void Destroy(const RenderContext& context);
 		bool Reload(const RenderContext& context);
@@ -242,37 +240,22 @@ namespace Mist
 
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 
-		const GraphicsShaderProgramDescription& GetDescription() const { return m_description; }
+		const tShaderProgramDescription& GetDescription() const { return m_description; }
 
 	private:
-		bool _Create(const RenderContext& context, const GraphicsShaderProgramDescription& description);
-		GraphicsShaderProgramDescription m_description;
+		VkCommandBuffer GetCommandBuffer(const RenderContext& context) const;
+		bool _Create(const RenderContext& context, const tShaderProgramDescription& description);
+		bool _ReloadGraphics(const RenderContext& context);
+		bool _ReloadCompute(const RenderContext& context);
+		tShaderProgramDescription m_description;
 		ShaderReflectionProperties m_reflectionProperties;
 		VkPipeline m_pipeline;
 		VkPipelineLayout m_pipelineLayout;
+		VkPipelineBindPoint m_bindPoint;
 		tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
 
 		tShaderParamAccess m_paramAccess;
 	};
-
-	class ComputeShader
-	{
-	public:
-		static ComputeShader* Create(const RenderContext& context, const ComputeShaderProgramDescription& description);
-
-		void Destroy(const RenderContext& context);
-		bool Reload(const RenderContext& context);
-		inline const ComputeShaderProgramDescription& GetDescription() const { return m_description; }
-
-		void UseProgram(CommandBuffer cmd) const;
-		void BindDescriptorSets(CommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
-
-	private:
-		ComputeShaderProgramDescription m_description;
-		VkPipeline m_pipeline;
-		VkPipelineLayout m_pipelineLayout;
-	};
-
 
 	class ShaderFileDB
 	{
@@ -280,7 +263,6 @@ namespace Mist
 		void Init(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
-		void AddShaderProgram(const RenderContext& context, ComputeShader* computeShader);
 		ShaderProgram* FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const;
 		ShaderProgram* FindShaderProgram(const ShaderFileDescription& fileDesc) const;
 		ShaderProgram* FindShaderProgram(const char* key) const;
@@ -288,12 +270,9 @@ namespace Mist
 
 		ShaderProgram** GetShaderArray() { return m_shaderArray.data(); }
 		uint32_t GetShaderCount() const { return (uint32_t)m_shaderArray.size(); }
-		ComputeShader** GetComputeShaderArray() { return m_computeShaderArray.data(); }
-		uint32_t GetComputeShaderCount() const { return (uint32_t)m_computeShaderArray.size(); }
 
 	private:
 		tDynArray<ShaderProgram*> m_shaderArray;
-		tDynArray<ComputeShader*> m_computeShaderArray;
 		tMap<tString, uint32_t> m_indexMap;
 	};
 }

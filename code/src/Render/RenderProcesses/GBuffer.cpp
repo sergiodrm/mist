@@ -158,7 +158,7 @@ namespace Mist
 	void GBuffer::InitPipeline(const RenderContext& renderContext)
 	{
 		// MRT pipeline
-		GraphicsShaderProgramDescription shaderDesc;
+		tShaderProgramDescription shaderDesc;
 
 		tShaderDynamicBufferDescription modelDynDesc;
 		modelDynDesc.Name = "u_model";

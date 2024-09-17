@@ -1023,7 +1023,7 @@ namespace Mist
 		, m_pipelineLayout(VK_NULL_HANDLE)
 	{	}
 
-	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const GraphicsShaderProgramDescription& description)
+	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const tShaderProgramDescription& description)
 	{
 		ShaderProgram* program = new ShaderProgram();
 		check(program->_Create(context, description));
@@ -1032,25 +1032,26 @@ namespace Mist
 		return program;
 	}
 
-	bool ShaderProgram::_Create(const RenderContext& context, const GraphicsShaderProgramDescription& description)
+	VkCommandBuffer ShaderProgram::GetCommandBuffer(const RenderContext& context) const
+	{
+		switch (m_description.Type)
+		{
+		case tShaderType::Graphics: return context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		case tShaderType::Compute: return context.GetFrameContext().ComputeCommandContext.CommandBuffer;
+		}
+		check(false);
+		return VK_NULL_HANDLE;
+	}
+
+	bool ShaderProgram::_Create(const RenderContext& context, const tShaderProgramDescription& description)
 	{
 		check(!IsLoaded());
 		m_description = description;
 		return Reload(context);
 	}
 
-	void ShaderProgram::Destroy(const RenderContext& context)
+	bool ShaderProgram::_ReloadGraphics(const RenderContext& context)
 	{
-		check(IsLoaded());
-		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
-		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
-		m_pipeline = VK_NULL_HANDLE;
-		m_pipelineLayout = VK_NULL_HANDLE;
-	}
-
-	bool ShaderProgram::Reload(const RenderContext& context)
-	{
-		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
 		check(!m_description.VertexShaderFile.Filepath.empty() || !m_description.FragmentShaderFile.Filepath.empty());
 		check(m_description.RenderTarget);
 		RenderPipelineBuilder builder(context);
@@ -1067,7 +1068,7 @@ namespace Mist
 		builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
 		builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
 		builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
-		builder.Scissor.offset = {0, 0};
+		builder.Scissor.offset = { 0, 0 };
 		if (!m_description.DynamicStates.empty())
 		{
 			builder.DynamicStates.resize(m_description.DynamicStates.size());
@@ -1142,8 +1143,83 @@ namespace Mist
 		SetVkObjectName(context, &m_pipeline, VK_OBJECT_TYPE_PIPELINE, vkName);
 		sprintf_s(vkName, "PipelineLayout_(%s)(%s)", buff[0], buff[1]);
 		SetVkObjectName(context, &m_pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, vkName);
-
 		return true;
+	}
+
+	bool ShaderProgram::_ReloadCompute(const RenderContext& context)
+	{
+		check(!m_description.ComputeShaderFile.Filepath.empty());
+
+		VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
+		ShaderCompiler compiler(context);
+		compiler.ProcessShaderFile(m_description.ComputeShaderFile.Filepath.c_str(), stage, m_description.ComputeShaderFile.CompileOptions);
+
+		for (uint32_t i = 0; i < (uint32_t)m_description.DynamicBuffers.size(); ++i)
+			compiler.SetUniformBufferAsDynamic(m_description.DynamicBuffers[i].Name.c_str());
+		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
+
+		VkShaderModule module = compiler.GetCompiledModule(stage);
+		check(module != VK_NULL_HANDLE);
+
+		VkPipelineShaderStageCreateInfo shaderStageInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr };
+		shaderStageInfo.module = module;
+		shaderStageInfo.stage = stage;
+		shaderStageInfo.pName = "main";
+		shaderStageInfo.flags = 0;
+
+		VkPipelineLayoutCreateInfo layoutInfo{ .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, .pNext = nullptr };
+		layoutInfo.flags = 0;
+		layoutInfo.setLayoutCount = compiler.GetDescriptorSetLayoutCount();
+		layoutInfo.pSetLayouts = compiler.GetDescriptorSetLayoutArray();
+		if (m_description.PushConstantArray.empty())
+		{
+			layoutInfo.pushConstantRangeCount = (uint32_t)m_description.PushConstantArray.size();
+			layoutInfo.pPushConstantRanges = m_description.PushConstantArray.data();
+		}
+		else
+		{
+			layoutInfo.pushConstantRangeCount = compiler.GetPushConstantCount();
+			layoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
+		}
+
+		vkcheck(vkCreatePipelineLayout(context.Device, &layoutInfo, nullptr, &m_pipelineLayout));
+		check(m_pipelineLayout != VK_NULL_HANDLE);
+
+		VkComputePipelineCreateInfo computeInfo{ .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, .pNext = nullptr };
+		computeInfo.layout = m_pipelineLayout;
+		computeInfo.stage = shaderStageInfo;
+		computeInfo.flags = 0;
+		vkcheck(vkCreateComputePipelines(context.Device, nullptr, 1, &computeInfo, nullptr, &m_pipeline));
+		check(m_pipeline != VK_NULL_HANDLE);
+		return true;
+	}
+
+	void ShaderProgram::Destroy(const RenderContext& context)
+	{
+		check(IsLoaded());
+		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
+		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
+		m_pipeline = VK_NULL_HANDLE;
+		m_pipelineLayout = VK_NULL_HANDLE;
+	}
+
+	bool ShaderProgram::Reload(const RenderContext& context)
+	{
+		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
+		switch (m_description.Type)
+		{
+		case tShaderType::Graphics:
+			m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+			return _ReloadGraphics(context);
+			break;
+		case tShaderType::Compute:
+			m_bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+			return _ReloadCompute(context);
+			break;
+		default:
+			check(false);
+		}
+		return false;
 	}
 
 	void ShaderProgram::SetupDescriptors(const RenderContext& context)
@@ -1153,20 +1229,18 @@ namespace Mist
 
 	void ShaderProgram::UseProgram(CommandBuffer cmd) const
 	{
-		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
+		RenderAPI::CmdBindPipeline(cmd, m_pipeline, m_bindPoint);
 	}
 
 	void ShaderProgram::UseProgram(const RenderContext& context)
 	{
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
-		RenderAPI::CmdBindGraphicsPipeline(cmd, m_pipeline);
 		m_paramAccess.MarkAsDirty(context);
+		RenderAPI::CmdBindPipeline(GetCommandBuffer(context), m_pipeline, m_bindPoint);
 	}
 
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
-		RenderAPI::CmdBindGraphicsDescriptorSet(cmd, m_pipelineLayout, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
+		RenderAPI::CmdBindDescriptorSet(cmd, m_pipelineLayout, m_bindPoint, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
 	}
 
 	void ShaderProgram::SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size)
@@ -1186,18 +1260,19 @@ namespace Mist
 
 	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture)
 	{
-		m_paramAccess.BindTextureSlot(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, slot, texture);
+		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, texture);
 	}
 
 	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount)
 	{
-		m_paramAccess.BindTextureArraySlot(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, slot, textureArray, textureCount);
+		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, textureArray, textureCount);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
 	{
-		m_paramAccess.FlushBatch(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout);
+		m_paramAccess.FlushBatch(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout);
 	}
+#if 0
 
 	ComputeShader* ComputeShader::Create(const RenderContext& context, const ComputeShaderProgramDescription& description)
 	{
@@ -1219,8 +1294,8 @@ namespace Mist
 
 	bool ComputeShader::Reload(const RenderContext& context)
 	{
-		check(!m_description.ComputeShaderFile.Filepath.empty());
 		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
+		check(!m_description.ComputeShaderFile.Filepath.empty());
 
 		VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
 		ShaderCompiler compiler(context);
@@ -1277,11 +1352,13 @@ namespace Mist
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
 		++Mist::Profiling::GRenderStats.SetBindingCount;
 	}
+#endif // 0
+
 
 
 	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
 	{
-		const GraphicsShaderProgramDescription& description = program->GetDescription();
+		const tShaderProgramDescription& description = program->GetDescription();
 		check(!FindShaderProgram(description.VertexShaderFile, description.FragmentShaderFile));
 
 		uint32_t index = (uint32_t)m_shaderArray.size();
@@ -1290,15 +1367,6 @@ namespace Mist
 		const ShaderFileDescription* descs[] = { &description.VertexShaderFile, &description.FragmentShaderFile };
 		GenerateKey(key, descs, 2);
 		m_indexMap[key] = index;
-	}
-
-	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ComputeShader* computeShader)
-	{
-		const ComputeShaderProgramDescription& description = computeShader->GetDescription();
-		check(!FindShaderProgram(description.ComputeShaderFile));
-		uint32_t index = (uint32_t)m_computeShaderArray.size();
-		m_computeShaderArray.push_back(computeShader);
-		m_indexMap[description.ComputeShaderFile.Filepath.c_str()] = index;
 	}
 
 	ShaderProgram* ShaderFileDB::FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const
@@ -1350,13 +1418,6 @@ namespace Mist
 			delete m_shaderArray[i];
 			m_shaderArray[i] = nullptr;
 		}
-		for (uint32_t i = 0; i < (uint32_t)m_computeShaderArray.size(); ++i)
-		{
-			m_computeShaderArray[i]->Destroy(context);
-			delete m_computeShaderArray[i];
-			m_computeShaderArray[i] = nullptr;
-		}
-		m_computeShaderArray.clear();
 		m_shaderArray.clear();
 		m_indexMap.clear();
 #ifdef SHADER_RUNTIME_COMPILATION

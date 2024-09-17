@@ -34,7 +34,7 @@ namespace Mist
 			rtDesc.RenderArea.offset = { 0, 0 };
 			TempRT.Create(context, rtDesc);
 
-			GraphicsShaderProgramDescription shaderDesc;
+			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("threshold.frag");
 			shaderDesc.RenderTarget = &TempRT;
@@ -66,7 +66,7 @@ namespace Mist
 			dynamicDesc.IsShared = false;
 			dynamicDesc.ElemCount = BLOOM_MIPMAP_LEVELS;
 
-			GraphicsShaderProgramDescription shaderDesc;
+			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
@@ -84,7 +84,7 @@ namespace Mist
 		// Upscale
 		{
 			// Create shader without BLOOM_DOWNSCALE macro
-			GraphicsShaderProgramDescription shaderDesc;
+			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
@@ -108,7 +108,7 @@ namespace Mist
 
 
 			// Create shader without BLOOM_DOWNSCALE macro
-			GraphicsShaderProgramDescription shaderDesc;
+			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mix.frag");
 			shaderDesc.RenderTarget = &FinalTarget;
@@ -157,7 +157,7 @@ namespace Mist
 
 		{
 			// Deferred pipeline
-			GraphicsShaderProgramDescription shaderDesc;
+			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
 			shaderDesc.RenderTarget = &m_renderTarget;
@@ -189,7 +189,7 @@ namespace Mist
 			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
 			m_ldrRenderTarget.Create(renderContext, ldrRtDesc);
 
-			GraphicsShaderProgramDescription hdrShaderDesc;
+			tShaderProgramDescription hdrShaderDesc;
 			hdrShaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
 			hdrShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("hdr.frag");
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();

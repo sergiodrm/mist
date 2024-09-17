@@ -35,11 +35,11 @@ namespace Mist
 
 		// Create shader
 		{
-			ComputeShaderProgramDescription description{ .ComputeShaderFile = SHADER_FILEPATH("particles.comp") };
-			m_computeShader = ComputeShader::Create(context, description);
+			tShaderProgramDescription description{ .Type = tShaderType::Compute, .ComputeShaderFile = SHADER_FILEPATH("particles.comp") };
+			m_computeShader = ShaderProgram::Create(context, description);
 		}
 		{
-			GraphicsShaderProgramDescription description;
+			tShaderProgramDescription description;
 			description.VertexShaderFile.Filepath = SHADER_FILEPATH("particles.vert");
 			description.FragmentShaderFile.Filepath = SHADER_FILEPATH("particles.frag");
 			description.Topology = PRIMITIVE_TOPOLOGY_POINT_LIST;

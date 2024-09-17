@@ -57,7 +57,7 @@ namespace Mist
 		void ResetParticles(const RenderContext& context);
 
 	private:
-		ComputeShader* m_computeShader;
+		ShaderProgram* m_computeShader;
 		VkDescriptorSet m_singleBufferDescriptorSet;
 		AllocatedBuffer m_particlesBuffer;
 		Texture* m_circleGradientTexture;
