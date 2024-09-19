@@ -11,6 +11,7 @@
 #include <imgui/imgui.h>
 #include "Mist/Render/Camera.h"
 #include "Mist/Core/Logger.h"
+#include "Mist/Core/SystemMemory.h"
 #include "glm/gtx/transform.hpp"
 
 class Timer
@@ -177,7 +178,7 @@ protected:
 Test* CreateTest(int32_t argc, char** argv)
 {
 	// TODO: read cmd args.
-	return new SponzaTest();
+	return _new SponzaTest();
 }
 
 void DestroyTest(Test* test)
@@ -226,7 +227,7 @@ private:
 
 Mist::tApplication* CreateGameApplication()
 {
-	return new tGameApplication();
+	return _new tGameApplication();
 }
 
 void DestroyGameApplication(Mist::tApplication* app)
