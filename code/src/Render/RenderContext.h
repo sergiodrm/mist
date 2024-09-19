@@ -4,7 +4,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <Memory.h>
+#include <Core/VideoMemory.h>
 #include "Render/VulkanBuffer.h"
 #include "Render/Globals.h"
 #include "Render/RenderDescriptor.h"

@@ -1,5 +1,5 @@
 #include "GPUParticleSystem.h"
-#include "Memory.h"
+#include "Core/VideoMemory.h"
 #include "Render/RenderContext.h"
 #include <random>
 #include <imgui/imgui.h>

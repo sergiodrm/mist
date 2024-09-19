@@ -2,7 +2,7 @@
 // Source file
 #include "Framebuffer.h"
 #include "Core/Debug.h"
-#include "Memory.h"
+#include "Core/VideoMemory.h"
 #include "Render/RenderTypes.h"
 #include "Render/InitVulkanTypes.h"
 #include "Render/RenderContext.h"

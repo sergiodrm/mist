@@ -630,7 +630,18 @@ namespace Mist
 			ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Engine");
-		ImGui::DragInt("Screen quad index", &m_screenPipeline.QuadIndex, 1, 0, MAX_RT_SCREEN-1);
+		const tMemStats& bufferStats = m_renderContext.Allocator->BufferStats;
+		const tMemStats& texStats = m_renderContext.Allocator->TextureStats;
+#if 0
+		ImGui::Text("Gpu buffer memory:		%.3f MB | %.3f MB max", bufferStats.Allocated, bufferStats.MaxAllocated);
+		ImGui::Text("Gpu textures memory:	%.3f MB | %.3f MB max", texStats.Allocated, texStats.MaxAllocated);
+#else
+		ImGui::Text("Gpu buffer memory:		%.3f MB | %.3f MB max", (float)bufferStats.Allocated / 1024.f / 1024.f, (float)bufferStats.MaxAllocated / 1024.f / 1024.f);
+		ImGui::ProgressBar((float)bufferStats.Allocated / (float)bufferStats.MaxAllocated);
+		ImGui::Text("Gpu textures memory:	%.3f MB | %.3f MB max", (float)texStats.Allocated / 1024.f / 1024.f, (float)texStats.MaxAllocated / 1024.f / 1024.f);
+		ImGui::ProgressBar((float)texStats.Allocated / (float)texStats.MaxAllocated);
+#endif // 0
+
 		ImGui::Separator();
 		if (ImGui::TreeNode("Graphics Shaders"))
 		{

@@ -31,12 +31,19 @@ namespace Mist
 	typedef VmaAllocation Alloc_t;
 #endif // MIST_MEM_MANAGEMENT
 
+	struct tMemStats
+	{
+		uint32_t Allocated = 0;
+		uint32_t MaxAllocated = 0;
+	};
 
 	struct AllocInfo
 	{
 		Alloc_t Alloc = nullptr;
 		uint16_t Line = UINT16_MAX;
 		char File[512];
+		uint32_t Size = 0;
+		bool IsBuffer = false;
 	};
 
 	struct Allocator
@@ -49,6 +56,8 @@ namespace Mist
 #endif
 		AllocInfo* AllocInfoArray = nullptr;
 		uint16_t AllocInfoIndex = UINT16_MAX;
+		tMemStats BufferStats;
+		tMemStats TextureStats;
 	};
 
 	struct Allocation

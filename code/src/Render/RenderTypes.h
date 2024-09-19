@@ -1,5 +1,5 @@
 #pragma once
-#include "Core/Memory.h"
+#include "Core/VideoMemory.h"
 #include "Core/Debug.h"
 #include "Render/RenderHandle.h"
 

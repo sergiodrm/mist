@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <cassert>
+#include <cstring>
 
 #define DELETE_COPY_CONSTRUCTORS(_type) \
 	_type(const _type&) = delete; \

@@ -3,7 +3,7 @@
 #ifndef MIST_MEM_MANAGEMENT
 #define VMA_IMPLEMENTATION
 #endif // !MIST_MEM_MANAGEMENT
-#include "Memory.h"
+#include "VideoMemory.h"
 #include "Core/Debug.h"
 #include <corecrt_memory.h>
 #include "Render/InitVulkanTypes.h"
@@ -83,6 +83,18 @@ namespace Mist
 		return nullptr;
 	}
 
+	void UpdateMemStatsAlloc(tMemStats& stats, uint32_t size)
+	{
+		stats.Allocated += size;
+		stats.MaxAllocated = __max(stats.Allocated, stats.MaxAllocated);
+	}
+
+	void UpdateMemStatsRelease(tMemStats& stats, uint32_t size)
+	{
+		check(stats.Allocated - size < stats.Allocated);
+		stats.Allocated -= size;
+	}
+
 	uint16_t FindAllocation(Allocator* allocator, Alloc_t alloc)
 	{
 		uint16_t index = UINT16_MAX;
@@ -97,14 +109,16 @@ namespace Mist
 		return index;
 	}
 
-	void SetAllocInfo(AllocInfo& info, Alloc_t alloc, const char* file, uint16_t line)
+	void SetAllocInfo(AllocInfo& info, Alloc_t alloc, const char* file, uint16_t line, uint32_t size, bool isBuffer)
 	{
 		info.Alloc = alloc;
 		strcpy_s(info.File, file);
 		info.Line = line;
+		info.Size = size;
+		info.IsBuffer = isBuffer;
 	}
 
-	void RegisterAllocation(Allocator* allocator, Alloc_t alloc, const char* file, uint16_t line)
+	void RegisterAllocation(Allocator* allocator, Alloc_t alloc, uint32_t size, bool isBuffer, const char* file, uint16_t line)
 	{
 		uint16_t allocIndex = UINT16_MAX;
 		if (allocator->AllocInfoIndex < MEM_ALLOC_INFO_ARRAY_COUNT)
@@ -112,14 +126,162 @@ namespace Mist
 		else
 			allocIndex = FindAllocation(allocator, nullptr);
 		check(allocIndex < MEM_ALLOC_INFO_ARRAY_COUNT);
-		SetAllocInfo(allocator->AllocInfoArray[allocIndex], alloc, file, line);
+		SetAllocInfo(allocator->AllocInfoArray[allocIndex], alloc, file, line, size, isBuffer);
+		UpdateMemStatsAlloc(isBuffer ? allocator->BufferStats : allocator->TextureStats, size);
 	}
 
 	void ReleaseAllocation(Allocator* allocator, Alloc_t alloc)
 	{
 		uint16_t index = FindAllocation(allocator, alloc);
 		check(index < MEM_ALLOC_INFO_ARRAY_COUNT);
-		SetAllocInfo(allocator->AllocInfoArray[index], nullptr, "\0", UINT16_MAX);
+		AllocInfo& info = allocator->AllocInfoArray[index];
+		UpdateMemStatsRelease(info.IsBuffer ? allocator->BufferStats : allocator->TextureStats, info.Size);
+		SetAllocInfo(info, nullptr, "\0", UINT16_MAX, 0, false);
+	}
+
+	uint32_t GetBytesPerPixel(VkFormat format)
+	{
+		switch (format)
+		{
+		case VK_FORMAT_R8_SNORM:
+		case VK_FORMAT_R8_USCALED:
+		case VK_FORMAT_R8_SSCALED:
+		case VK_FORMAT_R8_UINT:
+		case VK_FORMAT_R8_SINT:
+		case VK_FORMAT_R8_SRGB:
+		case VK_FORMAT_R8_UNORM: return 1 * 1;
+		case VK_FORMAT_R8G8_SNORM:
+		case VK_FORMAT_R8G8_USCALED:
+		case VK_FORMAT_R8G8_SSCALED:
+		case VK_FORMAT_R8G8_UINT:
+		case VK_FORMAT_R8G8_SINT:
+		case VK_FORMAT_R8G8_SRGB:
+		case VK_FORMAT_R8G8_UNORM: return 2 * 1;
+		case VK_FORMAT_R8G8B8_SNORM:
+		case VK_FORMAT_R8G8B8_USCALED:
+		case VK_FORMAT_R8G8B8_SSCALED:
+		case VK_FORMAT_R8G8B8_UINT:
+		case VK_FORMAT_R8G8B8_SINT:
+		case VK_FORMAT_R8G8B8_SRGB:
+		case VK_FORMAT_B8G8R8_UNORM:
+		case VK_FORMAT_B8G8R8_SNORM:
+		case VK_FORMAT_B8G8R8_USCALED:
+		case VK_FORMAT_B8G8R8_SSCALED:
+		case VK_FORMAT_B8G8R8_UINT:
+		case VK_FORMAT_B8G8R8_SINT:
+		case VK_FORMAT_B8G8R8_SRGB:
+		case VK_FORMAT_R8G8B8_UNORM: return 3 * 1;
+		case VK_FORMAT_R8G8B8A8_SNORM:
+		case VK_FORMAT_R8G8B8A8_USCALED:
+		case VK_FORMAT_R8G8B8A8_SSCALED:
+		case VK_FORMAT_R8G8B8A8_UINT:
+		case VK_FORMAT_R8G8B8A8_SINT:
+		case VK_FORMAT_R8G8B8A8_SRGB:
+		case VK_FORMAT_B8G8R8A8_UNORM:
+		case VK_FORMAT_B8G8R8A8_SNORM:
+		case VK_FORMAT_B8G8R8A8_USCALED:
+		case VK_FORMAT_B8G8R8A8_SSCALED:
+		case VK_FORMAT_B8G8R8A8_UINT:
+		case VK_FORMAT_B8G8R8A8_SINT:
+		case VK_FORMAT_B8G8R8A8_SRGB:
+		case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+		case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+		case VK_FORMAT_A8B8G8R8_USCALED_PACK32:
+		case VK_FORMAT_A8B8G8R8_SSCALED_PACK32:
+		case VK_FORMAT_A8B8G8R8_UINT_PACK32:
+		case VK_FORMAT_A8B8G8R8_SINT_PACK32:
+		case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+		case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+		case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+		case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+		case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+		case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+		case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+		case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+		case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+		case VK_FORMAT_A2B10G10R10_USCALED_PACK32:
+		case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
+		case VK_FORMAT_A2B10G10R10_UINT_PACK32:
+		case VK_FORMAT_A2B10G10R10_SINT_PACK32:
+		case VK_FORMAT_R8G8B8A8_UNORM: return 4 * 1;
+		case VK_FORMAT_R16_SNORM:
+		case VK_FORMAT_R16_USCALED:
+		case VK_FORMAT_R16_SSCALED:
+		case VK_FORMAT_R16_UINT:
+		case VK_FORMAT_R16_SINT:
+		case VK_FORMAT_R16_SFLOAT:
+		case VK_FORMAT_R16_UNORM: return 1 * 2;
+		case VK_FORMAT_R16G16_SNORM:
+		case VK_FORMAT_R16G16_USCALED:
+		case VK_FORMAT_R16G16_SSCALED:
+		case VK_FORMAT_R16G16_UINT:
+		case VK_FORMAT_R16G16_SINT:
+		case VK_FORMAT_R16G16_SFLOAT:
+		case VK_FORMAT_R16G16_UNORM: return 2 * 2;
+		case VK_FORMAT_R16G16B16_SNORM:
+		case VK_FORMAT_R16G16B16_USCALED:
+		case VK_FORMAT_R16G16B16_SSCALED:
+		case VK_FORMAT_R16G16B16_UINT:
+		case VK_FORMAT_R16G16B16_SINT:
+		case VK_FORMAT_R16G16B16_SFLOAT:
+		case VK_FORMAT_R16G16B16_UNORM: return 3 * 2;
+		case VK_FORMAT_R16G16B16A16_SNORM:
+		case VK_FORMAT_R16G16B16A16_USCALED:
+		case VK_FORMAT_R16G16B16A16_SSCALED:
+		case VK_FORMAT_R16G16B16A16_UINT:
+		case VK_FORMAT_R16G16B16A16_SINT:
+		case VK_FORMAT_R16G16B16A16_SFLOAT:
+		case VK_FORMAT_R16G16B16A16_UNORM: return 4 * 2;
+		case VK_FORMAT_R32_SINT:
+		case VK_FORMAT_R32_SFLOAT:
+		case VK_FORMAT_R32_UINT: return 1 * 4;
+		case VK_FORMAT_R32G32_SINT:
+		case VK_FORMAT_R32G32_SFLOAT:
+		case VK_FORMAT_R32G32_UINT: return 2 * 4;
+		case VK_FORMAT_R32G32B32_SINT:
+		case VK_FORMAT_R32G32B32_SFLOAT:
+		case VK_FORMAT_R32G32B32_UINT: return 3 * 4;
+		case VK_FORMAT_R32G32B32A32_SINT:
+		case VK_FORMAT_R32G32B32A32_SFLOAT:
+		case VK_FORMAT_R32G32B32A32_UINT: return 4 * 4;
+		case VK_FORMAT_R64_SINT:
+		case VK_FORMAT_R64_SFLOAT:
+		case VK_FORMAT_R64_UINT: return 1 * 8;
+		case VK_FORMAT_R64G64_SINT:
+		case VK_FORMAT_R64G64_SFLOAT:
+		case VK_FORMAT_R64G64_UINT: return 2 * 8;
+		case VK_FORMAT_R64G64B64_SINT:
+		case VK_FORMAT_R64G64B64_SFLOAT:
+		case VK_FORMAT_R64G64B64_UINT: return 3 * 8;
+		case VK_FORMAT_R64G64B64A64_SINT:
+		case VK_FORMAT_R64G64B64A64_SFLOAT:
+		case VK_FORMAT_R64G64B64A64_UINT: return 4 * 8;
+		case VK_FORMAT_D16_UNORM: return 2;
+		case VK_FORMAT_X8_D24_UNORM_PACK32: return 4;
+		case VK_FORMAT_D32_SFLOAT: return 4;
+		case VK_FORMAT_S8_UINT: return 1;
+		case VK_FORMAT_D16_UNORM_S8_UINT: return 3;
+		case VK_FORMAT_D24_UNORM_S8_UINT: return 4;
+		case VK_FORMAT_D32_SFLOAT_S8_UINT: return 5;
+		default:
+			check(false);
+			break;
+		}
+		return 0;
+	}
+
+	uint32_t CalculateImageBytes(const VkImageCreateInfo& imageInfo)
+	{
+		uint32_t width = imageInfo.extent.width;
+		uint32_t height = imageInfo.extent.height;
+		uint32_t depth = imageInfo.extent.depth;
+		uint32_t bytesPerPixel = GetBytesPerPixel(imageInfo.format);
+		uint32_t count = imageInfo.arrayLayers;
+		uint32_t mipLevels = imageInfo.mipLevels;
+		uint32_t totalPixelsPerLayer = 0;
+		for (uint32_t i = 0; i < mipLevels; ++i)
+			totalPixelsPerLayer += (width >> i) * (height >> i);
+		return totalPixelsPerLayer * bytesPerPixel;
 	}
 
 	void Memory::Init(Allocator*& allocator, VkInstance vkInstance, VkDevice vkDevice, VkPhysicalDevice vkPhysicalDevice)
@@ -262,7 +424,7 @@ namespace Mist
 
 #endif // !MIST_MEM_MANAGEMENT
 
-		RegisterAllocation(allocator, newBuffer.Alloc, file, line);
+		RegisterAllocation(allocator, newBuffer.Alloc, bufferSize, true, file, line);
 
 #ifdef MIST_MEMORY_VERBOSE
 		Logf(LogLevel::Debug, "[MEMORY] New buffer [0x%p;0x%p;%u b]\n", (void*)newBuffer.Alloc, (void*)newBuffer.Buffer, bufferSize);
@@ -343,7 +505,8 @@ namespace Mist
 		Logf(LogLevel::Debug, "[MEMORY] New image [0x%p;0x%p]\n", (void*)image.Alloc, (void*)image.Image);
 		Allocations[image.Alloc] = image.Alloc;
 #endif // MIST_MEMORY_VERBOSE
-		RegisterAllocation(allocator, image.Alloc, file, line);
+
+		RegisterAllocation(allocator, image.Alloc, CalculateImageBytes(imageInfo), false, file, line);
 		return image;
 	}
 
