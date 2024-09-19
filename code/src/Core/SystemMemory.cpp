@@ -1,26 +1,12 @@
 // src file for Mist project 
 
-#include "SystemMemory.h"
+#include "Core/SystemMemory.h"
 #include "Core/Types.h"
 #include "Core/Debug.h"
 
 namespace Mist
 {
-	struct tSystemAllocTrace
-	{
-		const void* Data = nullptr;
-		uint32_t Size = 0;
-		uint32_t Line = 0;
-		tFixedString<256> File;
-	};
-
-	struct tSystemMemStats
-	{
-		uint32_t Allocated = 0;
-		uint32_t MaxAllocated = 0;
-		tStaticArray<tSystemAllocTrace, 1024> MemTrace;
-		tStaticArray<uint32_t, 1024> FreeIndices;
-	} SystemMemStats;
+	tSystemMemStats SystemMemStats;
 
 	void AddMemTrace(tSystemMemStats& stats, const void* p, uint32_t size, const char* file, uint32_t line)
 	{
@@ -42,6 +28,8 @@ namespace Mist
 		trace->Size = size;
 		trace->Line = line;
 		trace->File = file;
+		stats.Allocated += size;
+		stats.MaxAllocated = __max(stats.Allocated, stats.MaxAllocated);
 	}
 
 	void RemoveMemTrace(tSystemMemStats& stats, const void* p)
@@ -61,10 +49,24 @@ namespace Mist
 		}
 	}
 
+	void InitSytemMemory()
+	{
+	}
+
+	void TerminateSystemMemory()
+	{
+		assert(SystemMemStats.Allocated == 0);
+	}
+
+	const tSystemMemStats& GetMemoryStats()
+	{
+		return SystemMemStats;
+	}
+
 	void* Malloc(size_t size, const char* file, int line)
 	{
 		void* p = malloc(size);
-		AddMemTrace(SystemMemStats, p, size, file, line);
+		AddMemTrace(SystemMemStats, p, (uint32_t)size, file, line);
 		return p;
 	}
 
@@ -76,12 +78,17 @@ namespace Mist
 }
 
 
-void* ::operator new(size_t size, const char* file, int line)
+void* operator new(size_t size, const char* file, int line)
 {
 	return Mist::Malloc(size, file, line);
 }
 
-void ::operator delete(void* p)
+void operator delete(void* p)
+{
+	Mist::Free(p);
+}
+
+void operator delete[](void* p)
 {
 	Mist::Free(p);
 }

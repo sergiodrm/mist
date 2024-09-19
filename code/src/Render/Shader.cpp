@@ -27,6 +27,7 @@
 #define SHADER_BINARY_FILE_EXTENSION ".spv"
 
 #include <shaderc/shaderc.hpp>  
+#include "Core/SystemMemory.h"
 
 
 namespace shader_compiler
@@ -1025,7 +1026,7 @@ namespace Mist
 
 	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const tShaderProgramDescription& description)
 	{
-		ShaderProgram* program = new ShaderProgram();
+		ShaderProgram* program = _new ShaderProgram();
 		check(program->_Create(context, description));
 		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
 		db.AddShaderProgram(context, program);
@@ -1276,7 +1277,7 @@ namespace Mist
 
 	ComputeShader* ComputeShader::Create(const RenderContext& context, const ComputeShaderProgramDescription& description)
 	{
-		ComputeShader* shader = new ComputeShader();
+		ComputeShader* shader = _new ComputeShader();
 		shader->m_description = description;
 		shader->Reload(context);
 		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);

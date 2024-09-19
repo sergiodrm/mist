@@ -28,6 +28,7 @@
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
 #include "Application/Event.h"
+#include "Core/SystemMemory.h"
 
 #define MIST_CRASH_ON_VALIDATION_LAYER
 
@@ -630,17 +631,25 @@ namespace Mist
 			ImGui::ShowDemoWindow();
 
 		ImGui::Begin("Engine");
+
+		auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
+			{
+				ImGui::Text("%s:		%.3f MB | %.3f MB max", label, (float)allocated / 1024.f / 1024.f, (float)maxAllocated / 1024.f / 1024.f);
+				ImGui::NextColumn();
+				ImGui::ProgressBar((float)allocated / (float)maxAllocated);
+				ImGui::NextColumn();
+			};
+
+		const tSystemMemStats& systemStats = GetMemoryStats();
 		const tMemStats& bufferStats = m_renderContext.Allocator->BufferStats;
 		const tMemStats& texStats = m_renderContext.Allocator->TextureStats;
-#if 0
-		ImGui::Text("Gpu buffer memory:		%.3f MB | %.3f MB max", bufferStats.Allocated, bufferStats.MaxAllocated);
-		ImGui::Text("Gpu textures memory:	%.3f MB | %.3f MB max", texStats.Allocated, texStats.MaxAllocated);
-#else
-		ImGui::Text("Gpu buffer memory:		%.3f MB | %.3f MB max", (float)bufferStats.Allocated / 1024.f / 1024.f, (float)bufferStats.MaxAllocated / 1024.f / 1024.f);
-		ImGui::ProgressBar((float)bufferStats.Allocated / (float)bufferStats.MaxAllocated);
-		ImGui::Text("Gpu textures memory:	%.3f MB | %.3f MB max", (float)texStats.Allocated / 1024.f / 1024.f, (float)texStats.MaxAllocated / 1024.f / 1024.f);
-		ImGui::ProgressBar((float)texStats.Allocated / (float)texStats.MaxAllocated);
-#endif // 0
+		ImGui::Columns(2);
+		lmbShowMemStat("System memory", systemStats.Allocated, systemStats.MaxAllocated);
+		lmbShowMemStat("GPU buffer memory", bufferStats.Allocated, bufferStats.MaxAllocated);
+		lmbShowMemStat("GPU texture memory", texStats.Allocated, texStats.MaxAllocated);
+		ImGui::Columns();
+
+
 
 		ImGui::Separator();
 		if (ImGui::TreeNode("Graphics Shaders"))
@@ -778,7 +787,7 @@ namespace Mist
 #else
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, nullptr);
-		VkQueueFamilyProperties* queueFamilyProperties = new VkQueueFamilyProperties[queueFamilyCount];
+		VkQueueFamilyProperties* queueFamilyProperties = _newVkQueueFamilyProperties[queueFamilyCount];
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, queueFamilyProperties);
 
 		uint32_t graphicsComputeQueueIndex = UINT32_MAX;

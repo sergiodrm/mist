@@ -9,6 +9,7 @@
 #include "Render/InitVulkanTypes.h"
 #include "Render/RenderTypes.h"
 #include "Core/Logger.h"
+#include "Core/SystemMemory.h"
 
 //#define MIST_MEMORY_VERBOSE
 
@@ -290,7 +291,7 @@ namespace Mist
 		check(vkPhysicalDevice != VK_NULL_HANDLE);
 		check(vkDevice != VK_NULL_HANDLE);
 		check(!allocator);
-		allocator = new Allocator();
+		allocator = _new Allocator();
 #ifndef MIST_MEM_MANAGEMENT
 		VmaAllocatorCreateInfo allocatorInfo = {};
 		allocatorInfo.physicalDevice = vkPhysicalDevice;
@@ -302,7 +303,7 @@ namespace Mist
 		allocator->PhysicalDevice = vkPhysicalDevice;
 #endif // !MIST_MEM_MANAGEMENT
 
-		allocator->AllocInfoArray = new AllocInfo[MEM_ALLOC_INFO_ARRAY_COUNT];
+		allocator->AllocInfoArray = _new AllocInfo[MEM_ALLOC_INFO_ARRAY_COUNT];
 		allocator->AllocInfoIndex = 0;
 	}
 

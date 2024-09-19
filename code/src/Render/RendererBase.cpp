@@ -5,17 +5,18 @@
 #include "RenderProcesses/ShadowMap.h"
 #include "RenderProcesses/DebugProcess.h"
 #include "RenderProcesses/UIProcess.h"
+#include "Core/SystemMemory.h"
 
 namespace Mist
 {
 	void Renderer::Init(const RenderContext& context, RenderFrameContext* frameContextArray, uint32_t frameContextCount)
 	{
-		m_processArray[RENDERPROCESS_SSAO] = new SSAO();
-		m_processArray[RENDERPROCESS_GBUFFER] = new GBuffer();
-		m_processArray[RENDERPROCESS_LIGHTING] = new DeferredLighting();
-		m_processArray[RENDERPROCESS_SHADOWMAP] = new ShadowMapProcess();
-		m_processArray[RENDERPROCESS_DEBUG] = new DebugProcess();
-		m_processArray[RENDERPROCESS_UI] = new UIProcess();
+		m_processArray[RENDERPROCESS_SSAO] = _new SSAO();
+		m_processArray[RENDERPROCESS_GBUFFER] = _new GBuffer();
+		m_processArray[RENDERPROCESS_LIGHTING] = _new DeferredLighting();
+		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess();
+		m_processArray[RENDERPROCESS_DEBUG] = _new DebugProcess();
+		m_processArray[RENDERPROCESS_UI] = _new UIProcess();
 
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 			m_processArray[i]->Init(context);

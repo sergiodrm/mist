@@ -1,5 +1,6 @@
 
 #include "Render/VulkanRenderEngine.h"
+#include "Core/SystemMemory.h"
 
 namespace Mist
 {
@@ -8,7 +9,7 @@ namespace Mist
 	IRenderEngine* IRenderEngine::MakeInstance()
 	{
 		check(!GRenderEngine);
-		GRenderEngine = new VulkanRenderEngine();
+		GRenderEngine = _new VulkanRenderEngine();
 		return GRenderEngine;
 	}
 

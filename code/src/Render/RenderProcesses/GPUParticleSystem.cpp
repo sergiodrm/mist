@@ -12,6 +12,7 @@
 #include "Utils/GenericUtils.h"
 #include "Application/Event.h"
 #include "Render/InitVulkanTypes.h"
+#include "Core/SystemMemory.h"
 
 #define PARTICLE_COUNT 512 * 256
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
@@ -230,7 +231,7 @@ namespace Mist
 	void GPUParticleSystem::ResetParticles(const RenderContext& context)
 	{
 		// Initialize particles
-		Particle* particles = new Particle[PARTICLE_COUNT];
+		Particle* particles = _new Particle[PARTICLE_COUNT];
 		std::default_random_engine rndEng((uint32_t)time(nullptr));
 		std::uniform_real_distribution<float> rndDist(0.f, 1.f);
 		for (uint32_t i = 0; i < PARTICLE_COUNT; ++i)

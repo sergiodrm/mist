@@ -5,6 +5,7 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"
 #include "Render/RenderContext.h"
+#include "Core/SystemMemory.h"
 
 namespace vkutils
 {
@@ -354,7 +355,7 @@ namespace Mist
 		{
 			if (m_cacheBuffer)
 				delete[] m_cacheBuffer;
-			m_cacheBuffer = new uint8_t[size];
+			m_cacheBuffer = _new uint8_t[size];
 			m_cacheSize = size;
 		}
 	}

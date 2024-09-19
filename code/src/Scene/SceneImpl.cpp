@@ -32,6 +32,7 @@
 
 #endif // SCENE_LOAD_YAML
 #include <fstream>
+#include "Core/SystemMemory.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -552,7 +553,7 @@ namespace Mist
 	IScene* IScene::CreateScene(IRenderEngine* engine)
 	{
 		check(!engine->GetScene());
-		Scene* scene = new Scene(engine);
+		Scene* scene = _new Scene(engine);
 		engine->SetScene(scene);
 		scene->Init();
 		return scene;
@@ -742,7 +743,7 @@ namespace Mist
 		io::File file;
 		check(file.Open(filepath, "r"));
 		uint32_t size = file.GetContentSize();
-		char* content = new char[size];
+		char* content = _new char[size];
 		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
 		file.Close();
 		check(contentReaded <= size);

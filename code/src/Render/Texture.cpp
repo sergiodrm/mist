@@ -9,6 +9,7 @@
 #include "Render/RenderTypes.h"
 #include "Render/RenderContext.h"
 #include "Render/InitVulkanTypes.h"
+#include "Core/SystemMemory.h"
 
 
 namespace Mist
@@ -81,7 +82,7 @@ namespace Mist
 
 	Texture* Texture::Create(const RenderContext& context, const tImageDescription& description)
 	{
-		Texture* texture = new Texture();
+		Texture* texture = _new Texture();
 		texture->AllocateImage(context, description);
 		return texture;
 	}

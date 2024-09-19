@@ -7,6 +7,7 @@
 #include <debugapi.h>
 #include <string.h>
 #include <imgui/imgui.h>
+#include "Core/SystemMemory.h"
 
 
 
@@ -231,7 +232,7 @@ namespace Mist
 	void InitLog(const char* outputFile)
 	{
 		check(!GLogFile);
-		GLogFile = new LogHtmlFile(outputFile);
+		GLogFile = _new LogHtmlFile(outputFile);
 	}
 
 	void AddConsoleCommand(FnExecCommandCallback fn)
