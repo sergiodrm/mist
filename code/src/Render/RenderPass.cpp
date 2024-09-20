@@ -64,7 +64,7 @@ namespace Mist
 	VkRenderPass RenderPassBuilder::Build(const RenderContext& renderContext)
 	{
 		// Build subpass descriptions
-		std::vector<VkSubpassDescription> subpasses(m_subpassDescs.size());
+		tDynArray<VkSubpassDescription> subpasses(m_subpassDescs.size());
 		for (uint32_t i = 0; i < (uint32_t)m_subpassDescs.size(); ++i)
 		{
 			const RenderPassSubpassDescription& desc = m_subpassDescs[i];

@@ -2,6 +2,7 @@
 
 #include "Vertex.h"
 #include "RenderHandle.h"
+#include "Core/Types.h"
 #include <vector>
 #include <string>
 
@@ -71,12 +72,12 @@ namespace Mist
 		inline uint32_t GetIndexCount() const { return (uint32_t)m_indices.size(); }
 		void SetIndices(const uint32_t* data, size_t count);
 
-		void MoveVerticesFrom(std::vector<Vertex>& vertices);
-		void MoveIndicesFrom(std::vector<uint32_t>& indices);
+		void MoveVerticesFrom(tDynArray<Vertex>& vertices);
+		void MoveIndicesFrom(tDynArray<uint32_t>& indices);
 
 	private:
-		std::vector<Vertex> m_vertices;
-		std::vector<uint32_t> m_indices;
+		tDynArray<Vertex> m_vertices;
+		tDynArray<uint32_t> m_indices;
 	};
 
 }

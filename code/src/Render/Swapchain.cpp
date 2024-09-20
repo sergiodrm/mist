@@ -21,8 +21,8 @@ namespace Mist
 			.set_desired_extent(spec.ImageWidth, spec.ImageHeight)
 			.build().value();
 		m_swapchain = swapchain.swapchain;
-		m_images = swapchain.get_images().value();
-		m_imageViews = swapchain.get_image_views().value();
+		CopyDynArray(m_images, swapchain.get_images().value());
+		CopyDynArray(m_imageViews, swapchain.get_image_views().value());
 		m_imageFormat = fromvk::GetFormat(swapchain.image_format);
 
 		// Create depth buffer

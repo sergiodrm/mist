@@ -146,7 +146,7 @@ namespace shader_compiler
 		if (!HandleError(result, "assembly"))
 			return tCompilationResult();
 		Mist::tString assemble{ result.begin(), result.end() };
-		shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble);
+		shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble.c_str(), assemble.size());
 		if (!HandleError(spv, "assembly to spv"))
 			return tCompilationResult();
 
@@ -521,7 +521,7 @@ namespace Mist
 	VkDescriptorSetLayout ShaderCompiler::GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const
 	{
 		VkDescriptorSetLayout setLayout{ VK_NULL_HANDLE };
-		std::vector<VkDescriptorSetLayoutBinding> bindingArray(setInfo.BindingArray.size());
+		tDynArray<VkDescriptorSetLayoutBinding> bindingArray(setInfo.BindingArray.size());
 		for (uint32_t i = 0; i < setInfo.BindingArray.size(); ++i)
 		{
 			bindingArray[i].binding = i;
@@ -914,13 +914,13 @@ namespace Mist
 		tDynArray<VkDynamicState> DynamicStates;
 
 		// Stages
-		std::vector<VkPipelineShaderStageCreateInfo> ShaderStages;
+		tDynArray<VkPipelineShaderStageCreateInfo> ShaderStages;
 		// Pipeline states
 		VkPipelineRasterizationStateCreateInfo Rasterizer;
 		VkPipelineMultisampleStateCreateInfo Multisampler;
 		VkPipelineDepthStencilStateCreateInfo DepthStencil;
 		// Color attachment
-		std::vector<VkPipelineColorBlendAttachmentState> ColorBlendAttachment;
+		tDynArray<VkPipelineColorBlendAttachmentState> ColorBlendAttachment;
 
 		// Vertex input. How the vertices are arranged in memory and how to bind them.
 		VertexInputLayout InputDescription;

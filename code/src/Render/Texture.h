@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Render/RenderTypes.h"
+#include "Core/Types.h"
 #include "Render/RenderAPI.h"
 
 

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <vector>
+#include "Core/Types.h"
 #include <glm/glm.hpp>
 
 namespace Mist
 {
 	namespace io
 	{
-		bool ReadFile(const char* filename, std::vector<uint32_t>& data);
+		bool ReadFile(const char* filename, tDynArray<uint32_t>& data);
 		bool ReadFile(const char* filename, uint32_t** data, size_t& size);
 		// returns non null terminated data!
 		bool ReadFile(const char* filename, char** out, size_t& size);

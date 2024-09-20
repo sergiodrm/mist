@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include <cassert>
 #include <cstring>
+#include <string.h>
+#include <vector>
+#include <unordered_map>
+#include <string>
+#include "Core/SystemMemory.h"
 
 #define DELETE_COPY_CONSTRUCTORS(_type) \
 	_type(const _type&) = delete; \
@@ -13,6 +18,22 @@
 
 namespace Mist
 {
+	template <typename T>
+	using tDynArray = std::vector<T, Mist::tStdAllocator<T>>;
+	template <typename T, size_t N>
+	using tArray = std::array<T, N>;
+	template <typename Key_t, typename Value_t, typename Hasher_t = std::hash<Key_t>, typename EqualTo = std::equal_to<Key_t>>
+	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo, Mist::tStdAllocator<std::pair<const Key_t, Value_t>>>;
+	using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
+
+	template <typename T>
+	void CopyDynArray(tDynArray<T>& dst, const std::vector<T>& src)
+	{
+		size_t size = src.size();
+		dst.resize(size);
+		for (size_t i = 0; i < size; ++i)
+			dst[i] = src[i];
+	}
 
 	template <uint32_t Size>
 	class tFixedString

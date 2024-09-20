@@ -20,7 +20,7 @@ namespace Mist
 
 	struct DescriptorPoolSizes
 	{
-		tDynArray<DescriptorPoolTypeInfo> Sizes;
+		tArray<DescriptorPoolTypeInfo, 16> Sizes;
 		static const DescriptorPoolSizes& GetDefault();
 	};
 
@@ -58,7 +58,7 @@ namespace Mist
 
 	struct DescriptorLayoutInfo
 	{
-		std::vector<VkDescriptorSetLayoutBinding> Bindings;
+		tDynArray<VkDescriptorSetLayoutBinding> Bindings;
 		bool operator==(const DescriptorLayoutInfo& other) const;
 		size_t Hash() const;
 
@@ -95,12 +95,11 @@ namespace Mist
 		bool Build(const RenderContext& rc, VkDescriptorSetLayout* layout);
 	private:
 		DescriptorLayoutCache* m_cache = nullptr;
-		std::vector<VkDescriptorSetLayoutBinding> Bindings;
+		tDynArray<VkDescriptorSetLayoutBinding> Bindings;
 	};
 
 	class DescriptorBuilder
 	{
-		DescriptorBuilder() = default;
 	public:
 		static DescriptorBuilder Create(DescriptorLayoutCache& layoutCache, DescriptorAllocator& allocator);
 
@@ -145,6 +144,7 @@ namespace Mist
 	{
 	public:
 		tDescriptorSetCache(uint32_t initialSize = 200);
+		~tDescriptorSetCache();
 
 		uint32_t NewBatch();
 		uint32_t NewPersistentDescriptorSet();

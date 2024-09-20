@@ -5,7 +5,8 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <functional>
-#include "Render/RenderTypes.h"
+#include "Core/Types.h"
+#include "RenderTypes.h"
 
 namespace Mist
 {
@@ -25,7 +26,7 @@ namespace Mist
 	struct VertexInputLayout
 	{
 		VkVertexInputBindingDescription Binding{};
-		std::vector<VkVertexInputAttributeDescription> Attributes;
+		tDynArray<VkVertexInputAttributeDescription> Attributes;
 		VkPipelineVertexInputStateCreateFlags Flags = 0;
 
 		VertexInputLayout() = default;

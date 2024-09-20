@@ -104,7 +104,7 @@ namespace Mist
 
 	VertexInputLayout VertexInputLayout::GetStaticMeshVertexLayout()
 	{
-		static VertexInputLayout layout;
+		VertexInputLayout layout;
 		if (layout.Attributes.empty())
 		{
 			// Use Mist::Vertex struct
@@ -123,7 +123,7 @@ namespace Mist
 
 	VertexInputLayout VertexInputLayout::GetBasicVertexLayout()
 	{
-		static VertexInputLayout layout;
+		VertexInputLayout layout;
 		if (layout.Attributes.empty())
 		{
 			layout = BuildVertexInputLayout(
@@ -138,7 +138,7 @@ namespace Mist
 
 	VertexInputLayout VertexInputLayout::GetScreenQuadVertexLayout()
 	{
-		static VertexInputLayout layout;
+		VertexInputLayout layout;
 		if (layout.Attributes.empty())
 		{
 			layout = BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });

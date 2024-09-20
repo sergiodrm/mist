@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include "Render/RenderTypes.h"
+#include "Core/Types.h"
 
 namespace Mist
 {
@@ -25,7 +26,7 @@ namespace Mist
 		int32_t OffsetY;
 		VkRenderPass RenderPass;
 		// one framebuffer per swapchain image
-		std::vector<VkClearValue> ClearValues; // clear values per framebuffer attachment
+		tDynArray<VkClearValue> ClearValues; // clear values per framebuffer attachment
 
 		void BeginPass(VkCommandBuffer cmd, VkFramebuffer framebuffer) const;
 		void EndPass(VkCommandBuffer cmd) const;
@@ -35,9 +36,9 @@ namespace Mist
 
 	struct RenderPassSubpassDescription
 	{
-		std::vector<VkAttachmentReference> ColorAttachmentReferences;
+		tDynArray<VkAttachmentReference> ColorAttachmentReferences;
 		VkAttachmentReference DepthAttachmentReference{UINT32_MAX, VK_IMAGE_LAYOUT_UNDEFINED};
-		std::vector<VkAttachmentReference> InputAttachmentReferences;
+		tDynArray<VkAttachmentReference> InputAttachmentReferences;
 	};
 
 	class RenderPassBuilder
@@ -53,8 +54,8 @@ namespace Mist
 		RenderPassBuilder& AddDependencies(const VkSubpassDependency* dependencies, uint32_t count);
 		VkRenderPass Build(const RenderContext& renderContext);
 	private:
-		std::vector<VkAttachmentDescription> m_attachments;
-		std::vector<RenderPassSubpassDescription> m_subpassDescs;
-		std::vector<VkSubpassDependency> m_dependencies;
+		tDynArray<VkAttachmentDescription> m_attachments;
+		tDynArray<RenderPassSubpassDescription> m_subpassDescs;
+		tDynArray<VkSubpassDependency> m_dependencies;
 	};
 }

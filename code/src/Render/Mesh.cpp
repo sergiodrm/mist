@@ -35,12 +35,12 @@ namespace Mist
 		memcpy_s(m_indices.data(), sizeof(uint32_t) * count, data, sizeof(uint32_t) * count);
 	}
 
-	void Mesh::MoveVerticesFrom(std::vector<Vertex>& vertices)
+	void Mesh::MoveVerticesFrom(tDynArray<Vertex>& vertices)
 	{
 		m_vertices = std::move(vertices);
 	}
 
-	void Mesh::MoveIndicesFrom(std::vector<uint32_t>& indices)
+	void Mesh::MoveIndicesFrom(tDynArray<uint32_t>& indices)
 	{
 		m_indices = std::move(indices);
 	}

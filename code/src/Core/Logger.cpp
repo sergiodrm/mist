@@ -194,7 +194,8 @@ namespace Mist
 			wchar_t wString[LOG_MSG_MAX_SIZE];
 			MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
 			OutputDebugString(wString);
-			GLogFile->Push(level, msg);
+			if (GLogFile)
+				GLogFile->Push(level, msg);
 			g_Console.Log(level, msg);
 #ifdef LOG_DEBUG_FLUSH
 			GLogFile->Flush();

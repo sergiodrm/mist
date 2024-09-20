@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/VideoMemory.h"
+#include "Core/SystemMemory.h"
 #include "Core/Debug.h"
 #include "Render/RenderHandle.h"
 
@@ -27,14 +28,6 @@
 namespace Mist
 {
 	struct RenderContext;
-
-	template <typename T>
-	using tDynArray = std::vector<T>;
-	template <typename T, size_t N>
-	using tArray = std::array<T, N>;
-	template <typename Key_t, typename Value_t/*, typename Hasher_t*/>
-	using tMap = std::unordered_map<Key_t, Value_t/*, Hasher_t = hash<Key_t>*/>;
-	using tString = std::string;
 
 	typedef uint32_t tFlagBits;
 #ifdef MIST_VULKAN

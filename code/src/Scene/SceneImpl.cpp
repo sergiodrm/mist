@@ -228,7 +228,7 @@ namespace gltf_api
 		}
 	}
 
-	void ReadValues(std::vector<float>& values, const cgltf_accessor& accessor)
+	void ReadValues(Mist::tDynArray<float>& values, const cgltf_accessor& accessor)
 	{
 		uint32_t elementCount = GetElementCountFromType(accessor.type);
 		values.resize(accessor.count * elementCount);
@@ -287,7 +287,7 @@ namespace gltf_api
 	}
 
 	// Attributes are an continuous array of positions, normals, uvs...
-	// We have to map from struct of arrays to our format, array of structs (std::vector<Mist::Vertex>)
+	// We have to map from struct of arrays to our format, array of structs (tDynArray<Mist::Vertex>)
 	void ReadAttributeArray(Mist::Vertex* vertices, const cgltf_attribute& attribute, const cgltf_node* nodes, uint32_t nodeCount)
 	{
 		const cgltf_accessor* accessor = attribute.data;
@@ -295,7 +295,7 @@ namespace gltf_api
 		// Get how many values has current attribute
 		uint32_t elementCount = GetElementCountFromType(accessor->type);
 		// Read data from accessor
-		std::vector<float> values;
+		Mist::tDynArray<float> values;
 		ReadValues(values, *accessor);
 		// Map to internal format
 		for (uint32_t i = 0; i < accessorCount; ++i)
@@ -338,7 +338,7 @@ namespace gltf_api
 		return data;
 	}
 
-	void LoadVertices(std::vector<Mist::Vertex>& vertices, const cgltf_primitive* primitive, const cgltf_node* nodes, uint32_t nodeCount)
+	void LoadVertices(Mist::tDynArray<Mist::Vertex>& vertices, const cgltf_primitive* primitive, const cgltf_node* nodes, uint32_t nodeCount)
 	{
 		uint32_t attributeCount = (uint32_t)primitive->attributes_count;
 		uint32_t vertexOffset = (uint32_t)vertices.size();
@@ -352,7 +352,7 @@ namespace gltf_api
 		}
 	}
 
-	void LoadIndices(std::vector<uint32_t>& indices, const cgltf_primitive* primitive, uint32_t offset)
+	void LoadIndices(Mist::tDynArray<uint32_t>& indices, const cgltf_primitive* primitive, uint32_t offset)
 	{
 		check(primitive->indices);
 		uint32_t indexCount = (uint32_t)primitive->indices->count;
@@ -755,12 +755,12 @@ namespace Mist
 		check(envNode);
 		m_ambientColor = envNode["Ambient"].as<glm::vec3>();
 		char skyboxTextures[Skybox::COUNT][256];
-		strcpy_s(skyboxTextures[Skybox::FRONT], envNode["Skybox"]["Front"].as<tString>().c_str());
-		strcpy_s(skyboxTextures[Skybox::BACK], envNode["Skybox"]["Back"].as<tString>().c_str());
-		strcpy_s(skyboxTextures[Skybox::TOP], envNode["Skybox"]["Top"].as<tString>().c_str());
-		strcpy_s(skyboxTextures[Skybox::BOTTOM], envNode["Skybox"]["Bottom"].as<tString>().c_str());
-		strcpy_s(skyboxTextures[Skybox::LEFT], envNode["Skybox"]["Left"].as<tString>().c_str());
-		strcpy_s(skyboxTextures[Skybox::RIGHT], envNode["Skybox"]["Right"].as<tString>().c_str());
+		strcpy_s(skyboxTextures[Skybox::FRONT], envNode["Skybox"]["Front"].as<std::string>().c_str());
+		strcpy_s(skyboxTextures[Skybox::BACK], envNode["Skybox"]["Back"].as<std::string>().c_str());
+		strcpy_s(skyboxTextures[Skybox::TOP], envNode["Skybox"]["Top"].as<std::string>().c_str());
+		strcpy_s(skyboxTextures[Skybox::BOTTOM], envNode["Skybox"]["Bottom"].as<std::string>().c_str());
+		strcpy_s(skyboxTextures[Skybox::LEFT], envNode["Skybox"]["Left"].as<std::string>().c_str());
+		strcpy_s(skyboxTextures[Skybox::RIGHT], envNode["Skybox"]["Right"].as<std::string>().c_str());
 		LoadSkybox(m_engine->GetContext(), m_skybox,
 			skyboxTextures[Skybox::FRONT],
 			skyboxTextures[Skybox::BACK],
@@ -777,7 +777,7 @@ namespace Mist
 		{
 			uint32_t parent = it["Parent"].as<uint32_t>();
 			RenderObject rb = CreateRenderObject(parent);
-			SetRenderObjectName(rb, it["Name"].as<tString>().c_str());
+			SetRenderObjectName(rb, it["Name"].as<std::string>().c_str());
 
 			TransformComponent t;
 			YAML::Node transformNode = it["TransformComponent"];
@@ -796,7 +796,7 @@ namespace Mist
 				lightComponent.InnerCutoff = lightNode["InnerCutoff"].as<float>();
 				lightComponent.OuterCutoff = lightNode["OuterCutoff"].as<float>();
 				lightComponent.ProjectShadows = lightNode["ProjectShadows"].as<bool>();
-				lightComponent.Type = StrToLightType(lightNode["Type"].as<tString>().c_str());
+				lightComponent.Type = StrToLightType(lightNode["Type"].as<std::string>().c_str());
 				SetLight(rb, lightComponent);
 			}
 
@@ -804,8 +804,8 @@ namespace Mist
 			if (meshNode)
 			{
 				MeshComponent m;
-				strcpy_s(m.MeshAssetPath, meshNode["MeshAssetPath"].as<tString>().c_str());
-				m.MeshName = meshNode["MeshName"].as<tString>();
+				strcpy_s(m.MeshAssetPath, meshNode["MeshAssetPath"].as<std::string>().c_str());
+				m.MeshName = meshNode["MeshName"].as<std::string>();
 				m.MeshIndex = UINT32_MAX;
 				if (!m_meshNameIndexMap.contains(m.MeshAssetPath))
 					check(LoadMeshesFromFile(m.MeshAssetPath));

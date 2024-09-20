@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include "Render/RenderTypes.h"
+#include "Core/Types.h"
 
 namespace Mist
 {
@@ -32,8 +33,8 @@ namespace Mist
 			void MarkToClean(uint32_t index);
 
 
-			std::vector<VkImageView> m_attachments;
-			std::vector<AllocatedImage> m_imageArray;
+			tDynArray<VkImageView> m_attachments;
+			tDynArray<AllocatedImage> m_imageArray;
 			tExtent3D m_extent;
 			uint8_t m_cleanFlags;
 			const RenderContext& m_renderContext;
@@ -52,7 +53,7 @@ namespace Mist
 		tExtent3D m_extent;
 		uint8_t m_cleanFlags;
 
-		std::vector<AllocatedImage> m_imageArray;
-		std::vector<VkImageView> m_attachmentViewArray;
+		tDynArray<AllocatedImage> m_imageArray;
+		tDynArray<VkImageView> m_attachmentViewArray;
 	};
 }

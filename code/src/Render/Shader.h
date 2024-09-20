@@ -32,7 +32,7 @@ namespace Mist
 
 	struct ShaderDescriptorSetInfo
 	{
-		std::vector<ShaderBindingDescriptorInfo> BindingArray;
+		tDynArray<ShaderBindingDescriptorInfo> BindingArray;
 		uint32_t SetIndex = 0;
 	};
 
@@ -46,7 +46,7 @@ namespace Mist
 
 	struct ShaderReflectionProperties
 	{
-		std::vector<ShaderDescriptorSetInfo> DescriptorSetInfoArray;
+		tDynArray<ShaderDescriptorSetInfo> DescriptorSetInfoArray;
 		std::unordered_map<VkShaderStageFlags, ShaderPushConstantBufferInfo> PushConstantMap;
 	};
 

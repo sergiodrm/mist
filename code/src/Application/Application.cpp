@@ -54,7 +54,7 @@ namespace Mist
                     break;
                 case CVar::CVarType::Float:
 				{
-					float value = atof(endVar + 1);
+					float value = (float)atof(endVar + 1);
 					CFloatVar* floatVar = static_cast<CFloatVar*>(cvar);
                     floatVar->Set(value);
 				}

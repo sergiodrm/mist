@@ -142,7 +142,7 @@ namespace Mist
 		CameraData m_cameraData;
 
 		typedef std::function<void()> ImGuiCallback;
-		std::vector<ImGuiCallback> m_imguiCallbackArray;
+		tDynArray<ImGuiCallback> m_imguiCallbackArray;
 		typedef std::function<void(void*)> EventCallback;
 		EventCallback m_eventCallback;
 

@@ -425,7 +425,7 @@ namespace Mist
 
 #endif // !MIST_MEM_MANAGEMENT
 
-		RegisterAllocation(allocator, newBuffer.Alloc, bufferSize, true, file, line);
+		RegisterAllocation(allocator, newBuffer.Alloc, (uint32_t)bufferSize, true, file, line);
 
 #ifdef MIST_MEMORY_VERBOSE
 		Logf(LogLevel::Debug, "[MEMORY] New buffer [0x%p;0x%p;%u b]\n", (void*)newBuffer.Alloc, (void*)newBuffer.Buffer, bufferSize);

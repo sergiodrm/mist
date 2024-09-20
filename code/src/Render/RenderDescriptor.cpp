@@ -12,7 +12,7 @@ namespace Mist
 	VkDescriptorPool CreatePool(VkDevice device, const DescriptorPoolSizes& sizes, uint32_t count, VkDescriptorPoolCreateFlags flags)
 	{
 		logdebug("New VkDescriptorPool\n");
-		std::vector<VkDescriptorPoolSize> vulkanSizes(sizes.Sizes.size());
+		tDynArray<VkDescriptorPoolSize> vulkanSizes(sizes.Sizes.size());
 		for (uint32_t i = 0; i < sizes.Sizes.size(); ++i)
 			vulkanSizes[i] = { sizes.Sizes[i].Type, (uint32_t)(sizes.Sizes[i].Multiplier * count) };
 		VkDescriptorPoolCreateInfo poolInfo
@@ -31,13 +31,12 @@ namespace Mist
 
 	const DescriptorPoolSizes& DescriptorPoolSizes::GetDefault()
 	{
-		static const DescriptorPoolSizes sizes({
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f},
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f},
-			{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f},
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f},
-			{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f}
-		});
+		static DescriptorPoolSizes sizes;
+		sizes.Sizes[0] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f};
+		sizes.Sizes[1] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f};
+		sizes.Sizes[2] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f};
+		sizes.Sizes[3] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f};
+		sizes.Sizes[4] = { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f };
 		return sizes;
 	}
 
@@ -309,6 +308,13 @@ namespace Mist
 		m_batches.reserve(initialSize);
 		m_persistentDescriptors.reserve(initialSize * tDescriptorSetBatch::MaxDescriptors * 2);
 		m_volatileDescriptors.reserve(initialSize * tDescriptorSetBatch::MaxDescriptors * 2);
+	}
+
+	tDescriptorSetCache::~tDescriptorSetCache()
+	{
+		m_batches.clear();
+		m_persistentDescriptors.clear();
+		m_volatileDescriptors.clear();
 	}
 
 	uint32_t tDescriptorSetCache::NewBatch()

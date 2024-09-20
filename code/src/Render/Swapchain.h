@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Render/RenderTypes.h"
-#include <vector>
+#include "Core/Types.h"
 
 namespace Mist
 {
@@ -35,8 +35,8 @@ namespace Mist
 	private:
 		VkSwapchainKHR m_swapchain;
 		EFormat m_imageFormat;
-		std::vector<VkImage> m_images;
-		std::vector<VkImageView> m_imageViews;
+		tDynArray<VkImage> m_images;
+		tDynArray<VkImageView> m_imageViews;
 
 		EFormat m_depthFormat;
 		AllocatedImage m_depthImage;

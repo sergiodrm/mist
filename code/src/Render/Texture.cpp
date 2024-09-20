@@ -642,18 +642,20 @@ namespace Mist
 
 
 
-
-	tMap<uint32_t, Sampler> g_Samplers;
-
+#define DESTROYED_SAMPLERS_VALUE SIZE_MAX
+	tMap<uint32_t, Sampler>* g_Samplers = nullptr;
 
 	Sampler CreateSampler(const RenderContext& renderContext, const SamplerDescription& description)
 	{
+		check((size_t)g_Samplers != DESTROYED_SAMPLERS_VALUE);
+		if (!g_Samplers)
+			g_Samplers = _new tMap<uint32_t, Sampler>();
 		uint32_t descId = GetSamplerPackedDescription(description);
 		// Already created?
-		if (g_Samplers.contains(descId))
+		if (g_Samplers->contains(descId))
 		{
-			check(g_Samplers[descId] != VK_NULL_HANDLE);
-			return g_Samplers[descId];
+			check((*g_Samplers)[descId] != VK_NULL_HANDLE);
+			return (*g_Samplers)[descId];
 		}
 
 		// Create and stored
@@ -666,7 +668,7 @@ namespace Mist
 		createInfo.anisotropyEnable = 0;
 		Sampler sampler;
 		vkcheck(vkCreateSampler(renderContext.Device, &createInfo, nullptr, &sampler));
-		g_Samplers[descId] = sampler;
+		(*g_Samplers)[descId] = sampler;
 		return sampler;
 	}
 
@@ -687,13 +689,15 @@ namespace Mist
 
 	void DestroySamplers(const RenderContext& renderContext)
 	{
-		for (tMap<uint32_t, Sampler>::iterator it = g_Samplers.begin();
-			it != g_Samplers.end(); ++it)
+		for (tMap<uint32_t, Sampler>::iterator it = (*g_Samplers).begin();
+			it != (*g_Samplers).end(); ++it)
 		{
 			check(it->second != VK_NULL_HANDLE);
 			vkDestroySampler(renderContext.Device, it->second, nullptr);
 		}
-		g_Samplers.clear();
+		(*g_Samplers).clear();
+		delete g_Samplers;
+		g_Samplers = (tMap<uint32_t, Sampler>*)DESTROYED_SAMPLERS_VALUE;
 	}
 
 }

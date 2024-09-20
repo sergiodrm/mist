@@ -13,7 +13,7 @@
 
 namespace Mist
 {
-	bool io::ReadFile(const char* filename, std::vector<uint32_t>& data)
+	bool io::ReadFile(const char* filename, tDynArray<uint32_t>& data)
 	{
 		data.clear();
 		// Open file with std::ios::ate -> with cursor at the end of the file
