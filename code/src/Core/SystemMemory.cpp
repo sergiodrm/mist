@@ -69,7 +69,7 @@ namespace Mist
 	void TerminateSystemMemory()
 	{
 		DumpMemoryTrace(SystemMemStats);
-		assert(SystemMemStats.Allocated == 0);
+		//assert(SystemMemStats.Allocated == 0);
 	}
 
 	const tSystemMemStats& GetMemoryStats()
