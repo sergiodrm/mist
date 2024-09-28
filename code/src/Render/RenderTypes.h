@@ -432,6 +432,13 @@ namespace Mist
 	};
 	DEFINE_FLAG_BITS_TYPE(ESampleCount);
 
+	enum ESamplerMipmapMode
+	{
+		SAMPLER_MIPMAP_MODE_NEAREST = 0,
+		SAMPLER_MIPMAP_MODE_LINEAR = 1,
+		SAMPLER_MIPMAP_MODE_MAX_ENUM = 0x7FFFFFFF
+	};
+
 
 #define PRIMITIVE_TOPOLOGY_LIST \
 	_X_(PRIMITIVE_TOPOLOGY_POINT_LIST) \
@@ -529,6 +536,7 @@ namespace Mist
 		VkFilter GetFilter(EFilterType type);
 		VkSamplerAddressMode GetSamplerAddressMode(ESamplerAddressMode mode);
 		VkSampleCountFlags GetSampleCount(ESampleCount sample);
+		VkSamplerMipmapMode GetSamplerMipmapMode(ESamplerMipmapMode mode);
 		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology);
 		VkCullModeFlags GetCullMode(ECullMode mode);
 		VkFrontFace GetFrontFace(EFrontFace face);
@@ -544,6 +552,7 @@ namespace Mist
 		EFilterType GetFilter(VkFilter type);
 		ESamplerAddressMode GetSamplerAddressMode(VkSamplerAddressMode mode);
 		ESampleCount GetSampleCount(VkSampleCountFlags sample);
+		ESamplerMipmapMode GetSamplerMipmapMode(VkSamplerMipmapMode mode);
 		EPrimitiveTopology GetPrimitiveTopology(VkPrimitiveTopology topology);
 		ECullMode GetCullMode(VkCullModeFlags mode);
 		EFrontFace GetFrontFace(VkFrontFace face);

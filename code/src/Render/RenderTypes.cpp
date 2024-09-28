@@ -491,6 +491,17 @@ namespace Mist
 			return res;
 		}
 
+		VkSamplerMipmapMode GetSamplerMipmapMode(ESamplerMipmapMode mode)
+		{
+			switch (mode)
+			{
+			case SAMPLER_MIPMAP_MODE_NEAREST: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+			case SAMPLER_MIPMAP_MODE_LINEAR: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+			}
+			check(false);
+			return VK_SAMPLER_MIPMAP_MODE_MAX_ENUM;
+		}
+
 		VkPrimitiveTopology GetPrimitiveTopology(EPrimitiveTopology topology)
 		{
 			switch (topology)
@@ -1022,6 +1033,18 @@ namespace Mist
 			if (sample & VK_SAMPLE_COUNT_64_BIT) res |= SAMPLE_COUNT_64_BIT;
 			return res;
 		}
+
+		ESamplerMipmapMode GetSamplerMipmapMode(VkSamplerMipmapMode mode)
+		{
+			switch (mode)
+			{
+			case VK_SAMPLER_MIPMAP_MODE_NEAREST: return SAMPLER_MIPMAP_MODE_NEAREST;
+			case VK_SAMPLER_MIPMAP_MODE_LINEAR: return SAMPLER_MIPMAP_MODE_LINEAR;
+			}
+			check(false);
+			return SAMPLER_MIPMAP_MODE_MAX_ENUM;
+		}
+
 		}
 
 	void utils::CmdSubmitTransfer(const RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback)

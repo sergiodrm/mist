@@ -18,10 +18,11 @@ namespace Mist
 		ESamplerAddressMode AddressModeU = SAMPLER_ADDRESS_MODE_REPEAT;
 		ESamplerAddressMode AddressModeV = SAMPLER_ADDRESS_MODE_REPEAT;
 		ESamplerAddressMode AddressModeW = SAMPLER_ADDRESS_MODE_REPEAT;
-		float MipLodBias;
 		VkBool32 AnisotropyEnable;
+		ESamplerMipmapMode MipmapMode = SAMPLER_MIPMAP_MODE_LINEAR;
 		float MaxAnisotropy;
-		float MinLod;
+		float MipLodBias = 0.f;
+		float MinLod = 0.f;
 		float MaxLod;
 	};
 
@@ -41,8 +42,7 @@ namespace Mist
 
 	struct tViewDescription
 	{
-		uint32_t BaseMipLevel = 0;
-		uint32_t LevelCount = 1;
+		bool UseMipmaps = true;
 		uint32_t BaseArrayLayer = 0;
 		uint32_t LayerCount = 1;
 		EImageAspect AspectMask = IMAGE_ASPECT_COLOR_BIT;

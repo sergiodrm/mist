@@ -117,10 +117,10 @@ namespace Mist
 			.viewType = viewDesc.ViewType,
 			.format = tovk::GetFormat(m_description.Format),
 		};
-		check(viewDesc.BaseMipLevel + viewDesc.LevelCount <= m_description.MipLevels);
+		//check(viewDesc.BaseMipLevel + viewDesc.LevelCount <= m_description.MipLevels);
 		check(viewDesc.BaseArrayLayer + viewDesc.LayerCount <= m_description.Layers);
-		viewInfo.subresourceRange.baseMipLevel = viewDesc.BaseMipLevel;
-		viewInfo.subresourceRange.levelCount = viewDesc.LevelCount;
+		viewInfo.subresourceRange.baseMipLevel = 0;
+		viewInfo.subresourceRange.levelCount = viewDesc.UseMipmaps ? m_description.MipLevels : 1;
 		viewInfo.subresourceRange.baseArrayLayer = viewDesc.BaseArrayLayer;
 		viewInfo.subresourceRange.layerCount = viewDesc.LayerCount;
 		viewInfo.subresourceRange.aspectMask = tovk::GetImageAspect(viewDesc.AspectMask);
@@ -666,6 +666,10 @@ namespace Mist
 		createInfo.minFilter = tovk::GetFilter(description.MinFilter);
 		createInfo.magFilter = tovk::GetFilter(description.MagFilter);
 		createInfo.anisotropyEnable = 0;
+		createInfo.minLod = description.MinLod;
+		createInfo.maxLod = description.MaxLod;
+		createInfo.mipLodBias = description.MipLodBias;
+		createInfo.mipmapMode = tovk::GetSamplerMipmapMode(description.MipmapMode);
 		Sampler sampler;
 		vkcheck(vkCreateSampler(renderContext.Device, &createInfo, nullptr, &sampler));
 		(*g_Samplers)[descId] = sampler;
