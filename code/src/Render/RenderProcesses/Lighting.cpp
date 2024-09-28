@@ -13,6 +13,7 @@
 #include "Application/CmdParser.h"
 #include "ShadowMap.h"
 #include "Render/RendererBase.h"
+#include "DebugProcess.h"
 
 
 namespace Mist
@@ -153,18 +154,18 @@ namespace Mist
 		description.AddColorAttachment(HDR_FORMAT, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
-		m_renderTarget.Create(renderContext, description);
+		m_lightingOutput.Create(renderContext, description);
 
 		{
 			// Deferred pipeline
 			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
-			shaderDesc.RenderTarget = &m_renderTarget;
+			shaderDesc.RenderTarget = &m_lightingOutput;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			shaderDesc.ColorAttachmentBlendingArray.push_back(vkinit::PipelineColorBlendAttachmentState());
-			m_shader = ShaderProgram::Create(renderContext, shaderDesc);
-			m_shader->SetupDescriptors(renderContext);
+			m_lightingShader = ShaderProgram::Create(renderContext, shaderDesc);
+			m_lightingShader->SetupDescriptors(renderContext);
 		}
 
 #if 0
@@ -187,26 +188,26 @@ namespace Mist
 			ldrRtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 			ldrRtDesc.RenderArea.offset = { .x = 0, .y = 0 };
 			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
-			m_ldrRenderTarget.Create(renderContext, ldrRtDesc);
+			m_hdrOutput.Create(renderContext, ldrRtDesc);
 
 			tShaderProgramDescription hdrShaderDesc;
 			hdrShaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
 			hdrShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("hdr.frag");
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			hdrShaderDesc.RenderTarget = &m_ldrRenderTarget;
+			hdrShaderDesc.RenderTarget = &m_hdrOutput;
 			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
 			m_hdrShader->SetupDescriptors(renderContext);
 		}
 
 		m_bloomEffect.Init(renderContext);
-		m_bloomEffect.HDRRT = &m_renderTarget;
+		m_bloomEffect.HDRRT = &m_lightingOutput;
 	}
 
 	void DeferredLighting::Destroy(const RenderContext& renderContext)
 	{
 		m_bloomEffect.Destroy(renderContext);
-		m_ldrRenderTarget.Destroy(renderContext);
-		m_renderTarget.Destroy(renderContext);
+		m_hdrOutput.Destroy(renderContext);
+		m_lightingOutput.Destroy(renderContext);
 	}
 
 	void DeferredLighting::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -247,29 +248,29 @@ namespace Mist
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		// Composition
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
-		m_renderTarget.BeginPass(cmd);
-		m_shader->UseProgram(renderContext);
-		m_shader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
-		m_shader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
-		m_shader->BindTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
-		m_shader->BindTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
-		m_shader->BindTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
+		m_lightingOutput.BeginPass(cmd);
+		m_lightingShader->UseProgram(renderContext);
+		m_lightingShader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
+		m_lightingShader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
+		m_lightingShader->BindTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
+		m_lightingShader->BindTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
+		m_lightingShader->BindTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
 
 		// Use shared buffer for avoiding doing this here (?)
 		const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
 		tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 			shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
-		m_shader->SetBufferData(renderContext, "u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+		m_lightingShader->SetBufferData(renderContext, "u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
 
 		EnvironmentData env = frameContext.Scene->GetEnvironmentData();
 		env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
-		m_shader->SetBufferData(renderContext, "u_Env", &env, sizeof(env));
+		m_lightingShader->SetBufferData(renderContext, "u_Env", &env, sizeof(env));
 
-		m_shader->FlushDescriptors(renderContext);
+		m_lightingShader->FlushDescriptors(renderContext);
 
 		CmdDrawFullscreenQuad(cmd);
-		m_renderTarget.EndPass(cmd);
+		m_lightingOutput.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 
 		{
@@ -277,7 +278,7 @@ namespace Mist
 			BeginGPUEvent(renderContext, cmd, "Bloom Threshold");
 			m_bloomEffect.TempRT.BeginPass(cmd);
 			m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
-			Texture* lightingFinalTexture = m_renderTarget.GetAttachment(0).Tex;
+			Texture* lightingFinalTexture = m_lightingOutput.GetAttachment(0).Tex;
 			m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
 			m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
@@ -356,19 +357,20 @@ namespace Mist
 
 		// HDR and tone mapping
 		BeginGPUEvent(renderContext, cmd, "HDR");
-		m_ldrRenderTarget.BeginPass(cmd);
+		m_hdrOutput.BeginPass(cmd);
 		m_hdrShader->UseProgram(renderContext);
 		m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
 		m_hdrShader->BindTextureSlot(renderContext, 0, *m_bloomEffect.FinalTarget.GetAttachment(0).Tex);
 		m_hdrShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);
-		m_ldrRenderTarget.EndPass(cmd);
+		m_hdrOutput.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 	}
 
 	void DeferredLighting::ImGuiDraw()
 	{
 		ImGui::Begin("HDR");
+		ImGui::Checkbox("Show debug", &m_showDebug);
 		/*bool enabled = CVar_HDREnable.Get();
 		if (ImGui::Checkbox("HDR enabled", &enabled)) 
 			CVar_HDREnable.Set(enabled);*/
@@ -379,6 +381,18 @@ namespace Mist
 		ImGui::DragFloat("Upsampler filter radius", &m_bloomEffect.FilterRadius, 0.001f, 0.001f, 0.1f);
 		ImGui::DragFloat("Mix alpha", &m_bloomEffect.MixAlpha, 0.02f, 0.f, 1.f);
 		ImGui::End();
+	}
+
+	void DeferredLighting::DebugDraw(const RenderContext& context)
+	{
+		if (m_showDebug)
+		{
+			float width = (float)context.Window->Width;
+			float height = (float)context.Window->Height;
+			float w = 0.5f;
+			float h = 0.5f;
+			DebugRender::DrawScreenQuad(glm::vec2{ w * width, 0.f }, glm::vec2{ (1.f - w) * width, h * height }, m_lightingOutput.GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
 	}
 	
 }

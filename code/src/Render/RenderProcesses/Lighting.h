@@ -49,15 +49,16 @@ namespace Mist
 		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return &m_ldrRenderTarget; }
+		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return &m_hdrOutput; }
 		virtual void ImGuiDraw() override;
+		virtual void DebugDraw(const RenderContext& context) override;
 	private:
-		RenderTarget m_renderTarget;
-		ShaderProgram* m_shader;
+		RenderTarget m_lightingOutput;
+		ShaderProgram* m_lightingShader;
 		ShaderProgram* m_skyboxShader;
 
 		ShaderProgram* m_hdrShader;
-		RenderTarget m_ldrRenderTarget;
+		RenderTarget m_hdrOutput;
 		HDRParams m_hdrParams;
 
 		const RenderTarget* m_gbufferRenderTarget;
@@ -65,6 +66,7 @@ namespace Mist
 		const RenderTarget* m_ssaoRenderTarget;
 
 		BloomEffect m_bloomEffect;
+		bool m_showDebug;
 	};
 
 #if 0
