@@ -280,6 +280,8 @@ namespace Mist
 			m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
 			Texture* lightingFinalTexture = m_lightingOutput.GetAttachment(0).Tex;
 			m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
+			static constexpr glm::vec4 threshold{ 1.f };
+			m_bloomEffect.ThresholdFilterShader->SetBufferData(renderContext, "u_ThresholdParams", &threshold, sizeof(glm::vec4));
 			m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 			m_bloomEffect.TempRT.EndPass(cmd);
@@ -391,7 +393,8 @@ namespace Mist
 			float height = (float)context.Window->Height;
 			float w = 0.5f;
 			float h = 0.5f;
-			DebugRender::DrawScreenQuad(glm::vec2{ w * width, 0.f }, glm::vec2{ (1.f - w) * width, h * height }, m_lightingOutput.GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			ImageView view = m_bloomEffect.TempRT.GetRenderTarget(0);
+			DebugRender::DrawScreenQuad(glm::vec2{ w * width, 0.f }, glm::vec2{ (1.f - w) * width, h * height }, view, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 	}
 	
