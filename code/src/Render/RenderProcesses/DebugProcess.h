@@ -9,8 +9,6 @@
 #include "Render/RenderAPI.h"
 #include "Render/RenderContext.h"
 
-#define SSAO_KERNEL_SAMPLES 64
-
 namespace Mist
 {
 	class ShaderProgram;
