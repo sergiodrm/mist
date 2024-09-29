@@ -228,7 +228,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 A
         lighting = CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);
         //lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
     }
-    //intensity *= 100.f;
+    intensity *= 10.f;
     return lighting * intensity;
 }
 
@@ -290,6 +290,7 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
 
 void main()
 {
+#if 1
     vec4 gbufferPos = texture(u_GBufferPosition, inTexCoords);
     vec4 gbufferNormal = texture(u_GBufferNormal, inTexCoords);
 	vec3 fragPos = gbufferPos.rgb;
@@ -304,9 +305,8 @@ void main()
     return;
 
 
+#else // non pbr
 
-
-#if 0
 	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;
 	vec3 fragNormal = normalize(texture(u_GBufferNormal, inTexCoords).rgb);
 	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
