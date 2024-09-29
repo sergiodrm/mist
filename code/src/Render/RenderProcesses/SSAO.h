@@ -8,7 +8,7 @@
 #include "Render/RenderContext.h"
 #include "RenderProcess.h"
 
-#define SSAO_KERNEL_SAMPLES 64
+#define SSAO_KERNEL_SAMPLES 32
 
 namespace Mist
 {

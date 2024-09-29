@@ -3,7 +3,7 @@
 layout(location = 0) in vec2 inTexCoords;
 layout(location = 0) out float fragColor;
 
-#define KERNEL_SIZE 64
+//#define KERNEL_SIZE 64
 
 int KernelSize = KERNEL_SIZE;
 
