@@ -58,12 +58,23 @@ namespace Mist
 		for (uint32_t i = 0; i < memStats.MemTraceSize; ++i)
 		{
 			if (memStats.MemTrace[i].Data)
-				logfinfo("Memory trace: 0x%p | %d bytes | %s (%d)\n", memStats.MemTrace[i].Data, memStats.MemTrace[i].Size, memStats.MemTrace[i].File, memStats.MemTrace[i].Line);
+				logfinfo("[%d] Memory trace: 0x%p | %d bytes | %s (%d)\n", i, memStats.MemTrace[i].Data, memStats.MemTrace[i].Size, memStats.MemTrace[i].File, memStats.MemTrace[i].Line);
 		}
+	}
+
+	bool ExecCommand_DumpMemoryTrace(const char* command)
+	{
+		if (!strcmp(command, "memdmp"))
+		{
+			DumpMemoryTrace(SystemMemStats);
+			return true;
+		}
+		return false;
 	}
 
 	void InitSytemMemory()
 	{
+		AddConsoleCommand(&ExecCommand_DumpMemoryTrace);
 	}
 
 	void TerminateSystemMemory()
