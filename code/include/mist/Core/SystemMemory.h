@@ -11,6 +11,7 @@ void operator delete(void* p, const char* file, int lin);
 void operator delete[](void* p, const char* file, int lin);
 
 #define _new ::new(__FILE__ " " __FUNCTION__, __LINE__)
+#define _malloc(size) Mist::Malloc(size, __FILE__, __LINE__)
 
 namespace Mist
 {
@@ -26,7 +27,7 @@ namespace Mist
 	{
 		unsigned int Allocated = 0;
 		unsigned int MaxAllocated = 0;
-		static constexpr size_t MemTraceSize = 1024;
+		static constexpr size_t MemTraceSize = 2048;
 		tSystemAllocTrace MemTrace[MemTraceSize];
 		unsigned int MemTraceIndex = 0;
 		unsigned int FreeIndices[MemTraceSize];
