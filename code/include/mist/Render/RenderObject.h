@@ -15,20 +15,4 @@ namespace Mist
 		inline void Invalidate() { Id = InvalidId; }
 		operator uint32_t() const { return Id; }
 	};
-
-	struct RenderObjectTransform
-	{
-		glm::vec3 Position{ 0.f };
-		glm::vec3 Rotation{ 0.f };
-		glm::vec3 Scale{ 1.f };
-	};
-
-	glm::mat4 CalculateTransform(const RenderObjectTransform& objectTransform);
-
-	struct RenderObjectMesh
-	{
-		Mesh StaticMesh;
-		Material Mtl;
-	};
-
 }
