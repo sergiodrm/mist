@@ -5,9 +5,9 @@
 #include "Render/Globals.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
+#include <glm/glm.hpp>
 
 #define BLOOM_MIPMAP_LEVELS 5
-
 
 namespace Mist
 {
@@ -20,6 +20,14 @@ namespace Mist
 		float Exposure = 1.f;
 	};
 
+	struct tBloomConfig
+	{
+		bool BloomActive = true;
+		float MixCompositeAlpha = 0.5f;
+		float UpscaleFilterRadius = 0.005f;
+		glm::vec4 InputThreshold = { 1.f, 1.f, 1.f, 1.f };
+	};
+
 	class BloomEffect
 	{
 	public:
@@ -27,6 +35,8 @@ namespace Mist
 
 		void Init(const RenderContext& context);
 		void Destroy(const RenderContext& context);
+
+		void ImGuiDraw();
 
 		ShaderProgram* ThresholdFilterShader;
 		ShaderProgram* DownsampleShader;
@@ -36,8 +46,7 @@ namespace Mist
 		RenderTarget* HDRRT;
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 		RenderTarget FinalTarget;
-		float MixAlpha = 0.5f;
-		float FilterRadius = 0.005f;
+		tBloomConfig Config;
 	};
 
 	class DeferredLighting : public RenderProcess

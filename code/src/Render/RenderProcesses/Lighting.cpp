@@ -147,6 +147,16 @@ namespace Mist
 			RenderTargetArray[i].Destroy(context);
 	}
 
+	void BloomEffect::ImGuiDraw()
+	{
+		ImGui::Begin("Bloom");
+		ImGui::Checkbox("Enabled", &Config.BloomActive);
+		ImGui::DragFloat("Composite mix alpha", &Config.MixCompositeAlpha, 0.02f, 0.f, 1.f);
+		ImGui::DragFloat("Upscale filter radius", &Config.UpscaleFilterRadius, 0.001f, 0.f, 0.5f);
+		ImGui::DragFloat4("Input threshold", &Config.InputThreshold[0], 0.01f, 0.f, 1.f);
+		ImGui::End();
+	}
+
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
@@ -277,13 +287,15 @@ namespace Mist
 			CPU_PROFILE_SCOPE(BloomDownsampler);
 			BeginGPUEvent(renderContext, cmd, "Bloom Threshold");
 			m_bloomEffect.TempRT.BeginPass(cmd);
-			m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
-			Texture* lightingFinalTexture = m_lightingOutput.GetAttachment(0).Tex;
-			m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
-			static constexpr glm::vec4 threshold{ 1.f };
-			m_bloomEffect.ThresholdFilterShader->SetBufferData(renderContext, "u_ThresholdParams", &threshold, sizeof(glm::vec4));
-			m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
-			CmdDrawFullscreenQuad(cmd);
+			if (m_bloomEffect.Config.BloomActive)
+			{
+				m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
+				Texture* lightingFinalTexture = m_lightingOutput.GetAttachment(0).Tex;
+				m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
+				m_bloomEffect.ThresholdFilterShader->SetBufferData(renderContext, "u_ThresholdParams", &m_bloomEffect.Config.InputThreshold[0], sizeof(glm::vec4));
+				m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
+				CmdDrawFullscreenQuad(cmd);
+			}
 			m_bloomEffect.TempRT.EndPass(cmd);
 			EndGPUEvent(renderContext, cmd);
 
@@ -293,22 +305,25 @@ namespace Mist
 				RenderTarget& rt = m_bloomEffect.RenderTargetArray[i];
 
 				rt.BeginPass(cmd);
-				m_bloomEffect.DownsampleShader->UseProgram(renderContext);
-				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
-				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+				if (m_bloomEffect.Config.BloomActive)
+				{
+					m_bloomEffect.DownsampleShader->UseProgram(renderContext);
+					RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
+					RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
 
-				Texture* textureInput = nullptr;
-				if (i == 0)
-					textureInput = m_bloomEffect.HDRRT->GetAttachment(0).Tex;
-				else
-					textureInput = m_bloomEffect.RenderTargetArray[i - 1].GetAttachment(0).Tex;
-				m_bloomEffect.DownsampleShader->BindTextureSlot(renderContext, 0, *textureInput);
+					Texture* textureInput = nullptr;
+					if (i == 0)
+						textureInput = m_bloomEffect.TempRT.GetAttachment(0).Tex;
+					else
+						textureInput = m_bloomEffect.RenderTargetArray[i - 1].GetAttachment(0).Tex;
+					m_bloomEffect.DownsampleShader->BindTextureSlot(renderContext, 0, *textureInput);
 
-				uint32_t resolutionOffset = i * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, sizeof(glm::vec2));
-				m_bloomEffect.DownsampleShader->SetDynamicBufferOffset(renderContext, "u_BloomDownsampleParams", resolutionOffset);
+					uint32_t resolutionOffset = i * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, sizeof(glm::vec2));
+					m_bloomEffect.DownsampleShader->SetDynamicBufferOffset(renderContext, "u_BloomDownsampleParams", resolutionOffset);
 
-				m_bloomEffect.DownsampleShader->FlushDescriptors(renderContext);
-				CmdDrawFullscreenQuad(cmd);
+					m_bloomEffect.DownsampleShader->FlushDescriptors(renderContext);
+					CmdDrawFullscreenQuad(cmd);
+				}
 
 				rt.EndPass(cmd);
 
@@ -333,13 +348,16 @@ namespace Mist
 				ShaderProgram* shader = m_bloomEffect.UpsampleShader;
 
 				rt.BeginPass(cmd);
-				shader->UseProgram(renderContext);
-				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
-				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
-				shader->BindTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
-				shader->SetBufferData(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.FilterRadius, sizeof(m_bloomEffect.FilterRadius));
-				shader->FlushDescriptors(renderContext);
-				CmdDrawFullscreenQuad(cmd);
+				if (m_bloomEffect.Config.BloomActive)
+				{
+					shader->UseProgram(renderContext);
+					RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
+					RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+					shader->BindTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
+					shader->SetBufferData(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.Config.UpscaleFilterRadius, sizeof(m_bloomEffect.Config.UpscaleFilterRadius));
+					shader->FlushDescriptors(renderContext);
+					CmdDrawFullscreenQuad(cmd);
+				}
 				rt.EndPass(cmd);
 			}
 			EndGPUEvent(renderContext, cmd);
@@ -349,7 +367,11 @@ namespace Mist
 			m_bloomEffect.MixShader->UseProgram(renderContext);
 			m_bloomEffect.MixShader->BindTextureSlot(renderContext, 0, *m_bloomEffect.HDRRT->GetAttachment(0).Tex);
 			m_bloomEffect.MixShader->BindTextureSlot(renderContext, 1, *m_bloomEffect.RenderTargetArray[0].GetAttachment(0).Tex);
-			m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &m_bloomEffect.MixAlpha, sizeof(m_bloomEffect.MixAlpha));
+			float z = 0.f;
+			if (m_bloomEffect.Config.BloomActive)
+				m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &m_bloomEffect.Config.MixCompositeAlpha, sizeof(m_bloomEffect.Config.MixCompositeAlpha));
+			else
+				m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &z, sizeof(m_bloomEffect.Config.MixCompositeAlpha));
 			m_bloomEffect.MixShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 			m_bloomEffect.FinalTarget.EndPass(cmd);
@@ -378,11 +400,9 @@ namespace Mist
 			CVar_HDREnable.Set(enabled);*/
 		ImGui::DragFloat("Gamma correction", &m_hdrParams.GammaCorrection, 0.1f, 0.f, 5.f);
 		ImGui::DragFloat("Exposure", &m_hdrParams.Exposure, 0.1f, 0.f, 5.f);
-		ImGui::Separator();
-		ImGui::Text("Bloom");
-		ImGui::DragFloat("Upsampler filter radius", &m_bloomEffect.FilterRadius, 0.001f, 0.001f, 0.1f);
-		ImGui::DragFloat("Mix alpha", &m_bloomEffect.MixAlpha, 0.02f, 0.f, 1.f);
 		ImGui::End();
+
+		m_bloomEffect.ImGuiDraw();
 	}
 
 	void DeferredLighting::DebugDraw(const RenderContext& context)
