@@ -188,4 +188,73 @@ namespace Mist
 		T Data[Size];
 		uint32_t PushIndex = 0;
 	};
+
+	template <typename DataType, typename IndexType = uint16_t>
+	class tFixedHeapArray
+	{
+	public:
+
+		tFixedHeapArray()
+			: m_data(nullptr), m_index(0), m_count(0) {}
+		tFixedHeapArray(IndexType count)
+			: m_data(nullptr), m_index(0), m_count(0)
+		{
+			Allocate(count);
+		}
+		~tFixedHeapArray()
+		{
+			Delete();
+		}
+
+		void Allocate(IndexType count)
+		{
+			assert(!m_data && !m_index && !m_count);
+			m_count = count;
+			m_data = (DataType*)_malloc(count * sizeof(DataType));
+		}
+
+		void Delete()
+		{
+			Clear();
+			if (m_data)
+			{
+				delete[] m_data;
+				m_count = 0;
+				m_index = 0;
+			}
+		}
+
+		void Clear()
+		{
+			for (IndexType i = 0; i < m_index; ++i)
+			{
+				m_data[i].~DataType();
+			}
+			m_index = 0;
+		}
+
+		void Push(const DataType& value)
+		{
+			assert(m_data && m_index < m_count);
+			m_data[m_index++] = value;
+		}
+
+		void Pop()
+		{
+			assert(m_data && m_index);
+			m_data[m_index--].~DataType();
+		}
+
+		inline const DataType* GetData() const { m_data; }
+		inline DataType* GetData() { return m_data; }
+		inline IndexType GetSize() const { return m_index; }
+		inline IndexType GetReservedSize() const { return m_count; }
+
+		inline DataType& operator[](IndexType index) { assert(m_data && index < m_index); return m_data[index]; }
+		inline const DataType& operator[](IndexType index) const { assert(m_data && index < m_index); return m_data[index]; }
+	private:
+		DataType* m_data;
+		IndexType m_index;
+		IndexType m_count;
+	};
 }
