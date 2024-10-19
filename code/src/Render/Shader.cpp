@@ -1264,7 +1264,7 @@ namespace Mist
 		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, texture);
 	}
 
-	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture** textureArray, uint32_t textureCount)
+	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture* const* textureArray, uint32_t textureCount)
 	{
 		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, textureArray, textureCount);
 	}
