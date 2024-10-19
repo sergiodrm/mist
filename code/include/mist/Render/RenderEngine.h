@@ -11,7 +11,6 @@ namespace Mist
 	class Material;
 	struct RenderObject;
 	struct RenderObjectTransform;
-	struct RenderObjectMesh;
 	struct RenderHandle;
 	struct Window;
 
