@@ -6,12 +6,11 @@
 
 namespace Mist
 {
-	class IScene;
+	class Scene;
 	class Mesh;
 	class Material;
 	struct RenderObject;
 	struct RenderObjectTransform;
-	struct RenderHandle;
 	struct Window;
 
 
@@ -37,13 +36,11 @@ namespace Mist
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) = 0;
 
 		/** Scene to draw. Engine does NOT own the scene. Delete of the scene is on the side of the app. */
-		virtual IScene* GetScene() = 0;
-		virtual const IScene* GetScene() const = 0;
-		virtual void SetScene(IScene* scene) = 0;
+		virtual Scene* GetScene() = 0;
+		virtual const Scene* GetScene() const = 0;
+		virtual void SetScene(Scene* scene) = 0;
 		virtual void AddImGuiCallback(std::function<void()>&& fn) = 0;
 		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) = 0;
-		virtual RenderHandle GetDefaultTexture() const = 0;
-		virtual Material GetDefaultMaterial() const = 0;
 	};
 
 }

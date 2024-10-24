@@ -2,7 +2,7 @@
 #include "Core/VideoMemory.h"
 #include "Core/SystemMemory.h"
 #include "Core/Debug.h"
-#include "Render/RenderHandle.h"
+//#include "Render/RenderHandle.h"
 
 #include <vector>
 #include <array>

@@ -4,7 +4,7 @@
 #include "Core/Logger.h"
 #include "Render/InitVulkanTypes.h"
 #include "GBuffer.h"
-#include "Scene/SceneImpl.h"
+#include "Scene/Scene.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/RenderDescriptor.h"
 #include "imgui_internal.h"

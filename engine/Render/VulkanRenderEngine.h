@@ -3,9 +3,7 @@
 
 #include "Render/RenderEngine.h"
 #include "RenderPass.h"
-#include "Render/RenderHandle.h"
 #include "Render/Shader.h"
-#include "Render/RenderObject.h"
 #include "Render/RenderContext.h"
 #include "Render/RenderDescriptor.h"
 #include "Render/RenderTarget.h"
@@ -88,14 +86,12 @@ namespace Mist
 
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) override;
 
-		virtual IScene* GetScene() override;
-		virtual const IScene* GetScene() const override;
-		virtual void SetScene(IScene* scene);
+		virtual Scene* GetScene() override;
+		virtual const Scene* GetScene() const override;
+		virtual void SetScene(Scene* scene);
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) override { m_eventCallback = fn; }
 
-		virtual RenderHandle GetDefaultTexture() const;
-		virtual Material GetDefaultMaterial() const;
 		const RenderContext& GetContext() const { return m_renderContext; }
 #if 0
 		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
@@ -149,6 +145,6 @@ namespace Mist
 		GPUParticleSystem m_gpuParticleSystem;
 	};
 
-	extern RenderHandle GenerateRenderHandle();
 	extern void CmdDrawFullscreenQuad(CommandBuffer cmd);
+	extern Texture* GetDefaultTexture(const RenderContext& context);
 }

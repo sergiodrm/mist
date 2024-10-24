@@ -20,7 +20,7 @@
 #include "Core/Debug.h"
 #include "Render/Shader.h"
 #include "Render/Globals.h"
-#include "Scene/SceneImpl.h"
+#include "Scene/Scene.h"
 #include "Utils/GenericUtils.h"
 #include "Render/RenderTarget.h"
 #include "RenderProcesses/RenderProcess.h"
@@ -119,11 +119,25 @@ namespace Mist
 		FullscreenQuad.Draw(cmd);
 	}
 
-	RenderHandle GenerateRenderHandle()
+	Texture* DefaultTexture = nullptr;
+	Texture* GetDefaultTexture(const RenderContext& context)
 	{
-		static RenderHandle h;
-		++h.Handle;
-		return h;
+		if (!DefaultTexture)
+		{
+			tImageDescription desc
+			{
+				.Format = FORMAT_R8G8B8A8_SRGB,
+				.Width = 1,
+				.Height = 1,
+				.Depth = 1,
+			};
+			DefaultTexture = Texture::Create(context, desc);
+			float pixel = 0.f;
+			const uint8_t* layer = (uint8_t*)&pixel;
+			DefaultTexture->SetImageLayers(context, &layer, 1);
+			DefaultTexture->CreateView(context, tViewDescription());
+		}
+		return DefaultTexture;
 	}
 
 	Window Window::Create(uint32_t width, uint32_t height, const char* title)
@@ -378,7 +392,11 @@ namespace Mist
 		FullscreenQuad.Destroy(m_renderContext);
 
 		if (m_scene)
-			IScene::DestroyScene(m_scene);
+		{
+			m_scene->Destroy();
+			delete m_scene;
+			m_scene = nullptr;
+		}
 
 		m_gpuParticleSystem.Destroy(m_renderContext);
 
@@ -386,6 +404,9 @@ namespace Mist
 		m_renderer.Destroy(m_renderContext);
 		m_screenPipeline.Destroy(m_renderContext);
 
+		if (DefaultTexture)
+			Texture::Destroy(m_renderContext, DefaultTexture);
+		DefaultTexture = nullptr;
 		DestroySamplers(m_renderContext);
 		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
@@ -430,17 +451,17 @@ namespace Mist
 		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.InvView;
 	}
 
-	IScene* VulkanRenderEngine::GetScene()
+	Scene* VulkanRenderEngine::GetScene()
 	{
 		return m_scene;
 	}
 
-	const IScene* VulkanRenderEngine::GetScene() const
+	const Scene* VulkanRenderEngine::GetScene() const
 	{
 		return m_scene;
 	}
 
-	void VulkanRenderEngine::SetScene(IScene* scene)
+	void VulkanRenderEngine::SetScene(Scene* scene)
 	{
 		m_scene = static_cast<Scene*>(scene);
 
@@ -450,24 +471,6 @@ namespace Mist
 			if (scene)
 				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
 		}
-	}
-
-	RenderHandle VulkanRenderEngine::GetDefaultTexture() const
-	{
-		static RenderHandle texture;
-		if (!texture.IsValid())
-			texture = m_scene->LoadTexture(m_renderContext, ASSET_PATH("textures/checkerboard.jpg"), FORMAT_R8G8B8A8_SRGB);
-		return texture;
-	}
-
-	Material VulkanRenderEngine::GetDefaultMaterial() const
-	{
-		static Material material;
-		if (!material.GetHandle().IsValid())
-		{
-			m_scene->SubmitMaterial(material);
-		}
-		return material;
 	}
 
 	void VulkanRenderEngine::BeginFrame()

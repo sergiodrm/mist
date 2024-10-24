@@ -1,5 +1,4 @@
 #include "Render/RenderTypes.h"
-#include "Render/RenderHandle.h"
 #include "Render/InitVulkanTypes.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Debug.h"
@@ -48,6 +47,7 @@
 	_X_(VK_ERROR_COMPRESSION_EXHAUSTED_EXT )\
 	_X_(VK_RESULT_MAX_ENUM)
 
+#if 0
 template <>
 struct std::hash<Mist::RenderHandle>
 {
@@ -56,6 +56,8 @@ struct std::hash<Mist::RenderHandle>
 		return hash<uint32_t>()(key.Handle);
 	}
 };
+#endif // 0
+
 
 namespace Mist
 {

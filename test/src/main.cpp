@@ -1,17 +1,16 @@
 #include <cstdint>
 
-#include <Mist/Render/RenderEngine.h>
-#include <Mist/Render/RenderObject.h>
-#include <Mist/Render/Mesh.h>
-#include <Mist/Scene/Scene.h>
+#include <Render/VulkanRenderEngine.h>
+#include <Render/Mesh.h>
+#include <Scene/Scene.h>
 
 #include <chrono>
 #include <corecrt_math_defines.h>
 
 #include <imgui/imgui.h>
-#include "Mist/Render/Camera.h"
-#include "Mist/Core/Logger.h"
-#include "Mist/Core/SystemMemory.h"
+#include "Render/Camera.h"
+#include "Core/Logger.h"
+#include "Core/SystemMemory.h"
 #include "glm/gtx/transform.hpp"
 
 class Timer
@@ -210,8 +209,10 @@ public:
 	{
 		Mist::tApplication::Init(argc, argv);
 
-		Mist::IRenderEngine* engine = GetEngineInstance();
-		Mist::IScene::LoadScene(engine, "../assets/scenes/scene.yaml");
+		Mist::VulkanRenderEngine* engine = (Mist::VulkanRenderEngine*)GetEngineInstance();
+		Mist::Scene* scene = new Mist::Scene(engine);
+		scene->LoadScene(engine->GetContext(), "../assets/scenes/scene.yaml");
+		engine->SetScene(scene);
 		engine->SetAppEventCallback([this](void* d) { m_camera.ProcessEvent(d); });
 	}
 

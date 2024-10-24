@@ -8,6 +8,7 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <vcruntime_string.h>
 #include "Core/SystemMemory.h"
 
 #define DELETE_COPY_CONSTRUCTORS(_type) \
@@ -15,6 +16,8 @@
 	_type(_type&&) = delete; \
 	_type& operator=(const _type&) = delete; \
 	_type& operator=(_type&&) = delete
+
+#define ZeroMem(ptr, size) memset(ptr, 0, size)
 
 namespace Mist
 {
@@ -25,6 +28,8 @@ namespace Mist
 	template <typename Key_t, typename Value_t, typename Hasher_t = std::hash<Key_t>, typename EqualTo = std::equal_to<Key_t>>
 	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo, Mist::tStdAllocator<std::pair<const Key_t, Value_t>>>;
 	using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
+
+	enum {InvalidIndex = UINT32_MAX};
 
 	template <typename T>
 	void CopyDynArray(tDynArray<T>& dst, const std::vector<T>& src)
@@ -190,6 +195,16 @@ namespace Mist
 	};
 
 	template <typename DataType, typename IndexType = uint16_t>
+	struct tSpan
+	{
+		DataType* Data = nullptr;
+		IndexType Count = 0;
+
+		inline const DataType& operator[](IndexType index) const { assert(index < Count); return Data[index]; }
+		inline DataType& operator[](IndexType index) { assert(index < Count); return Data[index]; }
+	};
+
+	template <typename DataType, typename IndexType = uint16_t>
 	class tFixedHeapArray
 	{
 	public:
@@ -218,7 +233,8 @@ namespace Mist
 			Clear();
 			if (m_data)
 			{
-				delete[] m_data;
+				Mist::Free(m_data);
+				m_data = nullptr;
 				m_count = 0;
 				m_index = 0;
 			}
@@ -245,10 +261,17 @@ namespace Mist
 			m_data[m_index--].~DataType();
 		}
 
+		void Resize(uint32_t count)
+		{
+			assert(count <= m_count);
+			m_index = count;
+		}
+
 		inline const DataType* GetData() const { m_data; }
 		inline DataType* GetData() { return m_data; }
 		inline IndexType GetSize() const { return m_index; }
 		inline IndexType GetReservedSize() const { return m_count; }
+		inline bool IsEmpty() const { return m_index == 0; }
 
 		inline DataType& operator[](IndexType index) { assert(m_data && index < m_index); return m_data[index]; }
 		inline const DataType& operator[](IndexType index) const { assert(m_data && index < m_index); return m_data[index]; }

@@ -2,8 +2,7 @@
 
 include "Dependencies.lua"
 
-includes["mist"] = "%{wks.location}/code/include"
-includes["mistsrc"] = "%{wks.location}/code/src"
+includes["mist"] = "%{wks.location}/engine"
 
 outputdir = "%{wks.location}/bin/"
 temporaldir = "%{wks.location}/temp/%{cfg.buildcfg}_%{cfg.architecture}"
@@ -74,16 +73,15 @@ workspace "Mist"
         targetdir "%{outputdir}"
         targetname "Mist"
         objdir "%{temporaldir}"
-        location "%{wks.location}/code"
+        location "%{wks.location}/engine"
 
         defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE" }
         files { 
-            "code/**.h", "code/**.cpp",
+            "engine/**.h", "engine/**.cpp",
         }
 
         includedirs {
-            "%{includes.mist}/mist",
-            "%{includes.mistsrc}",
+            "%{includes.mist}",
             "%{includes.generic}",
             "%{includes.glm}",
             "%{includes.gltf}",
@@ -155,11 +153,17 @@ workspace "Mist"
         links { "MistEngine" }
         files { "test/**.h", "test/**.cpp"}
 
+        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE" }
         includedirs {
+            "test/",
             "%{includes.mist}",
-            "%{wks.location}/code/include/mist",
             "%{includes.glm}",
             "%{includes.generic}",
+            "%{includes.vulkan}",
+            "%{includes.vma}",
+            "%{includes.vkbootstrap}",
+            "%{includes.sdl}",
+            "%{includes.stbimage}",
         }
 
         filter "configurations:Debug"
