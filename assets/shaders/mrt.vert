@@ -43,7 +43,7 @@ void main()
 	// Normal in world space
 	outNormal = normalize(normalTransform * normalize(inNormal));	
 	outTangent = normalize(normalTransform * normalize(inTangent));
-	vec3 B = cross(outTangent, outNormal);
+	vec3 B = cross(outNormal, outTangent);
 	outTBN = mat3(outTangent, B, outNormal);
 	
 	// Currently just vertex color
