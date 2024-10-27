@@ -7,12 +7,12 @@
 #include "Render/Texture.h"
 #include "Render/Globals.h"
 #include "Render/RenderAPI.h"
-#include "Render/Mesh.h"
+#include "Render/Model.h"
 #include "Render/Material.h"
 #include "Core/Types.h"
 #include <glm/glm.hpp>
 
-#define MIST_MAX_MATERIALS 50
+#define MIST_MAX_MODELS 128
 
 namespace Mist
 {
@@ -23,14 +23,15 @@ namespace Mist
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
 	class Texture;
+	class cModel;
 
 	struct sRenderObject
 	{
-		uint32_t Id = UINT32_MAX;
+		index_t Id = index_invalid;
 		sRenderObject() {}
-		sRenderObject(uint32_t v) : Id(v) {}
-		operator uint32_t() const { return Id; }
-		inline bool IsValid() const { return Id != UINT32_MAX; }
+		sRenderObject(index_t v) : Id(v) {}
+		operator index_t() const { return Id; }
+		inline bool IsValid() const { return Id != index_invalid; }
 	};
 
 
@@ -58,7 +59,6 @@ namespace Mist
 	struct MeshComponent
 	{
 		char MeshAssetPath[256];
-		std::string MeshName;
 		uint32_t MeshIndex;
 
 		MeshComponent() : MeshIndex(UINT32_MAX) { *MeshAssetPath = 0; }
@@ -135,16 +135,17 @@ namespace Mist
 		};
 		uint32_t MeshIndex;
 		VkDescriptorSet CubemapSet;
+		Texture* Tex;
 
 		char CubemapFiles[COUNT][256];
 
 		Skybox() : MeshIndex(UINT32_MAX), CubemapSet(VK_NULL_HANDLE) 
 		{ 
+			Tex = nullptr;
 			for (uint32_t i = 0; i < COUNT; ++i)
 				*CubemapFiles[i] = 0;
 		}
 	};
-
 
 	class Scene
 	{
@@ -163,7 +164,6 @@ namespace Mist
 
 		void InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext);
 
-		bool LoadModel(const RenderContext& context, const char* filepath);
 		void LoadScene(const RenderContext& context, const char* filepath);
 		void SaveScene(const RenderContext& context, const char* filepath);
 
@@ -172,42 +172,26 @@ namespace Mist
 		bool IsValid(sRenderObject object) const;
 		uint32_t GetRenderObjectCount() const;
 
-		cMaterial* CreateMaterial(const char* name);
-		cMaterial* GetMaterial(uint32_t index);
-		const cMaterial* GetMaterial(uint32_t index) const;
-		cMaterial* GetMaterial(const char* name);
-		const cMaterial* GetMaterial(const char* name) const;
-
-
 		sRenderObject GetRoot() const;
+
 		const MeshComponent* GetMesh(sRenderObject renderObject) const;
 		void SetMesh(sRenderObject renderObject, const MeshComponent& meshComponent);
+
 		const char* GetRenderObjectName(sRenderObject object) const;
 		void SetRenderObjectName(sRenderObject renderObject, const char* name);
+
 		const TransformComponent& GetTransform(sRenderObject renderObject) const;
 		void SetTransform(sRenderObject renderObject, const TransformComponent& transform);
+
 		const LightComponent* GetLight(sRenderObject renderObject) const;
 		void SetLight(sRenderObject renderObject, const LightComponent& light);
+
 		void MarkAsDirty(sRenderObject renderObject);
 
 		const glm::mat4* GetRawGlobalTransforms() const;
 
-		const cMesh* GetMeshArray() const;
-		uint32_t GetMeshCount() const;
-		const cMesh* GetMeshRenderData(const char* meshId) const;
-		cMesh* GetMeshRenderData(const char* meshId);
-		const cMesh* GetMeshRenderData(const char* file, const char* meshname) const;
-		cMesh* GetMeshRenderData(const char* file, const char* meshname);
-
-		const cMaterial* GetMaterialArray() const;
-		uint32_t GetMaterialCount() const;
-
 		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
-
-		// Draw with materials
-		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
-		// Draw without materials
-		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t modelSetIndex, VkDescriptorSet modelSet) const;
+		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags = 0) const;
 		void DrawSkybox(CommandBuffer cmd, ShaderProgram* shader);
 
 		void ImGuiDraw();
@@ -219,31 +203,30 @@ namespace Mist
 		bool LoadMeshesFromFile(const RenderContext& context, const char* filepath);
 		bool LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
 
+		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
+		cModel* GetModel(const char* modelName);
+		index_t LoadModel(const RenderContext& context, const char* filepath);
+
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
-		static constexpr uint32_t MaxNodeLevel = 16;
+		static constexpr index_t MaxNodeLevel = 16;
 		tDynArray<tString> m_names;
-		tDynArray<tString> m_materialNames;
 		tDynArray<Hierarchy> m_hierarchy;
 		tDynArray<TransformComponent> m_transformComponents;
-		tMap<uint32_t, MeshComponent> m_meshComponentMap;
-		tMap<uint32_t, LightComponent> m_lightComponentMap;
-		tDynArray<cMaterial> m_materialArray;
-		tDynArray<uint32_t> m_dirtyMaterials;
+		tMap<index_t, MeshComponent> m_meshComponentMap;
+		tMap<index_t, LightComponent> m_lightComponentMap;
+
+		tStaticArray<cModel, MIST_MAX_MODELS> m_models;
 
 		tDynArray<glm::mat4> m_localTransforms;
 		tDynArray<glm::mat4> m_globalTransforms;
+		tDynArray<glm::mat4> m_renderTransforms;
 		
-		tDynArray<int32_t> m_dirtyNodes[MaxNodeLevel];
+		tDynArray<index_t> m_dirtyNodes[MaxNodeLevel];
 
-		tDynArray<cMesh> m_meshes;
-		tDynArray<Texture*> m_textures;
 		glm::vec3 m_ambientColor = {0.05f, 0.05f, 0.05f};
 
-		tMap<tString, uint32_t> m_meshNameIndexMap;
 		Skybox m_skybox;
-		uint32_t m_defaultMaterialIndex = 0;
-		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> m_materialSetArray;
 		EnvironmentData m_environmentData;
 	};
 }
