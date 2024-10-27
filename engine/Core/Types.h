@@ -2,7 +2,6 @@
 
 #include <stdarg.h>
 #include <stdint.h>
-#include <cassert>
 #include <cstring>
 #include <string.h>
 #include <vector>
@@ -10,6 +9,7 @@
 #include <string>
 #include <vcruntime_string.h>
 #include "Core/SystemMemory.h"
+#include "Core/Debug.h"
 
 #define DELETE_COPY_CONSTRUCTORS(_type) \
 	_type(const _type&) = delete; \
@@ -29,7 +29,10 @@ namespace Mist
 	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo, Mist::tStdAllocator<std::pair<const Key_t, Value_t>>>;
 	using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
 
-	enum {InvalidIndex = UINT32_MAX};
+	typedef uint16_t index_t;
+	typedef uint32_t lindex_t;
+
+	enum {index_invalid = UINT16_MAX};
 
 	template <typename T>
 	void CopyDynArray(tDynArray<T>& dst, const std::vector<T>& src)
@@ -58,7 +61,7 @@ namespace Mist
 
 		ThisType& operator=(const char* str)
 		{
-			assert(strlen(str) < Size);
+			check(strlen(str) < Size);
 			strcpy_s(m_string, str);
 			return *this;
 		}
@@ -155,12 +158,12 @@ namespace Mist
 				Data[i] = other[i];
 		}
 
-		const T& operator[](uint32_t index) const { assert(index < PushIndex); return Data[index]; }
-		T& operator[](uint32_t index) { assert(index < PushIndex); return Data[index]; }
+		const T& operator[](uint32_t index) const { check(index < PushIndex); return Data[index]; }
+		T& operator[](uint32_t index) { check(index < PushIndex); return Data[index]; }
 
 		inline void Resize(uint32_t newSize)
 		{
-			assert(newSize <= Size);
+			check(newSize <= Size);
 			PushIndex = PushIndex > newSize ? PushIndex : newSize;
 		}
 
@@ -176,14 +179,20 @@ namespace Mist
 
 		void Push(const T& value)
 		{
-			assert(PushIndex < Size);
+			check(PushIndex < Size);
 			Data[PushIndex++] = value;
 		}
 
-		void Pop() { assert(PushIndex > 0); --PushIndex; }
+		void Push()
+		{
+			check(PushIndex < Size);
+			new(&Data[PushIndex++])T();
+		}
 
-		inline const T& GetBack() const { assert(PushIndex); return Data[PushIndex - 1]; }
-		inline T& GetBack() { assert(PushIndex); return Data[PushIndex - 1]; }
+		void Pop() { check(PushIndex > 0); --PushIndex; }
+
+		inline const T& GetBack() const { check(PushIndex); return Data[PushIndex - 1]; }
+		inline T& GetBack() { check(PushIndex); return Data[PushIndex - 1]; }
 
 		inline const T* GetData() const { return Data; }
 		inline T* GetData() { return Data; }
@@ -200,13 +209,14 @@ namespace Mist
 		DataType* Data = nullptr;
 		IndexType Count = 0;
 
-		inline const DataType& operator[](IndexType index) const { assert(index < Count); return Data[index]; }
-		inline DataType& operator[](IndexType index) { assert(index < Count); return Data[index]; }
+		inline const DataType& operator[](IndexType index) const { check(index < Count); return Data[index]; }
+		inline DataType& operator[](IndexType index) { check(index < Count); return Data[index]; }
 	};
 
 	template <typename DataType, typename IndexType = uint16_t>
 	class tFixedHeapArray
 	{
+		typedef tFixedHeapArray<DataType, IndexType> ThisType;
 	public:
 
 		tFixedHeapArray()
@@ -223,7 +233,7 @@ namespace Mist
 
 		void Allocate(IndexType count)
 		{
-			assert(!m_data && !m_index && !m_count);
+			check(!m_data && !m_index && !m_count);
 			m_count = count;
 			m_data = (DataType*)_malloc(count * sizeof(DataType));
 		}
@@ -249,23 +259,50 @@ namespace Mist
 			m_index = 0;
 		}
 
+		void Push()
+		{
+			check(m_data && m_index < m_count);
+			new (&m_data[m_index++]) DataType();
+		}
+
 		void Push(const DataType& value)
 		{
-			assert(m_data && m_index < m_count);
+			check(m_data && m_index < m_count);
 			m_data[m_index++] = value;
 		}
 
 		void Pop()
 		{
-			assert(m_data && m_index);
+			check(m_data && m_index);
 			m_data[m_index--].~DataType();
 		}
 
 		void Resize(uint32_t count)
 		{
-			assert(count <= m_count);
+			check(count <= m_count);
+			if (m_index == count) 
+				return;
+			if (count < m_index)
+			{
+				for (IndexType i = count; i < m_index; ++i)
+					m_data[i].~DataType();
+			}
+			else
+			{
+				for (IndexType i = m_index; i < count; ++i)
+					new(&m_data[i])DataType();
+			}
+
 			m_index = count;
 		}
+
+		DataType& Back()
+		{
+			check(m_index > 0);
+			return m_data[m_index - 1];
+		}
+
+		const DataType& Back() const { return const_cast<ThisType*>(this)->Back(); }
 
 		inline const DataType* GetData() const { m_data; }
 		inline DataType* GetData() { return m_data; }
@@ -273,8 +310,8 @@ namespace Mist
 		inline IndexType GetReservedSize() const { return m_count; }
 		inline bool IsEmpty() const { return m_index == 0; }
 
-		inline DataType& operator[](IndexType index) { assert(m_data && index < m_index); return m_data[index]; }
-		inline const DataType& operator[](IndexType index) const { assert(m_data && index < m_index); return m_data[index]; }
+		inline DataType& operator[](IndexType index) { check(m_data && index < m_index); return m_data[index]; }
+		inline const DataType& operator[](IndexType index) const { check(m_data && index < m_index); return m_data[index]; }
 	private:
 		DataType* m_data;
 		IndexType m_index;
