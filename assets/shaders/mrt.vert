@@ -22,6 +22,7 @@ layout (location = 1) out vec2 outUV;
 layout (location = 2) out vec3 outColor;
 layout (location = 3) out vec3 outWorldPos;
 layout (location = 4) out vec3 outTangent;
+layout (location = 5) out mat3 outTBN;
 
 void main() 
 {
@@ -31,6 +32,7 @@ void main()
 #define VIEW_SPACE_TRANSFORMS
 #ifdef VIEW_SPACE_TRANSFORMS
 	mat3 normalTransform = transpose(inverse(mat3(u_camera.View * u_model.Model)));
+	normalTransform = mat3(u_camera.View * u_model.Model);
 	outWorldPos = vec3(u_camera.View * vec4(worldPos, 1.f));
 #else
 	mat3 normalTransform = transpose(inverse(mat3(u_model.Model)));
@@ -39,8 +41,10 @@ void main()
 
 	
 	// Normal in world space
-	outNormal = normalTransform * normalize(inNormal);	
-	outTangent = normalTransform * normalize(inTangent);
+	outNormal = normalize(normalTransform * normalize(inNormal));	
+	outTangent = normalize(normalTransform * normalize(inTangent));
+	vec3 B = cross(outTangent, outNormal);
+	outTBN = mat3(outTangent, B, outNormal);
 	
 	// Currently just vertex color
 	outColor = inColor;
