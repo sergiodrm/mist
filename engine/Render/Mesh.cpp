@@ -5,6 +5,7 @@
 
 namespace Mist
 {
+
 	void cMesh::BindBuffers(CommandBuffer cmd) const
 	{
 		VertexBuffer.Bind(cmd);
@@ -33,5 +34,6 @@ namespace Mist
 			.Data = indices
 		};
 		IndexBuffer.Init(context, info);
+		IndexCount = indexCount;
 	}
 }

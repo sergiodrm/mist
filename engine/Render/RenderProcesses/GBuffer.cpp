@@ -53,7 +53,7 @@ namespace Mist
 		m_shader->UseProgram(renderContext);
 		m_shader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
 
-		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, VK_NULL_HANDLE);
+		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed);
 		m_renderTarget.EndPass(frameContext.GraphicsCommandContext.CommandBuffer);
 		EndGPUEvent(renderContext, cmd);
 	}

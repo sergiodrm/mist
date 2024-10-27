@@ -3,6 +3,7 @@
 #include "Core/Types.h"
 #include "Texture.h"
 #include "RenderResource.h"
+#include <glm/glm.hpp>
 
 namespace Mist
 {
@@ -27,5 +28,6 @@ namespace Mist
 		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot);
 
 		Texture* m_textures[MATERIAL_TEXTURE_COUNT];
+		glm::vec3 m_emissiveFactor;
 	};
 }

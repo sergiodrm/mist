@@ -464,7 +464,7 @@ namespace Mist
 	void VulkanRenderEngine::SetScene(Scene* scene)
 	{
 		m_scene = static_cast<Scene*>(scene);
-
+		m_scene->Init();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{ 
 			m_renderContext.FrameContextArray[i].Scene = m_scene;

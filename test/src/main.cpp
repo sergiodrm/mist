@@ -211,8 +211,8 @@ public:
 
 		Mist::VulkanRenderEngine* engine = (Mist::VulkanRenderEngine*)GetEngineInstance();
 		Mist::Scene* scene = new Mist::Scene(engine);
-		scene->LoadScene(engine->GetContext(), "../assets/scenes/scene.yaml");
 		engine->SetScene(scene);
+		scene->LoadScene(engine->GetContext(), "../assets/scenes/scene.yaml");
 		engine->SetAppEventCallback([this](void* d) { m_camera.ProcessEvent(d); });
 	}
 

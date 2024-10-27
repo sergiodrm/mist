@@ -26,6 +26,20 @@ namespace Mist
 #undef _X_
 	};
 
+#define RenderFlagList \
+	_X_(None, 0) \
+	_X_(Fixed, 1) \
+	_X_(ShadowMap, 2) \
+	_X_(NoTextures, 4) \
+	_X_(Emissive, 8) \
+
+	enum  eRenderFlags
+	{
+#define _X_(x, v) RenderFlags_##x = v,
+		RenderFlagList
+#undef _X_
+	};
+
 	class Renderer;
 
 	class RenderProcess

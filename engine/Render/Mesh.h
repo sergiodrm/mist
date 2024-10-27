@@ -4,6 +4,7 @@
 #include "VulkanBuffer.h"
 #include "RenderAPI.h"
 #include "RenderResource.h"
+#include "RenderProcesses/RenderProcess.h"
 #include "Core/Types.h"
 #include <vector>
 #include <string>
@@ -13,10 +14,11 @@ namespace Mist
 	class cMaterial;
 	struct PrimitiveMeshData
 	{
+		uint16_t RenderFlags;
 		uint32_t FirstIndex;
 		uint32_t Count;
 		cMaterial* Material;
-		PrimitiveMeshData() : FirstIndex(0), Count(0), Material(nullptr) {}
+		PrimitiveMeshData() : RenderFlags(0), FirstIndex(0), Count(0), Material(nullptr) {}
 	};
 
 	class cMesh : public cRenderResource
@@ -30,6 +32,7 @@ namespace Mist
 		VertexBuffer VertexBuffer;
 		IndexBuffer IndexBuffer;
 		uint32_t IndexCount;
-		tDynArray<PrimitiveMeshData> PrimitiveArray;
+		eRenderFlags RenderFlags;
+		tFixedHeapArray<PrimitiveMeshData> PrimitiveArray;
 	};
 }

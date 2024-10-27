@@ -148,7 +148,7 @@ namespace Mist
 		//m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
 		m_shader->SetDynamicBufferOffset(context, "u_ubo", depthVPOffset);
 
-		scene->Draw(context, m_shader, 1, VK_NULL_HANDLE);
+		scene->Draw(context, m_shader, 0, 0, 0, RenderFlags_ShadowMap | RenderFlags_NoTextures);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
