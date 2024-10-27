@@ -299,11 +299,19 @@ namespace gltf_api
 			&cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture,
 			&cgltfmtl.emissive_texture
 		};
-		Mist::EFormat format = Mist::FORMAT_R8G8B8A8_SRGB;
+		const Mist::EFormat formats[] =
+		{
+			Mist::FORMAT_R8G8B8A8_SRGB,
+			Mist::FORMAT_R8G8B8A8_UNORM,
+			Mist::FORMAT_R8G8B8A8_UNORM,
+			Mist::FORMAT_R8G8B8A8_UNORM,
+			Mist::FORMAT_R8G8B8A8_UNORM,
+			Mist::FORMAT_R8G8B8A8_SRGB,
+		};
 		for (uint32_t i = 0; i < Mist::MATERIAL_TEXTURE_COUNT; ++i)
 		{
 			if (LoadTexture(context, rootAssetPath, *views[i],
-				format, &material.m_textures[i]))
+				formats[i], &material.m_textures[i]))
 				material.m_textures[i]->CreateView(context, Mist::tViewDescription());
 		}
 	}
