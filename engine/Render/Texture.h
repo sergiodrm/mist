@@ -23,7 +23,7 @@ namespace Mist
 		float MaxAnisotropy;
 		float MipLodBias = 0.f;
 		float MinLod = 0.f;
-		float MaxLod;
+		float MaxLod = -1.f;
 	};
 
 	struct tImageDescription
@@ -102,6 +102,7 @@ namespace Mist
 		Sampler GetSampler() const { return m_sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
 
+		void SetDebugName(const RenderContext& context, const char* str);
 
 	private:
 		void Destroy(const RenderContext& context);
@@ -111,6 +112,7 @@ namespace Mist
 		AllocatedImage m_image;
 		tDynArray<ImageView> m_views;
 		Sampler m_sampler;
+		char m_debugName[64];
 	};
 	
 

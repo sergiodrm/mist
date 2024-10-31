@@ -46,6 +46,19 @@ namespace Mist
 	}
 
 #if 1
+	void Texture::SetDebugName(const RenderContext& context, const char* str)
+	{
+		strcpy_s(m_debugName, str);
+		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, m_debugName);
+
+		char buff[128];
+		for (index_t i = 0; i < m_views.size(); ++i)
+		{
+			sprintf_s(buff, "%s_ImageView_%d", m_debugName, i);
+			SetVkObjectName(context, &m_views[i], VK_OBJECT_TYPE_IMAGE_VIEW, buff);
+		}
+	}
+
 	void Texture::Destroy(const RenderContext& context)
 	{
 		vkDestroySampler(context.Device, m_sampler, nullptr);
@@ -71,7 +84,7 @@ namespace Mist
 		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 		samplerCreateInfo.anisotropyEnable = VK_FALSE;
 		samplerCreateInfo.minLod = 0.f;
-		samplerCreateInfo.maxLod = (float)desc.MipLevels;
+		samplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;// (float)desc.MipLevels;
 		samplerCreateInfo.mipLodBias = 0.f;
 		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
@@ -128,9 +141,8 @@ namespace Mist
 		vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &view));
 		m_views.push_back(view);
 
-		static int c = 0;
-		char buff[256];
-		sprintf_s(buff, "ImageView_%d", c++);
+		char buff[128];
+		sprintf_s(buff, "%s_ImageView_%d", m_debugName, (uint32_t)m_views.size()-1);
 		SetVkObjectName(context, &view, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 
 		return view;
@@ -634,6 +646,7 @@ namespace Mist
 		texture.Init(context, texInfo);
 #endif // 0
 
+		(*texture)->SetDebugName(context, filepath);
 
 		// Free raw texture data
 		io::FreeTexture(texData.Pixels);
@@ -667,7 +680,7 @@ namespace Mist
 		createInfo.magFilter = tovk::GetFilter(description.MagFilter);
 		createInfo.anisotropyEnable = 0;
 		createInfo.minLod = description.MinLod;
-		createInfo.maxLod = description.MaxLod;
+		createInfo.maxLod = description.MaxLod == -1.f ? VK_LOD_CLAMP_NONE : description.MaxLod;
 		createInfo.mipLodBias = description.MipLodBias;
 		createInfo.mipmapMode = tovk::GetSamplerMipmapMode(description.MipmapMode);
 		Sampler sampler;
