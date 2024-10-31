@@ -22,10 +22,16 @@ namespace Mist
 
 	struct tBloomConfig
 	{
-		bool BloomActive = true;
+		enum
+		{
+			BLOOM_DISABLED,
+			BLOOM_ACTIVE,
+			BLOOM_DEBUG_EMISSIVE_PASS,
+			BLOOM_DEBUG_DOWNSCALE_PASS
+		};
+		uint32_t BloomMode = BLOOM_DISABLED;
 		float MixCompositeAlpha = 0.5f;
 		float UpscaleFilterRadius = 0.005f;
-		glm::vec4 InputThreshold = { 1.f, 1.f, 1.f, 1.f };
 	};
 
 	class BloomEffect
@@ -34,19 +40,24 @@ namespace Mist
 		BloomEffect();
 
 		void Init(const RenderContext& context);
+		void Draw(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 
 		void ImGuiDraw();
 
+		ShaderProgram* EmissiveShader;
 		ShaderProgram* ThresholdFilterShader;
 		ShaderProgram* DownsampleShader;
 		ShaderProgram* UpsampleShader;
 		ShaderProgram* MixShader;
 		RenderTarget TempRT;
+		RenderTarget EmissivePass;
 		RenderTarget* HDRRT;
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 		RenderTarget FinalTarget;
 		tBloomConfig Config;
+
+		Texture* InputTarget;
 	};
 
 	class DeferredLighting : public RenderProcess

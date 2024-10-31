@@ -44,9 +44,42 @@ namespace Mist
 			ThresholdFilterShader->SetupDescriptors(context);
 		}
 
+		// Emissive pass
+		{
+			RenderTargetDescription rtdesc;
+			rtdesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
+			rtdesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
+			rtdesc.RenderArea.offset = { 0, 0 };
+			EmissivePass.Create(context, rtdesc);
+
+			tShaderProgramDescription desc;
+			desc.VertexShaderFile.Filepath = SHADER_FILEPATH("model.vert");
+
+			desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("emissive.frag");
+			desc.RenderTarget = &TempRT;
+			desc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+
+			tShaderDynamicBufferDescription modelDynDesc;
+			modelDynDesc.Name = "u_model";
+			modelDynDesc.ElemCount = globals::MaxRenderObjects;
+			modelDynDesc.IsShared = true;
+
+			tShaderDynamicBufferDescription materialDynDesc = modelDynDesc;
+			materialDynDesc.Name = "u_material";
+			materialDynDesc.ElemCount = globals::MaxRenderObjects;
+			materialDynDesc.IsShared = true;
+
+			desc.DynamicBuffers.resize(2);
+			desc.DynamicBuffers[0] = modelDynDesc;
+			desc.DynamicBuffers[1] = materialDynDesc;
+
+			EmissiveShader = ShaderProgram::Create(context, desc);
+			EmissiveShader->SetupDescriptors(context);
+		}
+
 		// Downscale
-		uint32_t width = context.Window->Width /2;
-		uint32_t height = context.Window->Height/2;
+		uint32_t width = context.Window->Width / 2;
+		uint32_t height = context.Window->Height / 2;
 		{
 			for (uint32_t i = 0; i < (uint32_t)RenderTargetArray.size(); ++i)
 			{
@@ -118,6 +151,7 @@ namespace Mist
 			MixShader->SetupDescriptors(context);
 		}
 
+
 #if 1
 		// Tex resolutions for downsampler
 		tArray<glm::vec2, BLOOM_MIPMAP_LEVELS> texSizes;
@@ -139,8 +173,134 @@ namespace Mist
 #endif // 0
 	}
 
+	void BloomEffect::Draw(const RenderContext& context)
+	{
+		CPU_PROFILE_SCOPE(BloomDownsampler);
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		BeginGPUEvent(context, cmd, "Emissive pass");
+		EmissivePass.BeginPass(cmd);
+		EmissiveShader->UseProgram(context);
+		EmissiveShader->SetBufferData(context, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
+		frameContext.Scene->Draw(context, EmissiveShader, 2, 0, VK_NULL_HANDLE, RenderFlags_Emissive);
+		EmissivePass.EndPass(cmd);
+		EndGPUEvent(context, cmd);
+
+		if (Config.BloomMode == tBloomConfig::BLOOM_DEBUG_EMISSIVE_PASS)
+		{
+			float w = (float)context.Window->Width;
+			float h = (float)context.Window->Height;
+			float x = 0.5f;
+			float y = 0.5f;
+			//DebugRender::DrawScreenQuad({ w * x,0.f }, { w * (1.f - x), h * y }, EmissivePass.GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			DebugRender::DrawScreenQuad({ w * x,0.f }, { w * (1.f - x), h * y }, InputTarget->GetView(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		}
+
+#if 0
+
+		BeginGPUEvent(renderContext, cmd, "Bloom Threshold");
+		m_bloomEffect.TempRT.BeginPass(cmd);
+		if (m_bloomEffect.Config.BloomActive)
+		{
+			m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
+			Texture* lightingFinalTexture = m_lightingOutput.GetAttachment(0).Tex;
+			m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
+			m_bloomEffect.ThresholdFilterShader->SetBufferData(renderContext, "u_ThresholdParams", &m_bloomEffect.Config.InputThreshold[0], sizeof(glm::vec4));
+			m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
+			CmdDrawFullscreenQuad(cmd);
+		}
+		m_bloomEffect.TempRT.EndPass(cmd);
+		EndGPUEvent(renderContext, cmd);
+#endif // 0
+
+
+
+		BeginGPUEvent(context, cmd, "Bloom Downsample");
+		check(InputTarget);
+		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
+		{
+			RenderTarget& rt = RenderTargetArray[i];
+
+			rt.BeginPass(cmd);
+			if (Config.BloomMode)
+			{
+				DownsampleShader->UseProgram(context);
+				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
+				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+
+				Texture* textureInput = nullptr;
+				if (i == 0)
+					textureInput = InputTarget; //EmissivePass.GetAttachment(0).Tex;
+				else
+					textureInput = RenderTargetArray[i - 1].GetAttachment(0).Tex;
+				DownsampleShader->SetSampler(context, FILTER_LINEAR, FILTER_LINEAR,
+					SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+				DownsampleShader->BindTextureSlot(context, 0, *textureInput);
+
+				DownsampleShader->SetDynamicBufferOffset(context, "u_BloomDownsampleParams", sizeof(glm::vec2), i);
+
+				DownsampleShader->FlushDescriptors(context);
+				CmdDrawFullscreenQuad(cmd);
+			}
+
+			rt.EndPass(cmd);
+
+			if (CVar_BloomTex.Get() || Config.BloomMode == tBloomConfig::BLOOM_DEBUG_DOWNSCALE_PASS)
+			{
+				float x = (float)context.Window->Width * 0.75f;
+				float y = (float)context.Window->Height / (float)BLOOM_MIPMAP_LEVELS * (float)i;
+				float w = (float)context.Window->Width * 0.25f;
+				float h = (float)context.Window->Height / (float)BLOOM_MIPMAP_LEVELS;
+				DebugRender::DrawScreenQuad({ x, y },
+					{ w, h },
+					RenderTargetArray[i].GetRenderTarget(0),
+					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			}
+		}
+		EndGPUEvent(context, cmd);
+
+		BeginGPUEvent(context, cmd, "Bloom Upsample");
+		for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
+		{
+			RenderTarget& rt = RenderTargetArray[i];
+			ShaderProgram* shader = UpsampleShader;
+
+			rt.BeginPass(cmd);
+			if (Config.BloomMode)
+			{
+				shader->UseProgram(context);
+				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
+				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+				shader->SetSampler(context, FILTER_LINEAR, FILTER_LINEAR,
+					SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+				shader->BindTextureSlot(context, 0, *RenderTargetArray[i + 1].GetAttachment(0).Tex);
+				shader->SetBufferData(context, "u_BloomUpsampleParams", &Config.UpscaleFilterRadius, sizeof(Config.UpscaleFilterRadius));
+				shader->FlushDescriptors(context);
+				CmdDrawFullscreenQuad(cmd);
+			}
+			rt.EndPass(cmd);
+		}
+		EndGPUEvent(context, cmd);
+
+		BeginGPUEvent(context, cmd, "Bloom mix");
+		FinalTarget.BeginPass(cmd);
+		MixShader->UseProgram(context);
+		MixShader->BindTextureSlot(context, 0, *HDRRT->GetAttachment(0).Tex);
+		MixShader->BindTextureSlot(context, 1, *RenderTargetArray[0].GetAttachment(0).Tex);
+		float z = 0.f;
+		if (Config.BloomMode)
+			MixShader->SetBufferData(context, "u_Mix", &Config.MixCompositeAlpha, sizeof(Config.MixCompositeAlpha));
+		else
+			MixShader->SetBufferData(context, "u_Mix", &z, sizeof(Config.MixCompositeAlpha));
+		MixShader->FlushDescriptors(context);
+		CmdDrawFullscreenQuad(cmd);
+		FinalTarget.EndPass(cmd);
+		EndGPUEvent(context, cmd);
+	}
+
 	void BloomEffect::Destroy(const RenderContext& context)
 	{
+		EmissivePass.Destroy(context);
 		TempRT.Destroy(context);
 		FinalTarget.Destroy(context);
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
@@ -150,10 +310,22 @@ namespace Mist
 	void BloomEffect::ImGuiDraw()
 	{
 		ImGui::Begin("Bloom");
-		ImGui::Checkbox("Enabled", &Config.BloomActive);
+		static const char* modes[] = { "disabled", "enabled", "debug emissive", "debug downscale" };
+		static int modeIndex = Config.BloomMode;
+		if (ImGui::BeginCombo("Bloom mode", modes[modeIndex]))
+		{
+			for (index_t i = 0; i < CountOf(modes); ++i)
+			{
+				if (ImGui::Selectable(modes[i], i == modeIndex))
+				{
+					modeIndex = i;
+					Config.BloomMode = i;
+				}
+			}
+			ImGui::EndCombo();
+		}
 		ImGui::DragFloat("Composite mix alpha", &Config.MixCompositeAlpha, 0.02f, 0.f, 1.f);
 		ImGui::DragFloat("Upscale filter radius", &Config.UpscaleFilterRadius, 0.001f, 0.f, 0.5f);
-		ImGui::DragFloat4("Input threshold", &Config.InputThreshold[0], 0.01f, 0.f, 1.f);
 		ImGui::End();
 	}
 
@@ -169,7 +341,7 @@ namespace Mist
 		{
 			// Deferred pipeline
 			tShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
+			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
 			shaderDesc.RenderTarget = &m_lightingOutput;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
@@ -181,7 +353,7 @@ namespace Mist
 #if 0
 		{
 			ShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("skybox.vert");
+			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			shaderDesc.RenderTarget = &m_renderTarget;
@@ -201,7 +373,7 @@ namespace Mist
 			m_hdrOutput.Create(renderContext, ldrRtDesc);
 
 			tShaderProgramDescription hdrShaderDesc;
-			hdrShaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("quad.vert");
+			hdrShaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			hdrShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("hdr.frag");
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			hdrShaderDesc.RenderTarget = &m_hdrOutput;
@@ -283,101 +455,8 @@ namespace Mist
 		m_lightingOutput.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 
-		{
-			CPU_PROFILE_SCOPE(BloomDownsampler);
-			BeginGPUEvent(renderContext, cmd, "Bloom Threshold");
-			m_bloomEffect.TempRT.BeginPass(cmd);
-			if (m_bloomEffect.Config.BloomActive)
-			{
-				m_bloomEffect.ThresholdFilterShader->UseProgram(renderContext);
-				Texture* lightingFinalTexture = m_lightingOutput.GetAttachment(0).Tex;
-				m_bloomEffect.ThresholdFilterShader->BindTextureSlot(renderContext, 0, *lightingFinalTexture);
-				m_bloomEffect.ThresholdFilterShader->SetBufferData(renderContext, "u_ThresholdParams", &m_bloomEffect.Config.InputThreshold[0], sizeof(glm::vec4));
-				m_bloomEffect.ThresholdFilterShader->FlushDescriptors(renderContext);
-				CmdDrawFullscreenQuad(cmd);
-			}
-			m_bloomEffect.TempRT.EndPass(cmd);
-			EndGPUEvent(renderContext, cmd);
-
-			BeginGPUEvent(renderContext, cmd, "Bloom Downsample");
-			for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
-			{
-				RenderTarget& rt = m_bloomEffect.RenderTargetArray[i];
-
-				rt.BeginPass(cmd);
-				if (m_bloomEffect.Config.BloomActive)
-				{
-					m_bloomEffect.DownsampleShader->UseProgram(renderContext);
-					RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
-					RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
-
-					Texture* textureInput = nullptr;
-					if (i == 0)
-						textureInput = m_bloomEffect.TempRT.GetAttachment(0).Tex;
-					else
-						textureInput = m_bloomEffect.RenderTargetArray[i - 1].GetAttachment(0).Tex;
-					m_bloomEffect.DownsampleShader->BindTextureSlot(renderContext, 0, *textureInput);
-
-					uint32_t resolutionOffset = i * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, sizeof(glm::vec2));
-					m_bloomEffect.DownsampleShader->SetDynamicBufferOffset(renderContext, "u_BloomDownsampleParams", resolutionOffset);
-
-					m_bloomEffect.DownsampleShader->FlushDescriptors(renderContext);
-					CmdDrawFullscreenQuad(cmd);
-				}
-
-				rt.EndPass(cmd);
-
-				if (CVar_BloomTex.Get())
-				{
-					float x = (float)renderContext.Window->Width * 0.75f;
-					float y = (float)renderContext.Window->Height / (float)BLOOM_MIPMAP_LEVELS * (float)i;
-					float w = (float)renderContext.Window->Width * 0.25f;
-					float h = (float)renderContext.Window->Height / (float)BLOOM_MIPMAP_LEVELS;
-					DebugRender::DrawScreenQuad({ x, y },
-						{ w, h }, 
-						m_bloomEffect.RenderTargetArray[i].GetRenderTarget(0), 
-						IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-				}
-			}
-			EndGPUEvent(renderContext, cmd);
-
-			BeginGPUEvent(renderContext, cmd, "Bloom Upsample");
-			for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
-			{
-				RenderTarget& rt = m_bloomEffect.RenderTargetArray[i];
-				ShaderProgram* shader = m_bloomEffect.UpsampleShader;
-
-				rt.BeginPass(cmd);
-				if (m_bloomEffect.Config.BloomActive)
-				{
-					shader->UseProgram(renderContext);
-					RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
-					RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
-					shader->BindTextureSlot(renderContext, 0, *m_bloomEffect.RenderTargetArray[i + 1].GetAttachment(0).Tex);
-					shader->SetBufferData(renderContext, "u_BloomUpsampleParams", &m_bloomEffect.Config.UpscaleFilterRadius, sizeof(m_bloomEffect.Config.UpscaleFilterRadius));
-					shader->FlushDescriptors(renderContext);
-					CmdDrawFullscreenQuad(cmd);
-				}
-				rt.EndPass(cmd);
-			}
-			EndGPUEvent(renderContext, cmd);
-
-			BeginGPUEvent(renderContext, cmd, "Bloom mix");
-			m_bloomEffect.FinalTarget.BeginPass(cmd);
-			m_bloomEffect.MixShader->UseProgram(renderContext);
-			m_bloomEffect.MixShader->BindTextureSlot(renderContext, 0, *m_bloomEffect.HDRRT->GetAttachment(0).Tex);
-			m_bloomEffect.MixShader->BindTextureSlot(renderContext, 1, *m_bloomEffect.RenderTargetArray[0].GetAttachment(0).Tex);
-			float z = 0.f;
-			if (m_bloomEffect.Config.BloomActive)
-				m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &m_bloomEffect.Config.MixCompositeAlpha, sizeof(m_bloomEffect.Config.MixCompositeAlpha));
-			else
-				m_bloomEffect.MixShader->SetBufferData(renderContext, "u_Mix", &z, sizeof(m_bloomEffect.Config.MixCompositeAlpha));
-			m_bloomEffect.MixShader->FlushDescriptors(renderContext);
-			CmdDrawFullscreenQuad(cmd);
-			m_bloomEffect.FinalTarget.EndPass(cmd);
-			EndGPUEvent(renderContext, cmd);
-		}
-
+		m_bloomEffect.InputTarget = m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_EMISSIVE).Tex;
+		m_bloomEffect.Draw(renderContext);
 
 		// HDR and tone mapping
 		BeginGPUEvent(renderContext, cmd, "HDR");
@@ -396,7 +475,7 @@ namespace Mist
 		ImGui::Begin("HDR");
 		ImGui::Checkbox("Show debug", &m_showDebug);
 		/*bool enabled = CVar_HDREnable.Get();
-		if (ImGui::Checkbox("HDR enabled", &enabled)) 
+		if (ImGui::Checkbox("HDR enabled", &enabled))
 			CVar_HDREnable.Set(enabled);*/
 		ImGui::DragFloat("Gamma correction", &m_hdrParams.GammaCorrection, 0.1f, 0.f, 5.f);
 		ImGui::DragFloat("Exposure", &m_hdrParams.Exposure, 0.1f, 0.f, 5.f);
@@ -417,5 +496,5 @@ namespace Mist
 			DebugRender::DrawScreenQuad(glm::vec2{ w * width, 0.f }, glm::vec2{ (1.f - w) * width, h * height }, view, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 		}
 	}
-	
+
 }
