@@ -245,6 +245,7 @@ namespace Mist
 			ib.Bind(cmd);
 			RenderAPI::CmdDrawIndexed(cmd, DebugRender::GQuadBatch.Index * 6, 1, 0, 0, 0);
 			DebugRender::GQuadBatch.Index = 0;
+			DebugRender::GQuadBatch.ViewIndex = 0;
 		}
 	}
 
