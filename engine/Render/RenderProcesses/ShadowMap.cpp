@@ -145,8 +145,7 @@ namespace Mist
 		check(lightIndex < globals::MaxShadowMapAttachments);
 		m_shader->UseProgram(context);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
-		//m_shader->BindDescriptorSets(cmd, &m_frameData[frameIndex].DepthMVPSet, 1, 0, &depthVPOffset, 1);
-		m_shader->SetDynamicBufferOffset(context, "u_ubo", depthVPOffset);
+		m_shader->SetDynamicBufferOffset(context, "u_ubo", sizeof(glm::mat4), lightIndex);
 
 		scene->Draw(context, m_shader, 0, 0, 0, RenderFlags_ShadowMap | RenderFlags_NoTextures);
 	}
