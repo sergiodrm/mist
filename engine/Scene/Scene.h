@@ -221,6 +221,8 @@ namespace Mist
 		tDynArray<glm::mat4> m_localTransforms;
 		tDynArray<glm::mat4> m_globalTransforms;
 		tDynArray<glm::mat4> m_renderTransforms;
+		tDynArray<sMaterialRenderData> m_materials;
+		tMap<index_t, index_t> m_modelMaterialMap;
 		
 		tDynArray<index_t> m_dirtyNodes[MaxNodeLevel];
 

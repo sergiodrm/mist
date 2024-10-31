@@ -175,6 +175,7 @@ namespace Mist
 		m_localTransforms.resize(globals::MaxRenderObjects);
 		m_renderTransforms.resize(globals::MaxRenderObjects);
 		m_transformComponents.resize(globals::MaxRenderObjects);
+		m_materials.resize(globals::MaxRenderObjects);
 	}
 
 	void Scene::Destroy()
@@ -195,6 +196,7 @@ namespace Mist
 		m_globalTransforms.clear();
 		m_hierarchy.clear();
 		m_names.clear();
+		m_materials.clear();
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 			m_dirtyNodes[i].clear();
 	}
@@ -208,7 +210,7 @@ namespace Mist
 			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_materialSetArray[frameContext.FrameIndex]);
 #endif // 0
-
+		//frameContext.GlobalBuffer.AllocDynamicUniform(renderContext, "u_materials", sizeof(sMaterialRenderData), globals::MaxRenderObjects);
 	}
 
 	sRenderObject Scene::CreateRenderObject(sRenderObject parent)
@@ -714,8 +716,8 @@ namespace Mist
 				// BaseOffset in buffer is already setted when descriptor was created.
 				for (index_t j = 0; j < model.m_meshes.GetSize(); ++j)
 				{
-					uint32_t meshDynamicOffset = renderTransformOffset++ * RenderContext_PadUniformMemoryOffsetAlignment(context, sizeof(glm::mat4));
-					shader->SetDynamicBufferOffset(context, "u_model", meshDynamicOffset);
+					uint32_t meshDynamicOffset = (renderTransformOffset+j) * RenderContext_PadUniformMemoryOffsetAlignment(context, sizeof(glm::mat4));
+					shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
 
 					const cMesh& mesh = model.m_meshes[j];
 					mesh.BindBuffers(cmd);
@@ -729,12 +731,16 @@ namespace Mist
 							{
 								check(primitive.Material);
 								primitive.Material->BindTextures(context, *shader, materialSetIndex);
+								index_t matIndex = primitive.Material - model.m_materials.GetData();
+								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
+								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
 							}
 							shader->FlushDescriptors(context);
 							RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
 						}
 					}
 				}
+				++renderTransformOffset;
 #if 0
 				// Bind vertex/index buffers just if needed
 				if (lastMesh != mesh)
@@ -958,12 +964,20 @@ namespace Mist
 			const glm::mat4& viewMat = frameContext.CameraData->InvView;
 			ProcessEnvironmentData(viewMat, m_environmentData);
 
+			index_t offset = 0;
+			for (index_t i = 0; i < m_models.GetSize(); ++i)
+			{
+				m_models[i].UpdateMaterials(m_materials.data() + offset);
+				m_modelMaterialMap[i] = offset;
+				offset += m_models[i].GetMaterialCount();
+			}
+
 			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
 			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 			//check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
 			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, m_renderTransforms.data(), (uint32_t)m_renderTransforms.size(), sizeof(glm::mat4), 0));
-
+			check(buffer->SetDynamicUniform(renderContext, "u_material", m_materials.data(), (uint32_t)m_materials.size(), sizeof(sMaterialRenderData), 0));
 #if 0
 			// Update materials
 			tArray<MaterialUniform, MIST_MAX_MATERIALS> materialUniformBuffer;
