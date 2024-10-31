@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Mesh.h"
+#include "Material.h"
 #include "RenderAPI.h"
 #include "RenderResource.h"
 #include "Core/Types.h"
@@ -22,13 +23,15 @@ namespace Mist
 		void Destroy(const RenderContext& context);
 		
 		inline index_t GetTransformsCount() const { return m_nodes.GetSize(); }
-		void UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform);
+		inline index_t GetMaterialCount() const { return m_materials.GetSize(); }
+		void UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform) const;
+		void UpdateMaterials(sMaterialRenderData* materials) const;
 	private:
 		void InitNodes(index_t n);
 		void InitMeshes(index_t n);
 		void InitMaterials(index_t n);
 
-		void CalculateGlobalTransforms(glm::mat4* transforms, index_t node);
+		void CalculateGlobalTransforms(glm::mat4* transforms, index_t node) const;
 
 		index_t BuildNode(index_t nodeIndex, index_t parentIndex, const char* nodeName);
 		sNode* GetNode(index_t i);

@@ -19,6 +19,11 @@ namespace Mist
 		MATERIAL_TEXTURE_COUNT,
 	};
 
+	struct sMaterialRenderData
+	{
+		glm::vec4 Emissive;
+	};
+
 	class cMaterial : public cRenderResource
 	{
 	public:
@@ -26,8 +31,9 @@ namespace Mist
 		void Destroy(const RenderContext& context);
 
 		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot);
+		inline sMaterialRenderData GetRenderData() const { return { .Emissive = m_emissiveFactor }; }
 
 		Texture* m_textures[MATERIAL_TEXTURE_COUNT];
-		glm::vec3 m_emissiveFactor;
+		glm::vec4 m_emissiveFactor;
 	};
 }

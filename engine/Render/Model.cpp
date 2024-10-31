@@ -291,7 +291,7 @@ namespace gltf_api
 
 	void LoadMaterial(Mist::cMaterial& material, const Mist::RenderContext& context, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
-		const cgltf_texture_view* views[Mist::MATERIAL_TEXTURE_COUNT] = {
+		const cgltf_texture_view* views[] = {
 			&cgltfmtl.pbr_metallic_roughness.base_color_texture,
 			&cgltfmtl.normal_texture,
 			&cgltfmtl.pbr_specular_glossiness.specular_glossiness_texture,
@@ -308,12 +308,15 @@ namespace gltf_api
 			Mist::FORMAT_R8G8B8A8_UNORM,
 			Mist::FORMAT_R8G8B8A8_SRGB,
 		};
+		static_assert(sizeof(views) / sizeof(cgltf_texture_view*) == Mist::MATERIAL_TEXTURE_COUNT);
+		static_assert(sizeof(formats) / sizeof(Mist::EFormat) == Mist::MATERIAL_TEXTURE_COUNT);
 		for (uint32_t i = 0; i < Mist::MATERIAL_TEXTURE_COUNT; ++i)
 		{
 			if (LoadTexture(context, rootAssetPath, *views[i],
 				formats[i], &material.m_textures[i]))
 				material.m_textures[i]->CreateView(context, Mist::tViewDescription());
 		}
+		material.m_emissiveFactor = {cgltfmtl.emissive_factor[0], cgltfmtl.emissive_factor[1] , cgltfmtl.emissive_factor[2], cgltfmtl.emissive_strength.emissive_strength };
 	}
 
 }
@@ -445,6 +448,8 @@ namespace Mist
 					cMaterial* material = &m_materials[materialIndex];
 					primitive.Material = material;
 					primitive.RenderFlags = RenderFlags_Fixed | RenderFlags_ShadowMap;
+					if (material->m_textures[MATERIAL_TEXTURE_EMISSIVE] || material->m_emissiveFactor != glm::vec4(0.f))
+						primitive.RenderFlags |= RenderFlags_Emissive;
 
 					check(cgltfprimitive.indices->count == primitive.Count);
 				}
@@ -460,13 +465,21 @@ namespace Mist
 		gltf_api::FreeData(data);
 	}
 
-	void cModel::UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform)
+	void cModel::UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform) const
 	{
 		check(m_root != index_invalid);
 		globalTransforms[m_root] = worldTransform * m_transforms[m_root];
 		check(m_nodes[m_root].Sibling == index_invalid);
 		if (m_nodes[m_root].Child != index_invalid)
 			CalculateGlobalTransforms(globalTransforms, m_nodes[m_root].Child);
+	}
+
+	void cModel::UpdateMaterials(sMaterialRenderData* materials) const
+	{
+		for (index_t i = 0; i < m_materials.GetSize(); ++i)
+		{
+			materials[i] = m_materials[i].GetRenderData();
+		}
 	}
 
 	void cModel::InitNodes(index_t n)
@@ -497,10 +510,10 @@ namespace Mist
 		m_materials.Resize(n);
 	}
 
-	void cModel::CalculateGlobalTransforms(glm::mat4* transforms, index_t node)
+	void cModel::CalculateGlobalTransforms(glm::mat4* transforms, index_t node) const
 	{
 		check(node != index_invalid);
-		sNode& n = m_nodes[node];
+		const sNode& n = m_nodes[node];
 
 		// calculate current
 		if (n.Parent != index_invalid)
