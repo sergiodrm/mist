@@ -30,6 +30,7 @@
 #include "Application/Event.h"
 #include "Core/SystemMemory.h"
 
+
 #define MIST_CRASH_ON_VALIDATION_LAYER
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
@@ -127,13 +128,13 @@ namespace Mist
 			tImageDescription desc
 			{
 				.Format = FORMAT_R8G8B8A8_SRGB,
-				.Width = 1,
-				.Height = 1,
+				.Width = 2,
+				.Height = 2,
 				.Depth = 1,
 			};
 			DefaultTexture = Texture::Create(context, desc);
-			float pixel = 0.f;
-			const uint8_t* layer = (uint8_t*)&pixel;
+			float pixels[] = { 0x000000ff, 0xffffffff, 0x000000ff, 0xffffffff };
+			const uint8_t* layer = (uint8_t*)pixels;
 			DefaultTexture->SetImageLayers(context, &layer, 1);
 			DefaultTexture->CreateView(context, tViewDescription());
 		}
