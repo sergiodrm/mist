@@ -304,7 +304,7 @@ namespace Mist
 
 		const DataType& Back() const { return const_cast<ThisType*>(this)->Back(); }
 
-		inline const DataType* GetData() const { m_data; }
+		inline const DataType* GetData() const { return m_data; }
 		inline DataType* GetData() { return m_data; }
 		inline IndexType GetSize() const { return m_index; }
 		inline IndexType GetReservedSize() const { return m_count; }
@@ -317,4 +317,10 @@ namespace Mist
 		IndexType m_index;
 		IndexType m_count;
 	};
+
+	template <typename T, uint32_t N>
+	inline constexpr uint32_t CountOf(const T(&)[N])
+	{
+		return N;
+	}
 }
