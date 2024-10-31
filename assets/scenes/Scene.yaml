@@ -1,31 +1,21 @@
 Environment:
-  Ambient: [0.00392156886, 0.00392156886, 0.00392156886]
+  Ambient: [0.0441176295, 0.0441176295, 0.0441176295]
   Skybox:
-    Front: ../assets/textures/skybox/front.jpg
-    Back: ../assets/textures/skybox/back.jpg
-    Top: ../assets/textures/skybox/top.jpg
-    Bottom: ../assets/textures/skybox/bottom.jpg
-    Left: ../assets/textures/skybox/left.jpg
-    Right: ../assets/textures/skybox/right.jpg
+    Front: ../assets/textures/skybox/left.jpg
+    Back: ../assets/textures/skybox/right.jpg
+    Top: ../assets/textures/skybox/front.jpg
+    Bottom: ../assets/textures/skybox/back.jpg
+    Left: ../assets/textures/skybox/top.jpg
+    Right: ../assets/textures/skybox/bottom.jpg
 RenderObjects:
   - RenderObject: 0
-    Name: RenderObject_0
-    Parent: 4294967295
+    Name: Root
+    Parent: 65535
     TransformComponent:
       Position: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
   - RenderObject: 1
-    Name: Mesh_0
-    Parent: 0
-    TransformComponent:
-      Position: [0, 0, 0]
-      Rotation: [0, -0, 0]
-      Scale: [0.00800000038, 0.00800000038, 0.00800000038]
-    MeshComponent:
-      MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
-      MeshName: Mesh_0
-  - RenderObject: 2
     Name: Light
     Parent: 0
     TransformComponent:
@@ -40,7 +30,7 @@ RenderObjects:
       InnerCutoff: 1
       OuterCutoff: 0.800000012
       ProjectShadows: true
-  - RenderObject: 3
+  - RenderObject: 2
     Name: Light_2
     Parent: 0
     TransformComponent:
@@ -55,3 +45,21 @@ RenderObjects:
       InnerCutoff: 1
       OuterCutoff: 0.800000012
       ProjectShadows: false
+  - RenderObject: 3
+    Name: Sponza
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
+  - RenderObject: 4
+    Name: EmissiveTest
+    Parent: 0
+    TransformComponent:
+      Position: [0, 8.5, 0]
+      Rotation: [0, -0.100000001, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../assets/models/emissive/emissivestrengthtest.gltf
