@@ -15,4 +15,5 @@ void main()
     vec4 col1 = texture(u_tex0, InTexCoords);
     vec4 col2 = texture(u_tex1, InTexCoords);
     outColor = mix(col1, col2, u_Mix.Alpha);
+    outColor = col1+col2;
 }

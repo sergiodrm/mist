@@ -1,6 +1,6 @@
 #version 450
 
-layout (location = 0) in vec4 inPos;
+layout (location = 0) in vec3 inPos;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec3 inColor;
 layout (location = 3) in vec3 inTangent;
@@ -27,7 +27,8 @@ layout (location = 5) out mat3 outTBN;
 void main() 
 {
 	// Vertex position in world space
-	vec3 worldPos = vec3(u_model.Model * inPos);
+	vec3 worldPos = vec3(u_model.Model * vec4(inPos,1.f));
+	//vec3 worldPos = vec3(u_model.Model * inPos);
 	gl_Position = u_camera.ViewProjection * vec4(worldPos, 1.f);
 #define VIEW_SPACE_TRANSFORMS
 #ifdef VIEW_SPACE_TRANSFORMS

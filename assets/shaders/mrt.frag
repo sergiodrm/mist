@@ -11,11 +11,12 @@ layout (location = 5) in mat3 inTBN;
 layout (location = 0) out vec4 outPosition;
 layout (location = 1) out vec4 outNormal;
 layout (location = 2) out vec4 outAlbedo;
+layout (location = 3) out vec4 outEmissive;
 
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
 layout(set = 3, binding = 0) uniform MaterialParams
 {
-	vec2 Params;
+	vec4 Emissive;
 } u_material;
 
 //#define MaterialHasMetallic(m) int(m.Params.x)
@@ -56,7 +57,9 @@ void main()
 	outNormal = normalize(vec4(inNormal, 1.0));
 #endif
 
-	outAlbedo = texture(TEXTURE_ALBEDO, inUV);
+	outEmissive = vec4(u_material.Emissive.xyz * u_material.Emissive.w, 1.f);
+
+	outAlbedo = u_material.Emissive.w * vec4(u_material.Emissive.xyz, 1.f) + texture(TEXTURE_ALBEDO, inUV);
 	if (outAlbedo.a <= 0.1)
 		discard;
 }
