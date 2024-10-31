@@ -18,6 +18,7 @@ namespace Mist
 	class RenderPipeline;
 	class RenderTarget;
 	class Texture;
+	struct SamplerDescription;
 
 
 	struct ShaderBindingDescriptorInfo
@@ -194,10 +195,10 @@ namespace Mist
 
 		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t dataSize);
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
-		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
+		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset);
 
-		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture);
-		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount);
+		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture, const Sampler* sampler = nullptr);
+		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount, const Sampler* sampler = nullptr);
 
 		void MarkAsDirty(const RenderContext& context);
 		void FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout);
@@ -229,9 +230,15 @@ namespace Mist
 		void UseProgram(const RenderContext& context);
 		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
 
+		void SetSampler(const RenderContext& context,
+			EFilterType minFilter = FILTER_LINEAR,
+			EFilterType magFilter = FILTER_LINEAR,
+			ESamplerAddressMode modeU = SAMPLER_ADDRESS_MODE_REPEAT,
+			ESamplerAddressMode modeV = SAMPLER_ADDRESS_MODE_REPEAT,
+			ESamplerAddressMode modeW = SAMPLER_ADDRESS_MODE_REPEAT);
 		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size);
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
-		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset);
+		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset);
 		void BindTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture);
 		void BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture* const* textureArray, uint32_t textureCount);
 		void FlushDescriptors(const RenderContext& context);
@@ -255,6 +262,7 @@ namespace Mist
 		tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
 
 		tShaderParamAccess m_paramAccess;
+		Sampler m_sampler = VK_NULL_HANDLE;
 	};
 
 	class ShaderFileDB

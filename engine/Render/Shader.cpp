@@ -664,10 +664,10 @@ namespace Mist
 								const tShaderParam& param = GetParam(binding.Name.c_str());
 								const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
 								if (!mapInfo.Size)
-									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), dynamicDesc.ElemCount, binding.Size);
+									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), binding.Size, dynamicDesc.ElemCount);
 								else
 								{
-									uint32_t totalSize = RenderContext_PadUniformMemoryOffsetAlignment(context, binding.Size * dynamicDesc.ElemCount);
+									uint32_t totalSize = dynamicDesc.ElemCount * RenderContext_PadUniformMemoryOffsetAlignment(context, binding.Size);
 									check(totalSize == mapInfo.Size);
 								}
 								break;
@@ -756,7 +756,7 @@ namespace Mist
 		frameContext.GlobalBuffer.SetDynamicUniform(context, param.Name.CStr(), data, elemCount, elemSize, elemIndexOffset);
 	}
 
-	void tShaderParamAccess::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)
+	void tShaderParamAccess::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset)
 	{
 		check(HasBatch());
 		RenderFrameContext& frameContext = renderContext.GetFrameContext();
@@ -766,11 +766,12 @@ namespace Mist
 		check(batch.PersistentDescriptors.GetSize() > param.SetIndex);
 		tDescriptorSetUnit& setUnit = batch.PersistentDescriptors[param.SetIndex];
 		check(param.Binding < setUnit.DynamicOffsets.GetSize());
+		uint32_t offset = elemOffset * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, elemSize);
 		setUnit.DynamicOffsets[param.Binding] = offset;
 		setUnit.Dirty = true;
 	}
 
-	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture)
+	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture, const Sampler* sampler)
 	{
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
@@ -779,7 +780,7 @@ namespace Mist
 		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
 		VkDescriptorImageInfo imageInfo =
 		{
-			.sampler = texture.GetSampler(),
+			.sampler = sampler ? *sampler : texture.GetSampler(),
 			.imageView = texture.GetView(0),
 			.imageLayout = IsDepthFormat(texture.GetDescription().Format)
 				? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
@@ -792,7 +793,7 @@ namespace Mist
 		RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, &set, 1, slot, nullptr, 0);
 	}
 
-	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount)
+	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount, const Sampler* sampler)
 	{
 		check(textures && textureCount);
 		RenderFrameContext& frameContext = context.GetFrameContext();
@@ -810,7 +811,7 @@ namespace Mist
 				? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
 				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			infos[i].imageView = textures[i]->GetView(0);
-			infos[i].sampler = textures[i]->GetSampler();
+			infos[i].sampler = sampler ? *sampler : textures[i]->GetSampler();
 		}
 		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
 			.BindImage(0, infos.data(), textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -1244,6 +1245,11 @@ namespace Mist
 		RenderAPI::CmdBindDescriptorSet(cmd, m_pipelineLayout, m_bindPoint, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
 	}
 
+	void ShaderProgram::SetSampler(const RenderContext& context, EFilterType minFilter, EFilterType magFilter, ESamplerAddressMode modeU, ESamplerAddressMode modeV, ESamplerAddressMode modeW)
+	{
+		m_sampler = CreateSampler(context, minFilter, magFilter, modeU, modeV, modeW);
+	}
+
 	void ShaderProgram::SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size)
 	{
 		m_paramAccess.SetBufferData(context, bufferName, data, size);
@@ -1254,24 +1260,25 @@ namespace Mist
 		m_paramAccess.SetDynamicBufferData(context, bufferName, data, elemSize, elemCount, elemIndexOffset);
 	}
 
-	void ShaderProgram::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t offset)
+	void ShaderProgram::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset)
 	{
-		m_paramAccess.SetDynamicBufferOffset(renderContext, bufferName, offset);
+		m_paramAccess.SetDynamicBufferOffset(renderContext, bufferName, elemSize, elemOffset);
 	}
 
 	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture)
 	{
-		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, texture);
+		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, texture, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture* const* textureArray, uint32_t textureCount)
 	{
-		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, textureArray, textureCount);
+		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, textureArray, textureCount, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
 	{
 		m_paramAccess.FlushBatch(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout);
+		m_sampler = VK_NULL_HANDLE;
 	}
 #if 0
 
