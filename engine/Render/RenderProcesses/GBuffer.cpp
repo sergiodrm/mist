@@ -19,6 +19,7 @@ namespace Mist
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_POSITION, GBUFFER_RT_LAYOUT_POSITION, SAMPLE_COUNT_1_BIT, clearValue);
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_NORMAL, GBUFFER_RT_LAYOUT_NORMAL, SAMPLE_COUNT_1_BIT, clearValue);
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_ALBEDO, GBUFFER_RT_LAYOUT_ALBEDO, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(GBUFFER_RT_FORMAT_EMISSIVE, GBUFFER_RT_LAYOUT_EMISSIVE, SAMPLE_COUNT_1_BIT, {0.f, 0.f, 0.f, 1.f});
 		description.DepthAttachmentDescription.Format = GBUFFER_RT_FORMAT_DEPTH;
 		description.DepthAttachmentDescription.Layout = GBUFFER_RT_LAYOUT_DEPTH;
 		description.DepthAttachmentDescription.MultisampledBit = SAMPLE_COUNT_1_BIT;
@@ -53,7 +54,7 @@ namespace Mist
 		m_shader->UseProgram(renderContext);
 		m_shader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
 
-		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed);
+		frameContext.Scene->Draw(renderContext, m_shader, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
 		m_renderTarget.EndPass(frameContext.GraphicsCommandContext.CommandBuffer);
 		EndGPUEvent(renderContext, cmd);
 	}
@@ -61,11 +62,11 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth", "All"};
+		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth", "Emissive", "All"};
 		static int index = 0;
 		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
-			for (uint32_t i = 0; i < 6; ++i)
+			for (uint32_t i = 0; i < CountOf(rts); ++i)
 			{
 				if (ImGui::Selectable(rts[i], i == index))
 				{
@@ -99,10 +100,11 @@ namespace Mist
 		{
 			float x = w * 0.75f;
 			float y = 0.f;
-			float ydiff = h * 0.25f;
+			float ydiff = h / (float)RT_COUNT;
 			pos = { x, y };
-			size = { w * 0.25f, h * 0.25f };
-			for (uint32_t i = RT_POSITION; i < RT_DEPTH; ++i)
+			size = { w * 0.25f, ydiff };
+			static_assert(RT_COUNT > 0);
+			for (uint32_t i = RT_POSITION; i < RT_COUNT-1; ++i)
 			{
 				tex.View = GetRenderTarget()->GetRenderTarget(i);
 				tex.Layout = GetRenderTarget()->GetDescription().ColorAttachmentDescriptions[i].Layout;
@@ -110,7 +112,7 @@ namespace Mist
 				DebugRender::DrawScreenQuad(pos, size, tex);
 				pos.y += ydiff;
 			}
-			tex.View = GetRenderTarget()->GetRenderTarget(RT_DEPTH);
+			tex.View = GetRenderTarget()->GetDepthAttachment().View;
 			tex.Layout = GetRenderTarget()->GetDescription().DepthAttachmentDescription.Layout;
 			tex.Sampler = nullptr;
 			DebugRender::DrawScreenQuad(pos, size, tex);
@@ -149,6 +151,14 @@ namespace Mist
 			DebugRender::DrawScreenQuad(pos, size, tex);
 		}
 			break;
+		case DEBUG_EMISSIVE:
+		{
+			tex.View = GetRenderTarget()->GetRenderTarget(RT_EMISSIVE);
+			tex.Layout = GBUFFER_RT_LAYOUT_DEPTH;
+			tex.Sampler = nullptr;
+			DebugRender::DrawScreenQuad(pos, size, tex);
+		}
+			break;
 		default:
 			break;
 
@@ -167,6 +177,8 @@ namespace Mist
 
 		tShaderDynamicBufferDescription materialDynDesc = modelDynDesc;
 		materialDynDesc.Name = "u_material";
+		modelDynDesc.ElemCount = globals::MaxRenderObjects;
+		materialDynDesc.IsShared = true;
 
 		shaderDesc.DynamicBuffers.push_back(modelDynDesc);
 		shaderDesc.DynamicBuffers.push_back(materialDynDesc);
