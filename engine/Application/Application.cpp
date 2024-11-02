@@ -3,6 +3,7 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"
 #include "Application/CmdParser.h"
+#include "Utils/FileSystem.h"
 
 extern Mist::tApplication* CreateGameApplication();
 extern void DestroyGameApplication(Mist::tApplication*);
@@ -10,6 +11,8 @@ extern void DestroyGameApplication(Mist::tApplication*);
 
 namespace Mist
 {
+    CStrVar GIniFile("IniFile", "default.ini");
+
     tApplication* tApplication::CreateApplication(int argc, char** argv)
     {
         tApplication* app = CreateGameApplication();
@@ -81,7 +84,14 @@ namespace Mist
         }
         loginfo("\n");
 
-        m_window = Window::Create(1920, 1080, "MistEngine");
+        cIniFile iniFile(GIniFile.Get());
+
+        int w; 
+        int h;
+        iniFile.GetInt("width", w, 1920);
+        iniFile.GetInt("height", h, 1080);
+
+        m_window = Window::Create(w, h, "MistEngine");
         m_engine = IRenderEngine::MakeInstance();
         m_engine->Init(m_window);
     }
