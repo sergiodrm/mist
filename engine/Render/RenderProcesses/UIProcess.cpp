@@ -36,8 +36,10 @@ namespace Mist
 		poolInfo.maxSets = 1000;
 		poolInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
 		poolInfo.pPoolSizes = poolSizes;
+		poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 		vkcheck(vkCreateDescriptorPool(context.Device, &poolInfo, nullptr, &m_imguiPool));
+		SetVkObjectName(context, &m_imguiPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "ImGui_DescriptorPool");
 
 		// Init imgui lib
 		ImGui::CreateContext();
@@ -80,8 +82,8 @@ namespace Mist
 
 	void ImGuiInstance::Destroy(const RenderContext& context)
 	{
-		vkDestroyDescriptorPool(context.Device, m_imguiPool, nullptr);
 		ImGui_ImplVulkan_Shutdown();
+		vkDestroyDescriptorPool(context.Device, m_imguiPool, nullptr);
 	}
 
 	void ImGuiInstance::BeginFrame(const RenderContext& context)
