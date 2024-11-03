@@ -43,43 +43,7 @@ namespace Mist
                 char varName[64];
                 check(varLen < 64ul);
                 strncpy_s(varName, it + 1, varLen);
-                CVar* cvar = FindCVar(varName);
-                if (!cvar)
-                    continue;
-                switch (cvar->GetType())
-                {
-                case CVar::CVarType::Int:
-                {
-                    int value = atoi(endVar + 1);
-                    CIntVar* intVar = static_cast<CIntVar*>(cvar);
-                    intVar->Set(value);
-                }
-                    break;
-                case CVar::CVarType::Float:
-				{
-					float value = (float)atof(endVar + 1);
-					CFloatVar* floatVar = static_cast<CFloatVar*>(cvar);
-                    floatVar->Set(value);
-				}
-                    break;
-                case CVar::CVarType::Bool:
-				{
-                    bool value = !strcmp(endVar + 1, "true") || atoi(endVar+1) > 0;
-					CBoolVar* boolVar = static_cast<CBoolVar*>(cvar);
-                    boolVar->Set(value);
-				}
-                    break;
-                case CVar::CVarType::String:
-				{
-                    const char* str = endVar + 1;
-					CStrVar* strVar = static_cast<CStrVar*>(cvar);
-                    strVar->Set(str);
-				}
-                    break;
-                default:
-                    check(false);
-                    break;
-                }
+                SetCVar(varName, endVar + 1);
             }
         }
         loginfo("\n");
@@ -90,6 +54,14 @@ namespace Mist
         int h;
         iniFile.GetInt("width", w, 1920);
         iniFile.GetInt("height", h, 1080);
+
+        for (index_t i = 0; i < iniFile.GetValueCount(); ++i)
+        {
+            if (SetCVar(iniFile.GetKey(i), iniFile.GetValue(i)))
+                logfinfo("CVar setted from %s file: %s = %s\n", GIniFile.Get(), iniFile.GetKey(i), iniFile.GetValue(i));
+        }
+
+
 
         m_window = Window::Create(w, h, "MistEngine");
         m_engine = IRenderEngine::MakeInstance();

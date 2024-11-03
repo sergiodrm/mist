@@ -30,6 +30,48 @@ namespace Mist
 		return nullptr;
 	}
 
+	bool SetCVar(const char* name, const char* strValue)
+	{
+		CVar* cvar = FindCVar(name);
+		if (!cvar)
+			return false;
+		switch (cvar->GetType())
+		{
+		case CVar::CVarType::Int:
+		{
+			int value = atoi(strValue);
+			CIntVar* intVar = static_cast<CIntVar*>(cvar);
+			intVar->Set(value);
+		}
+		break;
+		case CVar::CVarType::Float:
+		{
+			float value = (float)atof(strValue);
+			CFloatVar* floatVar = static_cast<CFloatVar*>(cvar);
+			floatVar->Set(value);
+		}
+		break;
+		case CVar::CVarType::Bool:
+		{
+			bool value = !strcmp(strValue, "true") || atoi(strValue) > 0;
+			CBoolVar* boolVar = static_cast<CBoolVar*>(cvar);
+			boolVar->Set(value);
+		}
+		break;
+		case CVar::CVarType::String:
+		{
+			const char* str = strValue;
+			CStrVar* strVar = static_cast<CStrVar*>(cvar);
+			strVar->Set(str);
+		}
+		break;
+		default:
+			check(false);
+			break;
+		}
+		return true;
+	}
+
 	void PrintCVar(CVar* cvar)
 	{
 		switch (cvar->GetType())
