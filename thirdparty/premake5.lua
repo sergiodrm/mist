@@ -11,8 +11,12 @@ project "glm"
 
 project "ImGui"
     kind "StaticLib"
-    files { "imgui/**.h", "imgui/**.cpp" }
-    includedirs { "%{includes.vulkan}", "%{includes.sdl}"}
+    files { 
+        "imgui/*.h", "imgui/*.cpp",
+        "imgui/backends/imgui_impl_vulkan.h", "imgui/backends/imgui_impl_vulkan.cpp",
+        "imgui/backends/imgui_impl_sdl2.h", "imgui/backends/imgui_impl_sdl2.cpp",
+    }
+    includedirs { "%{includes.vulkan}", "%{includes.sdl}", "%{includes.imgui}"}
     targetdir "%{dependenciesTargetDir}"
 
 project "VkBootstrap"
