@@ -86,6 +86,7 @@ workspace "Mist"
             "%{includes.glm}",
             "%{includes.gltf}",
             "%{includes.imgui}",
+            "%{includes.imgui}/backends",
             "%{includes.sdl}",
             "%{includes.stbimage}",
             "%{includes.vma}",
@@ -164,6 +165,7 @@ workspace "Mist"
             "%{includes.vkbootstrap}",
             "%{includes.sdl}",
             "%{includes.stbimage}",
+            "%{includes.imgui}/backends",
         }
 
         filter "configurations:Debug"

@@ -49,12 +49,14 @@ namespace Mist
 			.Device = context.Device,
 			.Queue = context.GraphicsQueue,
 			.DescriptorPool = m_imguiPool,
-			.Subpass = 0,
+			.RenderPass = renderPass,
 			.MinImageCount = 3,
 			.ImageCount = 3,
 			.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
+			.Subpass = 0,
 		};
-		ImGui_ImplVulkan_Init(&initInfo, renderPass);
+		ImGui_ImplVulkan_Init(&initInfo);
+#if 0
 
 		// Execute gpu command to upload imgui font textures
 		utils::CmdSubmitTransfer(context,
@@ -63,6 +65,8 @@ namespace Mist
 				ImGui_ImplVulkan_CreateFontsTexture(cmd);
 			});
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
+#endif // 0
+
 	}
 
 	void ImGuiInstance::Draw(const RenderContext& context, VkCommandBuffer cmd)
@@ -83,7 +87,7 @@ namespace Mist
 	void ImGuiInstance::BeginFrame(const RenderContext& context)
 	{
 		ImGui_ImplVulkan_NewFrame();
-		ImGui_ImplSDL2_NewFrame((SDL_Window*)context.Window->WindowInstance);
+		ImGui_ImplSDL2_NewFrame(/*(SDL_Window*)context.Window->WindowInstance*/);
 		ImGui::NewFrame();
 	}
 
