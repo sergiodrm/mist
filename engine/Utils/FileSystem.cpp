@@ -93,13 +93,30 @@ namespace Mist
 
 	bool cIniFile::GetInt(const char* key, int& value, int defaultValue) const
 	{
-		if (m_values.contains(key))
+		if (m_keyValueMap.contains(key))
 		{
-			const tString& str = m_values.at(key);
+			const tString& str = m_values.at(m_keyValueMap.at(key));
 			value = atoi(str.c_str());
 			return true;
 		}
 		value = defaultValue;
+		return false;
+	}
+
+	bool cIniFile::GetBool(const char* key, bool& value, bool defaultValue) const
+	{
+		int v;
+		if (GetInt(key, v, defaultValue ? 1 : 0))
+		{
+			value = v != 0;
+			return true;
+		}
+		value = defaultValue;
+		return false;
+	}
+
+	bool cIniFile::GetFloat(const char* key, float& value, float defaultValue) const
+	{
 		return false;
 	}
 
@@ -145,6 +162,22 @@ namespace Mist
 		char value[64];
 		strncpy_s(value, begvar, varnamelength);
 
-		m_values[var] = value;
+		InsertValue(var, value);
+	}
+
+	void cIniFile::InsertValue(const char* key, const char* value)
+	{
+		if (m_keyValueMap.contains(key))
+		{
+			index_t index = m_keyValueMap.at(key);
+			m_values[index] = value;
+		}
+		else
+		{
+			check(m_keys.size() == m_values.size());
+			m_keys.push_back(key);
+			m_values.push_back(value);
+			m_keyValueMap[key] = (index_t)(m_keys.size() - 1);
+		}
 	}
 }

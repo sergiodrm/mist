@@ -38,11 +38,35 @@ namespace Mist
 		cIniFile(const char* filepath);
 
 		bool GetInt(const char* key, int& value, int defaultValue = 0) const;
+		bool GetBool(const char* key, bool& value, bool defaultValue = false) const;
+		bool GetFloat(const char* key, float& value, float defaultValue = 0.f) const;
+
+		template <index_t N>
+		bool GetStr(const char* key, char(&value)[N]) const
+		{
+			*value = 0;
+			if (m_keyValueMap.contains(key))
+			{
+				const tString& str = m_values[m_keyValueMap.at(key)];
+				check((index_t)str.size() <= N);
+				strcpy_s(value, str.c_str());
+				return true;
+			}
+			return false;
+		}
+
+		index_t GetValueCount() const { return (index_t)m_keys.size(); }
+		const char* GetKey(index_t i) const { return m_keys.at(i).c_str(); }
+		const char* GetValue(index_t i) const { return m_values.at(i).c_str(); }
 
 	private:
 		void ParseVars(char* data);
 		void ParseLine(const char* line);
+
+		void InsertValue(const char* key, const char* value);
 	private:
-		tMap<tString, tString> m_values;
+		tMap<tString, index_t> m_keyValueMap;
+		tDynArray<tString> m_values;
+		tDynArray<tString> m_keys;
 	};
 }
