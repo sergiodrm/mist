@@ -9,12 +9,27 @@
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
+#include "Core/Logger.h"
 
 namespace Mist
 {
 
+	bool ExecCommand_ActivateMultipleViewports(const char* cmd)
+	{
+		if (strcmp(cmd, "SetMultipleViewports"))
+			return false;
+
+		ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags& ImGuiConfigFlags_ViewportsEnable ?
+			io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable
+			: io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		return true;
+	}
+
 	void ImGuiInstance::Init(const RenderContext& context, VkRenderPass renderPass)
 	{
+		AddConsoleCommand(&ExecCommand_ActivateMultipleViewports);
+
 		// Create descriptor pool for imgui
 		VkDescriptorPoolSize poolSizes[] =
 		{
@@ -69,14 +84,24 @@ namespace Mist
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 #endif // 0
 
+		ImGuiIO& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
 	}
 
 	void ImGuiInstance::Draw(const RenderContext& context, VkCommandBuffer cmd)
 	{
 		CPU_PROFILE_SCOPE(ImGuiPass);
 		BeginGPUEvent(context, cmd, "ImGui");
+
+
 		ImGui::Render();
 		ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+		}
 		EndGPUEvent(context, cmd);
 	}
 

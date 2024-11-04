@@ -366,6 +366,13 @@ namespace Mist
 				switch (ev.type)
 				{
 				case SDL_QUIT: *payload.Exit = true; break;
+				case SDL_WINDOWEVENT:
+				{
+					uint8_t windowEvent = (*(SDL_WindowEvent*)&ev).event;
+					if (windowEvent == SDL_WINDOWEVENT_CLOSE)
+						*payload.Exit = true;
+					break;
+				}
 				}
 				if (payload.Engine->m_eventCallback)
 					payload.Engine->m_eventCallback(&ev);
