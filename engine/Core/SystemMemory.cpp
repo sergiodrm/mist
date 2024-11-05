@@ -3,7 +3,7 @@
 #include "Core/SystemMemory.h"
 #include "Core/Types.h"
 #include "Core/Debug.h"
-#include "Core/Logger.h"
+#include "Core/Console.h"
 
 namespace Mist
 {

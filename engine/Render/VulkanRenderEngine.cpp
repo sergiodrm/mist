@@ -16,7 +16,7 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_sdl2.h>
-#include "Core/Logger.h"
+#include "Core/Console.h"
 #include "Core/Debug.h"
 #include "Render/Shader.h"
 #include "Render/Globals.h"

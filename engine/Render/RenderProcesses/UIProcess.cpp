@@ -9,7 +9,7 @@
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
-#include "Core/Logger.h"
+#include "Core/Console.h"
 
 namespace Mist
 {
@@ -86,6 +86,7 @@ namespace Mist
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 	}
 
