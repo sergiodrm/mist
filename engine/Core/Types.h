@@ -68,6 +68,7 @@ namespace Mist
 
 		const char* CStr() const { return m_string; }
 		uint32_t Length() const { return (uint32_t)strlen(m_string); }
+		bool IsEmpty() const { return !*m_string; }
 
 		void Fmt(const char* fmt, ...)
 		{
