@@ -8,7 +8,7 @@
 namespace Mist
 {
 	class ShaderProgram;
-	enum
+	enum eMaterialTexture
 	{
 		MATERIAL_TEXTURE_ALBEDO,
 		MATERIAL_TEXTURE_NORMAL,
@@ -18,6 +18,7 @@ namespace Mist
 		MATERIAL_TEXTURE_EMISSIVE,
 		MATERIAL_TEXTURE_COUNT,
 	};
+	const char* GetMaterialTextureStr(eMaterialTexture type);
 
 	struct sMaterialRenderData
 	{

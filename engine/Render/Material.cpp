@@ -7,6 +7,21 @@
 
 namespace Mist
 {
+    const char* GetMaterialTextureStr(eMaterialTexture type)
+    {
+        switch (type)
+        {
+        case MATERIAL_TEXTURE_ALBEDO: return "MATERIAL_TEXTURE_ALBEDO";
+        case MATERIAL_TEXTURE_NORMAL: return "MATERIAL_TEXTURE_NORMAL";
+        case MATERIAL_TEXTURE_SPECULAR: return "MATERIAL_TEXTURE_SPECULAR";
+        case MATERIAL_TEXTURE_OCCLUSION: return "MATERIAL_TEXTURE_OCCLUSION";
+        case MATERIAL_TEXTURE_METALLIC_ROUGHNESS: return "MATERIAL_TEXTURE_METALLIC_ROUGHNESS";
+        case MATERIAL_TEXTURE_EMISSIVE: return "MATERIAL_TEXTURE_EMISSIVE";
+        }
+        check(false);
+        return nullptr;
+    }
+
     void cMaterial::Destroy(const RenderContext& context)
     {
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
