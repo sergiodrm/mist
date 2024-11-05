@@ -22,7 +22,7 @@ namespace Mist
 	class ShaderProgram;
 	class DescriptorLayoutCache;
 	class DescriptorAllocator;
-	class Texture;
+	class cTexture;
 	class cModel;
 
 	struct sRenderObject
@@ -135,7 +135,7 @@ namespace Mist
 		};
 		uint32_t MeshIndex;
 		VkDescriptorSet CubemapSet;
-		Texture* Tex;
+		cTexture* Tex;
 
 		char CubemapFiles[COUNT][256];
 

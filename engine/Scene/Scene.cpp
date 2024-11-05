@@ -188,7 +188,7 @@ namespace Mist
 		const RenderContext& renderContext = m_engine->GetContext();
 
 		if (m_skybox.Tex)
-			Texture::Destroy(renderContext, m_skybox.Tex);
+			cTexture::Destroy(renderContext, m_skybox.Tex);
 		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
 			m_models[i].Destroy(renderContext);
 		m_models.Clear();
@@ -661,7 +661,7 @@ namespace Mist
 		imageDesc.Flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		imageDesc.MipLevels = 1; // needs cubemap?
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-		Texture* cubemapTex = Texture::Create(context, imageDesc);
+		cTexture* cubemapTex = cTexture::Create(context, imageDesc);
 		// Set image layers with each cubemap texture
 		cubemapTex->SetImageLayers(context, pixelsArray, Skybox::COUNT);
 		//SubmitTexture(cubemapTex);
@@ -908,37 +908,37 @@ namespace Mist
 							ImGui::TreePop();
 						}
 					}
+					if (m_meshComponentMap.contains(i))
+					{
+						sprintf_s(buff, "##MeshComponent%u", i);
+						if (ImGui::TreeNode(buff, "Mesh component"))
+						{
+							const MeshComponent& meshComp = m_meshComponentMap.at(i);
+							ImGui::Text("Model: [%u] %s", meshComp.MeshIndex, meshComp.MeshAssetPath);
+							ImGui::Text("Model name: %s", m_models[meshComp.MeshIndex].GetName());
+							ImGui::TreePop();
+						}
+					}
 
 					ImGui::TreePop();
 				}
 			}
 			ImGui::TreePop();
 		}
-		if (ImGui::TreeNode("Material list"))
+		if (ImGui::TreeNode("Model list"))
 		{
-#if 0
-			char buff[32];
-			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
+			ImGui::Columns(2);
+			for (index_t i = 0; i < m_models.GetSize(); ++i)
 			{
-				if (ImGui::TreeNode(&m_materialArray[i], "(Slot %d) %s", i, m_materialArray[i].GetName()))
-				{
-					bool dirty = false;
-					sprintf_s(buff, "##Metallic_%d", i);
-					float metallic = m_materialArray[i].GetMetallic();
-					dirty |= ImGui::DragFloat(buff, &metallic, 0.01f, 0.f, 1.f);
-					sprintf_s(buff, "##Roughness_%d", i);
-					float roughness = m_materialArray[i].GetMetallic();
-					dirty |= ImGui::DragFloat(buff, &roughness, 0.01f, 0.f, 1.f);
-					if (dirty)
-					{
-						m_materialArray[i].SetMetallic(metallic);
-						m_materialArray[i].SetRoughness(roughness);
-					}
-
-					ImGui::TreePop();
+				ImGui::Text("Model: %s", m_models[i].GetName());
+				ImGui::NextColumn();
+				if (ImGui::Button(""))
+				{ 
+					logfinfo("todo: model window for %s\n", m_models[i].GetName());
 				}
+				ImGui::NextColumn();
 			}
-#endif // 0
+			ImGui::Columns();
 			ImGui::TreePop();
 		}
 		ImGui::End();
