@@ -146,5 +146,5 @@ namespace Mist
 	};
 
 	extern void CmdDrawFullscreenQuad(CommandBuffer cmd);
-	extern Texture* GetDefaultTexture(const RenderContext& context);
+	extern cTexture* GetDefaultTexture(const RenderContext& context);
 }

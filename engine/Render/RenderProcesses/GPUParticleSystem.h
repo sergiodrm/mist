@@ -60,7 +60,7 @@ namespace Mist
 		ShaderProgram* m_computeShader;
 		VkDescriptorSet m_singleBufferDescriptorSet;
 		AllocatedBuffer m_particlesBuffer;
-		Texture* m_circleGradientTexture;
+		cTexture* m_circleGradientTexture;
 
 		ShaderProgram* m_graphicsShader;
 		RenderTarget m_renderTarget;

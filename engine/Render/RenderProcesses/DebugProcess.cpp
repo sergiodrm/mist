@@ -19,7 +19,7 @@ namespace Mist
 {
 	namespace DebugRender
 	{
-		Texture* DefaultTexture;
+		cTexture* DefaultTexture;
 
 		constexpr glm::vec2 QuadVertexUVs[4] =
 		{
@@ -118,7 +118,7 @@ namespace Mist
 
 		void Destroy(const RenderContext& context)
 		{
-			Texture::Destroy(context, DefaultTexture);
+			cTexture::Destroy(context, DefaultTexture);
 		}
 
 		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)

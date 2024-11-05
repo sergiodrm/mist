@@ -46,20 +46,8 @@ namespace Mist
 	}
 
 #if 1
-	void Texture::SetDebugName(const RenderContext& context, const char* str)
-	{
-		strcpy_s(m_debugName, str);
-		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, m_debugName);
 
-		char buff[128];
-		for (index_t i = 0; i < m_views.size(); ++i)
-		{
-			sprintf_s(buff, "%s_ImageView_%d", m_debugName, i);
-			SetVkObjectName(context, &m_views[i], VK_OBJECT_TYPE_IMAGE_VIEW, buff);
-		}
-	}
-
-	void Texture::Destroy(const RenderContext& context)
+	void cTexture::Destroy(const RenderContext& context)
 	{
 		vkDestroySampler(context.Device, m_sampler, nullptr);
 		
@@ -68,12 +56,15 @@ namespace Mist
 		MemFreeImage(context.Allocator, m_image);
 	}
 
-	void Texture::AllocateImage(const RenderContext& context, const tImageDescription& desc)
+	void cTexture::AllocateImage(const RenderContext& context, const tImageDescription& desc)
 	{
 		check(!m_image.IsAllocated());
 		m_description = desc;
 		check(CreateImage(context, desc, m_image));
+		if (!desc.DebugName.IsEmpty())
+			SetName(desc.DebugName.CStr());
 
+		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, GetName());
 
 		VkSamplerCreateInfo samplerCreateInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR, SAMPLER_ADDRESS_MODE_REPEAT);
 		samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
@@ -91,36 +82,37 @@ namespace Mist
 		samplerCreateInfo.compareEnable = VK_FALSE;
 		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 		vkcheck(vkCreateSampler(context.Device, &samplerCreateInfo, nullptr, &m_sampler));
+		SetVkObjectName(context, &m_sampler, VK_OBJECT_TYPE_SAMPLER, GetName());
 	}
 
-	Texture* Texture::Create(const RenderContext& context, const tImageDescription& description)
+	cTexture* cTexture::Create(const RenderContext& context, const tImageDescription& description)
 	{
-		Texture* texture = _new Texture();
+		cTexture* texture = _new cTexture();
 		texture->AllocateImage(context, description);
 		return texture;
 	}
 
-	void Texture::Destroy(const RenderContext& context, Texture* texture)
+	void cTexture::Destroy(const RenderContext& context, cTexture* texture)
 	{
 		texture->Destroy(context);
 		delete texture;
 	}
 
-	void Texture::SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount)
+	void cTexture::SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount)
 	{
 		check(layerCount == m_description.Layers);
 		check(m_image.IsAllocated());
 		check(TransferImage(context, m_description, layerDataArray, layerCount, m_image));
 	}
 
-	void Texture::GenerateMipmaps(const RenderContext& context)
+	void cTexture::GenerateMipmaps(const RenderContext& context)
 	{
 		for (uint32_t i = 1; i <= m_description.MipLevels; ++i)
 			TransitionImageLayout(context, m_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, i);
 		check(GenerateImageMipmaps(context, m_image, m_description));
 	}
 
-	ImageView Texture::CreateView(const RenderContext& context, const tViewDescription& viewDesc)
+	ImageView cTexture::CreateView(const RenderContext& context, const tViewDescription& viewDesc)
 	{
 		VkImageViewCreateInfo viewInfo
 		{
@@ -142,26 +134,26 @@ namespace Mist
 		m_views.push_back(view);
 
 		char buff[128];
-		sprintf_s(buff, "%s_ImageView_%d", m_debugName, (uint32_t)m_views.size()-1);
+		sprintf_s(buff, "%s_ImageView_%d", GetName(), (uint32_t)m_views.size()-1);
 		SetVkObjectName(context, &view, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 
 		return view;
 	}
 
-	ImageView Texture::GetView(uint32_t viewIndex) const
+	ImageView cTexture::GetView(uint32_t viewIndex) const
 	{
 		check(viewIndex < (uint32_t)m_views.size());
 		return m_views[viewIndex];
 	}
 
-	uint32_t Texture::GetViewCount() const
+	uint32_t cTexture::GetViewCount() const
 	{
 		return (uint32_t)m_views.size();
 	}
 
 
 #else
-	void Texture::Init(const RenderContext& renderContext, const TextureCreateInfo& textureInfo)
+	void cTexture::Init(const RenderContext& renderContext, const TextureCreateInfo& textureInfo)
 	{
 		check(!m_image.IsAllocated());
 		check(textureInfo.Pixels && textureInfo.Width && textureInfo.Height && textureInfo.Depth);
@@ -313,14 +305,14 @@ namespace Mist
 		vkcheck(vkCreateSampler(renderContext.Device, &samplerCreateInfo, nullptr, &m_sampler));
 	}
 
-	void Texture::Destroy(const RenderContext& renderContext)
+	void cTexture::Destroy(const RenderContext& renderContext)
 	{
 		Memory::DestroyImage(renderContext.Allocator, m_image);
 		vkDestroyImageView(renderContext.Device, m_imageView, nullptr);
 		vkDestroySampler(renderContext.Device, m_sampler, nullptr);
 	}
 
-	void Texture::Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex) const
+	void cTexture::Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex) const
 	{
 		//check(set != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
 		VkDescriptorImageInfo imageInfo
@@ -578,7 +570,7 @@ namespace Mist
 		return true;
 	}
 
-	bool BindDescriptorTexture(const RenderContext& context, Texture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex)
+	bool BindDescriptorTexture(const RenderContext& context, cTexture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex)
 	{
 		//check(set != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
 		tViewDescription viewDesc;
@@ -612,7 +604,7 @@ namespace Mist
 			|| format == FORMAT_D32_SFLOAT_S8_UINT;
 	}
 
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture** texture, EFormat format)
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format)
 	{
 		check(texture);
 		// Load texture from file
@@ -630,23 +622,18 @@ namespace Mist
 		texInfo.Depth = 1;
 		//texInfo.Format = utils::GetImageFormatFromChannels(texData.Channels);
 		texInfo.Format = format;
-#if 1
 		texInfo.Flags = 0;
 		texInfo.Layers = 1;
 		texInfo.MipLevels = CalculateMipLevels(texInfo.Width, texInfo.Height);
 		texInfo.SampleCount = SAMPLE_COUNT_1_BIT;
-		const uint8_t* pixels = (uint8_t*)texData.Pixels;
+		texInfo.DebugName = filepath;
 
-		*texture = Texture::Create(context, texInfo);
+		const uint8_t* pixels = (uint8_t*)texData.Pixels;
+		*texture = cTexture::Create(context, texInfo);
 		(*texture)->SetImageLayers(context, &pixels, 1);
 		(*texture)->GenerateMipmaps(context);
-#else
-		texInfo.Pixels = texData.Pixels;
-		texInfo.PixelCount = texData.Width * texData.Height * /*texData.Channels*/1; // depth
-		texture.Init(context, texInfo);
-#endif // 0
 
-		(*texture)->SetDebugName(context, filepath);
+		(*texture)->SetName(filepath);
 
 		// Free raw texture data
 		io::FreeTexture(texData.Pixels);

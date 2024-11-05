@@ -205,7 +205,7 @@ namespace Mist
 
 	void GPUParticleSystem::Destroy(const RenderContext& context)
 	{
-		Texture::Destroy(context, m_circleGradientTexture);
+		cTexture::Destroy(context, m_circleGradientTexture);
 		MemFreeBuffer(context.Allocator, m_particlesBuffer);
 		m_renderTarget.Destroy(context);
 	}

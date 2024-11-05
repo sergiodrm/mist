@@ -22,7 +22,7 @@ namespace Mist
 		}
 #endif // 0
 		if (Tex)
-			Texture::Destroy(renderContext, Tex);
+			cTexture::Destroy(renderContext, Tex);
 		Tex = nullptr;
 	}
 
@@ -332,7 +332,7 @@ namespace Mist
 		imageDesc.Format = description.Format;
 		imageDesc.Usage = imageUsage;
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-		attachment.Tex = Texture::Create(renderContext, imageDesc);
+		attachment.Tex = cTexture::Create(renderContext, imageDesc);
 
 		tViewDescription viewDesc;
 		viewDesc.AspectMask = aspect;

@@ -24,7 +24,7 @@ namespace Mist
 		glm::vec4 Emissive;
 	};
 
-	class cMaterial : public cRenderResource
+	class cMaterial : public cRenderResource<RenderResource_Material>
 	{
 	public:
 		cMaterial() { ZeroMem(this, sizeof(cMaterial)); }
@@ -33,7 +33,7 @@ namespace Mist
 		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot);
 		inline sMaterialRenderData GetRenderData() const { return { .Emissive = m_emissiveFactor }; }
 
-		Texture* m_textures[MATERIAL_TEXTURE_COUNT];
+		cTexture* m_textures[MATERIAL_TEXTURE_COUNT];
 		glm::vec4 m_emissiveFactor;
 	};
 }

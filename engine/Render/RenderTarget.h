@@ -84,7 +84,7 @@ namespace Mist
 #ifdef MIST_VULKAN
 		VkImageView View;
 #endif // MIST_VULKAN  
-		Texture* Tex = nullptr;
+		cTexture* Tex = nullptr;
 		void Destroy(const RenderContext& renderContext);
 	};
 

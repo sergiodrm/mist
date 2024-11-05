@@ -228,7 +228,7 @@ namespace Mist
 				RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
 				RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
 
-				Texture* textureInput = nullptr;
+				cTexture* textureInput = nullptr;
 				if (i == 0)
 					textureInput = InputTarget; //EmissivePass.GetAttachment(0).Tex;
 				else
@@ -423,7 +423,7 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(DeferredLighting);
 
-		tArray<const Texture*, globals::MaxShadowMapAttachments> shadowMapTextures;
+		tArray<const cTexture*, globals::MaxShadowMapAttachments> shadowMapTextures;
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 			shadowMapTextures[i] = m_shadowMapRenderTargetArray[i]->GetDepthAttachment().Tex;
 

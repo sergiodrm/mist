@@ -771,7 +771,7 @@ namespace Mist
 		setUnit.Dirty = true;
 	}
 
-	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture& texture, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler)
 	{
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
@@ -793,7 +793,7 @@ namespace Mist
 		RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, &set, 1, slot, nullptr, 0);
 	}
 
-	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const Texture* const* textures, uint32_t textureCount, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler)
 	{
 		check(textures && textureCount);
 		RenderFrameContext& frameContext = context.GetFrameContext();
@@ -1265,12 +1265,12 @@ namespace Mist
 		m_paramAccess.SetDynamicBufferOffset(renderContext, bufferName, elemSize, elemOffset);
 	}
 
-	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const Texture& texture)
+	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const cTexture& texture)
 	{
 		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, texture, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
-	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const Texture* const* textureArray, uint32_t textureCount)
+	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const cTexture* const* textureArray, uint32_t textureCount)
 	{
 		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, textureArray, textureCount, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}

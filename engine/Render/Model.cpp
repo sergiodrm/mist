@@ -286,7 +286,7 @@ namespace gltf_api
 			indicesOut[i] = (uint32_t)cgltf_accessor_read_index(primitive.indices, i) + offset;
 	}
 
-	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, Mist::Texture** texOut)
+	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, Mist::cTexture** texOut)
 	{
 		if (!texView.texture)
 			return false;

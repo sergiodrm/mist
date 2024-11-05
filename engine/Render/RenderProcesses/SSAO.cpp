@@ -41,7 +41,7 @@ namespace Mist
 		imageDesc.Layers = 1;
 		imageDesc.MipLevels = 1;
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-		m_noiseTexture = Texture::Create(renderContext, imageDesc);
+		m_noiseTexture = cTexture::Create(renderContext, imageDesc);
 		const uint8_t* pixels = (uint8_t*)ssaoNoise;
 		m_noiseTexture->SetImageLayers(renderContext, &pixels, 1);
 
@@ -89,7 +89,7 @@ namespace Mist
 
 	void SSAO::Destroy(const RenderContext& renderContext)
 	{
-		Texture::Destroy(renderContext, m_noiseTexture);
+		cTexture::Destroy(renderContext, m_noiseTexture);
 		m_rt.Destroy(renderContext);
 		m_blurRT.Destroy(renderContext);
 	}
@@ -116,8 +116,8 @@ namespace Mist
 		m_rt.BeginPass(cmd);
 		m_ssaoShader->UseProgram(renderContext);
 		m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
-		const Texture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
-		m_ssaoShader->BindTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(Texture*));
+		const cTexture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
+		m_ssaoShader->BindTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(cTexture*));
 		m_ssaoShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);
 		m_rt.EndPass(cmd);
@@ -126,7 +126,7 @@ namespace Mist
 		BeginGPUEvent(renderContext, cmd, "SSAOBlur");
 		m_blurRT.BeginPass(cmd);
 		m_blurShader->UseProgram(renderContext);
-		const Texture* tex = m_rt.GetAttachment(0).Tex;
+		const cTexture* tex = m_rt.GetAttachment(0).Tex;
 		m_blurShader->BindTextureSlot(renderContext, 0, *tex);
 		m_ssaoShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);

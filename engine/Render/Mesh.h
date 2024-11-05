@@ -21,7 +21,7 @@ namespace Mist
 		PrimitiveMeshData() : RenderFlags(0), FirstIndex(0), Count(0), Material(nullptr) {}
 	};
 
-	class cMesh : public cRenderResource
+	class cMesh : public cRenderResource<RenderResource_Mesh>
 	{
 	public:
 		void BindBuffers(CommandBuffer cmd) const;

@@ -40,8 +40,8 @@ namespace Mist
 	private:
 		ShaderProgram* m_ssaoShader;
 		RenderTarget m_rt;
-		Texture* m_noiseTexture;
-		Texture* m_gbufferTextures[4];
+		cTexture* m_noiseTexture;
+		cTexture* m_gbufferTextures[4];
 		SSAOUBO m_uboData;
 
 		ShaderProgram* m_blurShader;

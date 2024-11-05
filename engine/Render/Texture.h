@@ -5,11 +5,12 @@
 #include "Render/RenderTypes.h"
 #include "Core/Types.h"
 #include "Render/RenderAPI.h"
+#include "Render/RenderResource.h"
 
 
 namespace Mist
 {
-	class Texture;
+	class cTexture;
 
 	struct SamplerDescription
 	{
@@ -38,6 +39,7 @@ namespace Mist
 		EImageUsage Usage = IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_SAMPLED_BIT;
 		VkImageCreateFlags Flags = 0;
 		SamplerDescription SamplerDesc;
+		tFixedString<128> DebugName;
 	};
 
 	struct tViewDescription
@@ -66,7 +68,7 @@ namespace Mist
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels);
 	bool TransferImage(const RenderContext& context, const tImageDescription& createInfo, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut);
 	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const tImageDescription& imageDesc);
-	bool BindDescriptorTexture(const RenderContext& context, Texture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
+	bool BindDescriptorTexture(const RenderContext& context, cTexture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 	bool IsDepthFormat(EFormat format);
 
 
@@ -85,13 +87,13 @@ namespace Mist
 
 	
 
-	class Texture
+	class cTexture : public cRenderResource<RenderResource_Texture>
 	{
-		Texture() = default;
+		cTexture() = default;
 	public:
 
-		static Texture* Create(const RenderContext& context, const tImageDescription& description);
-		static void Destroy(const RenderContext& context, Texture* texture);
+		static cTexture* Create(const RenderContext& context, const tImageDescription& description);
+		static void Destroy(const RenderContext& context, cTexture* texture);
 
 		void SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount);
 		void GenerateMipmaps(const RenderContext& context);
@@ -102,8 +104,6 @@ namespace Mist
 		Sampler GetSampler() const { return m_sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
 
-		void SetDebugName(const RenderContext& context, const char* str);
-
 	private:
 		void Destroy(const RenderContext& context);
 		void AllocateImage(const RenderContext& context, const tImageDescription& desc);
@@ -112,7 +112,6 @@ namespace Mist
 		AllocatedImage m_image;
 		tDynArray<ImageView> m_views;
 		Sampler m_sampler;
-		char m_debugName[64];
 	};
 	
 
@@ -153,6 +152,6 @@ namespace Mist
 #endif // 0
 
 
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, Texture** texture, EFormat format);
+	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format);
 
 }

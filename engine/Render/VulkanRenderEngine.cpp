@@ -120,8 +120,8 @@ namespace Mist
 		FullscreenQuad.Draw(cmd);
 	}
 
-	Texture* DefaultTexture = nullptr;
-	Texture* GetDefaultTexture(const RenderContext& context)
+	cTexture* DefaultTexture = nullptr;
+	cTexture* GetDefaultTexture(const RenderContext& context)
 	{
 		if (!DefaultTexture)
 		{
@@ -132,7 +132,7 @@ namespace Mist
 				.Height = 2,
 				.Depth = 1,
 			};
-			DefaultTexture = Texture::Create(context, desc);
+			DefaultTexture = cTexture::Create(context, desc);
 			float pixels[] = { 0x000000ff, 0xffffffff, 0x000000ff, 0xffffffff };
 			const uint8_t* layer = (uint8_t*)pixels;
 			DefaultTexture->SetImageLayers(context, &layer, 1);
@@ -413,7 +413,7 @@ namespace Mist
 		m_screenPipeline.Destroy(m_renderContext);
 
 		if (DefaultTexture)
-			Texture::Destroy(m_renderContext, DefaultTexture);
+			cTexture::Destroy(m_renderContext, DefaultTexture);
 		DefaultTexture = nullptr;
 		DestroySamplers(m_renderContext);
 		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);

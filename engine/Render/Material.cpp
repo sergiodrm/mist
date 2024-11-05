@@ -12,16 +12,16 @@ namespace Mist
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
             if (m_textures[i])
-                Texture::Destroy(context, m_textures[i]);
+                cTexture::Destroy(context, m_textures[i]);
             m_textures[i] = nullptr;
         }
     }
     void cMaterial::BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot)
     {
-        Texture* textures[MATERIAL_TEXTURE_COUNT];
+        cTexture* textures[MATERIAL_TEXTURE_COUNT];
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
-            Texture* tex = m_textures[i];
+            cTexture* tex = m_textures[i];
             if (!tex)
                 tex = GetDefaultTexture(context);
             textures[i] = tex;

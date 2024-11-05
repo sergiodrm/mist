@@ -8,7 +8,7 @@
 
 namespace Mist
 {
-	class cModel : public cRenderResource
+	class cModel : public cRenderResource<RenderResource_Model>
 	{
 		struct sNode
 		{

@@ -57,7 +57,7 @@ namespace Mist
 		RenderTarget FinalTarget;
 		tBloomConfig Config;
 
-		Texture* InputTarget;
+		cTexture* InputTarget;
 	};
 
 	class DeferredLighting : public RenderProcess
