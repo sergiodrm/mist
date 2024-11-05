@@ -8,6 +8,8 @@
 #include <chrono>
 #endif
 
+#define DUMMY_MACRO do {((void)0);}while(0)
+
 #define expand(x) (x)
 #define check(expr) \
 do \
