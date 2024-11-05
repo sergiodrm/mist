@@ -8,22 +8,36 @@ namespace Mist
 {
 	enum eResourceType
 	{
-		RESOURCE_NONE,
-		RESOURCE_MESH,
-		RESOURCE_MATERIAL,
-		RESOURCE_TEXTURE
+		RenderResource_Mesh,
+		RenderResource_Model,
+		RenderResource_Material,
+		RenderResource_Texture
 	};
+	const char* GetRenderResourceTypeStr(eResourceType type);
 
+	template <eResourceType RType>
 	class cRenderResource
 	{
 	public:
-		cRenderResource() : m_name{ 0 }, m_type(RESOURCE_NONE) {}
+		static constexpr uint32_t ResourceNameLength = 64;
+
+		cRenderResource() : m_name{ 0 } 
+		{
+			char buff[ResourceNameLength];
+			static int c = 0;
+			sprintf_s(buff, "%s_%d", GetRenderResourceTypeStr(RType), c++);
+			SetName(buff);
+		}
+
 		const char* GetName() const { return m_name; }
-		void SetName(const char* str) { check(*str); strcpy_s(m_name, str); }
-		eResourceType GetType() const { return m_type; }
-		void SetType(eResourceType type) { check(m_type == RESOURCE_NONE); m_type = type; }
+
+		void SetName(const char* str) 
+		{ 
+			check(*str); 
+			strcpy_s(m_name, str); 
+		}
+		inline constexpr eResourceType GetType() const { return RType; }
 	private:
-		char m_name[64];
-		eResourceType m_type;
+		char m_name[ResourceNameLength];
 	};
 }
