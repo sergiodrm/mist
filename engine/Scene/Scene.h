@@ -223,6 +223,7 @@ namespace Mist
 		tDynArray<glm::mat4> m_renderTransforms;
 		tDynArray<sMaterialRenderData> m_materials;
 		tMap<index_t, index_t> m_modelMaterialMap;
+		index_t m_editingModel = index_invalid;
 		
 		tDynArray<index_t> m_dirtyNodes[MaxNodeLevel];
 

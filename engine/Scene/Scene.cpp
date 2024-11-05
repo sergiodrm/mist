@@ -928,18 +928,35 @@ namespace Mist
 		if (ImGui::TreeNode("Model list"))
 		{
 			ImGui::Columns(2);
+			char buff[32];
 			for (index_t i = 0; i < m_models.GetSize(); ++i)
 			{
 				ImGui::Text("Model: %s", m_models[i].GetName());
 				ImGui::NextColumn();
-				if (ImGui::Button(""))
+				sprintf_s(buff, "##modelbutton_%d", i);
+				ImGui::PushID(buff);
+				if (ImGui::Button("..."))
 				{ 
-					logfinfo("todo: model window for %s\n", m_models[i].GetName());
+					logfinfo("editing model %s\n", m_models[i].GetName());
+					m_editingModel = i;
 				}
+				ImGui::PopID();
 				ImGui::NextColumn();
 			}
 			ImGui::Columns();
 			ImGui::TreePop();
+		}
+		if (m_editingModel != index_invalid)
+		{
+			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+			if (ImGui::BeginChild("EditingModelChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
+			{
+				ImGui::Text("Editing model %s", m_models[m_editingModel]);
+				ImGui::Separator();
+				m_models[m_editingModel].ImGuiDraw();
+			}
+			ImGui::PopStyleColor();
+			ImGui::EndChild();
 		}
 		ImGui::End();
 	}
