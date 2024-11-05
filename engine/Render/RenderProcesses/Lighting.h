@@ -29,7 +29,7 @@ namespace Mist
 			BLOOM_DEBUG_EMISSIVE_PASS,
 			BLOOM_DEBUG_DOWNSCALE_PASS
 		};
-		uint32_t BloomMode = BLOOM_DISABLED;
+		uint32_t BloomMode = BLOOM_ACTIVE;
 		float MixCompositeAlpha = 0.5f;
 		float UpscaleFilterRadius = 0.005f;
 	};
