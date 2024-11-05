@@ -26,6 +26,7 @@ namespace Mist
 		inline index_t GetMaterialCount() const { return m_materials.GetSize(); }
 		void UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform) const;
 		void UpdateMaterials(sMaterialRenderData* materials) const;
+		void ImGuiDraw();
 	private:
 		void InitNodes(index_t n);
 		void InitMeshes(index_t n);

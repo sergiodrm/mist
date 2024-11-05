@@ -3,6 +3,7 @@
 #include "Core/Debug.h"
 #include "Core/Logger.h"
 #include "RenderProcesses/RenderProcess.h"
+#include <imgui/imgui.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
@@ -507,6 +508,28 @@ namespace Mist
 		for (index_t i = 0; i < m_materials.GetSize(); ++i)
 		{
 			materials[i] = m_materials[i].GetRenderData();
+		}
+	}
+
+	void cModel::ImGuiDraw()
+	{
+		if (ImGui::TreeNode("Material list"))
+		{
+			for (index_t i = 0; i < m_materials.GetSize(); ++i)
+			{
+				if (ImGui::TreeNode(&m_materials[i], "Material %d: %s", i, m_materials[i].GetName()))
+				{
+					cMaterial& material = m_materials[i];
+					for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
+						ImGui::Text("%s: %s", 
+							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ?material.m_textures[j]->GetName() : "none");
+					ImGui::ColorEdit3("Emissive", &material.m_emissiveFactor[0]);
+					ImGui::DragFloat("Emissive strength", &material.m_emissiveFactor[3], 0.1f, 0.f, FLT_MAX);
+					
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
 		}
 	}
 
