@@ -35,6 +35,8 @@ namespace Mist
 
 		index_t BuildNode(index_t nodeIndex, index_t parentIndex, const char* nodeName);
 		sNode* GetNode(index_t i);
+		void SetNodeName(index_t i, const char* name);
+		void SetNodeTransform(index_t i, const glm::mat4& transform);
 
 		index_t CreateMesh();
 		index_t CreateMaterial();

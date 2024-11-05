@@ -27,6 +27,16 @@
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
 
+#define MESH_DUMP_LOAD_INFO
+#ifdef MESH_DUMP_LOAD_INFO
+#define loadmeshlabel "[loadmesh] "
+#define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
+#define loadmeshlog(fmt, ...) loginfo(loadmeshlabel fmt)
+#else
+#define loadmeshlogf(fmt, ...) DUMMY_MACRO
+#define loadmeshlog(fmt, ...) DUMMY_MACRO
+#endif
+
 namespace gltf_api
 {
 	void HandleError(cgltf_result result, const char* filepath)
@@ -388,6 +398,11 @@ namespace Mist
 		}
 		SetName(filepath);
 
+		loadmeshlogf("Loading model from file: %s\n", filepath);
+		loadmeshlogf("* nodes: %d\n", data->nodes_count);
+		loadmeshlogf("* materials: %d\n", data->materials_count);
+		loadmeshlogf("* meshes: %d\n", data->meshes_count);
+
 		InitMaterials((index_t)data->materials_count);
 		for (uint32_t i = 0; i < data->materials_count; ++i)
 		{
@@ -410,6 +425,11 @@ namespace Mist
 
 			// Process transform
 			gltf_api::ReadNodeLocalTransform(node, m_transforms[i]);
+			glm::vec3 pos, rot, scl;
+			math::DecomposeMatrix(m_transforms[i], pos, rot, scl);
+			loadmeshlogf("node %d %s child of %d\n", i, m_nodeNames[i].CStr(), parentIndex);
+			loadmeshlogf("node %d %s [pos %.3f, %.3f, %.3f][rot %.3f, %.3f, %.3f][scl %.3f, %.3f, %.3f]\n", i, m_nodeNames[i].CStr(),
+				pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, scl.x, scl.y, scl.z);
 
 			// Process mesh
 			if (node.mesh)
@@ -417,11 +437,14 @@ namespace Mist
 				index_t meshIndex = CreateMesh();
 				m_nodes[nodeIndex].MeshId = meshIndex;
 				cMesh& mesh = m_meshes[meshIndex];
-				mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name :"unknown");
+				mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
+
+				loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
 
 				tFixedHeapArray<PrimitiveMeshData>& primitives = mesh.PrimitiveArray;
 				primitives.Allocate((index_t)node.mesh->primitives_count);
 				primitives.Resize((index_t)node.mesh->primitives_count);
+				loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
 				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
 				{
 					const cgltf_primitive& cgltfprimitive = node.mesh->primitives[j];
@@ -436,6 +459,8 @@ namespace Mist
 					uint32_t indexOffset = (uint32_t)tempIndices.size();
 					tempIndices.resize(indexOffset + indexCount);
 					tempVertices.resize(vertexOffset + vertexCount);
+
+					loadmeshlogf("** primitive %d: [vertices %d | %d bytes][indices %d | %d bytes]\n", j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
 
 					primitive.FirstIndex = indexOffset;
 					primitive.Count = indexCount;
@@ -461,7 +486,10 @@ namespace Mist
 				tempIndices.clear();
 				tempVertices.clear();
 			}
+			else
+				loadmeshlogf("node %d %s has no mesh\n", i, m_nodeNames[i].CStr());
 		}
+		loadmeshlog("=== End loading model ===\n");
 		gltf_api::FreeData(data);
 	}
 
@@ -484,6 +512,7 @@ namespace Mist
 
 	void cModel::InitNodes(index_t n)
 	{
+		++n;
 		check(m_nodes.IsEmpty());
 		m_nodes.Allocate(n);
 		m_nodes.Resize(n);
@@ -495,6 +524,13 @@ namespace Mist
 		check(m_transforms.IsEmpty());
 		m_transforms.Allocate(n);
 		m_transforms.Resize(n);
+
+		// Build default root node
+		m_root = n - 1;
+		sNode* node = GetNode(m_root);
+		check(node);
+		SetNodeName(m_root, "_root_");
+		SetNodeTransform(m_root, glm::mat4(1.f));
 	}
 
 	void cModel::InitMeshes(index_t n)
@@ -533,20 +569,24 @@ namespace Mist
 	index_t cModel::BuildNode(index_t nodeIndex, index_t parentIndex, const char* nodeName)
 	{
 		sNode& node = m_nodes[nodeIndex];
-		m_nodeNames[nodeIndex].Set(nodeName && *nodeName ? nodeName : "unknown");
+		SetNodeName(nodeIndex, nodeName && *nodeName ? nodeName : "unknown");
 		sNode* nodeParent = GetNode(parentIndex);
 		if (!nodeParent)
 		{
+#if 0
 			if (m_root == index_invalid)
 				m_root = nodeIndex;
 			else
+#endif // 0
 			{
-				Logf(LogLevel::Warn, "Node (%d %s) of scene has no parent after found a root node (%d %s) in scene graph: %s\n", 
+				check(m_root != index_invalid);
+				Logf(LogLevel::Warn, "Node (%d %s) of scene has no parent after found a root node (%d %s) in scene graph: %s\n",
 					nodeIndex, m_nodeNames[nodeIndex].CStr(), m_root, m_nodeNames[m_root].CStr(), GetName());
 				nodeParent = GetNode(m_root);
 				parentIndex = m_root;
 			}
 		}
+
 		if (nodeParent)
 		{
 			if (nodeParent->Child != index_invalid)
@@ -568,6 +608,18 @@ namespace Mist
 		if (i < m_nodes.GetSize())
 			return &m_nodes[i];
 		return nullptr;
+	}
+
+	void cModel::SetNodeName(index_t i, const char* name)
+	{
+		check(i < m_nodeNames.GetSize());
+		m_nodeNames[i] = name;
+	}
+
+	void cModel::SetNodeTransform(index_t i, const glm::mat4& transform)
+	{
+		check(i < m_transforms.GetSize());
+		m_transforms[i] = transform;
 	}
 
 	index_t cModel::CreateMesh()
