@@ -67,8 +67,8 @@ namespace Mist
 		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, GetName());
 
 		VkSamplerCreateInfo samplerCreateInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR, SAMPLER_ADDRESS_MODE_REPEAT);
-		samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-		samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
 		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
