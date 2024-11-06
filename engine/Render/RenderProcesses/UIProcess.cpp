@@ -88,6 +88,8 @@ namespace Mist
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+		io.Fonts->AddFontFromFileTTF(ASSET_PATH("fonts/mono/cascadiamono.ttf"), 12.f);
+		io.Fonts->Build();
 	}
 
 	void ImGuiInstance::Draw(const RenderContext& context, VkCommandBuffer cmd)
