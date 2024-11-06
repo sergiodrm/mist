@@ -43,4 +43,10 @@ namespace Mist
         }
         shader.BindTextureArraySlot(context, slot, textures, MATERIAL_TEXTURE_COUNT);
     }
+    sMaterialRenderData cMaterial::GetRenderData() const
+    {
+        sMaterialRenderData data { .Emissive = m_emissiveFactor, .TextureFlags = 0 };
+        data.TextureFlags = m_textures[MATERIAL_TEXTURE_NORMAL] ? 1 : 0;
+        return data;
+    }
 }

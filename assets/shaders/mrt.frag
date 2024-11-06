@@ -17,6 +17,8 @@ layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
 layout(set = 3, binding = 0) uniform MaterialParams
 {
 	vec4 Emissive;
+	bool UseNormalMap;
+	ivec3 Pad;
 } u_material;
 
 //#define MaterialHasMetallic(m) int(m.Params.x)
@@ -39,16 +41,15 @@ void main()
 
 #define USE_TBN
 #ifdef USE_TBN
-	// Calculate normal in tangent space
-#if 0
-	vec3 N = normalize(inNormal);
-	vec3 T = normalize(inTangent);
-	vec3 B = cross(N, T);
-	mat3 TBN = mat3(T, B, N);
-	vec3 tnorm = TBN * normalize(texture(TEXTURE_NORMAL, inUV).xyz * 2.0 - vec3(1.0));
-#else
-	vec3 tnorm = inTBN * normalize(texture(TEXTURE_NORMAL, inUV).xyz * 2.0 - vec3(1.0));
-#endif
+	vec3 tnorm = vec3(0.f);
+	if (u_material.UseNormalMap)
+	{
+		tnorm = inTBN * normalize(texture(TEXTURE_NORMAL, inUV).xyz * 2.0 - vec3(1.0));
+	}
+	else
+	{
+		tnorm = normalize(inNormal);
+	}
 	outNormal = vec4(tnorm, 1.0);
 	outNormal.w = texture(TEXTURE_METALLIC_ROUGHNESS, inUV).g;
 	//outNormal = normalize(texture(u_Textures[1], inUV));
