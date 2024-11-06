@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0441176295, 0.0441176295, 0.0441176295]
   Skybox:
-    Front: ../assets/textures/skybox/left.jpg
-    Back: ../assets/textures/skybox/right.jpg
-    Top: ../assets/textures/skybox/front.jpg
-    Bottom: ../assets/textures/skybox/back.jpg
-    Left: ../assets/textures/skybox/top.jpg
-    Right: ../assets/textures/skybox/bottom.jpg
+    Front: ../assets/textures/skybox/front.jpg
+    Back: ../assets/textures/skybox/back.jpg
+    Top: ../assets/textures/skybox/top.jpg
+    Bottom: ../assets/textures/skybox/bottom.jpg
+    Left: ../assets/textures/skybox/left.jpg
+    Right: ../assets/textures/skybox/right.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -19,8 +19,8 @@ RenderObjects:
     Name: Light
     Parent: 0
     TransformComponent:
-      Position: [6, 1.5, -1]
-      Rotation: [0, 7, 0]
+      Position: [-8, 18, -1.5]
+      Rotation: [-2.0999999, 1.60000002, 0.100000001]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
@@ -34,18 +34,33 @@ RenderObjects:
     Name: Light_2
     Parent: 0
     TransformComponent:
-      Position: [-3.5, 1.5, 0]
-      Rotation: [-4.4000001, 0.699999988, 0]
+      Position: [7.5, 12.5, 0]
+      Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     LightComponent:
-      Type: Directional
-      Color: [0.145809323, 0.166666687, 0.116013087]
-      Radius: 9
-      Compression: 9
+      Type: Point
+      Color: [0.569948196, 1, 0]
+      Radius: 1000
+      Compression: 1000
       InnerCutoff: 1
       OuterCutoff: 0.800000012
       ProjectShadows: false
   - RenderObject: 3
+    Name: Light_3
+    Parent: 0
+    TransformComponent:
+      Position: [-6, 12.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Point
+      Color: [1, 0, 0]
+      Radius: 1000
+      Compression: 1000
+      InnerCutoff: 1
+      OuterCutoff: 0.800000012
+      ProjectShadows: false
+  - RenderObject: 4
     Name: Sponza
     Parent: 0
     TransformComponent:
@@ -54,12 +69,12 @@ RenderObjects:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
-  - RenderObject: 4
+  - RenderObject: 5
     Name: EmissiveTest
     Parent: 0
     TransformComponent:
-      Position: [0, 8.5, 0]
-      Rotation: [0, -0.100000001, 0]
+      Position: [15.5, 8.5, 0]
+      Rotation: [0, -1.57000005, 0]
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: ../assets/models/emissive/emissivestrengthtest.gltf
