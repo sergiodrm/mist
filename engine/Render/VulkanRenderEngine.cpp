@@ -74,6 +74,17 @@ namespace Mist
 	CBoolVar CVar_ShowConsole("ShowConsole", false);
 	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
 
+	bool ExecCommand_ReloadShaders(const char* cmd)
+	{
+		if (!strcmp(cmd, "ReloadShaders"))
+		{
+			VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+			eng->ReloadShaders();
+			return true;
+		}
+		return false;
+	}
+
 	struct Quad
 	{
 		VertexBuffer VB;
@@ -337,6 +348,7 @@ namespace Mist
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
 
 		AddConsoleCommand(ExecCommand_CVar);
+		AddConsoleCommand(ExecCommand_ReloadShaders);
 
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
 
@@ -478,6 +490,16 @@ namespace Mist
 			m_renderContext.FrameContextArray[i].Scene = m_scene;
 			if (scene)
 				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
+		}
+	}
+
+	void VulkanRenderEngine::ReloadShaders()
+	{
+		RenderContext_ForceFrameSync(m_renderContext);
+		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
+		{
+			m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
+			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
 	}
 
@@ -641,6 +663,7 @@ namespace Mist
 		if (CVar_ShowImGuiDemo.Get())
 			ImGui::ShowDemoWindow();
 
+#if 0
 		ImGui::Begin("Engine");
 
 		auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
@@ -698,6 +721,8 @@ namespace Mist
 			}
 		}
 		ImGui::End();
+#endif // 0
+
 
 		m_gpuParticleSystem.ImGuiDraw();
 	}

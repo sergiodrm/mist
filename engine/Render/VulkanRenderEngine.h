@@ -93,12 +93,8 @@ namespace Mist
 		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) override { m_eventCallback = fn; }
 
 		const RenderContext& GetContext() const { return m_renderContext; }
-#if 0
-		inline DescriptorLayoutCache& GetDescriptorSetLayoutCache() { return m_descriptorLayoutCache; }
-		inline DescriptorAllocator& GetDescriptorAllocator() { return m_descriptorAllocator; }
-		inline uint32_t GetFrameIndex() const { return m_frameCounter % globals::MaxOverlappedFrames; }
-		inline uint32_t GetFrameCounter() const { return m_frameCounter; }
-#endif // 0
+
+		void ReloadShaders();
 
 	protected:
 		void BeginFrame();

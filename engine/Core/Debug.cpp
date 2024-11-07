@@ -11,6 +11,9 @@
 #include <algorithm>
 #include "Render/RenderTypes.h"
 #include "Application/CmdParser.h"
+#include "Render/RenderEngine.h"
+#include "Render/RenderContext.h"
+#include "Render/VulkanRenderEngine.h"
 
 #pragma comment(lib,"Dbghelp.lib")
 
@@ -250,8 +253,6 @@ namespace Mist
 	{
 		sRenderStats GRenderStats;
 
-
-
 		struct sProfilerKey
 		{
 			union
@@ -400,36 +401,86 @@ namespace Mist
 
 			if (CVar_ShowStats.Get() == 1)
 			{
-#if 0
+#if 1
 
 				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-					//| ImGuiWindowFlags_NoDecoration
+					| ImGuiWindowFlags_NoDecoration
 					| ImGuiWindowFlags_AlwaysAutoResize
 					| ImGuiWindowFlags_NoResize
 					//| ImGuiWindowFlags_NoInputs
 					;
-				ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
-				ImGui::SetNextWindowBgAlpha(0.f);
-				ImGui::SetNextWindowSize({ 400.f, 300.f });
 #endif // 0
-				ImGui::SetNextWindowPos({ 0.f, 0.f });
-				ImGui::SetNextWindowBgAlpha(0.2f);
+				ImGuiViewport* viewport = ImGui::GetMainViewport();
+				ImGui::SetNextWindowPos(viewport->Pos);
+				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.3f, viewport->Size.y * 0.1f});
+				ImGui::SetNextWindowBgAlpha(0.f);
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
 				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
+				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
+				ImGui::Begin("fps", nullptr, flags);
+#if 0
 
 				char buff[32];
 				sprintf_s(buff, "%3.2f fps", lastFps);
 				char buff2[32];
 				sprintf_s(buff2, "%.4f ms", lastMs);
-				ImGui::Begin("fps", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-				ImGui::Text("Min [%3.2f fps] Max [%3.2f fps] Mean [%3.2f fps] Last [%3.2f fps]", minFps, maxFps, meanFps, lastFps);
+				ImGui::Text("%3.2f fps Min [%3.2f fps] Max [%3.2f fps] Last [%3.2f fps]", meanFps, minFps, maxFps, lastFps);
 				ImVec2 availRegion = ImGui::GetContentRegionAvail();
 				availRegion.y *= 0.3f;
 				ImGui::PlotLines("##fpschar", &ImGuiGetFpsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff, 0.f, 200.f, availRegion);
-				ImGui::Text("Min [%.4f ms] Max [%.4f ms] Mean [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
+				ImGui::Text("%.4f ms Min [%.4f ms] Max [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
 				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
+#else
+				ImGui::Columns(2, nullptr, false);
+				auto utilLamb = [&](const char* label, float fps, float ms)
+					{
+						ImGui::Text("%8s", label);
+						ImGui::NextColumn();
+						ImGui::Text("%3.3f fps", fps);
+						ImGui::NextColumn();
+						ImGui::Text("%3.3f ms", ms);
+						ImGui::NextColumn();
+					};
+				if (ImGui::BeginChild("Child_perf"))
+				{
+					ImGui::Columns(3, nullptr, false);
+					utilLamb("Last", lastFps, lastMs);
+					utilLamb("Mean", meanFps, meanMs);
+					utilLamb("Min", minFps, minMs);
+					utilLamb("Max", maxFps, maxMs);
+					ImGui::Columns();
+					ImGui::EndChild();
+				}
+				ImGui::NextColumn();
+				if (ImGui::BeginChild("Child_mem"))
+				{
+					auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
+						{
+							ImGui::Text("%20s", label);
+							ImGui::NextColumn();
+							ImGui::Text("%8.3f MB", (float)allocated / 1024.f / 1024.f);
+							ImGui::NextColumn();
+							ImGui::Text("%8.3f MB", (float)maxAllocated / 1024.f / 1024.f);
+							ImGui::NextColumn();
+						};
+
+					const tSystemMemStats& systemStats = GetMemoryStats();
+					const RenderContext& context = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext();
+					const tMemStats& bufferStats = context.Allocator->BufferStats;
+					const tMemStats& texStats = context.Allocator->TextureStats;
+					ImGui::Columns(3, nullptr, false);
+					lmbShowMemStat("System memory", systemStats.Allocated, systemStats.MaxAllocated);
+					lmbShowMemStat("GPU buffer memory", bufferStats.Allocated, bufferStats.MaxAllocated);
+					lmbShowMemStat("GPU texture memory", texStats.Allocated, texStats.MaxAllocated);
+					ImGui::Columns();
+					ImGui::EndChild();
+				}
+
+				ImGui::Columns();
+#endif // 0
+
 				ImGui::End();
-				ImGui::PopStyleColor(2);
+				ImGui::PopStyleColor(3);
 			}
 			if (CVar_ShowStats.Get() == 2)
 			{
