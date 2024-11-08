@@ -8,6 +8,7 @@
 #include <string.h>
 #include <imgui/imgui.h>
 #include "Core/SystemMemory.h"
+#include "Application/CmdParser.h"
 
 
 namespace Mist
@@ -16,9 +17,9 @@ namespace Mist
 
 	extern ImVec4 LogLevelImGuiColor(LogLevel level);
 
-	void AddConsoleCommand(FnExecCommandCallback fn)
+	void AddConsoleCommand(const char* cmdname, FnExecCommandCallback fn)
 	{
-		g_Console.AddCommandCallback(fn);
+		g_Console.AddCommandCallback(cmdname, fn);
 	}
 
 	void DrawConsole()
@@ -31,17 +32,16 @@ namespace Mist
 		g_Console.Log(level, msg);
 	}
 
-
 	Console::Console()
 	{
 		ZeroMemory(this, sizeof(*this));
 		m_autoMove = true;
 	}
 
-	void Console::AddCommandCallback(FnExecCommandCallback fn)
+	void Console::AddCommandCallback(const char* cmdname, FnExecCommandCallback fn)
 	{
-		check(m_cmdFunctionIndex <= CONSOLE_CMD_CALLBACKS_COUNT);
-		m_cmdFunctions[m_cmdFunctionIndex++] = fn;
+		m_cmdFunctions.Push(fn);
+		m_callbacksNames.Push(cmdname);
 	}
 
 	void Console::Log(LogLevel level, const char* msg)
@@ -103,15 +103,44 @@ namespace Mist
 		ImGui::End();
 	}
 
+	void Console::PrintCommandList()
+	{
+		loginfo("> cmdlist:\n");
+		for (uint32_t i = 0; i < m_callbacksNames.GetSize(); ++i)
+			logfinfo("%s\n", m_callbacksNames[i].CStr());
+		loginfo("============\n");
+	}
+
+	bool Console::ExecInternalCommand(const char* cmd)
+	{
+		if (!strcmp(cmd, "cmdlist"))
+		{
+			PrintCommandList();
+			return true;
+		}
+		else if (ExecCommand_CVar(cmd))
+			return true;
+		return false;
+	}
+
 	void Console::ExecCommand(const char* cmd)
 	{
 		Logf(LogLevel::Info, "Command: %s\n", m_inputCommand);
-		for (uint32_t i = 0; i < m_cmdFunctionIndex; ++i)
+		if (!ExecInternalCommand(cmd))
 		{
-			if (m_cmdFunctions[i](cmd))
-				return;
+			check(m_callbacksNames.GetSize() == m_cmdFunctions.GetSize());
+			for (uint32_t i = 0; i < m_cmdFunctions.GetSize(); ++i)
+			{
+				if (!strcmp(m_callbacksNames[i].CStr(), cmd))
+				{
+					m_cmdFunctions[i](cmd);
+					return;
+				}
+			}
 		}
-		Logf(LogLevel::Error, "Error: invalid console command '%s'", cmd);
+		else
+			return;
+		Logf(LogLevel::Error, "Error: invalid console command '%s'\n", cmd);
 	}
 
 }

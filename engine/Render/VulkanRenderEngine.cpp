@@ -74,15 +74,10 @@ namespace Mist
 	CBoolVar CVar_ShowConsole("ShowConsole", false);
 	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
 
-	bool ExecCommand_ReloadShaders(const char* cmd)
+	void ExecCommand_ReloadShaders(const char* cmd)
 	{
-		if (!strcmp(cmd, "ReloadShaders"))
-		{
-			VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
-			eng->ReloadShaders();
-			return true;
-		}
-		return false;
+		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+		eng->ReloadShaders();
 	}
 
 	struct Quad
@@ -347,8 +342,8 @@ namespace Mist
 		m_gpuParticleSystem.Init(m_renderContext, &m_screenPipeline.RenderTargetArray[0]);
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
 
-		AddConsoleCommand(ExecCommand_CVar);
-		AddConsoleCommand(ExecCommand_ReloadShaders);
+		//AddConsoleCommand(ExecCommand_CVar);
+		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
 

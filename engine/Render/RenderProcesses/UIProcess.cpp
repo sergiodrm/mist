@@ -14,21 +14,17 @@
 namespace Mist
 {
 
-	bool ExecCommand_ActivateMultipleViewports(const char* cmd)
+	void ExecCommand_ActivateMultipleViewports(const char* cmd)
 	{
-		if (strcmp(cmd, "SetMultipleViewports"))
-			return false;
-
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags& ImGuiConfigFlags_ViewportsEnable ?
 			io.ConfigFlags &= ~ImGuiConfigFlags_ViewportsEnable
 			: io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		return true;
 	}
 
 	void ImGuiInstance::Init(const RenderContext& context, VkRenderPass renderPass)
 	{
-		AddConsoleCommand(&ExecCommand_ActivateMultipleViewports);
+		AddConsoleCommand("ui_multiviewports", &ExecCommand_ActivateMultipleViewports);
 
 		// Create descriptor pool for imgui
 		VkDescriptorPoolSize poolSizes[] =

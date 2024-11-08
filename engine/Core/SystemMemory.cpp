@@ -62,19 +62,14 @@ namespace Mist
 		}
 	}
 
-	bool ExecCommand_DumpMemoryTrace(const char* command)
+	void ExecCommand_DumpMemoryTrace(const char* command)
 	{
-		if (!strcmp(command, "memdmp"))
-		{
-			DumpMemoryTrace(SystemMemStats);
-			return true;
-		}
-		return false;
+		DumpMemoryTrace(SystemMemStats);
 	}
 
 	void InitSytemMemory()
 	{
-		AddConsoleCommand(&ExecCommand_DumpMemoryTrace);
+		AddConsoleCommand("c_memorydump", &ExecCommand_DumpMemoryTrace);
 	}
 
 	void TerminateSystemMemory()
