@@ -52,6 +52,11 @@ namespace Mist
 		tFixedString() : m_string{0}
 		{}
 
+		tFixedString(const char* str)
+		{
+			Set(str);
+		}
+
 		~tFixedString() = default;
 
 		tFixedString(const tFixedString& other)
