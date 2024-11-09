@@ -106,8 +106,7 @@ namespace Mist
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
 			shaderDesc.DynamicBuffers.push_back(dynamicDesc);
-			tCompileMacroDefinition macrodef;
-			strcpy_s(macrodef.Macro, "BLOOM_DOWNSAMPLE");
+			tCompileMacroDefinition macrodef("BLOOM_DOWNSAMPLE");
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
@@ -124,8 +123,7 @@ namespace Mist
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
 			shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
 			//shaderDesc.DynamicBuffers.push_back("u_ubo");
-			tCompileMacroDefinition macrodef;
-			strcpy_s(macrodef.Macro, "BLOOM_UPSAMPLE");
+			tCompileMacroDefinition macrodef("BLOOM_UPSAMPLE");
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();

@@ -54,22 +54,17 @@ namespace Mist
 
 	struct tCompileMacroDefinition
 	{
-		char Macro[64];
-		char Value[64];
+		tFixedString<64> Macro;
+		tFixedString<64> Value;
 		tCompileMacroDefinition()
 		{
-			*Macro = 0;
-			*Value = 0;
+			Macro[0] = 0;
+			Value[0] = 0;
 		}
 		tCompileMacroDefinition(const char* str)
 		{
-			strcpy_s(Macro, str);
-			*Value = 0;
-		}
-		tCompileMacroDefinition(const char* str, const char* value)
-		{
-			strcpy_s(Macro, str);
-			strcpy_s(Value, value);
+			Macro.Set(str);
+			Value[0] = 0;
 		}
 	};
 
@@ -204,6 +199,9 @@ namespace Mist
 		void FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout);
 
 		const tShaderParam& GetParam(const char* str) const;
+
+		void DumpInfo();
+
 	protected:
 		void NewShaderParam(const char* name, bool isShared, uint32_t setIndex, uint32_t binding);
 
@@ -248,6 +246,8 @@ namespace Mist
 		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
 
 		const tShaderProgramDescription& GetDescription() const { return m_description; }
+
+		void DumpInfo();
 
 	private:
 		VkCommandBuffer GetCommandBuffer(const RenderContext& context) const;

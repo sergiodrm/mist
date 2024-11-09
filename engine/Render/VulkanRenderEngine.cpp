@@ -80,6 +80,12 @@ namespace Mist
 		eng->ReloadShaders();
 	}
 
+	void ExecCommand_DumpShadersInfo(const char* cmd)
+	{
+		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+		eng->DumpShadersInfo();
+	}
+
 	struct Quad
 	{
 		VertexBuffer VB;
@@ -344,6 +350,7 @@ namespace Mist
 
 		//AddConsoleCommand(ExecCommand_CVar);
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
+		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
 
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
 
@@ -496,6 +503,12 @@ namespace Mist
 			m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
 			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
+	}
+
+	void VulkanRenderEngine::DumpShadersInfo()
+	{
+		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
+			m_shaderDb.GetShaderArray()[i]->DumpInfo();
 	}
 
 	void VulkanRenderEngine::BeginFrame()

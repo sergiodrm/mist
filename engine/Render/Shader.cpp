@@ -110,11 +110,11 @@ namespace shader_compiler
 #endif
 			for (uint32_t i = 0; i < (size_t)compileOptions->MacroDefinitionArray.size(); ++i)
 			{
-				check(*compileOptions->MacroDefinitionArray[i].Macro);
-				if (*compileOptions->MacroDefinitionArray[i].Value)
-					options.AddMacroDefinition(compileOptions->MacroDefinitionArray[i].Macro, compileOptions->MacroDefinitionArray[i].Value);
+				check(compileOptions->MacroDefinitionArray[i].Macro[0]);
+				if (compileOptions->MacroDefinitionArray[i].Value[0])
+					options.AddMacroDefinition(compileOptions->MacroDefinitionArray[i].Macro.CStr(), compileOptions->MacroDefinitionArray[i].Value.CStr());
 				else
-					options.AddMacroDefinition(compileOptions->MacroDefinitionArray[i].Macro);
+					options.AddMacroDefinition(compileOptions->MacroDefinitionArray[i].Macro.CStr());
 #ifdef SHADER_DUMP_PREPROCESS_RESULT
 				Mist::Logf(Mist::LogLevel::Debug, "> %s (%s)", compileOptions->MacroDefinitionArray[i].Macro, compileOptions->MacroDefinitionArray[i].Value);
 #endif
@@ -167,7 +167,7 @@ namespace shader_compiler
 			for (uint32_t i = 0; i < (uint32_t)options.MacroDefinitionArray.size(); ++i)
 			{
 				char buff[256];
-				sprintf_s(buff, "%s(%s).", options.MacroDefinitionArray[i].Macro, options.MacroDefinitionArray[i].Value);
+				sprintf_s(buff, "%s(%s).", options.MacroDefinitionArray[i].Macro.CStr(), options.MacroDefinitionArray[i].Value.CStr());
 				strcat_s(outFilepath, Size, buff);
 			}
 			strcat_s(outFilepath, Size, "]");
@@ -891,6 +891,18 @@ namespace Mist
 		return m_paramMap.at(str);
 	}
 
+	void tShaderParamAccess::DumpInfo()
+	{
+		loginfo("param access table:\n");
+		logfinfo("Batch id: %d\n", m_batchId);
+		tMap<tString, tShaderParam>::iterator it = m_paramMap.begin();
+		while (it != m_paramMap.end())
+		{
+			logfinfo("> key: %s | param: %s (set: %d, binding: %d)\n", it->first.c_str(), it->second.Name.CStr(), it->second.SetIndex, it->second.Binding);
+			++it;
+		}
+	}
+
 	void tShaderParamAccess::NewShaderParam(const char* name, bool isShared, uint32_t setIndex, uint32_t binding)
 	{
 		if (!m_paramMap.contains(name))
@@ -1039,6 +1051,39 @@ namespace Mist
 		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
 		db.AddShaderProgram(context, program);
 		return program;
+	}
+
+	void ShaderProgram::DumpInfo()
+	{
+		loginfo("###\n");
+		if (!m_description.VertexShaderFile.Filepath.empty())
+		{
+			logfinfo("vs: %s\n", m_description.VertexShaderFile.Filepath.c_str());
+		}
+		if (!m_description.FragmentShaderFile.Filepath.empty())
+		{
+			logfinfo("ps: %s\n", m_description.FragmentShaderFile.Filepath.c_str());
+		}
+		if (!m_description.ComputeShaderFile.Filepath.empty())
+		{
+			logfinfo("cs: %s\n", m_description.ComputeShaderFile.Filepath.c_str());
+		}
+		logfinfo("shader type: %s\n", m_description.Type == tShaderType::Graphics ? "Graphics" : "Compute");
+		logfinfo("cull mode: %s\n", CullModeToStr(m_description.CullMode));
+		loginfo("reflecion:\n");
+		for (uint32_t i = 0; i < (uint32_t)m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+		{
+			ShaderDescriptorSetInfo& info = m_reflectionProperties.DescriptorSetInfoArray[i];
+			for (uint32_t j = 0; j < (uint32_t)info.BindingArray.size(); ++j)
+			{
+				ShaderBindingDescriptorInfo& bindingInfo = info.BindingArray[j];
+				logfinfo("[%s] (set: %d, binding: %d, array size: %d, type: %s) (%d bytes)\n",
+					bindingInfo.Name.c_str(), info.SetIndex, bindingInfo.Binding, bindingInfo.ArrayCount,
+					DescriptorTypeToStr(fromvk::GetDescriptorType(bindingInfo.Type)), bindingInfo.Size);
+			}
+		}
+		m_paramAccess.DumpInfo();
+		loginfo("###\n");
 	}
 
 	VkCommandBuffer ShaderProgram::GetCommandBuffer(const RenderContext& context) const

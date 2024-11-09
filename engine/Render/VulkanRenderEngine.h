@@ -95,6 +95,7 @@ namespace Mist
 		const RenderContext& GetContext() const { return m_renderContext; }
 
 		void ReloadShaders();
+		void DumpShadersInfo();
 
 	protected:
 		void BeginFrame();

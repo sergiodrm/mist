@@ -61,9 +61,8 @@ namespace Mist
 		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("ssao.frag");
 
-		tCompileMacroDefinition macroDef;
-		strcpy_s(macroDef.Macro, "KERNEL_SIZE");
-		sprintf_s(macroDef.Value, "%d", SSAO_KERNEL_SAMPLES);
+		tCompileMacroDefinition macroDef("KERNEL_SIZE");
+		macroDef.Value.Fmt("%d", SSAO_KERNEL_SAMPLES);
 		shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macroDef);
 
 		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();

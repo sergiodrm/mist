@@ -526,6 +526,7 @@ namespace Mist
 	const char* VkResultToStr(VkResult res);
 	const char* FormatToStr(EFormat format);
 	const char* DescriptorTypeToStr(EDescriptorType type);
+	const char* CullModeToStr(ECullMode mode);
 
 	namespace tovk
 	{

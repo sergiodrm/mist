@@ -1403,5 +1403,14 @@ namespace Mist
 		return nullptr;
 	}
 
+	const char* CullModeToStr(ECullMode mode)
+	{
+#define _X_(x) if (mode == x) return #x;
+		CULL_MODE_LIST
+#undef _X_
+		check(false);
+		return nullptr;
+	}
+
 }
 
