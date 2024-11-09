@@ -614,12 +614,23 @@ namespace Mist
 
 	void tShaderParamAccess::SetupBatch(const RenderContext& context, const ShaderReflectionProperties& reflection, const tShaderDynamicBufferDescription* dynamicBuffers, uint32_t dynamicBuffersCount)
 	{
-		check(m_batchId == UINT32_MAX);
+		check(!HasBatch());
 
 		// Frame context vars
 		RenderFrameContext* frameContextArray = context.FrameContextArray;
 		constexpr uint32_t frameContextCount = globals::MaxOverlappedFrames;
 
+		// Setup batch id
+		for (uint32_t i = 0; i < frameContextCount; ++i)
+		{
+			tDescriptorSetCache& setCache = frameContextArray[i].DescriptorSetCache;
+			uint32_t id = setCache.NewBatch();
+			if (!HasBatch())
+				m_batchId = id;
+			check(m_batchId == id);
+		}
+
+		// Get memory pools of each frame
 		tArray<UniformBufferMemoryPool*, frameContextCount> memoryPoolArray;
 		for (uint32_t i = 0; i < frameContextCount; ++i)
 			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
@@ -709,15 +720,11 @@ namespace Mist
 			}
 			if (generateSet)
 			{
-				bool batchGenerated = m_batchId != UINT32_MAX;
+				check(HasBatch());
 				for (uint32_t frameContextIndex = 0; frameContextIndex < frameContextCount; frameContextIndex++)
 				{
 					// Get frame context and batch
 					tDescriptorSetCache& setCache = frameContextArray[frameContextIndex].DescriptorSetCache;
-					uint32_t batchIndex = !batchGenerated ? setCache.NewBatch() : m_batchId;
-					// Batch must match with the others frame contexts
-					check(m_batchId == UINT32_MAX || m_batchId == batchIndex);
-					m_batchId = batchIndex;
 					tDescriptorSetBatch& batch = setCache.GetBatch(m_batchId);
 
 					// New persistent descriptor set for buffers
