@@ -154,7 +154,7 @@ namespace Mist
 		case DEBUG_EMISSIVE:
 		{
 			tex.View = GetRenderTarget()->GetRenderTarget(RT_EMISSIVE);
-			tex.Layout = GBUFFER_RT_LAYOUT_DEPTH;
+			tex.Layout = GBUFFER_RT_LAYOUT_ALBEDO;
 			tex.Sampler = nullptr;
 			DebugRender::DrawScreenQuad(pos, size, tex);
 		}
