@@ -211,11 +211,11 @@ namespace Mist
 			attachmentDesc.flags = 0;
 			attachmentDesc.format = tovk::GetFormat(format);
 			attachmentDesc.samples = VK_SAMPLE_COUNT_1_BIT;
-			attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+			attachmentDesc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 			attachmentDesc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 			attachmentDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 			attachmentDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+			attachmentDesc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;// VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			attachmentDesc.finalLayout = tovk::GetImageLayout(finalLayout);
 			return attachmentDesc;
 		}

@@ -54,6 +54,7 @@ namespace Mist
 		rtDesc.AddColorAttachment(FORMAT_R8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, value);
 		rtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		rtDesc.RenderArea.offset = { 0, 0 };
+		rtDesc.ResourceName = "SSAO_RT";
 		m_rt.Create(renderContext, rtDesc);
 
 		// Shader
@@ -74,6 +75,7 @@ namespace Mist
 		RenderTargetDescription blurRtDesc;
 		blurRtDesc.AddColorAttachment(FORMAT_R8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, value);
 		blurRtDesc.RenderArea = rtDesc.RenderArea;
+		blurRtDesc.ResourceName = "SSAO_BLUR_RT";
 		m_blurRT.Create(renderContext, blurRtDesc);
 
 		// Blur shader

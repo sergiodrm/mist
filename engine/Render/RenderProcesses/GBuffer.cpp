@@ -27,6 +27,8 @@ namespace Mist
 		description.DepthAttachmentDescription.ClearValue = clearValue;
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
+		description.ClearOnLoad = false;
+		description.ResourceName = "Gbuffer_RT";
 		m_renderTarget.Create(renderContext, description);
 		InitPipeline(renderContext);
 	}

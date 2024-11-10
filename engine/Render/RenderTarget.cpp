@@ -3,12 +3,25 @@
 #include "Render/RenderContext.h"
 #include "Render/InitVulkanTypes.h"
 #include "Core/Logger.h"
+#include "VulkanRenderEngine.h"
 
 namespace Mist
 {
-	VkAttachmentDescription GetVkDescription(const RenderTargetAttachmentDescription& desc)
+	VkAttachmentDescription BuildAttachmentDescription(EFormat format, EImageLayout finalLayout, bool clearOnLoad)
 	{
-		return vkinit::RenderPassAttachmentDescription(desc.Format, desc.Layout);
+		VkAttachmentDescription desc
+		{
+			.flags = 0,
+			.format = tovk::GetFormat(format),
+			.samples = VK_SAMPLE_COUNT_1_BIT,
+			.loadOp = clearOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+			.initialLayout = clearOnLoad ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+			.finalLayout = tovk::GetImageLayout(finalLayout),
+		};
+		return desc;
 	}
 
 	void RenderTargetAttachment::Destroy(const RenderContext& renderContext)
@@ -44,6 +57,8 @@ namespace Mist
 	void RenderTarget::Create(const RenderContext& renderContext, const RenderTargetDescription& desc)
 	{
 		check(ExecuteFormatValidation(renderContext, desc));
+		if (!desc.ResourceName.IsEmpty())
+			SetName(desc.ResourceName.CStr());
 		m_description = desc;
 		for (uint32_t i = 0; i < desc.ColorAttachmentCount; ++i)
 			m_clearValues[i] = desc.ColorAttachmentDescriptions[i].ClearValue;
@@ -77,8 +92,26 @@ namespace Mist
 		CreateResources(renderContext);
 	}
 
+	void RenderTarget::PreparePass(const RenderContext& context)
+	{
+		// transfer image layout to ensure they are in the correct layout
+		if (!m_description.ClearOnLoad)
+		{
+			EImageLayout initialLayout = IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			uint32_t colorAttachments = m_attachments.GetSize();
+			if (HasDepthBufferAttachment())
+			{
+				--colorAttachments;
+				GetDepthAttachment().Tex->TransferImageLayout(context, initialLayout);
+			}
+			for (uint32_t i = 0; i < colorAttachments; ++i)
+				GetAttachment(i).Tex->TransferImageLayout(context, initialLayout);
+		}
+	}
+
 	void RenderTarget::BeginPass(VkCommandBuffer cmd)
 	{
+		PreparePass(IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext());
 		VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
 		renderPassInfo.renderPass = m_renderPass;
 		renderPassInfo.renderArea = m_description.RenderArea;
@@ -86,11 +119,72 @@ namespace Mist
 		renderPassInfo.clearValueCount = (uint32_t)m_clearValues.size();
 		renderPassInfo.pClearValues = m_clearValues.data();
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		if (m_description.ClearOnLoad) 
+			return;
+		ClearColor(cmd);
+		ClearDepthStencil(cmd);
 	}
 
 	void RenderTarget::EndPass(VkCommandBuffer cmd)
 	{
 		vkCmdEndRenderPass(cmd);
+
+		// update attachment image layouts after end pass
+		uint32_t colorAttachments = m_attachments.GetSize();
+		if (HasDepthBufferAttachment())
+		{
+			--colorAttachments;
+			if (GetDepthAttachment().Tex)
+				GetDepthAttachment().Tex->SetImageLayout(m_description.DepthAttachmentDescription.Layout);
+		}
+		for (uint32_t i = 0; i < colorAttachments; ++i)
+		{
+			if (GetAttachment(i).Tex)
+				GetAttachment(i).Tex->SetImageLayout(m_description.ColorAttachmentDescriptions[i].Layout);
+		}
+	}
+
+	void RenderTarget::ClearColor(CommandBuffer cmd, float r, float g, float b, float a)
+	{
+		uint32_t colorAttachments = HasDepthBufferAttachment() ? GetAttachmentCount() - 1 : GetAttachmentCount();
+		if (colorAttachments)
+		{
+			tStaticArray<VkClearAttachment, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> clearInfo;
+			tStaticArray<VkClearRect, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> rectInfo;
+			for (uint32_t i = 0; i < colorAttachments; ++i)
+			{
+				VkClearAttachment clearAttachment;
+				clearAttachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				clearAttachment.clearValue = { .color = {r, g, b, a} };
+				clearAttachment.colorAttachment = i;
+				clearInfo.Push(clearAttachment);
+
+				VkClearRect r;
+				r.rect = m_description.RenderArea;
+				r.baseArrayLayer = 0;
+				r.layerCount = 1;
+				rectInfo.Push(r);
+			}
+			vkCmdClearAttachments(cmd, colorAttachments, clearInfo.GetData(), colorAttachments, rectInfo.GetData());
+		}
+	}
+
+	void RenderTarget::ClearDepthStencil(CommandBuffer cmd, float depth, uint32_t stencil)
+	{
+		if (HasDepthBufferAttachment())
+		{
+			VkClearAttachment clearAttachment;
+			clearAttachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			clearAttachment.clearValue = { .depthStencil = {depth, stencil} };
+			clearAttachment.colorAttachment = UINT32_MAX;
+
+			VkClearRect r;
+			r.rect = m_description.RenderArea;
+			r.baseArrayLayer = 0;
+			r.layerCount = 1;
+
+			vkCmdClearAttachments(cmd, 1, &clearAttachment, 1, &r);
+		}
 	}
 
 	uint32_t RenderTarget::GetWidth() const
@@ -105,7 +199,7 @@ namespace Mist
 
 	uint32_t RenderTarget::GetAttachmentCount() const
 	{
-		return (uint32_t)m_attachments.size();
+		return m_attachments.GetSize();
 	}
 
 	const RenderTargetAttachment& RenderTarget::GetAttachment(uint32_t index) const
@@ -144,7 +238,7 @@ namespace Mist
 			for (uint32_t i = 0; i < m_description.ExternalAttachmentCount; ++i)
 			{
 				// Fill attachment info
-				attachments[i] = GetVkDescription(m_description.ExternalAttachments[i]);
+				attachments[i] = BuildAttachmentDescription(m_description.ExternalAttachments[i].Format, m_description.ExternalAttachments[i].Layout, m_description.ClearOnLoad);
 				// References
 				attachmentReferences[i].attachment = i;
 				attachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -156,7 +250,7 @@ namespace Mist
 			for (uint32_t i = 0; i < m_description.ColorAttachmentCount; ++i)
 			{
 				// Fill attachment info
-				attachments[i] = GetVkDescription(m_description.ColorAttachmentDescriptions[i]);
+				attachments[i] = BuildAttachmentDescription(m_description.ColorAttachmentDescriptions[i].Format, m_description.ColorAttachmentDescriptions[i].Layout, m_description.ClearOnLoad);
 				// References
 				attachmentReferences[i].attachment = i;
 				attachmentReferences[i].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -168,7 +262,7 @@ namespace Mist
 		if (m_description.DepthAttachmentDescription.IsValidAttachment())
 		{
 			uint32_t depthAttachmentIndex = m_description.ColorAttachmentCount;
-			attachments[depthAttachmentIndex] = GetVkDescription(m_description.DepthAttachmentDescription);
+			attachments[depthAttachmentIndex] = BuildAttachmentDescription(m_description.DepthAttachmentDescription.Format, m_description.DepthAttachmentDescription.Layout, m_description.ClearOnLoad);
 			attachmentReferences[depthAttachmentIndex].attachment = depthAttachmentIndex;
 			attachmentReferences[depthAttachmentIndex].layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
@@ -275,7 +369,7 @@ namespace Mist
 		vkcheck(vkCreateRenderPass(renderContext.Device, &passCreateInfo, nullptr, &m_renderPass));
 		static int c = 0;
 		char buff[64];
-		sprintf_s(buff, "RT_RenderPass_%d", c++);
+		sprintf_s(buff, "%s_RenderPass_%d", GetName(), c++);
 		SetVkObjectName(renderContext, &m_renderPass, VK_OBJECT_TYPE_RENDER_PASS, buff);
 	}
 
@@ -283,6 +377,7 @@ namespace Mist
 	{
 		uint32_t viewCount = 0;
 		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> views;
+		m_attachments.Resize(m_description.ColorAttachmentCount);
 		for (uint32_t i = 0; i < m_description.ColorAttachmentCount; ++i)
 		{
 			CreateAttachment(m_attachments[i], renderContext, m_description.ColorAttachmentDescriptions[i], IMAGE_ASPECT_COLOR_BIT,
@@ -292,6 +387,7 @@ namespace Mist
 		}
 		if (m_description.DepthAttachmentDescription.IsValidAttachment())
 		{
+			m_attachments.Push();
 			CreateAttachment(m_attachments[m_description.ColorAttachmentCount], renderContext, m_description.DepthAttachmentDescription, IMAGE_ASPECT_DEPTH_BIT,
 				IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | IMAGE_USAGE_SAMPLED_BIT);
 			views[m_description.ColorAttachmentCount] = m_attachments[m_description.ColorAttachmentCount].View;
@@ -308,6 +404,7 @@ namespace Mist
 	{
 		check(viewCount && viewCount <= MAX_RENDER_TARGET_ATTACHMENTS);
 		tArray<VkImageView, MAX_RENDER_TARGET_ATTACHMENTS> views;
+		m_attachments.Resize(viewCount);
 		for (uint32_t i = 0; i < viewCount; ++i)
 		{
 			m_attachments[i].View = externalAttachments[i].View;
@@ -322,6 +419,9 @@ namespace Mist
 			m_description.RenderArea.extent.height,
 			views.data(), viewCount);
 		vkcheck(vkCreateFramebuffer(renderContext.Device, &fbInfo, nullptr, &m_framebuffer));
+		tFixedString<32> name;
+		name.Fmt("%s_Framebuffer", GetName());
+		SetVkObjectName(renderContext, &m_framebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, name.CStr());
 	}
 
 	void RenderTarget::CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const
@@ -331,38 +431,50 @@ namespace Mist
 		imageDesc.Height = m_description.RenderArea.extent.height;
 		imageDesc.Format = description.Format;
 		imageDesc.Usage = imageUsage;
+		//if (!m_description.ClearOnLoad)
+		//	imageDesc.Usage |= IMAGE_USAGE_TRANSFER_DST_BIT;
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
+		imageDesc.DebugName.Fmt("%s_%s_AttachmentTexture_%d", GetName(), IsDepthFormat(description.Format) ? "Depth" : "Color", 0);
 		attachment.Tex = cTexture::Create(renderContext, imageDesc);
+
+		if (!m_description.ClearOnLoad)
+		{
+			attachment.Tex->TransferImageLayout(renderContext, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+#if 0
+			utils::CmdSubmitTransfer(renderContext,
+				[&](CommandBuffer cmd)
+				{
+					VkImageAspectFlags fl = IsDepthFormat(description.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+					VkImageSubresourceRange subresourceRange
+					{
+						.aspectMask = fl,
+						.baseMipLevel = 0,
+						.levelCount = 1,
+						.baseArrayLayer = 0,
+						.layerCount = 1
+					};
+					VkImageMemoryBarrier barrier
+					{
+						.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+						.pNext = nullptr,
+						.srcAccessMask = 0,
+						.dstAccessMask = VK_ACCESS_NONE,
+						.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+						.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+						.srcQueueFamilyIndex = 0,
+						.dstQueueFamilyIndex = 0,
+						.image = attachment.Tex->GetNativeImage(),
+						.subresourceRange = subresourceRange,
+					};
+					vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr,
+						1, &barrier);
+				});
+#endif // 0
+		}
 
 		tViewDescription viewDesc;
 		viewDesc.AspectMask = aspect;
 		attachment.View = attachment.Tex->CreateView(renderContext, viewDesc);
-		
-
-#if 0
-		tExtent3D extent{ .width = m_description.RenderArea.extent.width, .height = m_description.RenderArea.extent.height, .depth = 1 };
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(description.Format, imageUsage, extent);
-		attachment.Image = MemNewImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(description.Format, attachment.Image.Image, aspect);
-		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &attachment.View));
-		static int c = 0;
-		char buff[64];
-		if (!m_description.ResourceName.Length())
-		{
-			sprintf_s(buff, "RT_Image_%d", c);
-			SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
-			sprintf_s(buff, "RT_ImageView_%d", c++);
-			SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
-		}
-		else
-		{
-			sprintf_s(buff, "%s_Image", m_description.ResourceName.CStr());
-			SetVkObjectName(renderContext, &attachment.Image.Image, VK_OBJECT_TYPE_IMAGE, buff);
-			sprintf_s(buff, "%s_ImageView", m_description.ResourceName.CStr());
-			SetVkObjectName(renderContext, &attachment.View, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
-		}
-#endif // 0
-
 	}
 
 	bool RenderTarget::ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description)

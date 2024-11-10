@@ -189,6 +189,7 @@ namespace Mist
 			rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
 			rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
 			rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
+			rtDesc.ResourceName.Fmt("Swapchaing_%d_RT", i);
 			RenderTargetArray[i].Create(context, rtDesc);
 		}
 

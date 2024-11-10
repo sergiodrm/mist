@@ -31,6 +31,7 @@ namespace Mist
 			description.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
 			description.RenderArea.extent = { context.Window->Width, context.Window->Height };
 			description.RenderArea.offset = { 0,0 };
+			description.ResourceName = "GPUParticles_RT";
 			m_renderTarget.Create(context, description);
 		}
 

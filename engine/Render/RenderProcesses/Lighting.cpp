@@ -88,7 +88,7 @@ namespace Mist
 				rtdesc.RenderArea.extent = { .width = width, .height = height };
 				rtdesc.RenderArea.offset = { 0, 0 };
 				rtdesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 1.f, 1.f, 1.f });
-				rtdesc.ResourceName.Fmt("RT_Bloom_%d", i);
+				rtdesc.ResourceName.Fmt("Bloom_%d_RT", i);
 				RenderTargetArray[i].Create(context, rtdesc);
 
 				width >>= 1;
@@ -334,6 +334,7 @@ namespace Mist
 		description.AddColorAttachment(HDR_FORMAT, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
+		description.ResourceName = "DeferredLighting_RT";
 		m_lightingOutput.Create(renderContext, description);
 
 		{
@@ -368,6 +369,7 @@ namespace Mist
 			ldrRtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 			ldrRtDesc.RenderArea.offset = { .x = 0, .y = 0 };
 			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
+			ldrRtDesc.ResourceName = "HDR_RT";
 			m_hdrOutput.Create(renderContext, ldrRtDesc);
 
 			tShaderProgramDescription hdrShaderDesc;

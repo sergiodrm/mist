@@ -30,6 +30,7 @@ namespace Mist
 
 	struct RenderTargetDescription
 	{
+		bool ClearOnLoad = true;
 		tRect2D RenderArea{ .offset = {.x=0, .y=0} };
 		tArray<RenderTargetAttachmentDescription, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> ColorAttachmentDescriptions;
 		uint32_t ColorAttachmentCount = 0;
@@ -88,7 +89,7 @@ namespace Mist
 		void Destroy(const RenderContext& renderContext);
 	};
 
-	class RenderTarget
+	class RenderTarget : cRenderResource<RenderResource_RenderTarget>
 	{
 	public:
 		RenderTarget();
@@ -98,8 +99,12 @@ namespace Mist
 		void Destroy(const RenderContext& renderContext);
 		void Invalidate(const RenderContext& renderContext);
 
+		void PreparePass(const RenderContext& context);
 		void BeginPass(VkCommandBuffer cmd);
 		void EndPass(VkCommandBuffer cmd);
+
+		void ClearColor(CommandBuffer cmd, float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
+		void ClearDepthStencil(CommandBuffer cmd, float depth = 1.f, uint32_t stencil = 0);
 
 		uint32_t GetWidth() const;
 		uint32_t GetHeight() const;
@@ -128,6 +133,6 @@ namespace Mist
 		tArray<tClearValue, MAX_RENDER_TARGET_ATTACHMENTS> m_clearValues;
 #endif // MIST_VULKAN
 		RenderTargetDescription m_description;
-		tArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;
+		tStaticArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;
 	};
 }

@@ -205,7 +205,10 @@ namespace Mist
 		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
 
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
+		{
+			rtDesc.ResourceName.Fmt("ShadowMap_RT_%d", i);
 			m_shadowMapTargetArray[i].Create(context, rtDesc);
+		}
 
 		// Init shadow map pipeline when render target is created
 		m_shadowMapPipeline.Init(context, &m_shadowMapTargetArray[0]);
