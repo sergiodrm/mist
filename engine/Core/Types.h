@@ -324,9 +324,17 @@ namespace Mist
 		IndexType m_count;
 	};
 
+	// return number of elements in a static array
 	template <typename T, uint32_t N>
 	inline constexpr uint32_t CountOf(const T(&)[N])
 	{
 		return N;
+	}
+
+	// return size in bytes of a static array
+	template <typename T, uint32_t N>
+	inline constexpr uint32_t SizeOf(const T(&)[N])
+	{
+		return N * sizeof(T);
 	}
 }
