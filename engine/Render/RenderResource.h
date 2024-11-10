@@ -11,7 +11,8 @@ namespace Mist
 		RenderResource_Mesh,
 		RenderResource_Model,
 		RenderResource_Material,
-		RenderResource_Texture
+		RenderResource_Texture,
+		RenderResource_RenderTarget,
 	};
 	const char* GetRenderResourceTypeStr(eResourceType type);
 

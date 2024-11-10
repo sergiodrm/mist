@@ -12,6 +12,7 @@ namespace Mist
 		case RenderResource_Material:return "RenderResource_Material";
 		case RenderResource_Texture: return "RenderResource_Texture";
 		case RenderResource_Model: return "RenderResource_Model";
+		case RenderResource_RenderTarget: return "RenderResource_RenderTarget";
 		}
 		check(false);
 		return nullptr;
