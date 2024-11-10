@@ -141,6 +141,7 @@ namespace Mist
 		check(layerCount == m_description.Layers);
 		check(m_image.IsAllocated());
 		check(TransferImage(context, m_description, layerDataArray, layerCount, m_image));
+		SetImageLayout(IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	}
 
 	void cTexture::GenerateMipmaps(const RenderContext& context)
