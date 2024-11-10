@@ -100,6 +100,7 @@ namespace Mist
 
 		ImageView CreateView(const RenderContext& context, const tViewDescription& viewDesc);
 		ImageView GetView(uint32_t viewIndex) const;
+		inline VkImage GetNativeImage() const { return m_image.Image; }
 		uint32_t GetViewCount() const;
 		Sampler GetSampler() const { return m_sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
