@@ -298,7 +298,7 @@ namespace gltf_api
 	}
 
 	template <typename T>
-	inline Mist::index_t GetArrayElementOffset(const T* root, const T* item) { check(item >= root); return item - root; }
+	inline Mist::index_t GetArrayElementOffset(const T* root, const T* item) { check(item >= root); return Mist::index_t(item - root); }
 
 	void LoadMaterial(Mist::cMaterial& material, const Mist::RenderContext& context, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
