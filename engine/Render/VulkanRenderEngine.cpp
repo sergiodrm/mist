@@ -133,7 +133,7 @@ namespace Mist
 	}
 
 	cTexture* DefaultTexture = nullptr;
-	cTexture* GetDefaultTexture(const RenderContext& context)
+	cTexture* GetTextureCheckerboard4x4(const RenderContext& context)
 	{
 		if (!DefaultTexture)
 		{

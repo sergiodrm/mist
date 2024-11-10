@@ -38,7 +38,7 @@ namespace Mist
         {
             cTexture* tex = m_textures[i];
             if (!tex)
-                tex = GetDefaultTexture(context);
+                tex = GetTextureCheckerboard4x4(context);
             textures[i] = tex;
         }
         shader.BindTextureArraySlot(context, slot, textures, MATERIAL_TEXTURE_COUNT);
