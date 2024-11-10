@@ -780,24 +780,8 @@ namespace Mist
 
 	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler)
 	{
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
-
-		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
-		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
-		VkDescriptorImageInfo imageInfo =
-		{
-			.sampler = sampler ? *sampler : texture.GetSampler(),
-			.imageView = texture.GetView(0),
-			.imageLayout = IsDepthFormat(texture.GetDescription().Format)
-				? VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		};
-		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
-			.BindImage(0, &imageInfo, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(context, set);
-
-		RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, &set, 1, slot, nullptr, 0);
+		const cTexture* const tex = &texture;
+		BindTextureArraySlot(context, cmd, bindPoint, pipelineLayout, slot, &tex, 1, sampler);
 	}
 
 	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler)
@@ -814,9 +798,7 @@ namespace Mist
 		for (uint32_t i = 0; i < textureCount; ++i)
 		{
 			check(textures[i]);
-			infos[i].imageLayout = IsDepthFormat(textures[i]->GetDescription().Format) 
-				? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-				: VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			infos[i].imageLayout = tovk::GetImageLayout(textures[i]->GetImageLayout());
 			infos[i].imageView = textures[i]->GetView(0);
 			infos[i].sampler = sampler ? *sampler : textures[i]->GetSampler();
 		}
