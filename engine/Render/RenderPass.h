@@ -41,21 +41,4 @@ namespace Mist
 		tDynArray<VkAttachmentReference> InputAttachmentReferences;
 	};
 
-	class RenderPassBuilder
-	{
-		RenderPassBuilder() = default;
-	public:
-		static RenderPassBuilder Create();
-
-		RenderPassBuilder& AddAttachment(EFormat format, EImageLayout finalLayout);
-		RenderPassBuilder& AddSubpass(const std::initializer_list<uint32_t>& colorAttachmentIndices,
-			uint32_t depthIndex, 
-			const std::initializer_list<uint32_t>& inputAttachments);
-		RenderPassBuilder& AddDependencies(const VkSubpassDependency* dependencies, uint32_t count);
-		VkRenderPass Build(const RenderContext& renderContext);
-	private:
-		tDynArray<VkAttachmentDescription> m_attachments;
-		tDynArray<RenderPassSubpassDescription> m_subpassDescs;
-		tDynArray<VkSubpassDependency> m_dependencies;
-	};
 }
