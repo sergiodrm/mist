@@ -37,6 +37,7 @@ namespace Mist
 		uint32_t Layers = 1;
 		ESampleCountBit SampleCount = SAMPLE_COUNT_1_BIT;
 		EImageUsage Usage = IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_SAMPLED_BIT;
+		EImageLayout InitialLayout = IMAGE_LAYOUT_UNDEFINED;
 		VkImageCreateFlags Flags = 0;
 		SamplerDescription SamplerDesc;
 		tFixedString<128> DebugName;
@@ -105,6 +106,12 @@ namespace Mist
 		Sampler GetSampler() const { return m_sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
 
+		inline EImageLayout GetImageLayout() const { return m_layout; }
+		// used for render target for update layout after using texture as attachment. Must not be use to change layout tracking.
+		inline void SetImageLayout(EImageLayout layout) { m_layout = layout; }
+		void TransferImageLayout(const RenderContext& context, EImageLayout dstLayout,
+			VkAccessFlags srcAccess = 0, VkAccessFlags dstAccess = 0);
+
 	private:
 		void Destroy(const RenderContext& context);
 		void AllocateImage(const RenderContext& context, const tImageDescription& desc);
@@ -113,6 +120,7 @@ namespace Mist
 		AllocatedImage m_image;
 		tDynArray<ImageView> m_views;
 		Sampler m_sampler;
+		EImageLayout m_layout;
 	};
 	
 
