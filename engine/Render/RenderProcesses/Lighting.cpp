@@ -89,6 +89,7 @@ namespace Mist
 				rtdesc.RenderArea.offset = { 0, 0 };
 				rtdesc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 1.f, 1.f, 1.f });
 				rtdesc.ResourceName.Fmt("Bloom_%d_RT", i);
+				rtdesc.ClearOnLoad = false;
 				RenderTargetArray[i].Create(context, rtdesc);
 
 				width >>= 1;
@@ -127,6 +128,18 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			VkPipelineColorBlendAttachmentState blending
+			{
+				.blendEnable = VK_TRUE,
+				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+				.dstColorBlendFactor = VK_BLEND_FACTOR_ONE,
+				.colorBlendOp = VK_BLEND_OP_ADD,
+				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+				.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+				.alphaBlendOp = VK_BLEND_OP_ADD,
+				.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT,
+			};
+			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			UpsampleShader = ShaderProgram::Create(context, shaderDesc);
 			UpsampleShader->SetupDescriptors(context);
 		}
@@ -219,7 +232,7 @@ namespace Mist
 		{
 			RenderTarget& rt = RenderTargetArray[i];
 
-			rt.BeginPass(cmd);
+			rt.BeginPass(context, cmd);
 			if (Config.BloomMode)
 			{
 				DownsampleShader->UseProgram(context);
@@ -263,7 +276,7 @@ namespace Mist
 			RenderTarget& rt = RenderTargetArray[i];
 			ShaderProgram* shader = UpsampleShader;
 
-			rt.BeginPass(cmd);
+			rt.BeginPass(context, cmd);
 			if (Config.BloomMode)
 			{
 				shader->UseProgram(context);
@@ -335,6 +348,7 @@ namespace Mist
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		description.ResourceName = "DeferredLighting_RT";
+		description.ClearOnLoad = false;
 		m_lightingOutput.Create(renderContext, description);
 
 		{
@@ -430,7 +444,8 @@ namespace Mist
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		// Composition
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
-		m_lightingOutput.BeginPass(cmd);
+		m_lightingOutput.BeginPass(renderContext, cmd);
+		m_lightingOutput.ClearColor(cmd);
 		m_lightingShader->UseProgram(renderContext);
 		m_lightingShader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
 		m_lightingShader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
@@ -461,6 +476,7 @@ namespace Mist
 		// HDR and tone mapping
 		BeginGPUEvent(renderContext, cmd, "HDR");
 		m_hdrOutput.BeginPass(cmd);
+		m_hdrOutput.BeginPass(renderContext, cmd);
 		m_hdrShader->UseProgram(renderContext);
 		m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
 		m_hdrShader->BindTextureSlot(renderContext, 0, *m_bloomEffect.FinalTarget.GetAttachment(0).Tex);
