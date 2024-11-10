@@ -174,7 +174,7 @@ namespace Mist
 			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0,
 				0, nullptr, 1, &barrier, 0, nullptr);
 		}
-		m_renderTarget.BeginPass(cmd);
+		m_renderTarget.BeginPass(context, cmd);
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
 

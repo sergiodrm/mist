@@ -163,7 +163,7 @@ namespace Mist
     {
 #if 0
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
-		m_renderTarget.BeginPass(cmd);
+		m_renderTarget.BeginPass(renderContext, cmd);
 		m_debugPipeline.Draw(renderContext, cmd, renderFrameContext.FrameIndex);
 		m_imgui.Draw(renderContext, cmd);
 		m_renderTarget.EndPass(cmd);

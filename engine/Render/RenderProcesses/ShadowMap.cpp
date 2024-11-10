@@ -299,7 +299,7 @@ namespace Mist
 		check(m_lightCount < globals::MaxShadowMapAttachments);
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-			m_shadowMapTargetArray[i].BeginPass(cmd);
+			m_shadowMapTargetArray[i].BeginPass(renderContext, cmd);
 			if (i < m_lightCount)
 			{
 				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, renderFrameContext.FrameIndex, i);

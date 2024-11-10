@@ -114,7 +114,7 @@ namespace Mist
 	{
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "SSAO");
-		m_rt.BeginPass(cmd);
+		m_rt.BeginPass(renderContext, cmd);
 		m_ssaoShader->UseProgram(renderContext);
 		m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
 		const cTexture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
@@ -125,7 +125,7 @@ namespace Mist
 		EndGPUEvent(renderContext, cmd);
 
 		BeginGPUEvent(renderContext, cmd, "SSAOBlur");
-		m_blurRT.BeginPass(cmd);
+		m_blurRT.BeginPass(renderContext, cmd);
 		m_blurShader->UseProgram(renderContext);
 		const cTexture* tex = m_rt.GetAttachment(0).Tex;
 		m_blurShader->BindTextureSlot(renderContext, 0, *tex);

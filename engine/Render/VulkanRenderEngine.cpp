@@ -574,7 +574,7 @@ namespace Mist
 
 			m_gpuParticleSystem.Draw(m_renderContext, frameContext);
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
-			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(cmd);
+			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(m_renderContext, cmd);
 
 			// Skybox
 			if (m_scene)

@@ -109,9 +109,10 @@ namespace Mist
 		}
 	}
 
-	void RenderTarget::BeginPass(VkCommandBuffer cmd)
+	void RenderTarget::BeginPass(const RenderContext& context, CommandBuffer cmd)
 	{
-		PreparePass(IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext());
+		PreparePass(context);
+
 		VkRenderPassBeginInfo renderPassInfo = { VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, nullptr };
 		renderPassInfo.renderPass = m_renderPass;
 		renderPassInfo.renderArea = m_description.RenderArea;
@@ -119,10 +120,6 @@ namespace Mist
 		renderPassInfo.clearValueCount = (uint32_t)m_clearValues.size();
 		renderPassInfo.pClearValues = m_clearValues.data();
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-		if (m_description.ClearOnLoad) 
-			return;
-		ClearColor(cmd);
-		ClearDepthStencil(cmd);
 	}
 
 	void RenderTarget::EndPass(VkCommandBuffer cmd)

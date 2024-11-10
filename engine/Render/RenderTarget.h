@@ -99,8 +99,7 @@ namespace Mist
 		void Destroy(const RenderContext& renderContext);
 		void Invalidate(const RenderContext& renderContext);
 
-		void PreparePass(const RenderContext& context);
-		void BeginPass(VkCommandBuffer cmd);
+		void BeginPass(const RenderContext& context, CommandBuffer cmd);
 		void EndPass(VkCommandBuffer cmd);
 
 		void ClearColor(CommandBuffer cmd, float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
@@ -121,6 +120,8 @@ namespace Mist
 		inline bool HasDepthBufferAttachment() const { return m_description.DepthAttachmentDescription.IsValidAttachment(); }
 		static bool ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description);
 	protected:
+		// call before BeginPass() to update attachment layouts.
+		void PreparePass(const RenderContext& context);
 		void CreateResources(const RenderContext& renderContext);
 		void CreateRenderPass(const RenderContext& renderContext);
 		void CreateFramebuffer(const RenderContext& renderContext);
