@@ -24,6 +24,7 @@ namespace Mist
 		void DrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
 		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const TextureBindingDescriptor& texDescriptor);
 		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, ImageView view, EImageLayout layout, Sampler sampler = nullptr);
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const cTexture& texture, uint32_t view = 0);
 
 		void SetDebugClipParams(float nearClip, float farClip);
 

@@ -195,6 +195,11 @@ namespace Mist
 			DrawScreenQuad(screenPos, size, TextureBindingDescriptor{.View = view, .Layout = layout, .Sampler = sampler});
 		}
 
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const cTexture& texture, uint32_t view)
+		{
+			DrawScreenQuad(screenPos, size, texture.GetView(view), texture.GetImageLayout(), texture.GetSampler());
+		}
+
 		void UpdateQuadTexDescriptorSet(const RenderContext& context, const QuadBatch& batch, VkDescriptorSet set, bool updateAll = false)
 		{
 			static Sampler defSampler = CreateSampler(context);
