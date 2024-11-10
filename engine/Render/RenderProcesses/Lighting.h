@@ -5,9 +5,9 @@
 #include "Render/Globals.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
+#include "Bloom.h"
 #include <glm/glm.hpp>
 
-#define BLOOM_MIPMAP_LEVELS 5
 
 namespace Mist
 {
@@ -18,46 +18,6 @@ namespace Mist
 	{
 		float GammaCorrection = 1.f;
 		float Exposure = 1.f;
-	};
-
-	struct tBloomConfig
-	{
-		enum
-		{
-			BLOOM_DISABLED,
-			BLOOM_ACTIVE,
-			BLOOM_DEBUG_EMISSIVE_PASS,
-			BLOOM_DEBUG_DOWNSCALE_PASS
-		};
-		uint32_t BloomMode = BLOOM_ACTIVE;
-		float MixCompositeAlpha = 0.5f;
-		float UpscaleFilterRadius = 0.005f;
-	};
-
-	class BloomEffect
-	{
-	public:
-		BloomEffect();
-
-		void Init(const RenderContext& context);
-		void Draw(const RenderContext& context);
-		void Destroy(const RenderContext& context);
-
-		void ImGuiDraw();
-
-		ShaderProgram* EmissiveShader;
-		ShaderProgram* ThresholdFilterShader;
-		ShaderProgram* DownsampleShader;
-		ShaderProgram* UpsampleShader;
-		ShaderProgram* MixShader;
-		RenderTarget TempRT;
-		RenderTarget EmissivePass;
-		RenderTarget* HDRRT;
-		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
-		RenderTarget FinalTarget;
-		tBloomConfig Config;
-
-		cTexture* InputTarget;
 	};
 
 	class DeferredLighting : public RenderProcess
@@ -86,7 +46,6 @@ namespace Mist
 		const RenderTarget* m_ssaoRenderTarget;
 
 		BloomEffect m_bloomEffect;
-		bool m_showDebug;
 	};
 
 #if 0
