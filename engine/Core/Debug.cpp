@@ -412,7 +412,7 @@ namespace Mist
 #endif // 0
 				ImGuiViewport* viewport = ImGui::GetMainViewport();
 				ImGui::SetNextWindowPos(viewport->Pos);
-				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.3f, viewport->Size.y * 0.1f});
+				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.4f, viewport->Size.y * 0.15f});
 				ImGui::SetNextWindowBgAlpha(0.f);
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
 				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
