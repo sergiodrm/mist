@@ -13,6 +13,10 @@
 
 namespace Mist
 {
+	SSAO::SSAO()
+		: m_mode(SSAO_Enabled)
+	{	}
+
 	void SSAO::Init(const RenderContext& renderContext)
 	{
 		std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
@@ -140,13 +144,12 @@ namespace Mist
 		ImGui::Begin("SSAO");
 		ImGui::DragFloat("Radius", &m_uboData.Radius, 0.02f, 0.f, 5.f);
 		ImGui::DragFloat("Bias", &m_uboData.Bias, 0.001f, 0.f, 0.05f);
-		static const char* debugModes[] = { "None", "SSAO", "SSAO Blur" };
-		if (ImGui::BeginCombo("Debug texture", debugModes[m_debugTex]))
+		if (ImGui::BeginCombo("Debug texture", SSAOModeStr[m_mode]))
 		{
-			for (uint32_t i = 0; i < 3; ++i)
+			for (uint32_t i = 0; i < CountOf(SSAOModeStr); ++i)
 			{
-				if (ImGui::Selectable(debugModes[i], i == m_debugTex))
-					m_debugTex = i;
+				if (ImGui::Selectable(SSAOModeStr[i], i == m_mode))
+					m_mode = (eSSAOMode)i;
 			}
 			ImGui::EndCombo();
 		}
@@ -155,16 +158,27 @@ namespace Mist
 
 	void SSAO::DebugDraw(const RenderContext& context)
 	{
-		switch (m_debugTex)
+		const cTexture* tex = nullptr;
+		float scale = 1.f;
+		switch (m_mode)
 		{
-		case 0: break;
-		case 1:
-			DebugRender::DrawScreenQuad({ 0.75f * 1920.f, 0.f }, { 0.25f * 1920.f, 0.25f * 1080.f }, m_rt.GetAttachment(0).Tex->GetView(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		case SSAO_Disabled: 
+		case SSAO_Enabled: 
+		case SSAO_NoBlur: 
+			return;
+		case SSAO_DebugView:
+			tex = m_rt.GetAttachment(0).Tex;
 			break;
-		case 2:
-			DebugRender::DrawScreenQuad({ 0.75f * 1920.f, 0.f }, { 0.25f * 1920.f, 0.25f * 1080.f }, m_blurRT.GetAttachment(0).Tex->GetView(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		case SSAO_DebugBlurView:
+			tex = m_blurRT.GetAttachment(0).Tex;
+			break;
+		case SSAO_DebugNoiseView:
+			tex = m_noiseTexture;
+			scale = 100.f;
 			break;
 		}
+		DebugRender::DrawScreenQuad({ 0.f, 0.f },
+			{ scale * (float)tex->GetDescription().Width, scale * (float)tex->GetDescription().Height }, *tex);
 	}
 
 }

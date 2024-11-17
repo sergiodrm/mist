@@ -18,6 +18,23 @@ namespace Mist
 
 	class SSAO : public RenderProcess
 	{
+		enum eSSAOMode
+		{
+			SSAO_Disabled,
+			SSAO_Enabled,
+			SSAO_NoBlur,
+			SSAO_DebugView,
+			SSAO_DebugBlurView,
+			SSAO_DebugNoiseView,
+		};
+		static constexpr const char* const SSAOModeStr[] = {
+			{"SSAO_Disabled"},
+			{"SSAO_Enabled"},
+			{"SSAO_NoBlur"},
+			{"SSAO_DebugView"},
+			{"SSAO_DebugBlurView"},
+			{"SSAO_DebugNoiseView"}
+		};
 		struct SSAOUBO
 		{
 			float Radius;
@@ -28,6 +45,7 @@ namespace Mist
 			glm::vec4 KernelSamples[SSAO_KERNEL_SAMPLES];
 		};
 	public:
+		SSAO();
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_SSAO; }
 		virtual void Init(const RenderContext& renderContext) override;
 		virtual void Destroy(const RenderContext& renderContext) override;
@@ -47,7 +65,7 @@ namespace Mist
 		ShaderProgram* m_blurShader;
 		RenderTarget m_blurRT;
 
-		uint32_t m_debugTex = 0;
+		eSSAOMode m_mode;
 	};
 
 }
