@@ -40,11 +40,16 @@ namespace Mist
 		imageDesc.Width = 4;
 		imageDesc.Height = 4;
 		imageDesc.Depth = 1;
-		imageDesc.Format = FORMAT_R8G8B8A8_UNORM;
+		imageDesc.Format = FORMAT_R32G32B32A32_SFLOAT;
 		imageDesc.Flags = 0;
 		imageDesc.Layers = 1;
 		imageDesc.MipLevels = 1;
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
+		imageDesc.SamplerDesc.MinFilter = FILTER_NEAREST;
+		imageDesc.SamplerDesc.MagFilter = FILTER_NEAREST;
+		imageDesc.SamplerDesc.AddressModeU = SAMPLER_ADDRESS_MODE_REPEAT;
+		imageDesc.SamplerDesc.AddressModeV = SAMPLER_ADDRESS_MODE_REPEAT;
+		imageDesc.SamplerDesc.AddressModeW = SAMPLER_ADDRESS_MODE_REPEAT;
 		m_noiseTexture = cTexture::Create(renderContext, imageDesc);
 		const uint8_t* pixels = (uint8_t*)ssaoNoise;
 		m_noiseTexture->SetImageLayers(renderContext, &pixels, 1);
