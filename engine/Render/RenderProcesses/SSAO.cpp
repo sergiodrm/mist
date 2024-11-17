@@ -7,6 +7,7 @@
 #include "Render/VulkanRenderEngine.h"
 #include "GBuffer.h"
 #include "Application/Application.h"
+#include "Core/Logger.h"
 
 
 #define SSAO_NOISE_SAMPLES 16
@@ -21,6 +22,7 @@ namespace Mist
 	{
 		std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
 		std::default_random_engine generator;
+		loginfo("SSAO Kernel samples:\n");
 		for (uint32_t i = 0; i < SSAO_KERNEL_SAMPLES; ++i)
 		{
 			float scl = (float)i / (float)SSAO_KERNEL_SAMPLES;
@@ -29,13 +31,18 @@ namespace Mist
 			m_uboData.KernelSamples[i] = glm::vec4(kernel, 1.f);
 			m_uboData.KernelSamples[i] *= randomFloat(generator);
 			m_uboData.KernelSamples[i] *= scl;
+			logfinfo("#%d: %.5f, %.5f, %.5f, %.5f\n", i, m_uboData.KernelSamples[i].x, m_uboData.KernelSamples[i].y, m_uboData.KernelSamples[i].z, m_uboData.KernelSamples[i].w);
 		}
 		m_uboData.Radius = 0.5f;
 		m_uboData.Bias = 0.025f;
 
 		glm::vec4 ssaoNoise[SSAO_NOISE_SAMPLES];
+		loginfo("SSAO noise texture:\n");
 		for (uint32_t i = 0; i < SSAO_NOISE_SAMPLES; ++i)
+		{
 			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
+			logfinfo("#%d: %.5f, %.5f, %.5f, %.5f\n", i, ssaoNoise[i].x, ssaoNoise[i].y, ssaoNoise[i].z, ssaoNoise[i].w);
+		}
 		tImageDescription imageDesc;
 		imageDesc.Width = 4;
 		imageDesc.Height = 4;
@@ -124,22 +131,32 @@ namespace Mist
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "SSAO");
 		m_rt.BeginPass(renderContext, cmd);
-		m_ssaoShader->UseProgram(renderContext);
-		m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
-		const cTexture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
-		m_ssaoShader->BindTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(cTexture*));
-		m_ssaoShader->FlushDescriptors(renderContext);
-		CmdDrawFullscreenQuad(cmd);
+		if (m_mode != SSAO_Disabled)
+		{
+			m_ssaoShader->UseProgram(renderContext);
+			m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
+			const cTexture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
+			//m_ssaoShader->BindTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(cTexture*));
+			m_ssaoShader->BindTextureSlot(renderContext, 1, *m_gbufferTextures[0]);
+			m_ssaoShader->BindTextureSlot(renderContext, 2, *m_gbufferTextures[3]);
+			m_ssaoShader->BindTextureSlot(renderContext, 3, *m_gbufferTextures[1]);
+			m_ssaoShader->BindTextureSlot(renderContext, 4, *m_noiseTexture);
+			m_ssaoShader->FlushDescriptors(renderContext);
+			CmdDrawFullscreenQuad(cmd);
+		}
 		m_rt.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 
 		BeginGPUEvent(renderContext, cmd, "SSAOBlur");
 		m_blurRT.BeginPass(renderContext, cmd);
-		m_blurShader->UseProgram(renderContext);
-		const cTexture* tex = m_rt.GetAttachment(0).Tex;
-		m_blurShader->BindTextureSlot(renderContext, 0, *tex);
-		m_ssaoShader->FlushDescriptors(renderContext);
-		CmdDrawFullscreenQuad(cmd);
+		if (m_mode != SSAO_Disabled && m_mode != SSAO_NoBlur)
+		{
+			m_blurShader->UseProgram(renderContext);
+			const cTexture* tex = m_rt.GetAttachment(0).Tex;
+			m_blurShader->BindTextureSlot(renderContext, 0, *tex);
+			m_ssaoShader->FlushDescriptors(renderContext);
+			CmdDrawFullscreenQuad(cmd);
+		}
 		m_blurRT.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 	}
