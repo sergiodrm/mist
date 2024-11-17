@@ -86,8 +86,6 @@ namespace Mist
 
 	void cTexture::Destroy(const RenderContext& context)
 	{
-		vkDestroySampler(context.Device, m_sampler, nullptr);
-		
 		for (uint32_t i = 0; i < (uint32_t)m_views.size(); ++i)
 			vkDestroyImageView(context.Device, m_views[i], nullptr);
 		MemFreeImage(context.Allocator, m_image);
@@ -104,6 +102,8 @@ namespace Mist
 
 		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, GetName());
 
+		m_sampler = CreateSampler(context, desc.SamplerDesc);
+#if 0
 		VkSamplerCreateInfo samplerCreateInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR, SAMPLER_ADDRESS_MODE_REPEAT);
 		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
 		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
@@ -120,6 +120,8 @@ namespace Mist
 		samplerCreateInfo.compareEnable = VK_FALSE;
 		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 		vkcheck(vkCreateSampler(context.Device, &samplerCreateInfo, nullptr, &m_sampler));
+#endif // 0
+
 		SetVkObjectName(context, &m_sampler, VK_OBJECT_TYPE_SAMPLER, GetName());
 	}
 

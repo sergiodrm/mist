@@ -104,6 +104,7 @@ namespace Mist
 		inline VkImage GetNativeImage() const { return m_image.Image; }
 		uint32_t GetViewCount() const;
 		Sampler GetSampler() const { return m_sampler; }
+		void SetSampler(Sampler sampler) { m_sampler = sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
 
 		inline EImageLayout GetImageLayout() const { return m_layout; }
