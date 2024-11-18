@@ -29,6 +29,7 @@
 #include "Application/Application.h"
 #include "Application/Event.h"
 #include "Core/SystemMemory.h"
+#include "RenderProfiling.h"
 
 
 #define MIST_CRASH_ON_VALIDATION_LAYER
@@ -60,12 +61,12 @@ namespace Mist
 			Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
 			if (level == Mist::LogLevel::Error)
 			{
-	#if defined(_DEBUG)
+#if defined(_DEBUG)
 				PrintCallstack();
-	#endif
-	#ifdef MIST_CRASH_ON_VALIDATION_LAYER
+#endif
+#ifdef MIST_CRASH_ON_VALIDATION_LAYER
 				check(!CVar_ExitValidationLayer.Get() && "Validation layer error");
-	#endif
+#endif
 			}
 			return VK_FALSE;
 		}
@@ -195,7 +196,7 @@ namespace Mist
 
 		// Init shader
 		tShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile.Filepath= globals::PostProcessVertexShader;
+		shaderDesc.VertexShaderFile.Filepath = globals::PostProcessVertexShader;
 		shaderDesc.FragmentShaderFile.Filepath = globals::PostProcessFragmentShader;
 		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
 		shaderDesc.RenderTarget = &RenderTargetArray[0];
@@ -240,7 +241,7 @@ namespace Mist
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{
 		tShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile.Filepath= SHADER_FILEPATH("skybox.vert");
+		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
 		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = rt;
@@ -267,7 +268,7 @@ namespace Mist
 		m_renderContext.Window = &window;
 		SDL_Init(SDL_INIT_VIDEO);
 		Log(LogLevel::Ok, "Window created successfully!\n");
-		
+
 		// Init vulkan context
 		check(InitVulkan());
 
@@ -339,6 +340,9 @@ namespace Mist
 					.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 					.Build(m_renderContext, m_cubemapPipeline.Sets[i]);
 			}
+
+			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Init(m_renderContext.Device, 20);
+			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Init(m_renderContext.Device, 20);
 		}
 
 
@@ -372,7 +376,7 @@ namespace Mist
 		{
 			VulkanRenderEngine* Engine;
 			bool* Exit;
-		} data{this, &exitFlag };
+		} data{ this, &exitFlag };
 
 		ProcessEvents([](void* e, void* userData)
 			{
@@ -435,6 +439,8 @@ namespace Mist
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
+			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Destroy(m_renderContext.Device);
+			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Destroy(m_renderContext.Device);
 			m_renderContext.FrameContextArray[i].GlobalBuffer.Destroy(m_renderContext);
 
 			vkDestroyFence(m_renderContext.Device, m_renderContext.FrameContextArray[i].ComputeCommandContext.Fence, nullptr);
@@ -458,13 +464,13 @@ namespace Mist
 		vkb::destroy_debug_utils_messenger(m_renderContext.Instance,
 			m_renderContext.DebugMessenger);
 		vkDestroyInstance(m_renderContext.Instance, nullptr);
-		
+
 
 
 		logok("Render engine terminated.\n");
-		Logf(Mist::Debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok, 
+		Logf(Mist::Debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok,
 			"Total vulkan layer validation errors: %u.\n", Mist::Debug::GVulkanLayerValidationErrors);
-		
+
 	}
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
@@ -489,7 +495,7 @@ namespace Mist
 		m_scene = static_cast<Scene*>(scene);
 		m_scene->Init();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{ 
+		{
 			m_renderContext.FrameContextArray[i].Scene = m_scene;
 			if (scene)
 				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
@@ -524,11 +530,11 @@ namespace Mist
 		glm::mat4 ubo[2];
 		ubo[0] = viewRot;
 		ubo[1] = m_cameraData.Projection * viewRot;
-		frameContext.GlobalBuffer.SetUniform(m_renderContext, "ProjViewRot", &ubo, 2*sizeof(glm::mat4));
+		frameContext.GlobalBuffer.SetUniform(m_renderContext, "ProjViewRot", &ubo, 2 * sizeof(glm::mat4));
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
 
-		UBOTime time{ 0.033f, 0.f};
+		UBOTime time{ 0.033f, 0.f };
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_TIME, &time, sizeof(UBOTime));
 
 		frameContext.PresentTex = m_screenPipeline.PresentTexSets[m_renderContext.GetFrameIndex()];
@@ -550,7 +556,7 @@ namespace Mist
 		{
 			CPU_PROFILE_SCOPE(PrepareFrame);
 			// Acquire render image from swapchain
-			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore, 
+			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore,
 				nullptr, &m_currentSwapchainIndex));
 		}
 
@@ -569,13 +575,23 @@ namespace Mist
 			frameContext.GraphicsCommandContext.ResetCommandBuffer();
 			frameContext.GraphicsCommandContext.BeginCommandBuffer();
 			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
+
+			// Timestamp queries
+			GpuProf_Reset(m_renderContext);
+
 			BeginGPUEvent(m_renderContext, cmd, "Begin Graphics", 0xff0000ff);
+
+
+			GpuProf_Begin(m_renderContext, "Graphics_Renderer");
 			m_renderer.Draw(m_renderContext, frameContext);
+			GpuProf_End(m_renderContext);
 
 			m_gpuParticleSystem.Draw(m_renderContext, frameContext);
+
+
+			GpuProf_Begin(m_renderContext, "Graphics_ScreenDraw");
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(m_renderContext, cmd);
-
 			// Skybox
 			if (m_scene)
 			{
@@ -590,7 +606,7 @@ namespace Mist
 			m_screenPipeline.VB.Bind(cmd);
 			m_screenPipeline.IB.Bind(cmd);
 			m_screenPipeline.Shader->UseProgram(cmd);
-			VkDescriptorSet sets[] = { m_screenPipeline.QuadSets[frameIndex], m_screenPipeline.PresentTexSets[frameIndex]};
+			VkDescriptorSet sets[] = { m_screenPipeline.QuadSets[frameIndex], m_screenPipeline.PresentTexSets[frameIndex] };
 			m_screenPipeline.Shader->BindDescriptorSets(cmd, sets, sizeof(sets) / sizeof(VkDescriptorSet));
 			vkCmdDrawIndexed(cmd, 6, 1, 0, 0, 0);
 			// Flush debug draw list
@@ -600,8 +616,10 @@ namespace Mist
 
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].EndPass(cmd);
 			// Terminate command buffer
+			GpuProf_End(m_renderContext);
 			frameContext.GraphicsCommandContext.EndCommandBuffer();
 			EndGPUEvent(m_renderContext, cmd);
+			frameContext.GraphicsTimestampQueryPool.EndFrame();
 		}
 
 		{
@@ -630,7 +648,7 @@ namespace Mist
 			VkSubmitInfo graphicsSubmitInfo = {};
 			graphicsSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 			graphicsSubmitInfo.pNext = nullptr;
-			VkPipelineStageFlags waitStage[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT };
+			VkPipelineStageFlags waitStage[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT };
 			graphicsSubmitInfo.pWaitDstStageMask = waitStage;
 			// Wait for last frame terminates present image
 			graphicsSubmitInfo.waitSemaphoreCount = waitSemaphoresCount;
@@ -660,7 +678,7 @@ namespace Mist
 		}
 	}
 
-	
+
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
@@ -732,6 +750,24 @@ namespace Mist
 		ImGui::End();
 #endif // 0
 
+#if 0
+		ImGui::Begin("Gpu queries");
+		if (m_renderContext.FrameIndex > globals::MaxOverlappedFrames && m_renderContext.FrameIndex % globals::MaxOverlappedFrames == 0)
+		{
+			uint32_t prevframe = m_renderContext.FrameIndex - 1;
+			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[prevframe % globals::MaxOverlappedFrames];
+			if (frameContext.GraphicsTimestampQueryPool.Flags == sTimestampQueryPool::QueryPool_Terminated)
+			{
+				uint64_t ns = frameContext.GraphicsTimestampQueryPool.GetElapsedTimestamp(m_renderContext.Device, m_renderContext.GPUDevice, m_drawQueryTimestamp);
+				double us = (double)ns / 1000.0;
+				ImGui::Text("%f us", us);
+			}
+		}
+		ImGui::End();
+#else
+		GpuProf_Resolve(m_renderContext);
+		GpuProf_ImGuiDraw(m_renderContext);
+#endif // 0
 
 		m_gpuParticleSystem.ImGuiDraw();
 	}
@@ -751,7 +787,7 @@ namespace Mist
 			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 			vkEnumerateInstanceExtensionProperties()
 
-			VkInstance instance;
+				VkInstance instance;
 			VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pNext = nullptr };
 			appInfo.pApplicationName = "Mist";
 			appInfo.applicationVersion = VK_API_VERSION_1_1;

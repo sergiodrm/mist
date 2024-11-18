@@ -27,6 +27,7 @@ namespace Mist
 		Flags &= ~(CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE);
 	}
 
+
     void BeginGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color)
     {
         VkDebugUtilsLabelEXT label{ .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pNext = nullptr };
@@ -113,6 +114,11 @@ namespace Mist
 	uint32_t RenderContext_PadUniformMemoryOffsetAlignment(const RenderContext& context, uint32_t size)
 	{
 		return Memory::PadOffsetAlignment((uint32_t)context.GPUProperties.limits.minUniformBufferOffsetAlignment, size);
+	}
+
+	float RenderContext_TimestampPeriod(const RenderContext& context)
+	{
+		return context.GPUProperties.limits.timestampPeriod;
 	}
 	
 }

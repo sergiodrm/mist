@@ -142,6 +142,7 @@ namespace Mist
 		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 
 		BeginGPUEvent(context, cmd, "Bloom Downsample");
+		GpuProf_Begin(context, "Bloom Downsample");
 		check(InputTarget);
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 		{
@@ -183,9 +184,11 @@ namespace Mist
 					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 			}
 		}
+		GpuProf_End(context);
 		EndGPUEvent(context, cmd);
 
 		BeginGPUEvent(context, cmd, "Bloom Upsample");
+		GpuProf_Begin(context, "Bloom Upsample");
 		for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
 		{
 			RenderTarget& rt = RenderTargetArray[i];
@@ -206,10 +209,12 @@ namespace Mist
 			}
 			rt.EndPass(cmd);
 		}
+		GpuProf_End(context);
 		EndGPUEvent(context, cmd);
 
 		check(ComposeTarget);
 		BeginGPUEvent(context, cmd, "Bloom mix");
+		GpuProf_Begin(context, "Bloom mix");
 		ComposeTarget->BeginPass(context, cmd);
 		ComposeShader->UseProgram(context);
 		ComposeShader->BindTextureSlot(context, 0, *GetTextureCheckerboard4x4(context));
@@ -217,6 +222,7 @@ namespace Mist
 		ComposeShader->FlushDescriptors(context);
 		CmdDrawFullscreenQuad(cmd);
 		ComposeTarget->EndPass(cmd);
+		GpuProf_End(context);
 		EndGPUEvent(context, cmd);
 	}
 

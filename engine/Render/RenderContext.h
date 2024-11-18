@@ -8,6 +8,7 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/Globals.h"
 #include "Render/RenderDescriptor.h"
+#include "Render/RenderProfiling.h"
 #include "Core/Types.h"
 
 struct SDL_Window;
@@ -50,6 +51,10 @@ namespace Mist
 		// Commands
 		CommandBufferContext GraphicsCommandContext;
 		CommandBufferContext ComputeCommandContext;
+
+		// Queries
+		sTimestampQueryPool GraphicsTimestampQueryPool;
+		sTimestampQueryPool ComputeTimestampQueryPool;
 
 		// Descriptors
 		[[deprecated]]
@@ -136,4 +141,5 @@ namespace Mist
 	void RenderContext_NewFrame(RenderContext& context);
 	void RenderContext_ForceFrameSync(RenderContext& context);
 	uint32_t RenderContext_PadUniformMemoryOffsetAlignment(const RenderContext& context, uint32_t size);
+	float RenderContext_TimestampPeriod(const RenderContext& context);
 }

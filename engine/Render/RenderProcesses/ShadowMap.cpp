@@ -295,6 +295,7 @@ namespace Mist
 	{
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
+		GpuProf_Begin(renderContext, "Shadow mapping");
 
 		check(m_lightCount < globals::MaxShadowMapAttachments);
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
@@ -306,7 +307,7 @@ namespace Mist
 			}
 			m_shadowMapTargetArray[i].EndPass(cmd);
 		}
-
+		GpuProf_End(renderContext);
 		EndGPUEvent(renderContext, cmd);
 	}
 

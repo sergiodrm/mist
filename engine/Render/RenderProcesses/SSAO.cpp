@@ -113,11 +113,7 @@ namespace Mist
 
 	void SSAO::InitFrameData(const RenderContext& context, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
-		const GBuffer* gbuffer = (GBuffer*)renderer.GetRenderProcess(RENDERPROCESS_GBUFFER);
-		m_gbufferTextures[0] = gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex;
-		m_gbufferTextures[1] = gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex;
-		m_gbufferTextures[2] = gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_ALBEDO).Tex;
-		m_gbufferTextures[3] = gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_DEPTH).Tex;
+		m_renderer = &renderer;
 	}
 
 	void SSAO::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
@@ -130,24 +126,26 @@ namespace Mist
 	{
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "SSAO");
+		GpuProf_Begin(renderContext, "SSAO");
 		m_rt.BeginPass(renderContext, cmd);
 		if (m_mode != SSAO_Disabled)
 		{
 			m_ssaoShader->UseProgram(renderContext);
 			m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
-			const cTexture* texArray[] = { m_gbufferTextures[0], m_gbufferTextures[1], m_gbufferTextures[2], m_gbufferTextures[3], m_noiseTexture };
-			//m_ssaoShader->BindTextureArraySlot(renderContext, 1, texArray, sizeof(texArray)/sizeof(cTexture*));
-			m_ssaoShader->BindTextureSlot(renderContext, 1, *m_gbufferTextures[0]);
-			m_ssaoShader->BindTextureSlot(renderContext, 2, *m_gbufferTextures[3]);
-			m_ssaoShader->BindTextureSlot(renderContext, 3, *m_gbufferTextures[1]);
-			m_ssaoShader->BindTextureSlot(renderContext, 4, *m_noiseTexture);
+
+			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
+			m_ssaoShader->BindTextureSlot(renderContext, 1, *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
+			m_ssaoShader->BindTextureSlot(renderContext, 2, *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
+			m_ssaoShader->BindTextureSlot(renderContext, 3, *m_noiseTexture);
 			m_ssaoShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 		}
 		m_rt.EndPass(cmd);
+		GpuProf_End(renderContext);
 		EndGPUEvent(renderContext, cmd);
 
 		BeginGPUEvent(renderContext, cmd, "SSAOBlur");
+		GpuProf_Begin(renderContext, "SSAO Blur");
 		m_blurRT.BeginPass(renderContext, cmd);
 		if (m_mode != SSAO_Disabled && m_mode != SSAO_NoBlur)
 		{
@@ -158,6 +156,7 @@ namespace Mist
 			CmdDrawFullscreenQuad(cmd);
 		}
 		m_blurRT.EndPass(cmd);
+		GpuProf_End(renderContext);
 		EndGPUEvent(renderContext, cmd);
 	}
 
