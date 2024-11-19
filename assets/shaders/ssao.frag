@@ -29,9 +29,8 @@ layout(set = 0, binding = 0) uniform SSAOUniform
 //layout(set = 0, binding = 5) uniform sampler2D u_SSAONoise;
 
 layout (set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
-layout (set = 2, binding = 0) uniform sampler2D u_GBufferDepth;
-layout (set = 3, binding = 0) uniform sampler2D u_GBufferNormal;
-layout (set = 4, binding = 0) uniform sampler2D u_SSAONoise;
+layout (set = 2, binding = 0) uniform sampler2D u_GBufferNormal;
+layout (set = 3, binding = 0) uniform sampler2D u_SSAONoise;
 
 vec3 GetPosVSFromDepth(float depth, vec2 uv)
 {
@@ -84,12 +83,7 @@ void main()
         vec2 uv = offset.xy;
 
         // get depth from samplePos in clip space
-#if 0
-        float depth = -texture(u_GBufferDepth, uv).r;
-        float sampleDepth = GetPosVSFromDepth(depth, uv).z;
-#else
         float sampleDepth = texture(u_GBufferPosition, uv).z;
-#endif
         float rangeCheck = smoothstep(0.f, 1.f, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.f : 0.f) * rangeCheck;
     }
