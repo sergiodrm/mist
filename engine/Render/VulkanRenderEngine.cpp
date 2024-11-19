@@ -154,7 +154,7 @@ namespace Mist
 		return DefaultTexture;
 	}
 
-	Window Window::Create(uint32_t width, uint32_t height, const char* title)
+	Window Window::Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title)
 	{
 		Window newWindow;
 		newWindow.Width = width;
@@ -162,9 +162,8 @@ namespace Mist
 		strcpy_s(newWindow.Title, title);
 		SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
 		newWindow.WindowInstance = SDL_CreateWindow(
-			title, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-			width, height, windowFlags
-		);
+			title, posx, posy,
+			width, height, windowFlags);
 		SDL_Init(SDL_INIT_VIDEO);
 		return newWindow;
 	}

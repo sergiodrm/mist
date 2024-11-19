@@ -52,8 +52,12 @@ namespace Mist
 
         int w; 
         int h;
-        iniFile.GetInt("width", w, 1920);
-        iniFile.GetInt("height", h, 1080);
+        int x;
+        int y;
+        iniFile.GetInt("WindowWidth", w, 1920);
+        iniFile.GetInt("WindowHeight", h, 1080);
+        iniFile.GetInt("WindowX", x, 0);
+        iniFile.GetInt("WindowY", y, 40);
 
         for (index_t i = 0; i < iniFile.GetValueCount(); ++i)
         {
@@ -63,7 +67,7 @@ namespace Mist
 
 
 
-        m_window = Window::Create(w, h, "MistEngine");
+        m_window = Window::Create(w, h, x, y, "MistEngine");
         m_engine = IRenderEngine::MakeInstance();
         m_engine->Init(m_window);
     }

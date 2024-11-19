@@ -14,7 +14,7 @@ namespace Mist
 		{
 			*Title = 0;
 		}
-		static Window Create(uint32_t width, uint32_t height, const char* title);
+		static Window Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title);
 		static void CreateSurface(const Window& window, void* renderApiInstance, void* outSurface);
 		static void Destroy(Window& window);
 	};
