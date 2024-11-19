@@ -28,7 +28,7 @@
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
 
-#define MESH_DUMP_LOAD_INFO
+//#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
 #define loadmeshlabel "[loadmesh] "
 #define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
