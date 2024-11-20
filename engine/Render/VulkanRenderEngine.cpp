@@ -550,6 +550,7 @@ namespace Mist
 		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
+		GpuProf_Resolve(m_renderContext);
 
 		BeginFrame();
 		{
@@ -764,7 +765,7 @@ namespace Mist
 		}
 		ImGui::End();
 #else
-		GpuProf_Resolve(m_renderContext);
+		//GpuProf_Resolve(m_renderContext);
 		GpuProf_ImGuiDraw(m_renderContext);
 #endif // 0
 

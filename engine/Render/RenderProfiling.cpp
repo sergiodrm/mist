@@ -2,9 +2,12 @@
 #include "RenderContext.h"
 #include "Core/Logger.h"
 #include <imgui.h>
+#include "Application/CmdParser.h"
 
 namespace Mist
 {
+	CBoolVar CVar_ShowGpuProf("r_ShowGpuProf", false);
+
 	struct sGpuProfItem
 	{
 		index_t Id = index_invalid;
@@ -228,7 +231,9 @@ namespace Mist
 			sGpuProfItem& item = stack.Items[index];
 			if (item.Child != index_invalid)
 			{
-				bool treeOpen = ImGui::TreeNodeEx(item.Label.CStr(), ImGuiTreeNodeFlags_SpanAllColumns);
+				bool treeOpen = ImGui::TreeNodeEx(item.Label.CStr(), 
+					ImGuiTreeNodeFlags_SpanAllColumns 
+					| ImGuiTreeNodeFlags_DefaultOpen);
 				ImGui::TableNextColumn();
 				ImGui::Text(valuefmt, item.Value);
 				if (treeOpen)
@@ -250,13 +255,29 @@ namespace Mist
 
 	void GpuProf_ImGuiDraw(const RenderContext& context)
 	{
+		if (!CVar_ShowGpuProf.Get())
+			return;
+
 		uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
 		sGpuProfStack& stack = GpuProfStack[frameIndex];
 
-		//ImGui::Begin("Gpu profiling");
+		index_t size = stack.Items.GetSize();
+		float heightPerLine = 20.f; //approx?
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+		ImVec2 winpos = ImVec2(0.f, viewport->Size.y-heightPerLine*size);
+		ImGui::SetNextWindowPos(winpos);
+		ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
+		ImGui::SetNextWindowBgAlpha(0.f);
+		ImGui::Begin("Gpu profiling", nullptr, ImGuiWindowFlags_NoDecoration 
+			| ImGuiWindowFlags_NoBackground 
+			| ImGuiWindowFlags_NoDocking);
 		if (!stack.Items.IsEmpty())
 		{
-			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH 
+				| ImGuiTableFlags_Resizable 
+				| ImGuiTableFlags_RowBg 
+				| ImGuiTableFlags_NoBordersInBody;
 			if (ImGui::BeginTable("GpuProf", 2, flags))
 			{
 				ImGui::TableSetupColumn("Gpu process");
@@ -266,6 +287,6 @@ namespace Mist
 				ImGui::EndTable();
 			}
 		}
-		//ImGui::End();
+		ImGui::End();
 	}
 }
