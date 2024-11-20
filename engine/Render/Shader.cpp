@@ -26,6 +26,18 @@
 //#define SHADER_DUMP_PREPROCESS_RESULT
 #define SHADER_BINARY_FILE_EXTENSION ".spv"
 
+
+#define SHADER_DUMP_INFO
+#ifdef SHADER_DUMP_INFO
+#define shaderlabel "[shaders] "
+#define shaderlog(fmt) loginfo(shaderlabel fmt)
+#define shaderlogf(fmt, ...) logfinfo(shaderlabel fmt, __VA_ARGS__)
+#else
+#define shaderlog(fmt) DUMMY_MACRO
+#define shaderlogf(fmt, ...) DUMMY_MACRO
+#endif
+
+
 #include <shaderc/shaderc.hpp>  
 #include "Core/SystemMemory.h"
 
@@ -286,7 +298,7 @@ namespace Mist
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, const tCompileOptions& compileOptions)
 	{
 		PROFILE_SCOPE_LOG(ProcessShaderFile, "Shader file process");
-		Logf(LogLevel::Info, "Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+		shaderlogf("Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 
 		check(!strcmp(compileOptions.EntryPointName, "main") && "Set shader entry point not supported yet.");
 
@@ -341,7 +353,7 @@ namespace Mist
 		sprintf_s(buff, "ShaderModule_(%s)", binaryFilepath);
 		SetVkObjectName(m_renderContext, &data.CompiledModule, VK_OBJECT_TYPE_SHADER_MODULE, buff);
 
-		Logf(LogLevel::Ok, "Shader compiled successfully (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+		shaderlogf("Shader compiled successfully (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 		return true;
 	}
 
@@ -579,7 +591,7 @@ namespace Mist
 		size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
 		check(writtenCount == binaryCount);
 		fclose(f);
-		Logf(LogLevel::Ok, "Shader binary compiled written: %s [%u bytes]\n", shaderFilepath, writtenCount * sizeof(uint32_t));
+		shaderlogf("Shader binary compiled written: %s [%u bytes]\n", shaderFilepath, writtenCount * sizeof(uint32_t));
 		return true;
 	}
 

@@ -11,7 +11,6 @@ namespace Mist
 {
 	VkDescriptorPool CreatePool(VkDevice device, const DescriptorPoolSizes& sizes, uint32_t count, VkDescriptorPoolCreateFlags flags)
 	{
-		logdebug("New VkDescriptorPool\n");
 		tDynArray<VkDescriptorPoolSize> vulkanSizes(sizes.Sizes.size());
 		for (uint32_t i = 0; i < sizes.Sizes.size(); ++i)
 			vulkanSizes[i] = { sizes.Sizes[i].Type, (uint32_t)(sizes.Sizes[i].Multiplier * count) };

@@ -66,7 +66,8 @@ namespace Mist
 	void Console::Draw()
 	{
 		ImGui::Begin("Console");
-		ImGui::Checkbox("AutoMove", &m_autoMove);
+		// ImGui::Checkbox("AutoMove", &m_autoMove);
+		bool goend = ImGui::Button("Go end");
 		float footerHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 		if (ImGui::BeginChild("Scrollable", ImVec2(0.f, -footerHeight), false))
 		{
@@ -81,7 +82,7 @@ namespace Mist
 					ImGui::TextColored(LogLevelImGuiColor(level), msg);
 				}
 			}
-			if (m_autoMove)
+			if (goend)
 				ImGui::SetScrollHereY(1.f);
 			ImGui::PopStyleVar();
 			ImGui::EndChild();

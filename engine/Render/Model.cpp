@@ -294,6 +294,7 @@ namespace gltf_api
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
 		check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
+		loadmeshlogf("Load texture: %s\n", texView.texture->image->uri);
 		return true;
 	}
 
@@ -321,11 +322,15 @@ namespace gltf_api
 		};
 		static_assert(sizeof(views) / sizeof(cgltf_texture_view*) == Mist::MATERIAL_TEXTURE_COUNT);
 		static_assert(sizeof(formats) / sizeof(Mist::EFormat) == Mist::MATERIAL_TEXTURE_COUNT);
+
+		loadmeshlogf("Loading material %s\n", material.GetName());
 		for (uint32_t i = 0; i < Mist::MATERIAL_TEXTURE_COUNT; ++i)
 		{
 			if (LoadTexture(context, rootAssetPath, *views[i],
 				formats[i], &material.m_textures[i]))
+			{
 				material.m_textures[i]->CreateView(context, Mist::tViewDescription());
+			}
 		}
 		material.m_emissiveFactor = {cgltfmtl.emissive_factor[0], cgltfmtl.emissive_factor[1] , cgltfmtl.emissive_factor[2], cgltfmtl.emissive_strength.emissive_strength };
 	}

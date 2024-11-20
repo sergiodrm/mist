@@ -10,6 +10,7 @@
 #include "Render/RenderContext.h"
 #include "Render/InitVulkanTypes.h"
 #include "Core/SystemMemory.h"
+#include "Utils/TimeUtils.h"
 
 
 namespace Mist
@@ -647,6 +648,7 @@ namespace Mist
 
 	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format)
 	{
+		PROFILE_SCOPE_LOG(LoadTextureFromFile, "Load texture from file");
 		check(texture);
 		// Load texture from file
 		io::TextureRaw texData;

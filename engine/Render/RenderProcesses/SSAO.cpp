@@ -22,7 +22,6 @@ namespace Mist
 	{
 		std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
 		std::default_random_engine generator;
-		loginfo("SSAO Kernel samples:\n");
 		for (uint32_t i = 0; i < SSAO_KERNEL_SAMPLES; ++i)
 		{
 			float scl = (float)i / (float)SSAO_KERNEL_SAMPLES;
@@ -31,17 +30,14 @@ namespace Mist
 			m_uboData.KernelSamples[i] = glm::vec4(kernel, 1.f);
 			m_uboData.KernelSamples[i] *= randomFloat(generator);
 			m_uboData.KernelSamples[i] *= scl;
-			logfinfo("#%d: %.5f, %.5f, %.5f, %.5f\n", i, m_uboData.KernelSamples[i].x, m_uboData.KernelSamples[i].y, m_uboData.KernelSamples[i].z, m_uboData.KernelSamples[i].w);
 		}
 		m_uboData.Radius = 0.5f;
 		m_uboData.Bias = 0.025f;
 
 		glm::vec4 ssaoNoise[SSAO_NOISE_SAMPLES];
-		loginfo("SSAO noise texture:\n");
 		for (uint32_t i = 0; i < SSAO_NOISE_SAMPLES; ++i)
 		{
 			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
-			logfinfo("#%d: %.5f, %.5f, %.5f, %.5f\n", i, ssaoNoise[i].x, ssaoNoise[i].y, ssaoNoise[i].z, ssaoNoise[i].w);
 		}
 		tImageDescription imageDesc;
 		imageDesc.Width = 4;
