@@ -44,9 +44,12 @@ namespace Mist
 		return (float)point / (float)cpufreq() * 1e3f;
 	}
 
+	tScopeProfiler::tScopeProfiler()
+	{}
+
 	tScopeProfiler::tScopeProfiler(const char* msg)
 	{
-		strcpy_s(m_msg, msg);
+		m_msg = msg;
 		m_start = GetTimePoint();
 	}
 

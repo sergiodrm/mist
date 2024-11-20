@@ -648,7 +648,7 @@ namespace Mist
 
 	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format)
 	{
-		PROFILE_SCOPE_LOG(LoadTextureFromFile, "Load texture from file");
+		PROFILE_SCOPE_LOGF(LoadTextureFromFile, "Load texture from file (%s)", filepath);
 		check(texture);
 		// Load texture from file
 		io::TextureRaw texData;

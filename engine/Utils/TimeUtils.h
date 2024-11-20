@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Core/Types.h"
+
 #define PROFILE_SCOPE_LOG(id, msg) Mist::tScopeProfiler __scopeprof_##id(msg)
+#define PROFILE_SCOPE_LOGF(id, fmt, ...) Mist::tScopeProfiler __scopeprof_##id##; __scopeprof_##id##.m_msg.Fmt(fmt, __VA_ARGS__); __scopeprof_##id##.m_start = Mist::GetTimePoint()
 
 namespace Mist
 {
@@ -11,10 +14,10 @@ namespace Mist
 	class tScopeProfiler
 	{
 	public:
+		tScopeProfiler();
 		tScopeProfiler(const char* msg);
 		~tScopeProfiler();
-	private:
 		tTimePoint m_start;
-		char m_msg[128];
+		tFixedString<128> m_msg;
 	};
 }

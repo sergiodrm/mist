@@ -297,7 +297,7 @@ namespace Mist
 
 	bool ShaderCompiler::ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, const tCompileOptions& compileOptions)
 	{
-		PROFILE_SCOPE_LOG(ProcessShaderFile, "Shader file process");
+		PROFILE_SCOPE_LOGF(ProcessShaderFile, "Shader file process (%s)", filepath);
 		shaderlogf("Compiling shader: [%s: %s]\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 
 		check(!strcmp(compileOptions.EntryPointName, "main") && "Set shader entry point not supported yet.");
@@ -607,7 +607,7 @@ namespace Mist
 		if (attrFile.st_mtime > attrCompiled.st_mtime)
 			return false;
 
-		PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
+		//PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
 		// Binary file is created after last file modification, valid binary
 		FILE* f;
 		errno_t err = fopen_s(&f, binaryFilepath, "rb");
