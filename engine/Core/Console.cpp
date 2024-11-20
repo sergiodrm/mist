@@ -17,6 +17,12 @@ namespace Mist
 
 	extern ImVec4 LogLevelImGuiColor(LogLevel level);
 
+	int ConsoleHistoryCallback(ImGuiInputTextCallbackData* data)
+	{
+		logfdebug("history callback\n");
+		return 0;
+	}
+
 	void AddConsoleCommand(const char* cmdname, FnExecCommandCallback fn)
 	{
 		g_Console.AddCommandCallback(cmdname, fn);
@@ -35,7 +41,6 @@ namespace Mist
 	Console::Console()
 	{
 		ZeroMemory(this, sizeof(*this));
-		m_autoMove = true;
 	}
 
 	void Console::AddCommandCallback(const char* cmdname, FnExecCommandCallback fn)
@@ -67,7 +72,8 @@ namespace Mist
 	{
 		ImGui::Begin("Console");
 		// ImGui::Checkbox("AutoMove", &m_autoMove);
-		bool goend = ImGui::Button("Go end");
+		bool goend = ImGui::Button("Go end") || m_lastIndex < m_pushIndex;
+		m_lastIndex = m_pushIndex;
 		float footerHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 		if (ImGui::BeginChild("Scrollable", ImVec2(0.f, -footerHeight), false))
 		{
@@ -89,9 +95,9 @@ namespace Mist
 		}
 
 		//ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll| ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
-		ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll;
+		ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_CallbackHistory;
 		bool reclaimFocus = false;
-		if (ImGui::InputText("Input", m_inputCommand, 256, flags))
+		if (ImGui::InputText("Input", m_inputCommand, 256, flags, &ConsoleHistoryCallback, this))
 		{
 			ExecCommand(m_inputCommand);
 			*m_inputCommand = 0;

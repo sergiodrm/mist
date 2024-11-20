@@ -40,7 +40,7 @@ namespace Mist
 	private:
 		tLogEntry m_logs[CONSOLE_LOG_COUNT];
 		unsigned int m_pushIndex;
-		bool m_autoMove = false;
+		unsigned int m_lastIndex;
 		char m_inputCommand[CONSOLE_INPUT_LENGTH];
 		tStaticArray<tFixedString<64>, CONSOLE_CMD_CALLBACKS_COUNT> m_callbacksNames;
 		tStaticArray<FnExecCommandCallback, CONSOLE_CMD_CALLBACKS_COUNT> m_cmdFunctions;

@@ -27,7 +27,7 @@
 #define SHADER_BINARY_FILE_EXTENSION ".spv"
 
 
-#define SHADER_DUMP_INFO
+//#define SHADER_DUMP_INFO
 #ifdef SHADER_DUMP_INFO
 #define shaderlabel "[shaders] "
 #define shaderlog(fmt) loginfo(shaderlabel fmt)
@@ -319,7 +319,7 @@ namespace Mist
 #endif // !SHADER_FORCE_COMPILATION
 			)
 		{
-			Logf(LogLevel::Info, "Loading shader binary from compiled file: %s.spv\n", filepath);
+			shaderlogf("Loading shader binary from compiled file: %s.spv\n", filepath);
 		}
 		else
 		{
