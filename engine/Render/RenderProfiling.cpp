@@ -182,6 +182,11 @@ namespace Mist
 		}
 	}
 
+	uint32_t GpuProf_GetOldestFrameIndex(const RenderContext& context)
+	{
+		return (context.FrameIndex + 1) % globals::MaxOverlappedFrames;
+	}
+
 	void GpuProf_End(const RenderContext& context)
 	{
 		if (GpuProf_CanMakeProfile(context))
@@ -206,7 +211,7 @@ namespace Mist
 	{
 		if (GpuProf_CanMakeProfile(context))
 		{
-			uint32_t frameIndex = (context.FrameIndex - 1) % globals::MaxOverlappedFrames;
+			uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
 			const sTimestampQueryPool& queryPool = context.FrameContextArray[frameIndex].GraphicsTimestampQueryPool;
 			GpuProfStack[frameIndex].Resolve(context, queryPool);
 		}
@@ -215,29 +220,52 @@ namespace Mist
 	void BuildGpuProfTree(sGpuProfStack& stack, index_t root)
 	{
 		index_t index = root;
+		const char* valuefmt = "%8.4f";
 		while (index != index_invalid)
 		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
 			sGpuProfItem& item = stack.Items[index];
-			if (ImGui::TreeNode(item.Label.CStr(), "%20s: %8f us", item.Label.CStr(), item.Value))
+			if (item.Child != index_invalid)
 			{
-				if (item.Child != index_invalid)
+				bool treeOpen = ImGui::TreeNodeEx(item.Label.CStr(), ImGuiTreeNodeFlags_SpanAllColumns);
+				ImGui::TableNextColumn();
+				ImGui::Text(valuefmt, item.Value);
+				if (treeOpen)
+				{
 					BuildGpuProfTree(stack, item.Child);
-				ImGui::TreePop();
+					ImGui::TreePop();
+				}
+			}
+			else
+			{
+				ImGui::Text("%s", item.Label.CStr());
+				ImGui::TableNextColumn();
+				ImGui::Text(valuefmt, item.Value);
 			}
 			index = item.Sibling;
 		}
+
 	}
 
 	void GpuProf_ImGuiDraw(const RenderContext& context)
 	{
-		uint32_t frameIndex = (context.FrameIndex - 1) % globals::MaxOverlappedFrames;
+		uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
 		sGpuProfStack& stack = GpuProfStack[frameIndex];
 
-		ImGui::Begin("Gpu profiling");
+		//ImGui::Begin("Gpu profiling");
 		if (!stack.Items.IsEmpty())
 		{
-			BuildGpuProfTree(stack, 0);
+			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH | ImGuiTableFlags_Resizable | ImGuiTableFlags_RowBg | ImGuiTableFlags_NoBordersInBody;
+			if (ImGui::BeginTable("GpuProf", 2, flags))
+			{
+				ImGui::TableSetupColumn("Gpu process");
+				ImGui::TableSetupColumn("Time (us)");
+				ImGui::TableHeadersRow();
+				BuildGpuProfTree(stack, 0);
+				ImGui::EndTable();
+			}
 		}
-		ImGui::End();
+		//ImGui::End();
 	}
 }
