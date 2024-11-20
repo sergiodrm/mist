@@ -86,6 +86,10 @@ namespace Mist
 
 		io.Fonts->AddFontFromFileTTF(ASSET_PATH("fonts/mono/cascadiamono.ttf"), 12.f);
 		io.Fonts->Build();
+
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::PushStyleVarY(ImGuiStyleVar_FramePadding, (float)(int)(style.FramePadding.y * 0.60f));
+		ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, (float)(int)(style.ItemSpacing.y * 0.60f));
 	}
 
 	void ImGuiInstance::Draw(const RenderContext& context, VkCommandBuffer cmd)
