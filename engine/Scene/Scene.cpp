@@ -250,6 +250,7 @@ namespace Mist
 
 	index_t Scene::LoadModel(const RenderContext& context, const char* filepath)
 	{
+		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		cModel* model = GetModel(filepath);
 		if (!model)
 		{
@@ -263,6 +264,7 @@ namespace Mist
 
 	void Scene::LoadScene(const RenderContext& context, const char* filepath)
 	{
+		PROFILE_SCOPE_LOGF(LoadScene, "Load scene (%s)", filepath);
 		io::File file;
 		check(file.Open(filepath, "r"));
 		uint32_t size = file.GetContentSize();
