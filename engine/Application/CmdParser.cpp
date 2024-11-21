@@ -1,6 +1,7 @@
 #include "Application/CmdParser.h"
 #include "Core/Debug.h"
 #include "Core/Logger.h"
+#include "Core/Types.h"
 
 namespace Mist
 {
@@ -24,7 +25,7 @@ namespace Mist
 		check(name && *name);
 		for (uint32_t i = 0; i < VarArrayIndex; ++i)
 		{
-			if (!strcmp(name, VarArray[i]->GetName()))
+			if (!strcmp_ci(name, VarArray[i]->GetName()))
 				return VarArray[i];
 		}
 		return nullptr;
@@ -124,49 +125,44 @@ namespace Mist
 	bool ExecCommand_CVarSet(const char* name, const char* args)
 	{
 		bool res = false;
-		for (uint32_t i = 0; i < VarArrayIndex; ++i)
+		CVar* cvar = FindCVar(name);
+		if (cvar)
 		{
-			// find cvar
-			const char* cvarName = VarArray[i]->GetName();
-			if (!strncmp(name, cvarName, strlen(cvarName)))
+			res = true;
+			// get cmd input params
+			switch (cvar->GetType())
 			{
-				res = true;
-				// get cmd input params
-				switch (VarArray[i]->GetType())
-				{
-				case CVar::CVarType::Int:
-				{
-					int32_t var = atoi(args);
-					((CIntVar*)VarArray[i])->Set(var);
-					break;
-				}
-				case CVar::CVarType::Float:
-				{
-					float var = (float)atof(args);
-					((CFloatVar*)VarArray[i])->Set(var);
-					break;
-				}
-				case CVar::CVarType::Bool:
-				{
-					CBoolVar* cvar = (CBoolVar*)VarArray[i];
-					if (!strcmp(args, "true"))
-						cvar->Set(true);
-					else if (!strcmp(args, "false"))
-						cvar->Set(false);
-					else
-						Logf(LogLevel::Error, "Invalid cmd input for CBoolVar: %s\n", args);
-					break;
-				}
-				case CVar::CVarType::String:
-				{
-					CStrVar* cvar = (CStrVar*)VarArray[i];
-					cvar->Set(args);
-					break;
-				}
-				default:
-					check(false);
-					break;
-				}
+			case CVar::CVarType::Int:
+			{
+				int32_t var = atoi(args);
+				((CIntVar*)cvar)->Set(var);
+				break;
+			}
+			case CVar::CVarType::Float:
+			{
+				float var = (float)atof(args);
+				((CFloatVar*)cvar)->Set(var);
+				break;
+			}
+			case CVar::CVarType::Bool:
+			{
+				CBoolVar* cbvar = (CBoolVar*)cvar;
+				if (!strcmp(args, "true") || !strcmp(args, "1"))
+					cbvar->Set(true);
+				else if (!strcmp(args, "false") || !strcmp(args, "0"))
+					cbvar->Set(false);
+				else
+					Logf(LogLevel::Error, "Invalid cmd input for CBoolVar: %s\n", args);
+				break;
+			}
+			case CVar::CVarType::String:
+			{
+				CStrVar* csvar = (CStrVar*)cvar;
+				csvar->Set(args);
+				break;
+			}
+			default:
+				check(false);
 				break;
 			}
 		}
@@ -175,15 +171,10 @@ namespace Mist
 
 	bool ExecCommand_CVarGet(const char* name)
 	{
-		for (uint32_t i = 0; i < VarArrayIndex; ++i)
-		{
-			if (!strcmp(name, VarArray[i]->GetName()))
-			{
-				PrintCVar(VarArray[i]);
-				return true;
-			}
-		}
-		return false;
+		CVar* v = FindCVar(name);
+		if (v)
+			PrintCVar(v);
+		return v;
 	}
 
 	bool ExecCommand_CVar(const char* cmd)
@@ -192,21 +183,24 @@ namespace Mist
 		if (cmd && cmd[0] == '$')
 		{
 			// read until next space to get the cvar name
-			const char* varEnd = strstr(cmd + 1, " ");
-			if (varEnd)
+			char buff[256];
+			strcpy_s(buff, cmd+1);
+			char* it = nullptr;
+			strtok_s(buff, " ", &it);
+			if (it && *it)
 			{
-				if (ExecCommand_CVarSet(cmd + 1, varEnd + 1))
+				if (ExecCommand_CVarSet(buff, it))
 					return true;
 			}
 			else
 			{
-				if (ExecCommand_CVarGet(cmd + 1))
+				if (ExecCommand_CVarGet(buff))
 				{
 					return true;
 				}
 			}
 			
-			Logf(LogLevel::Error, "Command failed: cvar set not found '%s'", cmd);
+			logferror("Command failed: cvar set not found '%s'\n", cmd);
 		}
 		else if (cmd && !strcmp(cmd, "cvarlist"))
 		{
