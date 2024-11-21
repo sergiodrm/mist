@@ -56,6 +56,6 @@ namespace Mist
 	tScopeProfiler::~tScopeProfiler()
 	{
 		float ms = GetMiliseconds(GetTimePoint() - m_start);
-		Mist::Logf(Mist::LogLevel::Debug, "%s [time lapsed: %f ms]\n", m_msg, ms);
+		logfinfo("%s [time lapsed: %f ms]\n", m_msg, ms);
 	}
 }
