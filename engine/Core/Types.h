@@ -338,10 +338,6 @@ namespace Mist
 		return N * sizeof(T);
 	}
 
-	inline int strcmp_ci(const char* str1, const char* str2)
-	{
-		check(str1 && str2);
-		while (*str1 && *str2 && tolower(*str1++) == tolower(*str2++));
-		return *str1 - *str2;
-	}
+	bool WildStrcmp(const char* wild, const char* str);
+	bool WildStricmp(const char* wild, const char* str);
 }
