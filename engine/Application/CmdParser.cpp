@@ -9,6 +9,7 @@ namespace Mist
 	CVar* VarArray[MAX_VAR_COUNT];
 	uint32_t VarArrayIndex = 0;
 
+
 	void NewCVar(CVar* var)
 	{
 		check(VarArrayIndex <= MAX_VAR_COUNT);
@@ -25,7 +26,7 @@ namespace Mist
 		check(name && *name);
 		for (uint32_t i = 0; i < VarArrayIndex; ++i)
 		{
-			if (!strcmp_ci(name, VarArray[i]->GetName()))
+			if (!_stricmp(name, VarArray[i]->GetName()))
 				return VarArray[i];
 		}
 		return nullptr;
@@ -112,14 +113,27 @@ namespace Mist
 		}
 	}
 
-	void PrintCVarList()
+	void PrintCVarList(const char* wildstr)
 	{
-		Log(LogLevel::Info, "CVar list:\n");
-		for (uint32_t i = 0; i < VarArrayIndex; ++i)
+		if (!wildstr || !*wildstr)
 		{
-			PrintCVar(VarArray[i]);
+			loginfo("CVar list:\n");
+			for (uint32_t i = 0; i < VarArrayIndex; ++i)
+			{
+				PrintCVar(VarArray[i]);
+			}
+			loginfo("**********\n");
 		}
-		Log(LogLevel::Info, "**********\n");
+		else
+		{
+			logfinfo("cvarlist coincidences with \"%s\"\n", wildstr);
+			for (uint32_t i = 0; i < VarArrayIndex; ++i)
+			{
+				if (WildStricmp(wildstr, VarArray[i]->GetName()))
+					PrintCVar(VarArray[i]);
+			}
+			loginfo("**********\n");
+		}
 	}
 
 	bool ExecCommand_CVarSet(const char* name, const char* args)
@@ -179,35 +193,47 @@ namespace Mist
 
 	bool ExecCommand_CVar(const char* cmd)
 	{
+		bool ret = false;
 		// start cmd with $ to set cvar
 		if (cmd && cmd[0] == '$')
 		{
-			// read until next space to get the cvar name
-			char buff[256];
-			strcpy_s(buff, cmd+1);
-			char* it = nullptr;
-			strtok_s(buff, " ", &it);
-			if (it && *it)
+			const char* cvar = cmd + 1;
+			if (!*cvar)
 			{
-				if (ExecCommand_CVarSet(buff, it))
-					return true;
+				PrintCVarList();
+				ret = true;
 			}
 			else
 			{
-				if (ExecCommand_CVarGet(buff))
+				const char* it = cvar;
+				while (*it && *it != '*' && *it != '?') ++it;
+				if (*it)
 				{
-					return true;
+					PrintCVarList(cvar);
+					ret = true;
+				}
+				else
+				{
+					// read until next space to get the cvar name
+					char buff[256];
+					strcpy_s(buff, cvar);
+					char* it = nullptr;
+					strtok_s(buff, " ", &it);
+					if (it && *it)
+						ret = ExecCommand_CVarSet(buff, it);
+					else
+						ret = ExecCommand_CVarGet(buff);
 				}
 			}
-			
-			logferror("Command failed: cvar set not found '%s'\n", cmd);
 		}
 		else if (cmd && !strcmp(cmd, "cvarlist"))
 		{
 			PrintCVarList();
-			return true;
+			ret = true;
 		}
-		return false;
+		if (!ret)
+			logferror("Command failed: cvar set not found '%s'\n", cmd);
+		return ret;
 	}
 
 

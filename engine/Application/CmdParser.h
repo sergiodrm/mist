@@ -68,7 +68,7 @@ namespace Mist
 
 	CVar* FindCVar(const char* name);
 	bool SetCVar(const char* name, const char* strValue);
-	void PrintCVarList();
+	void PrintCVarList(const char* wildstr = nullptr);
 	bool ExecCommand_CVar(const char* cmd);
 
 	class CmdParser
