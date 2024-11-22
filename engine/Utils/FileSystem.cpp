@@ -77,7 +77,7 @@ namespace Mist
 		{
 			logerror("Ini file not found.\n");
 			char buff[512];
-			char* cws = getcwd(buff, 512);
+			char* cws = _getcwd(buff, 512);
 			logferror("Current workspace directory: %s\n", cws);
 			return;
 		}
