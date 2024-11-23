@@ -28,7 +28,7 @@
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
 
-//#define MESH_DUMP_LOAD_INFO
+#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
 #define loadmeshlabel "[loadmesh] "
 #define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
@@ -426,7 +426,7 @@ namespace Mist
 			const cgltf_node& node = data->nodes[i];
 			index_t parentIndex = index_invalid;
 			if (node.parent)
-				parentIndex = gltf_api::GetArrayElementOffset(data->nodes, &node);
+				parentIndex = gltf_api::GetArrayElementOffset(data->nodes, node.parent);
 			index_t nodeIndex = BuildNode(i, parentIndex, node.name);
 
 			// Process transform
@@ -518,6 +518,50 @@ namespace Mist
 
 	void cModel::ImGuiDraw()
 	{
+		if (ImGui::TreeNode("Model tree"))
+		{
+			for (index_t i = 0; i < m_nodes.GetSize(); ++i)
+			{
+				const sNode& node = m_nodes[i];
+				char buff[16];
+				sprintf_s(buff, "##node%d", i);
+				if (ImGui::TreeNode(buff, m_nodeNames[i].CStr()))
+				{
+					sprintf_s(buff, "##mesh%d", i);
+					if (node.MeshId != index_invalid)
+					{
+						if (ImGui::TreeNode(buff, m_meshes[node.MeshId].GetName()))
+						{
+							cMesh& mesh = m_meshes[node.MeshId];
+							ImGui::Text("Primitives: %5d", mesh.PrimitiveArray.GetSize());
+							ImGui::Text("Triangles:  %5d", mesh.IndexCount / 3);
+							ImGui::Text("Gpu memory: %5.2f MB", (float)mesh.IndexCount / 3.f * sizeof(Vertex) / 1024.f / 1024.f);
+							sprintf_s(buff, "##prim%d", i);
+							if (ImGui::TreeNode(buff, "Primitives"))
+							{
+								for (index_t i = 0; i < mesh.PrimitiveArray.GetSize(); ++i)
+								{
+									PrimitiveMeshData& primitive = mesh.PrimitiveArray[i];
+									ImGui::Text("Material:   %s", primitive.Material ? primitive.Material->GetName() : "none");
+									ImGui::Text("Triangles: %4d", primitive.Count/3);
+									int flags = primitive.RenderFlags;
+									if (ImGui::CheckboxFlags("No shadows", &flags, RenderFlags_ShadowMap))
+										primitive.RenderFlags = (uint16_t)flags;
+									if (ImGui::CheckboxFlags("No visible", &flags, RenderFlags_Fixed))
+										primitive.RenderFlags = (uint16_t)flags;
+								}
+								ImGui::TreePop();
+							}
+							ImGui::TreePop();
+						}
+					}
+					else
+						ImGui::Text("No mesh");
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
+		}
 		if (ImGui::TreeNode("Material list"))
 		{
 			for (index_t i = 0; i < m_materials.GetSize(); ++i)

@@ -45,10 +45,10 @@ namespace Mist
 
 		index_t m_root = index_invalid;
 	public:
-		tFixedHeapArray<sNode, index_t> m_nodes;
-		tFixedHeapArray<tFixedString<32>, index_t> m_nodeNames;
-		tFixedHeapArray<cMesh, index_t> m_meshes;
-		tFixedHeapArray<cMaterial, index_t> m_materials;
-		tFixedHeapArray<glm::mat4, index_t> m_transforms;
+		tFixedHeapArray<sNode> m_nodes;
+		tFixedHeapArray<tFixedString<32>> m_nodeNames;
+		tFixedHeapArray<cMesh> m_meshes;
+		tFixedHeapArray<cMaterial> m_materials;
+		tFixedHeapArray<glm::mat4> m_transforms;
 	};
 }
