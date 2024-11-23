@@ -122,7 +122,7 @@ namespace Mist
 	{
 		tCircularBuffer() : Index(0)
 		{
-			memset(Data, 0, sizeof(T) * N);
+			//memset(Data, 0, sizeof(T) * N);
 		}
 
 		void Push(const T& value)
@@ -136,6 +136,7 @@ namespace Mist
 			return Data[GetIndex(i)];
 		}
 
+		const T& GetFromLatest(uint32_t i) const { return Get(Index - (i+1)); }
 		const T& GetFromOldest(uint32_t i) const { return Data[GetIndex(Index + 1 + i)]; }
 
 		const T& GetLast() const { return Get(Index - 1); }
