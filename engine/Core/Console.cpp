@@ -17,12 +17,6 @@ namespace Mist
 
 	extern ImVec4 LogLevelImGuiColor(LogLevel level);
 
-	int ConsoleHistoryCallback(ImGuiInputTextCallbackData* data)
-	{
-		logfdebug("history callback\n");
-		return 0;
-	}
-
 	void AddConsoleCommand(const char* cmdname, FnExecCommandCallback fn)
 	{
 		g_Console.AddCommandCallback(cmdname, fn);
@@ -39,8 +33,10 @@ namespace Mist
 	}
 
 	Console::Console()
+		: m_mode(ConsoleMode_Input), 
+		m_newEntry(false),
+		m_historyIndex(0)
 	{
-		ZeroMemory(this, sizeof(*this));
 	}
 
 	void Console::AddCommandCallback(const char* cmdname, FnExecCommandCallback fn)
@@ -51,11 +47,11 @@ namespace Mist
 
 	void Console::Log(LogLevel level, const char* msg)
 	{
-		sprintf_s(m_logs[m_pushIndex % CONSOLE_LOG_COUNT].Msg, "%d %s", (int)level, msg);
-		char* s = strstr(m_logs[m_pushIndex % CONSOLE_LOG_COUNT].Msg, " ");
-		check(s);
-		*s = 0;
-		++m_pushIndex;
+		tLogEntry entry;
+		strcpy_s(entry.Msg, msg);
+		entry.Level = level;
+		m_logs.Push(entry);
+		m_newEntry = true;
 	}
 
 	void Console::LogFmt(LogLevel level, const char* fmt, ...)
@@ -72,21 +68,17 @@ namespace Mist
 	{
 		ImGui::Begin("Console");
 		// ImGui::Checkbox("AutoMove", &m_autoMove);
-		bool goend = ImGui::Button("Go end") || m_lastIndex < m_pushIndex;
-		m_lastIndex = m_pushIndex;
+		bool goend = ImGui::Button("Go end") || m_newEntry;
+		m_newEntry = false;
 		float footerHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
 		if (ImGui::BeginChild("Scrollable", ImVec2(0.f, -footerHeight), false))
 		{
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
-			for (uint32_t i = 0; i < CONSOLE_LOG_COUNT; ++i)
+			for (uint32_t i = 0; i < m_logs.GetCount(); ++i)
 			{
-				const char* msg = m_logs[(m_pushIndex + 1 + i) % CONSOLE_LOG_COUNT].Msg;
-				if (*msg)
-				{
-					LogLevel level = (LogLevel)atoi(msg);
-					msg += strlen(msg)+1;
-					ImGui::TextColored(LogLevelImGuiColor(level), msg);
-				}
+				const tLogEntry& entry = m_logs.GetFromOldest(i);
+				if (*entry.Msg)
+					ImGui::TextColored(LogLevelImGuiColor(entry.Level), entry.Msg);
 			}
 			if (goend)
 				ImGui::SetScrollHereY(1.f);
@@ -94,10 +86,11 @@ namespace Mist
 			ImGui::EndChild();
 		}
 
-		//ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll| ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_CallbackHistory;
-		ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll | ImGuiInputTextFlags_CallbackHistory;
+		ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll 
+			| ImGuiInputTextFlags_CallbackHistory
+			| ImGuiInputTextFlags_CallbackEdit;
 		bool reclaimFocus = false;
-		if (ImGui::InputText("Input", m_inputCommand, 256, flags, &ConsoleHistoryCallback, this))
+		if (ImGui::InputText("Input", m_inputCommand, 256, flags, &Console::ConsoleInputCallback, this))
 		{
 			ExecCommand(m_inputCommand);
 			*m_inputCommand = 0;
@@ -132,7 +125,10 @@ namespace Mist
 
 	void Console::ExecCommand(const char* cmd)
 	{
-		Logf(LogLevel::Info, "Command: %s\n", m_inputCommand);
+		if (!*cmd)
+			return;
+		logfinfo("Command: %s\n", m_inputCommand);
+		InsertCommandHistory(cmd);
 		if (!ExecInternalCommand(cmd))
 		{
 			check(m_callbacksNames.GetSize() == m_cmdFunctions.GetSize());
@@ -147,7 +143,81 @@ namespace Mist
 		}
 		else
 			return;
-		Logf(LogLevel::Error, "Error: invalid console command '%s'\n", cmd);
+		logfinfo("Error: invalid console command '%s'\n", cmd);
+	}
+
+	void Console::InsertCommandHistory(const char* cmd)
+	{
+		m_history.Push(cmd);
+	}
+
+	int Console::ConsoleHistoryCallback(ImGuiInputTextCallbackData* data)
+	{
+		check(data && data->UserData);
+		Console& console = *(Console*)data->UserData; 
+		switch (data->EventKey)
+		{
+		case ImGuiKey_UpArrow:
+		{
+			if (console.m_historyIndex == UINT32_MAX)
+				console.m_historyIndex = 0;
+			else
+			{
+				if (console.m_historyIndex == console.m_history.GetCount()
+					|| console.m_history.GetFromLatest(console.m_historyIndex).IsEmpty())
+				{
+					logerror("End of history command.\n");
+				}
+				else
+					++console.m_historyIndex;
+
+			}
+		} break;
+		case ImGuiKey_DownArrow:
+		{
+			if (console.m_historyIndex == 0)
+				console.m_historyIndex = UINT32_MAX;
+			else
+				--console.m_historyIndex;
+		} break;
+		}
+
+		if (console.m_historyIndex != UINT32_MAX)
+		{
+			const tInputString& str = console.m_history.GetFromLatest(console.m_historyIndex);
+			if (!str.IsEmpty())
+			{
+				check(data->BufSize > (int)str.Length());
+				strcpy_s(data->Buf, data->BufSize, str.CStr());
+				data->BufTextLen = str.Length();
+				data->BufDirty = true;
+				data->SelectAll();
+			}
+		}
+		else
+		{
+			data->ClearSelection();
+			*data->Buf = 0;
+			data->BufTextLen = 0;
+			data->BufDirty = true;
+		}
+		return 0;
+	}
+
+	int Console::ConsoleInputCallback(ImGuiInputTextCallbackData* data)
+	{
+		check(data && data->UserData);
+		Console& console = *(Console*)data->UserData;
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackEdit)
+			console.ResetHistoryMode();
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory)
+			Console::ConsoleHistoryCallback(data);
+		return 0;
+	}
+
+	void Console::ResetHistoryMode()
+	{
+		m_historyIndex = UINT32_MAX;
 	}
 
 }
