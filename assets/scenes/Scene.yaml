@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0441176295, 0.0441176295, 0.0441176295]
   Skybox:
-    Front: ../assets/textures/skybox/front.jpg
-    Back: ../assets/textures/skybox/back.jpg
-    Top: ../assets/textures/skybox/top.jpg
-    Bottom: ../assets/textures/skybox/bottom.jpg
-    Left: ../assets/textures/skybox/left.jpg
-    Right: ../assets/textures/skybox/right.jpg
+    Front: ../assets/textures/skybox/left.jpg
+    Back: ../assets/textures/skybox/right.jpg
+    Top: ../assets/textures/skybox/front.jpg
+    Bottom: ../assets/textures/skybox/back.jpg
+    Left: ../assets/textures/skybox/top.jpg
+    Right: ../assets/textures/skybox/bottom.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -78,3 +78,12 @@ RenderObjects:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: ../assets/models/emissive/emissivestrengthtest.gltf
+  - RenderObject: 6
+    Name: MetalRoughSpheres
+    Parent: 0
+    TransformComponent:
+      Position: [37, 15.5, 0]
+      Rotation: [0, -1.57000005, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../assets/models/metalrough/metalroughspheres.gltf
