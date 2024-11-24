@@ -25,15 +25,6 @@ namespace Mist
 		CopyDynArray(m_imageViews, swapchain.get_image_views().value());
 		m_imageFormat = fromvk::GetFormat(swapchain.image_format);
 
-		// Create depth buffer
-		VkExtent3D depthExtent = { spec.ImageWidth, spec.ImageHeight, 1 };
-		m_depthFormat = FORMAT_D32_SFLOAT;
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(m_depthFormat, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthExtent);
-		m_depthImage = MemNewImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-
-		// Image view
-		VkImageViewCreateInfo viewInfo = vkinit::ImageViewCreateInfo(m_depthFormat, m_depthImage.Image, VK_IMAGE_ASPECT_DEPTH_BIT);
-		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_depthImageView));
 		return true;
 	}
 
@@ -44,8 +35,6 @@ namespace Mist
 		for (size_t i = 0; i < m_imageViews.size(); ++i)
 			vkDestroyImageView(renderContext.Device, m_imageViews[i], nullptr);
 
-		vkDestroyImageView(renderContext.Device, m_depthImageView, nullptr);
-		MemFreeImage(renderContext.Allocator, m_depthImage);
 		vkDestroySwapchainKHR(renderContext.Device, m_swapchain, nullptr);
 	}
 }
