@@ -181,7 +181,11 @@ namespace Mist
 		inline void Clear(const T& clearValue)
 		{
 			for (uint32_t i = 0; i < Size; ++i)
-				Data[Size] = clearValue;
+			{
+				Data[i] = clearValue;
+				Data[i].~T();
+			}
+			Clear();
 		}
 
 		void Push(const T& value)
