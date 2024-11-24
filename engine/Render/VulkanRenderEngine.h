@@ -90,7 +90,6 @@ namespace Mist
 		virtual const Scene* GetScene() const override;
 		virtual void SetScene(Scene* scene);
 		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
-		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) override { m_eventCallback = fn; }
 
 		const RenderContext& GetContext() const { return m_renderContext; }
 
@@ -117,11 +116,6 @@ namespace Mist
 		ScreenQuadPipeline m_screenPipeline;
 		CubemapPipeline m_cubemapPipeline;
 		Renderer m_renderer;
-#if 0
-
-		RenderFrameContext m_frameContextArray[globals::MaxOverlappedFrames];
-		uint32_t m_frameCounter;
-#endif // 0
 
 		uint32_t m_currentSwapchainIndex;
 
@@ -136,8 +130,6 @@ namespace Mist
 
 		typedef std::function<void()> ImGuiCallback;
 		tDynArray<ImGuiCallback> m_imguiCallbackArray;
-		typedef std::function<void(void*)> EventCallback;
-		EventCallback m_eventCallback;
 
 		GPUParticleSystem m_gpuParticleSystem;
 	};

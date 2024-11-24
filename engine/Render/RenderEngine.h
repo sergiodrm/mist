@@ -40,7 +40,6 @@ namespace Mist
 		virtual const Scene* GetScene() const = 0;
 		virtual void SetScene(Scene* scene) = 0;
 		virtual void AddImGuiCallback(std::function<void()>&& fn) = 0;
-		virtual void SetAppEventCallback(std::function<void(void*)>&& fn) = 0;
 	};
 
 }

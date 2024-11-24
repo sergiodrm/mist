@@ -4,6 +4,8 @@
 #include "Core/Logger.h"
 #include "Application/CmdParser.h"
 #include "Utils/FileSystem.h"
+#include "Event.h"
+#include "SDL_events.h"
 
 extern Mist::tApplication* CreateGameApplication();
 extern void DestroyGameApplication(Mist::tApplication*);
@@ -11,84 +13,134 @@ extern void DestroyGameApplication(Mist::tApplication*);
 
 namespace Mist
 {
-    CStrVar GIniFile("IniFile", "default.ini");
+	extern CBoolVar CVar_ShowConsole;
 
-    tApplication* tApplication::CreateApplication(int argc, char** argv)
-    {
-        tApplication* app = CreateGameApplication();
-        app->Init(argc, argv);
-        return app;
-    }
+	CStrVar GIniFile("IniFile", "default.ini");
 
-    void tApplication::DestroyApplication(tApplication* app)
-    {
-        app->Destroy();
-        DestroyGameApplication(app);
-    }
+	tApplication* tApplication::CreateApplication(int argc, char** argv)
+	{
+		tApplication* app = CreateGameApplication();
+		app->Init(argc, argv);
+		return app;
+	}
 
-    void tApplication::Init(int argc, char** argv)
-    {
-        check(!m_engine);
+	void tApplication::DestroyApplication(tApplication* app)
+	{
+		app->Destroy();
+		DestroyGameApplication(app);
+	}
 
-        logfinfo("Cmd line: %s", argv[0]);
-        for (int i = 1; i < argc; ++i)
-        {
-            logfinfo(" %s", argv[i]);
-            char* it = strstr(argv[i], "-");
-            if (it)
-            {
-                char* endVar = strstr(it+1, ":");
-                check(endVar);
-                size_t varLen = static_cast<size_t>(endVar - (it + 1));
-                char varName[64];
-                check(varLen < 64ul);
-                strncpy_s(varName, it + 1, varLen);
-                SetCVar(varName, endVar + 1);
-            }
-        }
-        loginfo("\n");
+	tApplication::tApplication()
+		: m_windowClosed(false)
+	{
+	}
 
-        cIniFile iniFile(GIniFile.Get());
+	void tApplication::Init(int argc, char** argv)
+	{
+		check(!m_engine);
 
-        int w; 
-        int h;
-        int x;
-        int y;
-        iniFile.GetInt("WindowWidth", w, 1920);
-        iniFile.GetInt("WindowHeight", h, 1080);
-        iniFile.GetInt("WindowX", x, 0);
-        iniFile.GetInt("WindowY", y, 40);
+		logfinfo("Cmd line: %s", argv[0]);
+		for (int i = 1; i < argc; ++i)
+		{
+			logfinfo(" %s", argv[i]);
+			char* it = strstr(argv[i], "-");
+			if (it)
+			{
+				char* endVar = strstr(it + 1, ":");
+				check(endVar);
+				size_t varLen = static_cast<size_t>(endVar - (it + 1));
+				char varName[64];
+				check(varLen < 64ul);
+				strncpy_s(varName, it + 1, varLen);
+				SetCVar(varName, endVar + 1);
+			}
+		}
+		loginfo("\n");
 
-        for (index_t i = 0; i < iniFile.GetValueCount(); ++i)
-        {
-            if (SetCVar(iniFile.GetKey(i), iniFile.GetValue(i)))
-                logfinfo("CVar setted from %s file: %s = %s\n", GIniFile.Get(), iniFile.GetKey(i), iniFile.GetValue(i));
-        }
+		cIniFile iniFile(GIniFile.Get());
+
+		int w;
+		int h;
+		int x;
+		int y;
+		iniFile.GetInt("WindowWidth", w, 1920);
+		iniFile.GetInt("WindowHeight", h, 1080);
+		iniFile.GetInt("WindowX", x, 0);
+		iniFile.GetInt("WindowY", y, 40);
+
+		for (index_t i = 0; i < iniFile.GetValueCount(); ++i)
+		{
+			if (SetCVar(iniFile.GetKey(i), iniFile.GetValue(i)))
+				logfinfo("CVar setted from %s file: %s = %s\n", GIniFile.Get(), iniFile.GetKey(i), iniFile.GetValue(i));
+		}
 
 
 
-        m_window = Window::Create(w, h, x, y, "MistEngine");
-        m_engine = IRenderEngine::MakeInstance();
-        m_engine->Init(m_window);
-    }
+		m_window = Window::Create(w, h, x, y, "MistEngine");
+		m_engine = IRenderEngine::MakeInstance();
+		m_engine->Init(m_window);
+	}
 
-    void tApplication::Destroy()
-    {
-        m_engine->Shutdown();
-        IRenderEngine::FreeRenderEngine();
-        m_engine = nullptr;
-        Window::Destroy(m_window);
-    }
+	void tApplication::Destroy()
+	{
+		m_engine->Shutdown();
+		IRenderEngine::FreeRenderEngine();
+		m_engine = nullptr;
+		Window::Destroy(m_window);
+	}
 
-    int tApplication::Run()
-    {
-        int result = 0;
-        while (!result)
-        {
-            LogicProcess(0.033f);
-            if (!m_engine->RenderProcess())
-                result = EXIT_FAILURE;
-        }
-        return result;
-    }
+	int tApplication::Run()
+	{
+		int result = 0;
+		while (!m_windowClosed)
+		{
+			ProcessAppEvents();
+			LogicProcess(0.033f);
+			if (!m_windowMinimized)
+			{
+				if (!m_engine->RenderProcess())
+					result = EXIT_FAILURE;
+			}
+		}
+		return result;
+	}
+
+	void tApplication::ProcessAppEvents()
+	{
+		auto processEventLambda = [](void* e, void* userData)
+			{
+				check(e && userData);
+				tApplication& app = *(tApplication*)userData;
+				SDL_Event& ev = *(SDL_Event*)e;
+				switch (ev.type)
+				{
+				case SDL_QUIT:
+					app.m_windowClosed = true;
+					break;
+				case SDL_WINDOWEVENT:
+				{
+					{
+						uint8_t windowEvent = (*(SDL_WindowEvent*)&ev).event;
+						if (windowEvent == SDL_WINDOWEVENT_CLOSE)
+							app.m_windowClosed = true;
+						if (windowEvent == SDL_WINDOWEVENT_MINIMIZED)
+							app.m_windowMinimized = true;
+					}
+					break;
+				default:
+					app.ProcessEvent(e);
+					break;
+				}
+				}
+			};
+		ProcessEvents(processEventLambda, this);
+		UpdateInputState();
+
+		if (GetKeyboardState(MIST_KEY_CODE_TAB) && !GetKeyboardPreviousState(MIST_KEY_CODE_TAB))
+			CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
+	}
+
+	void tApplication::ProcessEvent(void* e)
+	{
+	}
 }

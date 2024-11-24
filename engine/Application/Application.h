@@ -17,6 +17,8 @@ namespace Mist
 		static Window Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title);
 		static void CreateSurface(const Window& window, void* renderApiInstance, void* outSurface);
 		static void Destroy(Window& window);
+
+		static bool IsMinimized(const Window& window);
 	};
 
 	class tApplication
@@ -26,6 +28,7 @@ namespace Mist
 		static tApplication* CreateApplication(int argc, char** argv);
 		static void DestroyApplication(tApplication* app);
 
+		tApplication();
 		virtual ~tApplication() = default;
 		virtual void Init(int argc, char** argv);
 		virtual void Destroy();
@@ -34,9 +37,13 @@ namespace Mist
 		class IRenderEngine* GetEngineInstance() const { return m_engine; }
 	protected:
 		virtual void LogicProcess(float deltaTime) {}
+		void ProcessAppEvents();
+		virtual void ProcessEvent(void* e);
 
 	private:
 		class IRenderEngine* m_engine = nullptr;
 		Window m_window;
+		uint8_t m_windowClosed : 1;
+		uint8_t m_windowMinimized : 1;
 	};
 }

@@ -179,6 +179,12 @@ namespace Mist
 		ZeroMemory(&window, sizeof(Window));
 	}
 
+	bool Window::IsMinimized(const Window& window)
+	{
+		Uint32 flags = SDL_GetWindowFlags((SDL_Window*)window.WindowInstance);
+		return flags & SDL_WINDOW_MINIMIZED;
+	}
+
 	void ScreenQuadPipeline::Init(const RenderContext& context, const Swapchain& swapchain)
 	{
 		uint32_t swapchainCount = swapchain.GetImageCount();
@@ -370,43 +376,13 @@ namespace Mist
 		point = now;
 		Profiling::ShowFps(1000.f / (ms));
 
-		bool exitFlag = false;
-		struct ProcessEventPayload
-		{
-			VulkanRenderEngine* Engine;
-			bool* Exit;
-		} data{ this, &exitFlag };
-
-		ProcessEvents([](void* e, void* userData)
-			{
-				ProcessEventPayload& payload = *(ProcessEventPayload*)userData;
-				SDL_Event& ev = *(SDL_Event*)e;
-				switch (ev.type)
-				{
-				case SDL_QUIT: *payload.Exit = true; break;
-				case SDL_WINDOWEVENT:
-				{
-					uint8_t windowEvent = (*(SDL_WindowEvent*)&ev).event;
-					if (windowEvent == SDL_WINDOWEVENT_CLOSE)
-						*payload.Exit = true;
-					break;
-				}
-				}
-				if (payload.Engine->m_eventCallback)
-					payload.Engine->m_eventCallback(&ev);
-			}, &data);
-		UpdateInputState();
-
-		if (GetKeyboardState(MIST_KEY_CODE_TAB) && !GetKeyboardPreviousState(MIST_KEY_CODE_TAB))
-			CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
-
 		m_screenPipeline.UIInstance.BeginFrame(m_renderContext);
 		for (auto& fn : m_imguiCallbackArray)
 			fn();
 		//BeginFrame();
 		Mist::Profiling::GRenderStats.Reset();
 		Draw();
-		return !exitFlag;
+		return true;
 	}
 
 	void VulkanRenderEngine::Shutdown()

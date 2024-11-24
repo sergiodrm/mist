@@ -213,7 +213,6 @@ public:
 		Mist::Scene* scene = new Mist::Scene(engine);
 		engine->SetScene(scene);
 		scene->LoadScene(engine->GetContext(), "../assets/scenes/scene.yaml");
-		engine->SetAppEventCallback([this](void* d) { m_camera.ProcessEvent(d); });
 	}
 
 	virtual void LogicProcess(float deltaTime) override 
@@ -221,7 +220,12 @@ public:
 		m_camera.Tick(deltaTime);
 		GetEngineInstance()->UpdateSceneView(m_camera.GetCamera().GetView(), m_camera.GetCamera().GetProjection());
 	}
-
+protected:
+	virtual void ProcessEvent(void* e) override
+	{
+		Mist::tApplication::ProcessEvent(e);
+		m_camera.ProcessEvent(e);
+	}
 private:
 	Mist::CameraController m_camera;
 };
