@@ -22,32 +22,13 @@ namespace Mist
 		void DrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
 		void DrawAxis(const glm::mat4& transform);
 		void DrawSphere(const glm::vec3& pos, float radius, const glm::vec3& color, uint32_t vertices = 16);
-		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const TextureBindingDescriptor& texDescriptor);
-		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, ImageView view, EImageLayout layout, Sampler sampler = nullptr);
 		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const cTexture& texture, uint32_t view = 0);
 
-		void SetDebugClipParams(float nearClip, float farClip);
-
-		struct QuadRenderData
-		{
-			VertexBuffer VB;
-			IndexBuffer IB;
-			tArray<VkDescriptorSet[2], globals::MaxOverlappedFrames> DescriptorSets;
-		};
 	}
 
 
 	class DebugPipeline
 	{
-		struct FrameData
-		{
-			// line
-			VkDescriptorSet CameraSet;
-			VkDescriptorSet SetUBO;
-
-			// quads
-			VkDescriptorSet QuadSet[2];
-		};
 	public:
 		void Init(const RenderContext& context, const RenderTarget* renderTarget);
 		void PushFrameData(const RenderContext& context, UniformBufferMemoryPool* buffer);
@@ -60,7 +41,6 @@ namespace Mist
 		ShaderProgram* m_lineShader;
 		VertexBuffer m_lineVertexBuffer;
 
-		tDynArray<FrameData> m_frameSet;
 		VertexBuffer m_quadVertexBuffer;
 		IndexBuffer m_quadIndexBuffer;
 		ShaderProgram* m_quadShader;

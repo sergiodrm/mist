@@ -61,7 +61,6 @@ namespace Mist
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			DownsampleShader = ShaderProgram::Create(context, shaderDesc);
-			DownsampleShader->SetupDescriptors(context);
 		}
 
 		// Upscale
@@ -90,7 +89,6 @@ namespace Mist
 			};
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			UpsampleShader = ShaderProgram::Create(context, shaderDesc);
-			UpsampleShader->SetupDescriptors(context);
 		}
 
 		{
@@ -111,7 +109,6 @@ namespace Mist
 			blending.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			ComposeShader = ShaderProgram::Create(context, shaderDesc);
-			ComposeShader->SetupDescriptors(context);
 		}
 
 #if 1
@@ -178,10 +175,7 @@ namespace Mist
 				float y = (float)context.Window->Height / (float)BLOOM_MIPMAP_LEVELS * (float)i;
 				float w = (float)context.Window->Width * 0.25f;
 				float h = (float)context.Window->Height / (float)BLOOM_MIPMAP_LEVELS;
-				DebugRender::DrawScreenQuad({ x, y },
-					{ w, h },
-					RenderTargetArray[i].GetRenderTarget(0),
-					IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+				DebugRender::DrawScreenQuad({ x, y }, { w, h }, *RenderTargetArray[i].GetTexture());
 			}
 		}
 		GpuProf_End(context);

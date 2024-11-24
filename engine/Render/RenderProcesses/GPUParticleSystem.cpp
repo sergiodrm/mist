@@ -61,7 +61,6 @@ namespace Mist
 			description.ColorAttachmentBlendingArray[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 			description.ColorAttachmentBlendingArray[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 			m_graphicsShader = ShaderProgram::Create(context, description);
-			m_graphicsShader->SetupDescriptors(context);
 		}
 
 		m_particlesBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
@@ -200,7 +199,8 @@ namespace Mist
 			float height = (float)context.Window->Height;
 			float wprop = 0.f;
 			float hprop = 0.f;
-			DebugRender::DrawScreenQuad(glm::vec2{ width * wprop, height * hprop }, glm::vec2{ width * (1.f-wprop), height * (1.f-hprop)}, m_renderTarget.GetRenderTarget(0), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+			DebugRender::DrawScreenQuad(glm::vec2{ width * wprop, height * hprop }, glm::vec2{ width * (1.f-wprop), height * (1.f-hprop)}, 
+				*m_renderTarget.GetTexture());
 		}
 	}
 

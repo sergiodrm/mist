@@ -81,7 +81,6 @@ namespace Mist
 		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 		shaderDesc.RenderTarget = &m_rt;
 		m_ssaoShader = ShaderProgram::Create(renderContext, shaderDesc);
-		m_ssaoShader->SetupDescriptors(renderContext);
 
 		// Blur RT
 		RenderTargetDescription blurRtDesc;
@@ -97,7 +96,6 @@ namespace Mist
 		blurShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 		blurShaderDesc.RenderTarget = &m_blurRT;
 		m_blurShader = ShaderProgram::Create(renderContext, blurShaderDesc);
-		m_blurShader->SetupDescriptors(renderContext);
 	}
 
 	void SSAO::Destroy(const RenderContext& renderContext)

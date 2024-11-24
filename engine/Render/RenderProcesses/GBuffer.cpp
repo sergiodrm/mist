@@ -87,12 +87,11 @@ namespace Mist
 
 	void GBuffer::DebugDraw(const RenderContext& context)
 	{
-		float w = 1920.f;
-		float h = 1080.f;
+		float w = (float)context.Window->Width;
+		float h = (float)context.Window->Height;
 		float factor = 0.5f;
 		glm::vec2 pos = { w * factor, 0.f };
 		glm::vec2 size = glm::vec2{ w, h } *factor;
-		TextureBindingDescriptor tex;
 		switch (m_debugMode)
 		{
 		case DEBUG_NONE:
@@ -105,60 +104,27 @@ namespace Mist
 			pos = { x, y };
 			size = { w * 0.25f, ydiff };
 			static_assert(RT_COUNT > 0);
-			for (uint32_t i = RT_POSITION; i < RT_COUNT-1; ++i)
+			for (uint32_t i = RT_POSITION; i < RT_COUNT; ++i)
 			{
-				tex.View = GetRenderTarget()->GetRenderTarget(i);
-				tex.Layout = GetRenderTarget()->GetDescription().ColorAttachmentDescriptions[i].Layout;
-				tex.Sampler = nullptr;
-				DebugRender::DrawScreenQuad(pos, size, tex);
+				DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(i));
 				pos.y += ydiff;
 			}
-			tex.View = GetRenderTarget()->GetDepthAttachment().View;
-			tex.Layout = GetRenderTarget()->GetDescription().DepthAttachmentDescription.Layout;
-			tex.Sampler = nullptr;
-			DebugRender::DrawScreenQuad(pos, size, tex);
-			pos.y += ydiff;
 		}
 			break;
 		case DEBUG_POSITION:
-		{
-			tex.View = GetRenderTarget()->GetRenderTarget(RT_POSITION);
-			tex.Layout = GBUFFER_RT_LAYOUT_POSITION;
-			tex.Sampler = nullptr;
-			DebugRender::DrawScreenQuad(pos, size, tex);
-		}
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_POSITION));
 			break;
 		case DEBUG_NORMAL:
-		{
-			tex.View = GetRenderTarget()->GetRenderTarget(RT_NORMAL);
-			tex.Layout = GBUFFER_RT_LAYOUT_NORMAL;
-			tex.Sampler = nullptr;
-			DebugRender::DrawScreenQuad(pos, size, tex);
-		}
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_NORMAL));
 			break;
 		case DEBUG_ALBEDO:
-		{
-			tex.View = GetRenderTarget()->GetRenderTarget(RT_ALBEDO);
-			tex.Layout = GBUFFER_RT_LAYOUT_ALBEDO;
-			tex.Sampler = nullptr;
-			DebugRender::DrawScreenQuad(pos, size, tex);
-		}
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_ALBEDO));
 			break;
 		case DEBUG_DEPTH:
-		{
-			tex.View = GetRenderTarget()->GetRenderTarget(RT_DEPTH);
-			tex.Layout = GBUFFER_RT_LAYOUT_DEPTH;
-			tex.Sampler = nullptr;
-			DebugRender::DrawScreenQuad(pos, size, tex);
-		}
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetDepthTexture());
 			break;
 		case DEBUG_EMISSIVE:
-		{
-			tex.View = GetRenderTarget()->GetRenderTarget(RT_EMISSIVE);
-			tex.Layout = GBUFFER_RT_LAYOUT_ALBEDO;
-			tex.Sampler = nullptr;
-			DebugRender::DrawScreenQuad(pos, size, tex);
-		}
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_EMISSIVE));
 			break;
 		default:
 			break;
@@ -188,6 +154,5 @@ namespace Mist
 		shaderDesc.RenderTarget = &m_renderTarget;
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
-		m_shader->SetupDescriptors(renderContext);
 	}
 }

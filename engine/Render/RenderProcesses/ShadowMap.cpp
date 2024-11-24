@@ -58,7 +58,6 @@ namespace Mist
 		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 		shaderDesc.RenderTarget = renderTarget;
 		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
-		m_shader->SetupDescriptors(renderContext);
 	}
 
 	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
@@ -72,14 +71,14 @@ namespace Mist
 	{
 		m_perspectiveParams[2] = nearClip;
 		m_perspectiveParams[3] = farClip;
-		DebugRender::SetDebugClipParams(nearClip, farClip);
+		//DebugRender::SetDebugClipParams(nearClip, farClip);
 	}
 
 	void ShadowMapPipeline::SetOrthographicClip(float nearClip, float farClip)
 	{
 		m_orthoParams[4] = nearClip;
 		m_orthoParams[5] = farClip;
-		DebugRender::SetDebugClipParams(nearClip, farClip);
+		//DebugRender::SetDebugClipParams(nearClip, farClip);
 	}
 
 	glm::mat4 ShadowMapPipeline::GetProjection(EShadowMapProjectionType projType) const
@@ -349,7 +348,7 @@ namespace Mist
 		case DEBUG_NONE:
 			break;
 		case DEBUG_SINGLE_RT:
-			DebugRender::DrawScreenQuad({ 1920.f * 0.75f, 0.f }, { 1920.f * 0.25f, 1080.f * 0.25f }, m_shadowMapTargetArray[m_debugIndex].GetDepthBuffer(), SHADOW_MAP_RT_LAYOUT);
+			DebugRender::DrawScreenQuad({ 1920.f * 0.75f, 0.f }, { 1920.f * 0.25f, 1080.f * 0.25f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
 			break;
 		case DEBUG_ALL:
 			glm::vec2 screenSize = { 1920.f, 1080.f };
@@ -358,7 +357,7 @@ namespace Mist
 			glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 			{
-				DebugRender::DrawScreenQuad(pos, size, m_shadowMapTargetArray[i].GetDepthBuffer(), SHADOW_MAP_RT_LAYOUT);
+				DebugRender::DrawScreenQuad(pos, size, *m_shadowMapTargetArray[i].GetDepthTexture());
 				pos.y += size.y;
 			}
 			break;

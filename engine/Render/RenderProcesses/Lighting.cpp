@@ -39,7 +39,6 @@ namespace Mist
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			shaderDesc.ColorAttachmentBlendingArray.push_back(vkinit::PipelineColorBlendAttachmentState());
 			m_lightingShader = ShaderProgram::Create(renderContext, shaderDesc);
-			m_lightingShader->SetupDescriptors(renderContext);
 		}
 
 #if 0
@@ -71,7 +70,6 @@ namespace Mist
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			hdrShaderDesc.RenderTarget = &m_hdrOutput;
 			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
-			m_hdrShader->SetupDescriptors(renderContext);
 		}
 
 		// ComposeTarget needs to be != nullptr on create shaders
