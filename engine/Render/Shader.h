@@ -219,7 +219,6 @@ namespace Mist
 
 		void Destroy(const RenderContext& context);
 		bool Reload(const RenderContext& context);
-		void SetupDescriptors(const RenderContext& context);
 		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
 
 		[[deprecated]]
@@ -250,6 +249,7 @@ namespace Mist
 		void DumpInfo();
 
 	private:
+		void SetupDescriptors(const RenderContext& context);
 		VkCommandBuffer GetCommandBuffer(const RenderContext& context) const;
 		bool _Create(const RenderContext& context, const tShaderProgramDescription& description);
 		bool _ReloadGraphics(const RenderContext& context);

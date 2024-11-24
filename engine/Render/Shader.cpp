@@ -1042,6 +1042,7 @@ namespace Mist
 	{
 		ShaderProgram* program = _new ShaderProgram();
 		check(program->_Create(context, description));
+		program->SetupDescriptors(context);
 		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
 		db.AddShaderProgram(context, program);
 		return program;
