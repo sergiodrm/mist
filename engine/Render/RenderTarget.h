@@ -111,7 +111,9 @@ namespace Mist
 		inline VkFramebuffer GetFramebuffer() const { return m_framebuffer; }
 		inline VkRenderPass GetRenderPass() const { return m_renderPass; }
 		inline VkImageView GetRenderTarget(uint32_t index) const { return m_attachments[index].View; }
+		inline const cTexture* GetTexture(uint32_t index = 0) const { return m_attachments[index].Tex; }
 		VkImageView GetDepthBuffer() const;
+		const cTexture* GetDepthTexture() const;
 
 		uint32_t GetAttachmentCount() const;
 		const RenderTargetAttachment& GetAttachment(uint32_t index) const;

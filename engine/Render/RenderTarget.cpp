@@ -500,7 +500,6 @@ namespace Mist
 		return res;
 	}
 
-
 	VkImageView RenderTarget::GetDepthBuffer() const
 	{
 		if (m_description.DepthAttachmentDescription.IsValidAttachment())
@@ -508,5 +507,12 @@ namespace Mist
 			return m_attachments[m_description.ColorAttachmentCount].View;
 		}
 		return VK_NULL_HANDLE;
+	}
+
+	const cTexture* RenderTarget::GetDepthTexture() const
+	{
+		if (m_description.DepthAttachmentDescription.IsValidAttachment())
+			return m_attachments[m_description.ColorAttachmentCount].Tex;
+		return nullptr;
 	}
 }
