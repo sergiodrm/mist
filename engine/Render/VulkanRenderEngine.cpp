@@ -283,7 +283,6 @@ namespace Mist
 		{
 			m_descriptorAllocators[i].Init(m_renderContext, DescriptorPoolSizes::GetDefault());
 			m_renderContext.FrameContextArray[i].DescriptorAllocator = &m_descriptorAllocators[i];
-			m_renderContext.FrameContextArray[i].FrameIndex = i;
 			m_renderContext.FrameContextArray[i].Renderer = &m_renderer;
 			m_renderContext.FrameContextArray[i].StatusFlags = 0;
 		}
@@ -512,7 +511,7 @@ namespace Mist
 		UBOTime time{ 0.033f, 0.f };
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_TIME, &time, sizeof(UBOTime));
 
-		frameContext.PresentTex = m_screenPipeline.PresentTexSets[m_renderContext.GetFrameIndex()];
+		//frameContext.PresentTex = m_screenPipeline.PresentTexSets[m_renderContext.GetFrameIndex()];
 		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
 		m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_renderer.UpdateRenderData(m_renderContext, frameContext);

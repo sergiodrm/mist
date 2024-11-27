@@ -138,7 +138,7 @@ namespace Mist
 		m_shader->SetDynamicBufferData(renderContext, "u_ubo", m_depthMVPCache, sizeof(glm::mat4), globals::MaxShadowMapAttachments);
 	}
 
-	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t frameIndex, uint32_t lightIndex)
+	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex)
 	{
 		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		check(lightIndex < globals::MaxShadowMapAttachments);
@@ -301,9 +301,7 @@ namespace Mist
 		{
 			m_shadowMapTargetArray[i].BeginPass(renderContext, cmd);
 			if (i < m_lightCount)
-			{
-				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, renderFrameContext.FrameIndex, i);
-			}
+				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
 			m_shadowMapTargetArray[i].EndPass(cmd);
 		}
 		GpuProf_End(renderContext);

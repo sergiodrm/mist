@@ -75,10 +75,6 @@ namespace Mist
 		Renderer* Renderer;
 
 
-		// Frame
-		[[deprecated]]
-		uint32_t FrameIndex;
-
 		// Final tex to present
 		// TODO: remove mutable and const
 		[[deprecated]]
