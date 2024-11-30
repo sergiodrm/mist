@@ -1,5 +1,5 @@
 
-dependenciesTargetDir = "%{wks.location}/thirdparty/lib"
+dependenciesTargetDir = "%{libdir}"
 
 --include "SDL/SDL2.lua"
 

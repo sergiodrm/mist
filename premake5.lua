@@ -4,15 +4,20 @@ include "Dependencies.lua"
 
 includes["mist"] = "%{wks.location}/engine"
 
-outputdir = "%{wks.location}/bin/"
+outputdir = "%{wks.location}/bin/%{cfg.buildcfg}"
 temporaldir = "%{wks.location}/temp/%{cfg.buildcfg}_%{cfg.architecture}"
+libdir = "%{wks.location}/lib/%{cfg.buildcfg}"
 
 newaction {
     trigger = "clean",
     description = "clear project files",
     execute = function()
-        os.execute("del /s *.vcxproj*")
-        os.execute("del /s *.sln")
+        os.execute("del /q /s *.vcxproj*")
+        os.execute("del /q /s *.sln")
+        os.execute("del /q /s bin")
+        os.execute("del /q /s temp")
+        os.execute("rmdir bin")
+        os.execute("rmdir temp")
     end
 }
 
