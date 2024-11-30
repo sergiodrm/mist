@@ -17,6 +17,7 @@
 #include "Texture.h"
 #include "Material.h"
 #include "Utils/GenericUtils.h"
+#include "Utils/TimeUtils.h"
 #undef CGLTF_IMPLEMENTATION
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
@@ -28,7 +29,7 @@
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
 
-#define MESH_DUMP_LOAD_INFO
+//#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
 #define loadmeshlabel "[loadmesh] "
 #define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
@@ -386,6 +387,7 @@ namespace Mist
 
 	void cModel::LoadModel(const RenderContext& context, const char* filepath)
 	{
+		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		check(m_materials.IsEmpty() && m_meshes.IsEmpty());
 		cgltf_data* data = gltf_api::ParseFile(filepath);
 		char rootAssetPath[512];
