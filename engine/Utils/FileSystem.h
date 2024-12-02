@@ -1,9 +1,43 @@
 #pragma once
 
 #include "Core/Types.h"
+#include "Application/CmdParser.h"
 
 namespace Mist
 {
+	extern CStrVar CVar_Workspace;
+
+	class cAssetPath
+	{
+	public:
+
+		cAssetPath();
+		cAssetPath(const char* path);
+
+		template <size_t N>
+		static void GetWorkspacePath(char(&path)[N])
+		{
+			char temp[N];
+			strcpy_s(temp, path);
+			sprintf_s(path, "%s%s", CVar_Workspace.Get(), temp);
+		}
+
+		template <size_t N>
+		static void GetWorkspacePath(char(&dst)[N], const char* path)
+		{
+			sprintf_s(dst, "%s%s", CVar_Workspace.Get(), path);
+		}
+
+		operator const char* () const { return m_path; }
+		const char* Get() const { return m_path; }
+		const char* c_str() const { return m_path; }
+		inline bool empty() const { return !*m_path; }
+		void Set(const char* path);
+
+	private:
+		char m_path[256];
+	};
+
 	class cFile
 	{
 	public:

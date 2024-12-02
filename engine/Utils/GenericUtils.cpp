@@ -10,6 +10,7 @@
 #include "glm/gtx/matrix_decompose.hpp"
 #include "Render/Globals.h"
 #include <imgui/imgui.h>
+#include "FileSystem.h"
 
 namespace Mist
 {
@@ -119,7 +120,8 @@ namespace Mist
 		char buff[512];
 		if (asAssetPath)
 		{
-			sprintf_s(buff, "%s%s", ASSET_ROOT_PATH, filepath);
+			cAssetPath::GetWorkspacePath(buff, filepath);
+			//sprintf_s(buff, "%s%s", ASSET_ROOT_PATH, filepath);
 			file = buff;
 		}
 		FILE* f;

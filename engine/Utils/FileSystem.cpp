@@ -1,9 +1,14 @@
 #include "FileSystem.h"
 #include "Core/Logger.h"
 #include <direct.h>
+#include "Application/CmdParser.h"
 
 namespace Mist
 {
+	CStrVar CVar_Workspace("Workspace", "../assets/");
+
+
+
 	cFile::~cFile()
 	{
 		Close();
@@ -144,7 +149,7 @@ namespace Mist
 		const char* begvar = it++;
 		while (*it && *it != ' ' && *it != '=') ++it;
 		check(*it);
-		uint32_t varnamelength = (it++) - begvar;
+		uint32_t varnamelength = uint32_t((it++) - begvar);
 		char var[32];
 		strncpy_s(var, begvar, varnamelength);
 		check(*it);
@@ -158,7 +163,7 @@ namespace Mist
 		check(*it);
 		begvar = it++;
 		while (*it && *it != ' ' && *it != ';' && *it != '#') ++it;
-		varnamelength = it - begvar;
+		varnamelength = uint32_t(it - begvar);
 		char value[64];
 		strncpy_s(value, begvar, varnamelength);
 
@@ -179,5 +184,19 @@ namespace Mist
 			m_values.push_back(value);
 			m_keyValueMap[key] = (index_t)(m_keys.size() - 1);
 		}
+	}
+	cAssetPath::cAssetPath()
+	{
+		*m_path = 0;
+	}
+
+	cAssetPath::cAssetPath(const char* path)
+	{
+		Set(path);
+	}
+
+	void cAssetPath::Set(const char* path)
+	{
+		GetWorkspacePath(m_path, path);
 	}
 }
