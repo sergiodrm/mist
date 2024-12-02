@@ -36,7 +36,10 @@ namespace Mist
 	{
 		CVar* cvar = FindCVar(name);
 		if (!cvar)
+		{
+			logferror("Unknown CVar: %s\n", name);
 			return false;
+		}
 		switch (cvar->GetType())
 		{
 		case CVar::CVarType::Int:
@@ -84,7 +87,7 @@ namespace Mist
 			Logf(LogLevel::Info, "$%s %d (def: %d)\n", var->GetName(), var->Get(), var->GetDefault());
 			break;
 		}
-			break;
+		break;
 		case CVar::CVarType::Float:
 		{
 			CFloatVar* var = (CFloatVar*)cvar;
@@ -94,19 +97,19 @@ namespace Mist
 		case CVar::CVarType::Bool:
 		{
 			CBoolVar* var = (CBoolVar*)cvar;
-			Logf(LogLevel::Info, "$%s %s (def: %s)\n", var->GetName(), 
-				var->Get() ? "true" : "false", 
+			Logf(LogLevel::Info, "$%s %s (def: %s)\n", var->GetName(),
+				var->Get() ? "true" : "false",
 				var->GetDefault() ? "true" : "false");
 			break;
 		}
-			break;
+		break;
 		case CVar::CVarType::String:
 		{
 			CStrVar* var = (CStrVar*)cvar;
 			Logf(LogLevel::Info, "$%s %s (def: %s)\n", var->GetName(), var->Get(), var->GetDefault());
 			break;
 		}
-			break;
+		break;
 		default:
 			check(false);
 			break;
