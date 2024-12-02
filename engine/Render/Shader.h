@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <string>
 #include <Core/Types.h>
+#include <Utils/FileSystem.h>
 #include "Render/RenderTypes.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/RenderAPI.h"
@@ -81,7 +82,7 @@ namespace Mist
 
 	struct ShaderFileDescription
 	{
-		tString Filepath;
+		cAssetPath Filepath;
 		tCompileOptions CompileOptions;
 	};
 

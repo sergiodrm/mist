@@ -18,6 +18,7 @@
 #include "Material.h"
 #include "Utils/GenericUtils.h"
 #include "Utils/TimeUtils.h"
+#include "Utils/FileSystem.h"
 #undef CGLTF_IMPLEMENTATION
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
@@ -389,24 +390,25 @@ namespace Mist
 	{
 		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		check(m_materials.IsEmpty() && m_meshes.IsEmpty());
-		cgltf_data* data = gltf_api::ParseFile(filepath);
+		cAssetPath assetPath(filepath);
+		cgltf_data* data = gltf_api::ParseFile(assetPath);
 		char rootAssetPath[512];
-		io::GetDirectoryFromFilepath(filepath, rootAssetPath, 512);
+		io::GetDirectoryFromFilepath(assetPath, rootAssetPath, 512);
 		if (!data)
 		{
-			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", filepath);
+			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", assetPath);
 			return;
 		}
 
 		if (!data->nodes_count)
 		{
-			Logf(LogLevel::Error, "Model file without nodes in scene: %s.\n", filepath);
+			Logf(LogLevel::Error, "Model file without nodes in scene: %s.\n", assetPath);
 			gltf_api::FreeData(data);
 			return;
 		}
-		SetName(filepath);
+		SetName(assetPath);
 
-		loadmeshlogf("Loading model from file: %s\n", filepath);
+		loadmeshlogf("Loading model from file: %s\n", assetPath);
 		loadmeshlogf("* nodes: %d\n", data->nodes_count);
 		loadmeshlogf("* materials: %d\n", data->materials_count);
 		loadmeshlogf("* meshes: %d\n", data->meshes_count);

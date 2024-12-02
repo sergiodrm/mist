@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0441176295, 0.0441176295, 0.0441176295]
   Skybox:
-    Front: ../assets/textures/skybox/left.jpg
-    Back: ../assets/textures/skybox/right.jpg
-    Top: ../assets/textures/skybox/front.jpg
-    Bottom: ../assets/textures/skybox/back.jpg
-    Left: ../assets/textures/skybox/top.jpg
-    Right: ../assets/textures/skybox/bottom.jpg
+    Front: textures/skybox/left.jpg
+    Back: textures/skybox/right.jpg
+    Top: textures/skybox/front.jpg
+    Bottom: textures/skybox/back.jpg
+    Left: textures/skybox/top.jpg
+    Right: textures/skybox/bottom.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -68,7 +68,7 @@ RenderObjects:
       Rotation: [0, -0, 0]
       Scale: [1, 1, 1]
     MeshComponent:
-      MeshAssetPath: ../assets/models/sponza/sponzatest/Sponzatest.gltf
+      MeshAssetPath: models/sponza/sponzatest/Sponzatest.gltf
   - RenderObject: 5
     Name: EmissiveTest
     Parent: 0
@@ -77,7 +77,7 @@ RenderObjects:
       Rotation: [0, -1.57000005, 0]
       Scale: [1, 1, 1]
     MeshComponent:
-      MeshAssetPath: ../assets/models/emissive/emissivestrengthtest.gltf
+      MeshAssetPath: models/emissive/emissivestrengthtest.gltf
   - RenderObject: 6
     Name: MetalRoughSpheres
     Parent: 0
@@ -86,4 +86,4 @@ RenderObjects:
       Rotation: [0, -1.57000005, 0]
       Scale: [1, 1, 1]
     MeshComponent:
-      MeshAssetPath: ../assets/models/metalrough/metalroughspheres.gltf
+      MeshAssetPath: models/metalrough/metalroughspheres.gltf

@@ -666,8 +666,11 @@ namespace Mist
 		cTexture* cubemapTex = cTexture::Create(context, imageDesc);
 		// Set image layers with each cubemap texture
 		cubemapTex->SetImageLayers(context, pixelsArray, Skybox::COUNT);
+		cubemapTex->CreateView(context, {.ViewType = VK_IMAGE_VIEW_TYPE_CUBE });
 		//SubmitTexture(cubemapTex);
+		skybox.Tex = cubemapTex;
 
+#if 0
 		tViewDescription viewDesc;
 		viewDesc.BaseArrayLayer = 0;
 		viewDesc.LayerCount = Skybox::COUNT;
@@ -678,12 +681,8 @@ namespace Mist
 		info.sampler = cubemapTex->GetSampler();
 		builder.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
 		check(builder.Build(context, skybox.CubemapSet));
+#endif // 0
 
-		// Mesh
-		static const char* cubeMeshFile = ASSET_PATH("models/cube.gltf");
-		skybox.MeshIndex = LoadModel(context, cubeMeshFile);
-		check(skybox.MeshIndex != index_invalid);
-		skybox.Tex = cubemapTex;
 		return true;
 	}
 
@@ -772,18 +771,9 @@ namespace Mist
 		}
 	}
 
-	void Scene::DrawSkybox(CommandBuffer cmd, ShaderProgram* shader)
+	const cTexture* Scene::GetSkyboxTexture() const
 	{
-		if (m_skybox.CubemapSet != VK_NULL_HANDLE)
-		{
-#if 0
-			const cMesh& mesh = m_meshes[m_skybox.MeshIndex];
-			mesh.BindBuffers(cmd);
-			shader->BindDescriptorSets(cmd, &m_skybox.CubemapSet, 1, 1, nullptr, 0);
-			RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
-#endif // 0
-
-		}
+		return m_skybox.Tex;
 	}
 
 	void Scene::ImGuiDraw()

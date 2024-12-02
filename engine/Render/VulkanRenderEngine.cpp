@@ -245,6 +245,7 @@ namespace Mist
 
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{
+		check(!Cube && !Shader);
 		tShaderProgramDescription shaderDesc;
 		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
 		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
@@ -254,10 +255,17 @@ namespace Mist
 		shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
 		shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 		Shader = ShaderProgram::Create(context, shaderDesc);
+
+		Cube = _new cModel();
+		Cube->LoadModel(context, ASSET_PATH("models/cube.gltf"));
 	}
 
 	void CubemapPipeline::Destroy(const RenderContext& context)
 	{
+		check(Cube);
+		Cube->Destroy(context);
+		delete Cube;
+		Cube = nullptr;
 	}
 
 	bool VulkanRenderEngine::Init(const Window& window)
@@ -336,15 +344,6 @@ namespace Mist
 				m_screenPipeline.DebugInstance.PushFrameData(m_renderContext, &buffer);
 			}
 
-			// Cubemap pipeline
-			{
-				buffer.AllocUniform(m_renderContext, "ProjViewRot", 2 * sizeof(glm::mat4));
-				VkDescriptorBufferInfo bufferInfo = buffer.GenerateDescriptorBufferInfo("ProjViewRot");
-				DescriptorBuilder::Create(*m_renderContext.LayoutCache, *m_renderContext.DescAllocator)
-					.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
-					.Build(m_renderContext, m_cubemapPipeline.Sets[i]);
-			}
-
 			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Init(m_renderContext.Device, 20);
 			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Init(m_renderContext.Device, 20);
 		}
@@ -404,6 +403,7 @@ namespace Mist
 		DebugRender::Destroy(m_renderContext);
 		m_renderer.Destroy(m_renderContext);
 		m_screenPipeline.Destroy(m_renderContext);
+		m_cubemapPipeline.Destroy(m_renderContext);
 
 		if (DefaultTexture)
 			cTexture::Destroy(m_renderContext, DefaultTexture);
@@ -499,12 +499,6 @@ namespace Mist
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.DescriptorAllocator = m_renderContext.DescAllocator;
 
-		glm::mat4 viewRot = m_cameraData.InvView;
-		viewRot[3] = { 0.f,0.f,0.f,1.f };
-		glm::mat4 ubo[2];
-		ubo[0] = viewRot;
-		ubo[1] = m_cameraData.Projection * viewRot;
-		frameContext.GlobalBuffer.SetUniform(m_renderContext, "ProjViewRot", &ubo, 2 * sizeof(glm::mat4));
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
 		frameContext.GlobalBuffer.SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
 
@@ -568,12 +562,8 @@ namespace Mist
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
 			m_screenPipeline.RenderTargetArray[m_currentSwapchainIndex].BeginPass(m_renderContext, cmd);
 			// Skybox
-			if (m_scene)
-			{
-				m_cubemapPipeline.Shader->UseProgram(cmd);
-				m_cubemapPipeline.Shader->BindDescriptorSets(cmd, &m_cubemapPipeline.Sets[frameIndex], 1, 0, nullptr, 0);
-				m_scene->DrawSkybox(cmd, m_cubemapPipeline.Shader);
-			}
+			if (m_scene && m_scene->GetSkyboxTexture())
+				DrawCubemap(m_renderContext, *m_scene->GetSkyboxTexture());
 
 
 
@@ -747,6 +737,24 @@ namespace Mist
 		m_gpuParticleSystem.ImGuiDraw();
 	}
 
+	void VulkanRenderEngine::DrawCubemap(const RenderContext& context, const cTexture& texture)
+	{
+		m_cubemapPipeline.Shader->UseProgram(context);
+		const RenderFrameContext& frameContext = context.GetFrameContext();
+		glm::mat4 viewRot = frameContext.CameraData->InvView;
+		viewRot[3] = { 0.f,0.f,0.f,1.f };
+		glm::mat4 ubo[2];
+		ubo[0] = viewRot;
+		ubo[1] = frameContext.CameraData->Projection * viewRot;
+		m_cubemapPipeline.Shader->SetBufferData(context, "u_ubo", ubo, sizeof(glm::mat4) * 2);
+		m_cubemapPipeline.Shader->BindTextureSlot(context, 1, texture);
+		m_cubemapPipeline.Shader->FlushDescriptors(context);
+		CommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
+		check(m_cubemapPipeline.Cube->m_meshes.GetSize() == 1);
+		const cMesh& mesh = m_cubemapPipeline.Cube->m_meshes[0];
+		mesh.BindBuffers(cmd);
+		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
+	}
 
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{

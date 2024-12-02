@@ -66,10 +66,10 @@ namespace Mist
 		void* m_id{ nullptr };
 	};
 
-	class cIniFile
+	class cCfgFile
 	{
 	public:
-		cIniFile(const char* filepath);
+		cCfgFile(const char* filepath);
 
 		bool GetInt(const char* key, int& value, int defaultValue = 0) const;
 		bool GetBool(const char* key, bool& value, bool defaultValue = false) const;

@@ -133,13 +133,10 @@ namespace Mist
 			BOTTOM,
 			COUNT
 		};
-		uint32_t MeshIndex;
-		VkDescriptorSet CubemapSet;
 		cTexture* Tex;
-
 		char CubemapFiles[COUNT][256];
 
-		Skybox() : MeshIndex(UINT32_MAX), CubemapSet(VK_NULL_HANDLE) 
+		Skybox()
 		{ 
 			Tex = nullptr;
 			for (uint32_t i = 0; i < COUNT; ++i)
@@ -192,7 +189,8 @@ namespace Mist
 
 		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
 		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags = 0) const;
-		void DrawSkybox(CommandBuffer cmd, ShaderProgram* shader);
+		// can be nullptr
+		const cTexture* GetSkyboxTexture() const;
 
 		void ImGuiDraw();
 		bool IsDirty() const;

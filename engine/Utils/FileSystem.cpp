@@ -74,7 +74,7 @@ namespace Mist
 		return s;
 	}
 
-	cIniFile::cIniFile(const char* filepath)
+	cCfgFile::cCfgFile(const char* filepath)
 	{
 		cFile file;
 		cFile::eResult e = file.Open(filepath, cFile::FileMode_Read);
@@ -96,7 +96,7 @@ namespace Mist
 		file.Close();
 	}
 
-	bool cIniFile::GetInt(const char* key, int& value, int defaultValue) const
+	bool cCfgFile::GetInt(const char* key, int& value, int defaultValue) const
 	{
 		if (m_keyValueMap.contains(key))
 		{
@@ -108,7 +108,7 @@ namespace Mist
 		return false;
 	}
 
-	bool cIniFile::GetBool(const char* key, bool& value, bool defaultValue) const
+	bool cCfgFile::GetBool(const char* key, bool& value, bool defaultValue) const
 	{
 		int v;
 		if (GetInt(key, v, defaultValue ? 1 : 0))
@@ -120,12 +120,12 @@ namespace Mist
 		return false;
 	}
 
-	bool cIniFile::GetFloat(const char* key, float& value, float defaultValue) const
+	bool cCfgFile::GetFloat(const char* key, float& value, float defaultValue) const
 	{
 		return false;
 	}
 
-	void cIniFile::ParseVars(char* data)
+	void cCfgFile::ParseVars(char* data)
 	{
 		char tokens[] = "\r\n";
 		char* next = nullptr;
@@ -137,7 +137,7 @@ namespace Mist
 		}
 	}
 
-	void cIniFile::ParseLine(const char* line)
+	void cCfgFile::ParseLine(const char* line)
 	{
 		if (!line || !*line || *line == '#')
 			return;
@@ -170,7 +170,7 @@ namespace Mist
 		InsertValue(var, value);
 	}
 
-	void cIniFile::InsertValue(const char* key, const char* value)
+	void cCfgFile::InsertValue(const char* key, const char* value)
 	{
 		if (m_keyValueMap.contains(key))
 		{

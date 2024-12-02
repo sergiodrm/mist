@@ -11,6 +11,7 @@
 #include "Render/InitVulkanTypes.h"
 #include "Core/SystemMemory.h"
 #include "Utils/TimeUtils.h"
+#include "Utils/FileSystem.h"
 
 
 namespace Mist
@@ -21,12 +22,13 @@ namespace Mist
 		if (!path || !*path)
 			return false;
 
+		cAssetPath assetPath(path);
 		//stbi_set_flip_vertically_on_load(true);
 		int32_t width, height, channels;
-		stbi_uc* pixels = stbi_load(path, &width, &height, &channels, STBI_rgb_alpha);
+		stbi_uc* pixels = stbi_load(assetPath, &width, &height, &channels, STBI_rgb_alpha);
 		if (!pixels)
 		{
-			Logf(LogLevel::Error, "Fail to load texture data from %s.\n", path);
+			logferror("Fail to load texture data from %s.\n", assetPath);
 			return false;
 		}
 		if (channels != 4)
@@ -164,8 +166,7 @@ namespace Mist
 			.viewType = viewDesc.ViewType,
 			.format = tovk::GetFormat(m_description.Format),
 		};
-		//check(viewDesc.BaseMipLevel + viewDesc.LevelCount <= m_description.MipLevels);
-		check(viewDesc.BaseArrayLayer + viewDesc.LayerCount <= m_description.Layers);
+		check(viewDesc.LayerCount == VK_REMAINING_ARRAY_LAYERS || viewDesc.BaseArrayLayer + viewDesc.LayerCount <= m_description.Layers);
 		viewInfo.subresourceRange.baseMipLevel = 0;
 		viewInfo.subresourceRange.levelCount = viewDesc.UseMipmaps ? m_description.MipLevels : 1;
 		viewInfo.subresourceRange.baseArrayLayer = viewDesc.BaseArrayLayer;

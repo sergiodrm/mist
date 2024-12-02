@@ -47,7 +47,7 @@ namespace Mist
 	{
 		bool UseMipmaps = true;
 		uint32_t BaseArrayLayer = 0;
-		uint32_t LayerCount = 1;
+		uint32_t LayerCount = VK_REMAINING_ARRAY_LAYERS;
 		EImageAspect AspectMask = IMAGE_ASPECT_COLOR_BIT;
 		VkImageViewType ViewType = VK_IMAGE_VIEW_TYPE_2D;
 		VkImageViewCreateFlags Flags = 0;

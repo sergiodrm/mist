@@ -15,7 +15,7 @@ namespace Mist
 {
 	extern CBoolVar CVar_ShowConsole;
 
-	CStrVar GIniFile("IniFile", "default.ini");
+	CStrVar GIniFile("IniFile", "default.cfg");
 
 	tApplication* tApplication::CreateApplication(int argc, char** argv)
 	{
@@ -57,7 +57,7 @@ namespace Mist
 		}
 		loginfo("\n");
 
-		cIniFile iniFile(GIniFile.Get());
+		cCfgFile iniFile(GIniFile.Get());
 
 		int w;
 		int h;

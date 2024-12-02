@@ -611,7 +611,11 @@ namespace Mist
 		// Binary file is created after last file modification, valid binary
 		FILE* f;
 		errno_t err = fopen_s(&f, binaryFilepath, "rb");
-		check(!err && f && "Failed to open shader compiled file");
+		if (err || !f)
+		{
+			logferror("Failed to open file: %s\n", binaryFilepath);
+			check(false && "Failed to open shader compiled file");
+		}
 		fseek(f, 0L, SEEK_END);
 		size_t numbytes = ftell(f);
 		fseek(f, 0L, SEEK_SET);

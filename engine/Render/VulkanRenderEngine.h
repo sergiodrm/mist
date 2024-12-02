@@ -68,7 +68,7 @@ namespace Mist
 	struct CubemapPipeline
 	{
 		ShaderProgram* Shader = nullptr;
-		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> Sets;
+		cModel* Cube = nullptr;
 
 		void Init(const RenderContext& context, const RenderTarget* rt);
 		void Destroy(const RenderContext& context);
@@ -100,6 +100,7 @@ namespace Mist
 		void BeginFrame();
 		void Draw();
 		void ImGuiDraw();
+		void DrawCubemap(const RenderContext& context, const cTexture& texture);
 		RenderFrameContext& GetFrameContext();
 
 

@@ -10,6 +10,7 @@
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_vulkan.h>
 #include "Core/Console.h"
+#include "Utils/FileSystem.h"
 
 namespace Mist
 {
@@ -142,7 +143,8 @@ namespace Mist
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-		io.Fonts->AddFontFromFileTTF(ASSET_PATH("fonts/mono/cascadiamono.ttf"), 12.f);
+		cAssetPath fontPath("fonts/mono/cascadiamono.ttf");
+		io.Fonts->AddFontFromFileTTF(fontPath, 12.f);
 		io.Fonts->Build();
 
 		ImGuiStyle& style = ImGui::GetStyle();
