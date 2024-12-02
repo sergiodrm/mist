@@ -28,7 +28,7 @@ namespace Mist
 		stbi_uc* pixels = stbi_load(assetPath, &width, &height, &channels, STBI_rgb_alpha);
 		if (!pixels)
 		{
-			logferror("Fail to load texture data from %s.\n", assetPath);
+			logferror("Failed to load texture data from %s.\n", assetPath);
 			return false;
 		}
 		if (channels != 4)
@@ -654,10 +654,7 @@ namespace Mist
 		// Load texture from file
 		io::TextureRaw texData;
 		if (!io::LoadTexture(filepath, texData))
-		{
-			Logf(LogLevel::Error, "Failed to load texture from %s.\n", filepath);
 			return false;
-		}
 
 		// Create gpu buffer with texture specifications
 		tImageDescription texInfo;
