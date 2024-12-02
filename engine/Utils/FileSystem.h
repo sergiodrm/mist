@@ -19,13 +19,17 @@ namespace Mist
 		{
 			char temp[N];
 			strcpy_s(temp, path);
-			sprintf_s(path, "%s%s", CVar_Workspace.Get(), temp);
+			GetWorkspacePath(path, temp);
 		}
 
 		template <size_t N>
 		static void GetWorkspacePath(char(&dst)[N], const char* path)
 		{
-			sprintf_s(dst, "%s%s", CVar_Workspace.Get(), path);
+			check(!strchr(path, ':') && "Absolute path not allowed.");
+			if (!strnicmp(CVar_Workspace.Get(), path, strlen(CVar_Workspace.Get()) - 1))
+				strcpy_s(dst, path);
+			else
+				sprintf_s(dst, "%s%s", CVar_Workspace.Get(), path);
 		}
 
 		operator const char* () const { return m_path; }
