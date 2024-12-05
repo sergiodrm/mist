@@ -627,6 +627,16 @@ namespace Mist
 			return VkBlendFactor();
 		}
 
+		VkColorComponentFlags GetColorWriteMask(EColorWriteMask f)
+		{
+			VkColorComponentFlags r = 0;
+			if (f & COLOR_COMPONENT_R_BIT) r |= VK_COLOR_COMPONENT_R_BIT;
+			if (f & COLOR_COMPONENT_G_BIT) r |= VK_COLOR_COMPONENT_G_BIT;
+			if (f & COLOR_COMPONENT_B_BIT) r |= VK_COLOR_COMPONENT_B_BIT;
+			if (f & COLOR_COMPONENT_A_BIT) r |= VK_COLOR_COMPONENT_A_BIT;
+			return r;
+		}
+
 		VkPipelineColorBlendAttachmentState GetPipelineColorBlendAttachmentState(const tColorBlendState& state)
 		{
 			return {
@@ -636,7 +646,8 @@ namespace Mist
 				.colorBlendOp = GetBlendOp(state.ColorOp),
 				.srcAlphaBlendFactor = GetBlendFactor(state.SrcAlpha),
 				.dstAlphaBlendFactor = GetBlendFactor(state.DstAlpha),
-				.alphaBlendOp = GetBlendOp(state.AlphaOp)
+				.alphaBlendOp = GetBlendOp(state.AlphaOp),
+				.colorWriteMask = GetColorWriteMask(state.WriteMask)
 			};
 		}
 	}

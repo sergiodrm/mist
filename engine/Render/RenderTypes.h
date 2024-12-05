@@ -560,7 +560,8 @@ namespace Mist
 		COLOR_COMPONENT_G_BIT = 0x00000002,
 		COLOR_COMPONENT_B_BIT = 0x00000004,
 		COLOR_COMPONENT_A_BIT = 0x00000008,
-		COLOR_COMPONENT_ALL = COLOR_COMPONENT_A_BIT | COLOR_COMPONENT_B_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_R_BIT,
+		COLOR_COMPONENT_RGB = COLOR_COMPONENT_B_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_R_BIT,
+		COLOR_COMPONENT_RGBA = COLOR_COMPONENT_A_BIT | COLOR_COMPONENT_B_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_R_BIT,
 	};
 	typedef uint8_t EColorWriteMask;
 
@@ -573,7 +574,7 @@ namespace Mist
 		EBlendFactor SrcAlpha = BLEND_FACTOR_ONE;
 		EBlendFactor DstAlpha = BLEND_FACTOR_ZERO;
 		EBlendOp AlphaOp = BLEND_OP_ADD;
-		EColorWriteMask WriteMask = COLOR_COMPONENT_ALL;
+		EColorWriteMask WriteMask = COLOR_COMPONENT_RGBA;
 
 		inline bool operator ==(const tColorBlendState& other) const { return !memcmp(this, &other, sizeof(tColorBlendState)); }
 		inline bool operator !=(const tColorBlendState& other) const { return !(*this).operator ==(other); }
@@ -604,6 +605,7 @@ namespace Mist
 		VkDescriptorType GetDescriptorType(EDescriptorType type);
 		VkBlendOp GetBlendOp(EBlendOp op);
 		VkBlendFactor GetBlendFactor(EBlendFactor f);
+		VkColorComponentFlags GetColorWriteMask(EColorWriteMask f);
 		VkPipelineColorBlendAttachmentState GetPipelineColorBlendAttachmentState(const tColorBlendState& state);
 	}
 	namespace fromvk
