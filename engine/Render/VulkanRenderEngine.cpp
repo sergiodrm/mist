@@ -187,50 +187,6 @@ namespace Mist
 		return flags & SDL_WINDOW_MINIMIZED;
 	}
 
-#if 0
-	void ScreenQuadPipeline::Init(const RenderContext& context, const Swapchain& swapchain)
-	{
-		uint32_t swapchainCount = swapchain.GetImageCount();
-		RenderTargetArray.resize(swapchainCount);
-		for (uint32_t i = 0; i < swapchainCount; ++i)
-		{
-			RenderTargetDescription rtDesc;
-			rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
-			rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
-			rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
-			rtDesc.ResourceName.Fmt("Swapchaing_%d_RT", i);
-			RenderTargetArray[i].Create(context, rtDesc);
-		}
-
-
-		// Init shader
-		tShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile.Filepath = globals::PostProcessVertexShader;
-		shaderDesc.FragmentShaderFile.Filepath = globals::PostProcessFragmentShader;
-		shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float3, EAttributeType::Float2 });
-		shaderDesc.RenderTarget = &RenderTargetArray[0];
-		Shader = ShaderProgram::Create(context, shaderDesc);
-
-		// Init ui and debug pipelines
-		DebugInstance.Init(context, &RenderTargetArray[0]);
-		UIInstance.Init(context, RenderTargetArray[0].GetRenderPass());
-	}
-#endif // 0
-
-#if 0
-	void ScreenQuadPipeline::Destroy(const RenderContext& context)
-	{
-		UIInstance.Destroy(context);
-		DebugInstance.Destroy(context); 
-		IB.Destroy(context);
-		VB.Destroy(context);
-		for (uint32_t i = 0; i < (uint32_t)RenderTargetArray.size(); ++i)
-		{
-			RenderTargetArray[i].Destroy(context);
-		}
-	}
-#endif // 0
-
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{
 		check(!Cube && !Shader);
