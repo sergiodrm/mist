@@ -8,6 +8,7 @@
 #include "GBuffer.h"
 #include "Application/Application.h"
 #include "Core/Logger.h"
+#include "Render/DebugRender.h"
 
 
 #define SSAO_NOISE_SAMPLES 16

@@ -4,6 +4,7 @@
 #include "Render/InitVulkanTypes.h"
 #include "Core/Logger.h"
 #include "VulkanRenderEngine.h"
+#include <type_traits>
 
 namespace Mist
 {

@@ -5,7 +5,7 @@
 #include <imgui/imgui.h>
 #include "SDL_stdinc.h"
 #include "Render/RenderDescriptor.h"
-#include "DebugProcess.h"
+#include "Render/DebugRender.h"
 #include "Core/Debug.h"
 #include "Application/Application.h"
 #include "Render/Texture.h"
@@ -22,7 +22,7 @@ namespace Mist
 	GPUParticleSystem::GPUParticleSystem()
 		: m_flags(GPU_PARTICLES_ACTIVE), m_particleCount(PARTICLE_COUNT) {}
 
-	void GPUParticleSystem::Init(const RenderContext& context, RenderTarget* rt)
+	void GPUParticleSystem::Init(const RenderContext& context)
 	{
 		// RenderTarget
 		{
@@ -46,20 +46,19 @@ namespace Mist
 			description.FragmentShaderFile.Filepath = SHADER_FILEPATH("particles.frag");
 			description.Topology = PRIMITIVE_TOPOLOGY_POINT_LIST;
 			description.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Float4 });
-			description.RenderTarget = rt;
 			description.RenderTarget = &m_renderTarget;
 			description.DepthStencilMode = DEPTH_STENCIL_NONE;
 			description.CullMode = CULL_MODE_NONE;
 			description.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 			description.ColorAttachmentBlendingArray.resize(1);
-			description.ColorAttachmentBlendingArray[0].colorWriteMask = 0xf;
-			description.ColorAttachmentBlendingArray[0].blendEnable = VK_TRUE;
-			description.ColorAttachmentBlendingArray[0].colorBlendOp = VK_BLEND_OP_ADD;
-			description.ColorAttachmentBlendingArray[0].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			description.ColorAttachmentBlendingArray[0].dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			description.ColorAttachmentBlendingArray[0].alphaBlendOp = VK_BLEND_OP_ADD;
-			description.ColorAttachmentBlendingArray[0].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			description.ColorAttachmentBlendingArray[0].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+			description.ColorAttachmentBlendingArray[0].WriteMask = COLOR_COMPONENT_ALL;
+			description.ColorAttachmentBlendingArray[0].Enabled = true;
+			description.ColorAttachmentBlendingArray[0].ColorOp = BLEND_OP_ADD;
+			description.ColorAttachmentBlendingArray[0].SrcColor= BLEND_FACTOR_SRC_ALPHA;
+			description.ColorAttachmentBlendingArray[0].DstColor= BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			description.ColorAttachmentBlendingArray[0].AlphaOp = BLEND_OP_ADD;
+			description.ColorAttachmentBlendingArray[0].SrcAlpha = BLEND_FACTOR_ONE;
+			description.ColorAttachmentBlendingArray[0].DstAlpha = BLEND_FACTOR_ZERO;
 			m_graphicsShader = ShaderProgram::Create(context, description);
 		}
 

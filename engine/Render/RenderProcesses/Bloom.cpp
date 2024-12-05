@@ -14,7 +14,7 @@
 #include "Application/CmdParser.h"
 #include "ShadowMap.h"
 #include "Render/RendererBase.h"
-#include "DebugProcess.h"
+#include "Render/DebugRender.h"
 
 namespace Mist
 {
@@ -76,16 +76,16 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macrodef);
 			shaderDesc.RenderTarget = &RenderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			VkPipelineColorBlendAttachmentState blending
+			tColorBlendState blending
 			{
-				.blendEnable = VK_TRUE,
-				.srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
-				.dstColorBlendFactor = VK_BLEND_FACTOR_ONE,
-				.colorBlendOp = VK_BLEND_OP_ADD,
-				.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-				.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-				.alphaBlendOp = VK_BLEND_OP_ADD,
-				.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT,
+				.Enabled = true,
+				.SrcColor = BLEND_FACTOR_ONE,
+				.DstColor = BLEND_FACTOR_ONE,
+				.ColorOp = BLEND_OP_ADD,
+				.SrcAlpha = BLEND_FACTOR_ONE,
+				.DstAlpha= BLEND_FACTOR_ZERO,
+				.AlphaOp = BLEND_OP_ADD,
+				.WriteMask = COLOR_COMPONENT_R_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_B_BIT,
 			};
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			UpsampleShader = ShaderProgram::Create(context, shaderDesc);
@@ -98,15 +98,17 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mix.frag");
 			shaderDesc.RenderTarget = ComposeTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			VkPipelineColorBlendAttachmentState blending;
-			blending.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-			blending.blendEnable = VK_TRUE;
-			blending.alphaBlendOp = VK_BLEND_OP_ADD;
-			blending.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			blending.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			blending.colorBlendOp = VK_BLEND_OP_ADD;
-			blending.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-			blending.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+			tColorBlendState blending
+			{
+				.Enabled = true,
+				.SrcColor = BLEND_FACTOR_ONE,
+				.DstColor = BLEND_FACTOR_ONE,
+				.ColorOp = BLEND_OP_ADD,
+				.SrcAlpha = BLEND_FACTOR_ONE,
+				.DstAlpha = BLEND_FACTOR_ONE,
+				.AlphaOp = BLEND_OP_ADD,
+				.WriteMask = COLOR_COMPONENT_ALL,
+			};
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			ComposeShader = ShaderProgram::Create(context, shaderDesc);
 		}

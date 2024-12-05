@@ -13,7 +13,7 @@
 #include "Application/CmdParser.h"
 #include "ShadowMap.h"
 #include "Render/RendererBase.h"
-#include "DebugProcess.h"
+#include "Render/DebugRender.h"
 
 
 namespace Mist
@@ -37,7 +37,9 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
 			shaderDesc.RenderTarget = &m_lightingOutput;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			shaderDesc.ColorAttachmentBlendingArray.push_back(vkinit::PipelineColorBlendAttachmentState());
+			tColorBlendState blend;
+			blend.Enabled = true;
+			//shaderDesc.ColorAttachmentBlendingArray.push_back(blend);
 			m_lightingShader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
 
@@ -154,13 +156,14 @@ namespace Mist
 
 		// HDR and tone mapping
 		BeginGPUEvent(renderContext, cmd, "HDR");
-		m_hdrOutput.BeginPass(renderContext, cmd);
+		RenderTarget& rt = renderContext.Renderer->GetLDRTarget();
+		rt.BeginPass(renderContext, cmd);
 		m_hdrShader->UseProgram(renderContext);
 		m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
 		m_hdrShader->BindTextureSlot(renderContext, 0, *m_lightingOutput.GetAttachment(0).Tex);
 		m_hdrShader->FlushDescriptors(renderContext);
 		CmdDrawFullscreenQuad(cmd);
-		m_hdrOutput.EndPass(cmd);
+		rt.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 	}
 

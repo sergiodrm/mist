@@ -2,6 +2,7 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
+#include "Render/DebugRender.h"
 #include "Scene/Scene.h"
 #include <imgui/imgui.h>
 #include "Application/CmdParser.h"

@@ -1157,7 +1157,7 @@ namespace Mist
 		{
 			// Single blenc attachment without blending and writing RGBA
 			if (i < (uint32_t)m_description.ColorAttachmentBlendingArray.size())
-				builder.ColorBlendAttachment[i] = m_description.ColorAttachmentBlendingArray[i];
+				builder.ColorBlendAttachment[i] = tovk::GetPipelineColorBlendAttachmentState(m_description.ColorAttachmentBlendingArray[i]);
 			else
 				builder.ColorBlendAttachment[i] = vkinit::PipelineColorBlendAttachmentState();
 		}

@@ -47,7 +47,7 @@ namespace Mist
 	public:
 
 		GPUParticleSystem();
-		void Init(const RenderContext& context, RenderTarget* rt);
+		void Init(const RenderContext& context);
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
 		void UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext);
 		void Dispatch(const RenderContext& context, uint32_t frameIndex);

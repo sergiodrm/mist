@@ -2,6 +2,7 @@
 #include "Core/VideoMemory.h"
 #include "Core/SystemMemory.h"
 #include "Core/Debug.h"
+#include "Core/Types.h"
 //#include "Render/RenderHandle.h"
 
 #include <vector>
@@ -519,6 +520,64 @@ namespace Mist
 
 		DESCRIPTOR_TYPE_NUM,
 	};
+
+	enum EBlendFactor : uint8_t
+	{ 
+		BLEND_FACTOR_ZERO,
+		BLEND_FACTOR_ONE,
+		BLEND_FACTOR_SRC_COLOR,
+		BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+		BLEND_FACTOR_DST_COLOR,
+		BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+		BLEND_FACTOR_SRC_ALPHA,
+		BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+		BLEND_FACTOR_DST_ALPHA,
+		BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+		BLEND_FACTOR_CONSTANT_COLOR,
+		BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+		BLEND_FACTOR_CONSTANT_ALPHA,
+		BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+		BLEND_FACTOR_SRC_ALPHA_SATURATE,
+		BLEND_FACTOR_SRC1_COLOR,
+		BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
+		BLEND_FACTOR_SRC1_ALPHA,
+		BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
+		BLEND_FACTOR_MAX_ENUM 
+	};
+
+	enum EBlendOp : uint8_t
+	{
+		BLEND_OP_ADD,
+		BLEND_OP_SUBTRACT,
+		BLEND_OP_REVERSE_SUBTRACT,
+		BLEND_OP_MIN,
+		BLEND_OP_MAX,
+	};
+
+	enum EColorWriteMaskBits : uint8_t
+	{
+		COLOR_COMPONENT_R_BIT = 0x00000001,
+		COLOR_COMPONENT_G_BIT = 0x00000002,
+		COLOR_COMPONENT_B_BIT = 0x00000004,
+		COLOR_COMPONENT_A_BIT = 0x00000008,
+		COLOR_COMPONENT_ALL = COLOR_COMPONENT_A_BIT | COLOR_COMPONENT_B_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_R_BIT,
+	};
+	typedef uint8_t EColorWriteMask;
+
+	struct tColorBlendState
+	{
+		bool Enabled = false;
+		EBlendFactor SrcColor = BLEND_FACTOR_SRC_ALPHA;
+		EBlendFactor DstColor = BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+		EBlendOp ColorOp = BLEND_OP_ADD;
+		EBlendFactor SrcAlpha = BLEND_FACTOR_ONE;
+		EBlendFactor DstAlpha = BLEND_FACTOR_ZERO;
+		EBlendOp AlphaOp = BLEND_OP_ADD;
+		EColorWriteMask WriteMask = COLOR_COMPONENT_ALL;
+
+		inline bool operator ==(const tColorBlendState& other) const { return !memcmp(this, &other, sizeof(tColorBlendState)); }
+		inline bool operator !=(const tColorBlendState& other) const { return !(*this).operator ==(other); }
+	};
 	
 
 #ifdef MIST_VULKAN
@@ -543,6 +602,9 @@ namespace Mist
 		VkFrontFace GetFrontFace(EFrontFace face);
 		VkDynamicState GetDynamicState(EDynamicState flags);
 		VkDescriptorType GetDescriptorType(EDescriptorType type);
+		VkBlendOp GetBlendOp(EBlendOp op);
+		VkBlendFactor GetBlendFactor(EBlendFactor f);
+		VkPipelineColorBlendAttachmentState GetPipelineColorBlendAttachmentState(const tColorBlendState& state);
 	}
 	namespace fromvk
 	{
@@ -571,3 +633,21 @@ namespace Mist
 #endif // MIST_VULKAN
 
 }
+
+template <>
+struct std::hash<Mist::tColorBlendState>
+{
+	inline std::size_t operator()(const Mist::tColorBlendState& v) const
+	{
+		std::size_t h = 0;
+		Mist::HashCombine(h, v.Enabled ? 1 : 0);
+		Mist::HashCombine(h, v.SrcColor);
+		Mist::HashCombine(h, v.DstColor);
+		Mist::HashCombine(h, v.SrcAlpha);
+		Mist::HashCombine(h, v.DstAlpha);
+		Mist::HashCombine(h, v.ColorOp);
+		Mist::HashCombine(h, v.AlphaOp);
+		Mist::HashCombine(h, v.WriteMask);
+		return h;
+	}
+};

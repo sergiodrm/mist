@@ -7,6 +7,7 @@
 #include "Scene/Scene.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/RenderDescriptor.h"
+#include "Render/DebugRender.h"
 #include "imgui_internal.h"
 #include "glm/ext/matrix_clip_space.inl"
 #include "glm/matrix.hpp"

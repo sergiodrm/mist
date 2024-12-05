@@ -19,6 +19,7 @@
 #include "Render/Mesh.h"
 #include "Utils/GenericUtils.h"
 #include "Render/VulkanRenderEngine.h"
+#include "Render/DebugRender.h"
 #include <algorithm>
 #include <imgui.h>
 
@@ -813,7 +814,7 @@ namespace Mist
 			for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 			{
 				char treeId[2];
-				sprintf(treeId, "%u", i);
+				sprintf_s(treeId, "%u", i);
 				if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
 				{
 					glm::mat4 transform;

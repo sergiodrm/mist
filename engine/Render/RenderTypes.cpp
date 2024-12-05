@@ -583,6 +583,62 @@ namespace Mist
 			check(false);
 			return VkDescriptorType();
 		}
+
+		VkBlendOp GetBlendOp(EBlendOp op)
+		{
+			switch (op)
+			{
+			case BLEND_OP_ADD: return VK_BLEND_OP_ADD;
+			case BLEND_OP_SUBTRACT: return VK_BLEND_OP_SUBTRACT;
+			case BLEND_OP_REVERSE_SUBTRACT: return VK_BLEND_OP_REVERSE_SUBTRACT;
+			case BLEND_OP_MIN: return VK_BLEND_OP_MIN;
+			case BLEND_OP_MAX: return VK_BLEND_OP_MAX;
+			}
+			check(false);
+			return VkBlendOp();
+		}
+
+		VkBlendFactor GetBlendFactor(EBlendFactor f)
+		{
+			switch (f)
+			{
+			case BLEND_FACTOR_ZERO: return VK_BLEND_FACTOR_ZERO;
+			case BLEND_FACTOR_ONE: return VK_BLEND_FACTOR_ONE;
+			case BLEND_FACTOR_SRC_COLOR: return VK_BLEND_FACTOR_SRC_COLOR;
+			case BLEND_FACTOR_ONE_MINUS_SRC_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+			case BLEND_FACTOR_DST_COLOR: return VK_BLEND_FACTOR_DST_COLOR;
+			case BLEND_FACTOR_ONE_MINUS_DST_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+			case BLEND_FACTOR_SRC_ALPHA: return VK_BLEND_FACTOR_SRC_ALPHA;
+			case BLEND_FACTOR_ONE_MINUS_SRC_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+			case BLEND_FACTOR_DST_ALPHA: return VK_BLEND_FACTOR_DST_ALPHA;
+			case BLEND_FACTOR_ONE_MINUS_DST_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+			case BLEND_FACTOR_CONSTANT_COLOR: return VK_BLEND_FACTOR_CONSTANT_COLOR;
+			case BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+			case BLEND_FACTOR_CONSTANT_ALPHA: return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+			case BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+			case BLEND_FACTOR_SRC_ALPHA_SATURATE: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+			case BLEND_FACTOR_SRC1_COLOR: return VK_BLEND_FACTOR_SRC1_COLOR;
+			case BLEND_FACTOR_ONE_MINUS_SRC1_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+			case BLEND_FACTOR_SRC1_ALPHA: return VK_BLEND_FACTOR_SRC1_ALPHA;
+			case BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+			case BLEND_FACTOR_MAX_ENUM: return VK_BLEND_FACTOR_MAX_ENUM;
+			}
+			check(false);
+			return VkBlendFactor();
+		}
+
+		VkPipelineColorBlendAttachmentState GetPipelineColorBlendAttachmentState(const tColorBlendState& state)
+		{
+			return {
+				.blendEnable = state.Enabled ? VK_TRUE : VK_FALSE,
+				.srcColorBlendFactor = GetBlendFactor(state.SrcColor),
+				.dstColorBlendFactor = GetBlendFactor(state.DstColor),
+				.colorBlendOp = GetBlendOp(state.ColorOp),
+				.srcAlphaBlendFactor = GetBlendFactor(state.SrcAlpha),
+				.dstAlphaBlendFactor = GetBlendFactor(state.DstAlpha),
+				.alphaBlendOp = GetBlendOp(state.AlphaOp)
+			};
+		}
 	}
 
 

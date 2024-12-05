@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include "vulkan/vulkan_core.h"
 #include "Render/RenderTypes.h"
 #include "Render/RenderContext.h"
 #include "Render/Texture.h"
@@ -21,6 +22,12 @@ namespace Mist
 		tClearValue ClearValue;
 
 		inline bool IsValidAttachment() const { return Format != FORMAT_UNDEFINED && Layout != IMAGE_LAYOUT_UNDEFINED; }
+
+		inline bool operator==(const RenderTargetAttachmentDescription& other) const
+		{
+			return Format == other.Format && Layout == other.Layout && MultisampledBit == other.MultisampledBit;
+		}
+		inline bool operator!=(const RenderTargetAttachmentDescription& other) const { return !(*this).operator ==(other); }
 	};
 
 	struct RenderTargetExternalAttachmentDescription : public RenderTargetAttachmentDescription
@@ -75,6 +82,32 @@ namespace Mist
 			ExternalAttachments[ExternalAttachmentCount].View = view;
 			ExternalAttachmentCount++;
 		}
+
+		inline bool operator==(const RenderTargetDescription& desc) const
+		{
+			if (RenderArea.offset.x != desc.RenderArea.offset.x
+				|| RenderArea.offset.y != desc.RenderArea.offset.y
+				|| RenderArea.extent.width != desc.RenderArea.extent.width
+				|| RenderArea.extent.height != desc.RenderArea.extent.height
+				|| ColorAttachmentCount != desc.ColorAttachmentCount
+				|| ExternalAttachmentCount != desc.ExternalAttachmentCount
+				|| DepthAttachmentDescription.Format != desc.DepthAttachmentDescription.Format
+				|| DepthAttachmentDescription.MultisampledBit != desc.DepthAttachmentDescription.MultisampledBit)
+				return false;
+			for (uint32_t i = 0; i < ColorAttachmentCount; ++i)
+			{
+				if (ColorAttachmentDescriptions[i] != desc.ColorAttachmentDescriptions[i])
+					return false;
+			}
+			for (uint32_t i = 0; i < ExternalAttachmentCount; ++i)
+			{
+				if (ExternalAttachments[i] != desc.ExternalAttachments[i])
+					return false;
+			}
+			return true;
+		}
+
+		inline bool operator!=(const RenderTargetDescription& desc) const { return !(*this).operator ==(desc); }
 	};
 
 	struct RenderTargetAttachment
@@ -139,3 +172,20 @@ namespace Mist
 		tStaticArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;
 	};
 }
+
+template <>
+struct std::hash<Mist::RenderTargetDescription>
+{
+	std::size_t operator()(const Mist::RenderTargetDescription& desc) const
+	{
+		std::size_t hash = 0;
+		Mist::HashCombine(hash, desc.RenderArea.extent.width);
+		Mist::HashCombine(hash, desc.RenderArea.extent.height);
+		for (uint32_t i = 0; i < desc.ColorAttachmentCount; ++i)
+			Mist::HashCombine(hash, desc.ColorAttachmentDescriptions[i].Format);
+		for (uint32_t i = 0; i < desc.ExternalAttachmentCount; ++i)
+			Mist::HashCombine(hash, desc.ExternalAttachments[i].Format);
+		Mist::HashCombine(hash, desc.DepthAttachmentDescription.Format);
+		return hash;
+	}
+};

@@ -113,6 +113,8 @@ namespace Mist
 
 		CommandBufferContext TransferContext;
 
+		Renderer* Renderer;
+
 		mutable RenderFrameContext FrameContextArray[globals::MaxOverlappedFrames];
 		uint32_t FrameIndex = 0;
 		inline RenderFrameContext& GetFrameContext() const { return FrameContextArray[GetFrameIndex()]; }

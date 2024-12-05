@@ -2,7 +2,6 @@
 #pragma once
 
 #include "Render/RenderEngine.h"
-#include "RenderPass.h"
 #include "Render/Shader.h"
 #include "Render/RenderContext.h"
 #include "Render/RenderDescriptor.h"
@@ -15,7 +14,6 @@
 #include "Utils/FunctionStack.h"
 #include "Framebuffer.h"
 #include "Scene/Scene.h"
-#include "RenderProcesses/UIProcess.h"
 #include "RendererBase.h"
 
 #include <cstdio>
@@ -43,26 +41,6 @@ namespace Mist
 	{
 		float DeltaTime;
 		float TotalTime;
-	};
-
-	struct ScreenQuadPipeline
-	{
-		// Pipelines to render in screen framebuffer directly.
-		ImGuiInstance  UIInstance;
-		DebugPipeline DebugInstance;
-
-		// Quad info
-		VertexBuffer VB;
-		IndexBuffer IB;
-		ShaderProgram* Shader;
-		// One render target per swapchain image.
-		tDynArray<RenderTarget> RenderTargetArray;
-		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> QuadSets;
-		tArray<VkDescriptorSet, globals::MaxOverlappedFrames> PresentTexSets;
-		int32_t QuadIndex = -1;
-
-		void Init(const RenderContext& context, const Swapchain& swapchain);
-		void Destroy(const RenderContext& context);
 	};
 
 	struct CubemapPipeline
@@ -114,7 +92,6 @@ namespace Mist
 		RenderContext m_renderContext;
 		Swapchain m_swapchain;
 
-		ScreenQuadPipeline m_screenPipeline;
 		CubemapPipeline m_cubemapPipeline;
 		Renderer m_renderer;
 
