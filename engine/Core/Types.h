@@ -43,6 +43,13 @@ namespace Mist
 			dst[i] = src[i];
 	}
 
+	template <typename T>
+	inline void HashCombine(std::size_t& seed, const T& v)
+	{
+		std::hash<T> hasher;
+		seed ^= hasher(v) + 0x933779b9 + (seed << 6) + (seed >> 2);
+	}
+
 	template <uint32_t Size>
 	class tFixedString
 	{
