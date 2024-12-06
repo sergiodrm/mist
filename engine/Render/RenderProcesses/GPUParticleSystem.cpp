@@ -51,7 +51,7 @@ namespace Mist
 			description.CullMode = CULL_MODE_NONE;
 			description.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 			description.ColorAttachmentBlendingArray.resize(1);
-			description.ColorAttachmentBlendingArray[0].WriteMask = COLOR_COMPONENT_ALL;
+			description.ColorAttachmentBlendingArray[0].WriteMask = COLOR_COMPONENT_RGBA;
 			description.ColorAttachmentBlendingArray[0].Enabled = true;
 			description.ColorAttachmentBlendingArray[0].ColorOp = BLEND_OP_ADD;
 			description.ColorAttachmentBlendingArray[0].SrcColor= BLEND_FACTOR_SRC_ALPHA;

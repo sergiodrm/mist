@@ -107,7 +107,7 @@ namespace Mist
 				.SrcAlpha = BLEND_FACTOR_ONE,
 				.DstAlpha = BLEND_FACTOR_ONE,
 				.AlphaOp = BLEND_OP_ADD,
-				.WriteMask = COLOR_COMPONENT_ALL,
+				.WriteMask = COLOR_COMPONENT_RGBA,
 			};
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			ComposeShader = ShaderProgram::Create(context, shaderDesc);
