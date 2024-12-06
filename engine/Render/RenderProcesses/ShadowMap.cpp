@@ -342,15 +342,17 @@ namespace Mist
 
 	void ShadowMapProcess::DebugDraw(const RenderContext& context)
 	{
+		float w = (float)context.Window->Width;
+		float h = (float)context.Window->Height;
 		switch (m_debugMode)
 		{
 		case DEBUG_NONE:
 			break;
 		case DEBUG_SINGLE_RT:
-			DebugRender::DrawScreenQuad({ 1920.f * 0.75f, 0.f }, { 1920.f * 0.25f, 1080.f * 0.25f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
+			DebugRender::DrawScreenQuad({ w * 0.75f, 0.f }, { w * 0.25f, h * 0.25f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
 			break;
 		case DEBUG_ALL:
-			glm::vec2 screenSize = { 1920.f, 1080.f };
+			glm::vec2 screenSize = { w, h };
 			float factor = 1.f / (float)globals::MaxShadowMapAttachments;
 			glm::vec2 pos = { screenSize.x * (1.f - factor), 0.f };
 			glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };

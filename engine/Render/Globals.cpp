@@ -18,8 +18,6 @@ namespace Mist
 		const char* QuadVertexShader = SHADER_FILEPATH("quad.vert");
 		const char* QuadFragmentShader = SHADER_FILEPATH("quad.frag");
 		const char* DepthQuadFragmentShader = SHADER_FILEPATH("depth_quad.frag");
-		const char* PostProcessVertexShader = SHADER_FILEPATH("quad.vert");
-		const char* PostProcessFragmentShader = SHADER_FILEPATH("postprocess_quad.frag");
 
 	}
 }

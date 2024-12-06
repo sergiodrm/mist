@@ -294,7 +294,7 @@ namespace Mist
 				DebugRenderPipeline.m_quadShader->FlushDescriptors(context);
 				DebugRenderPipeline.QuadBatch.vb.Bind(cmd);
 				DebugRenderPipeline.QuadBatch.ib.Bind(cmd);
-				RenderAPI::CmdDrawIndexed(cmd, DebugRenderPipeline.QuadBatch.QuadArray.GetSize() * 6, 1, 0, 0, 0);
+				RenderAPI::CmdDrawIndexed(cmd, DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0, 0);
 				DebugRenderPipeline.QuadBatch.Reset();
 			}
 			renderer->GetLDRTarget().EndPass(cmd);
