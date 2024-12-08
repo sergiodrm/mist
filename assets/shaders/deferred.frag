@@ -215,10 +215,10 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 A
     vec3 lighting = vec3(0.f);
     vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
     float theta = dot(lightDir, -vec3(light.Dir));
-    float innerCutoff = light.Dir.a;
-    float outerCutoff = light.Pos.a;
-    float epsilon = innerCutoff - outerCutoff;
-    float intensity = clamp((theta - outerCutoff) / epsilon, 0.0, 1.0);
+    float cosCutoff = light.Dir.a;
+    float cosOuterCutoff = light.Pos.a;
+    float epsilon = max(cosCutoff - cosOuterCutoff, 0.f);
+    float intensity = clamp((theta - cosOuterCutoff) / epsilon, 0.0, 1.0);
     if (intensity > 0.f)
     {
         // TODO calculate radiance with attenuation
@@ -228,7 +228,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 A
         lighting = CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);
         //lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
     }
-    intensity *= 10.f;
+    //intensity *= 10.f;
     return lighting * intensity;
 }
 

@@ -153,8 +153,8 @@ namespace Mist
 			SpotLights[i].Direction = { 1.f, 0.f, 0.f };
 			SpotLights[i].Position = { 0.f, 0.f, 0.f };
 			SpotLights[i].Color = { 1.f, 1.f, 1.f };
-			SpotLights[i].InnerCutoff = 1.f;
-			SpotLights[i].OuterCutoff = 0.5f;
+			SpotLights[i].CosOuterCutoff = 1.f;
+			SpotLights[i].CosCutoff = 1.f;
 			SpotLights[i].ShadowMapIndex = -1.f;
 		}
 		ZeroMem(this, sizeof(*this));
@@ -319,8 +319,8 @@ namespace Mist
 				lightComponent.Color = lightNode["Color"].as<glm::vec3>();
 				lightComponent.Radius = lightNode["Radius"].as<float>();
 				lightComponent.Compression = lightNode["Compression"].as<float>();
-				lightComponent.InnerCutoff = lightNode["InnerCutoff"].as<float>();
 				lightComponent.OuterCutoff = lightNode["OuterCutoff"].as<float>();
+				lightComponent.Cutoff = lightNode["Cutoff"].as<float>();
 				lightComponent.ProjectShadows = lightNode["ProjectShadows"].as<bool>();
 				lightComponent.Type = StrToLightType(lightNode["Type"].as<std::string>().c_str());
 				SetLight(rb, lightComponent);
@@ -382,8 +382,8 @@ namespace Mist
 				emitter << YAML::Key << "Color" << YAML::Value << light.Color;
 				emitter << YAML::Key << "Radius" << YAML::Value << light.Radius;
 				emitter << YAML::Key << "Compression" << YAML::Value << light.Radius;
-				emitter << YAML::Key << "InnerCutoff" << YAML::Value << light.InnerCutoff;
 				emitter << YAML::Key << "OuterCutoff" << YAML::Value << light.OuterCutoff;
+				emitter << YAML::Key << "Cutoff" << YAML::Value << light.Cutoff;
 				emitter << YAML::Key << "ProjectShadows" << YAML::Value << light.ProjectShadows;
 				emitter << YAML::EndMap;
 			}
@@ -881,15 +881,15 @@ namespace Mist
 							ImGui::NextColumn();
 							ImGui::DragFloat(buff, &light.Compression, 0.05f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
-							ImGui::Text("Inner cutoff");
-							ImGui::NextColumn();
-							sprintf_s(buff, "##LightInnerCutoff%u", i);
-							ImGui::DragFloat(buff, &light.InnerCutoff, 0.1f, 0.f, FLT_MAX);
-							ImGui::NextColumn();
 							ImGui::Text("Outer cutoff");
 							ImGui::NextColumn();
 							sprintf_s(buff, "##LightOuterCutoff%u", i);
 							ImGui::DragFloat(buff, &light.OuterCutoff, 0.1f, 0.f, FLT_MAX);
+							ImGui::NextColumn();
+							ImGui::Text("Cutoff");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightCutoff%u", i);
+							ImGui::DragFloat(buff, &light.Cutoff, 0.1f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
 							ImGui::Text("Project shadows");
 							ImGui::NextColumn();
@@ -1085,8 +1085,8 @@ namespace Mist
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Position = pos;
 					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Direction = dir;
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].InnerCutoff = light.InnerCutoff;
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].OuterCutoff = light.OuterCutoff;
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].CosOuterCutoff = cosf(glm::radians(light.OuterCutoff));
+					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].CosCutoff = cosf(glm::radians(light.Cutoff));
 					++environmentData.ActiveSpotLightsCount;
 					break;
 				}

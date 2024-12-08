@@ -51,8 +51,8 @@ namespace Mist
 		glm::vec3 Color = { 1.f, 1.f, 1.f };
 		float Radius = 10.f;
 		float Compression = 1.f;
-		float InnerCutoff = 1.f;
-		float OuterCutoff = 0.5f;
+		float OuterCutoff = 30.f;	// Degrees
+		float Cutoff = 30.f;			// Degrees
 		bool ProjectShadows = false;
 	};
 
@@ -97,14 +97,15 @@ namespace Mist
 		float Compression;
 	};
 
+	// Shader data, be careful with memory layout
 	struct SpotLightData
 	{
 		glm::vec3 Color;
 		float ShadowMapIndex;
 		glm::vec3 Direction;
-		float InnerCutoff;
+		float CosCutoff;
 		glm::vec3 Position;
-		float OuterCutoff;
+		float CosOuterCutoff; 
 	};
 
 	struct EnvironmentData
