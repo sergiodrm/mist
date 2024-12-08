@@ -11,6 +11,26 @@ namespace Mist
 		Count
 	};
 
+	struct tFrustum
+	{
+		union
+		{
+			struct
+			{
+				glm::vec3 NearLeftTop;
+				glm::vec3 NearRightTop;
+				glm::vec3 NearLeftBottom;
+				glm::vec3 NearRightBottom;
+
+				glm::vec3 FarLeftTop;
+				glm::vec3 FarRightTop;
+				glm::vec3 FarLeftBottom;
+				glm::vec3 FarRightBottom;
+			};
+			glm::vec3 Points[8];
+		};
+	};
+
 	class Camera
 	{
 	public:
@@ -30,6 +50,8 @@ namespace Mist
 		void SetNearClip(float clip);
 		void SetFarClip(float clip);
 		void SetProjection(float fov, float aspectRatio, float nearClip, float farClip);
+
+		static tFrustum CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float fov, float aspectRatio, float nearClip, float farClip);
 
 		void ImGuiDraw(bool createWindow = false);
 
