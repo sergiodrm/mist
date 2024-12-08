@@ -38,7 +38,11 @@ namespace Mist
 		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
 		void SetProjection(float fov, float aspectRatio);
 		void SetProjection(float minX, float maxX, float minY, float maxY);
-		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType, const glm::mat4& viewMatrix);
+		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix);
+
+		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const glm::vec3& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
+		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot);
+
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
 		void RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
@@ -54,6 +58,7 @@ namespace Mist
 		// Cache for save depth view projection data until flush to gpu buffer.
 		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
 		glm::mat4 m_lightMVPCache[globals::MaxShadowMapAttachments];
+	public:
 		// Projection params
 		float m_perspectiveParams[4];
 		float m_orthoParams[6];
@@ -88,5 +93,13 @@ namespace Mist
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;
+		bool m_debugFrustum;
+		struct
+		{
+			glm::vec3 pos;
+			glm::vec3 rot;
+			float cutoff;
+			float clips[2];
+		} m_debugLightParams;
 	};
 }

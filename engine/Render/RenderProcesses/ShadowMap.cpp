@@ -13,6 +13,7 @@
 #include "glm/matrix.hpp"
 #include "Utils/GenericUtils.h"
 #include "Application/Application.h"
+#include "Render/Camera.h"
 
 #define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
 #define SHADOW_MAP_RT_LAYOUT IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
@@ -108,7 +109,7 @@ namespace Mist
 		m_orthoParams[3] = maxY;
 	}
 
-	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, EShadowMapProjectionType projType, const glm::mat4& viewMatrix)
+	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix)
 	{
 		static constexpr glm::mat4 depthBias =
 		{
@@ -125,13 +126,25 @@ namespace Mist
 		glm::mat4 t = math::PosToMat4(lightPos);
 
 		glm::mat4 depthView = glm::inverse(t * lightRotMat);
-		glm::mat4 depthProj = GetProjection(projType);
+		glm::mat4 depthProj = lightProj;
 		depthProj[1][1] *= -1.f;
 		glm::mat4 depthVP = depthProj * depthView;
 		// Light Matrix with inverse(viewMatrix) because gbuffer calculates position buffer in view space.
 		glm::mat4 lightVP = depthBias * depthVP * glm::inverse(viewMatrix);
 		SetDepthVP(lightIndex, depthVP);
 		SetLightVP(lightIndex, lightVP);
+	}
+
+	void ShadowMapPipeline::SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const glm::vec3& rot, float cutoff, float nearClip, float farClip)
+	{
+		glm::mat4 depthProj = glm::perspective(2.f*glm::radians(cutoff), 1.f, nearClip, farClip);
+		SetupLight(lightIndex, pos, rot, depthProj, cameraView);
+	}
+
+	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot)
+	{
+		glm::mat4 depthProj = GetProjection(PROJECTION_ORTHOGRAPHIC);
+		SetupLight(lightIndex, math::GetPos(cameraView), lightRot, depthProj, cameraView);
 	}
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
@@ -181,20 +194,13 @@ namespace Mist
 
 	void ShadowMapPipeline::ImGuiDraw(bool createWindow)
 	{
-		ImGui::Begin("ShadowMap proj params");
-		ImGui::DragFloat("Near clip", &m_perspectiveParams[3], 1.f);
-		ImGui::DragFloat("Far clip", &m_perspectiveParams[4], 1.f);
-		ImGui::DragFloat("FOV", &m_perspectiveParams[0], 0.01f);
-		ImGui::DragFloat("Aspect ratio", &m_perspectiveParams[1], 0.01f);
-		ImGui::DragFloat2("Ortho x", &m_orthoParams[0]);
-		ImGui::DragFloat2("Ortho y", &m_orthoParams[2]);
-		ImGui::DragFloat("Ortho Near clip", &m_orthoParams[4], 1.f);
-		ImGui::DragFloat("Ortho Far clip", &m_orthoParams[5], 1.f);
-		ImGui::End();
 	}
 
 	ShadowMapProcess::ShadowMapProcess()
+		: m_debugFrustum(false)
 	{
+		m_debugLightParams.clips[0] = 1.f;
+		m_debugLightParams.clips[1] = 1000.f;
 	}
 
 	void ShadowMapProcess::Init(const RenderContext& context)
@@ -238,6 +244,7 @@ namespace Mist
 		{
 			float shadowMapIndex = 0.f;
 			glm::mat4 invView = renderFrameContext.CameraData->InvView;
+			glm::mat4 cameraProj = renderFrameContext.CameraData->Projection;
 
 			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
 			uint32_t count = scene.GetRenderObjectCount();
@@ -251,15 +258,18 @@ namespace Mist
 					switch (light->Type)
 					{
 					case ELightType::Directional:
-						m_shadowMapPipeline.SetupLight(m_lightCount++,
-							glm::inverse(renderFrameContext.CameraData->InvView)[3],
-							t.Rotation,
-							ShadowMapPipeline::PROJECTION_ORTHOGRAPHIC,
-							glm::inverse(invView));
+						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, glm::inverse(invView), cameraProj, t.Rotation);
 						break;
 					case ELightType::Spot:
-						m_shadowMapPipeline.SetProjection(light->OuterCutoff * 2.f, 16.f / 9.f);
-						m_shadowMapPipeline.SetupLight(m_lightCount++, t.Position, t.Rotation, ShadowMapPipeline::PROJECTION_PERSPECTIVE, invView);
+					{
+						if (m_debugFrustum)
+						{
+							m_debugLightParams.pos = t.Position;
+							m_debugLightParams.rot = t.Rotation;
+							m_debugLightParams.cutoff = light->OuterCutoff;
+						}
+						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, invView, t.Position, t.Rotation, light->OuterCutoff, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
+					}
 						break;
 					default:
 						check(false && "Unreachable");
@@ -313,7 +323,7 @@ namespace Mist
 	{
 		ImGui::Begin("Shadow mapping");
 		static const char* modes[] = { "None", "Single tex", "All" };
-		static const uint32_t modesSize = sizeof(modes) / sizeof(const char*);
+		static const uint32_t modesSize = CountOf(modes);
 		if (ImGui::BeginCombo("Debug mode", modes[m_debugMode]))
 		{
 			for (uint32_t i = 0; i < modesSize; ++i)
@@ -329,8 +339,17 @@ namespace Mist
 			m_debugIndex = math::Clamp(m_debugIndex, 0u, globals::MaxShadowMapAttachments - 1);
 		}
 		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
+		ImGui::Checkbox("Debug frustum", &m_debugFrustum);
 		ImGui::Separator();
-		m_shadowMapPipeline.ImGuiDraw(false);
+		ImGui::Text("Debug proj params");
+		ImGui::DragFloat("Near clip", &m_debugLightParams.clips[0], 1.f);
+		ImGui::DragFloat("Far clip", &m_debugLightParams.clips[1], 1.f);
+		ImGui::DragFloat("FOV", &m_shadowMapPipeline.m_perspectiveParams[0], 0.01f);
+		ImGui::DragFloat("Aspect ratio", &m_shadowMapPipeline.m_perspectiveParams[1], 0.01f);
+		ImGui::DragFloat2("Ortho x", &m_shadowMapPipeline.m_orthoParams[0]);
+		ImGui::DragFloat2("Ortho y", &m_shadowMapPipeline.m_orthoParams[2]);
+		ImGui::DragFloat("Ortho Near clip", &m_shadowMapPipeline.m_orthoParams[4], 1.f);
+		ImGui::DragFloat("Ortho Far clip", &m_shadowMapPipeline.m_orthoParams[5], 1.f);
 		ImGui::End();
 	}
 
@@ -349,19 +368,44 @@ namespace Mist
 		case DEBUG_NONE:
 			break;
 		case DEBUG_SINGLE_RT:
-			DebugRender::DrawScreenQuad({ w * 0.75f, 0.f }, { w * 0.25f, h * 0.25f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
-			break;
-		case DEBUG_ALL:
-			glm::vec2 screenSize = { w, h };
-			float factor = 1.f / (float)globals::MaxShadowMapAttachments;
-			glm::vec2 pos = { screenSize.x * (1.f - factor), 0.f };
-			glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };
-			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-			{
-				DebugRender::DrawScreenQuad(pos, size, *m_shadowMapTargetArray[i].GetDepthTexture());
-				pos.y += size.y;
+			{	
+				DebugRender::DrawScreenQuad({ w * 0.5f, 0.f }, { w * 0.5f, h * 0.5f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
 			}
 			break;
+		case DEBUG_ALL:
+			{
+				glm::vec2 screenSize = { w, h };
+				float factor = 1.f / (float)globals::MaxShadowMapAttachments;
+				glm::vec2 pos = { screenSize.x * (1.f - factor), 0.f };
+				glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };
+				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+				{
+					DebugRender::DrawScreenQuad(pos, size, *m_shadowMapTargetArray[i].GetDepthTexture());
+					pos.y += size.y;
+				}
+			}
+			break;
+		}
+		if (m_debugFrustum)
+		{
+			tFrustum f = Camera::CalculateFrustum(m_debugLightParams.pos, 
+				m_debugLightParams.rot, glm::radians(m_debugLightParams.cutoff), 1.f, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
+			glm::vec3 color = glm::vec3(0.2f, 0.96f, 0.5f);
+			// Near plane
+			DebugRender::DrawLine3D(f.NearLeftTop, f.NearLeftBottom, color);
+			DebugRender::DrawLine3D(f.NearRightTop, f.NearRightBottom, color);
+			DebugRender::DrawLine3D(f.NearLeftTop, f.NearRightTop, color);
+			DebugRender::DrawLine3D(f.NearLeftBottom, f.NearRightBottom, color);
+			// Far plane
+			DebugRender::DrawLine3D(f.FarLeftTop, f.FarLeftBottom, color);
+			DebugRender::DrawLine3D(f.FarRightTop, f.FarRightBottom, color);
+			DebugRender::DrawLine3D(f.FarLeftTop, f.FarRightTop, color);
+			DebugRender::DrawLine3D(f.FarLeftBottom, f.FarRightBottom, color);
+			// Join planes
+			DebugRender::DrawLine3D(f.FarLeftTop, f.NearLeftTop, color);
+			DebugRender::DrawLine3D(f.FarRightTop, f.NearRightTop, color);
+			DebugRender::DrawLine3D(f.FarLeftTop, f.NearLeftTop, color);
+			DebugRender::DrawLine3D(f.FarLeftBottom, f.NearLeftBottom, color);
 		}
 	}
 }
