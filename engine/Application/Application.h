@@ -3,6 +3,16 @@
 
 namespace Mist
 {
+	enum eWindowFlagBits
+	{
+		WindowFlags_None = 0,
+		WindowFlags_Fullscreen= 0x00000001,         /**< fullscreen window */
+		WindowFlags_Shown= 0x00000002,              /**< window is visible */
+		WindowFlags_Hidden= 0x00000004,             /**< window is not visible */
+		WindowFlags_Borderless = 0x00000008,         /**< no window decoration */
+		WindowFlags_Resizable = 0x00000010,          /**< window can be resized */
+	};
+	typedef uint32_t eWindowFlags;
 	struct Window
 	{
 		void* WindowInstance;
@@ -14,7 +24,7 @@ namespace Mist
 		{
 			*Title = 0;
 		}
-		static Window Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title);
+		static Window Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title, eWindowFlags flags = WindowFlags_None);
 		static void CreateSurface(const Window& window, void* renderApiInstance, void* outSurface);
 		static void Destroy(Window& window);
 

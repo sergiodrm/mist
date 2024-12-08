@@ -156,36 +156,7 @@ namespace Mist
 		return DefaultTexture;
 	}
 
-	Window Window::Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title)
-	{
-		Window newWindow;
-		newWindow.Width = width;
-		newWindow.Height = height;
-		strcpy_s(newWindow.Title, title);
-		SDL_WindowFlags windowFlags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
-		newWindow.WindowInstance = SDL_CreateWindow(
-			title, posx, posy,
-			width, height, windowFlags);
-		SDL_Init(SDL_INIT_VIDEO);
-		return newWindow;
-	}
-
-	void Window::CreateSurface(const Window& window, void* renderApiInstance, void* outSurface)
-	{
-		SDL_Vulkan_CreateSurface((SDL_Window*)window.WindowInstance, *((VkInstance*)renderApiInstance), (VkSurfaceKHR*)outSurface);
-	}
-
-	void Window::Destroy(Window& window)
-	{
-		SDL_DestroyWindow((SDL_Window*)window.WindowInstance);
-		ZeroMemory(&window, sizeof(Window));
-	}
-
-	bool Window::IsMinimized(const Window& window)
-	{
-		Uint32 flags = SDL_GetWindowFlags((SDL_Window*)window.WindowInstance);
-		return flags & SDL_WINDOW_MINIMIZED;
-	}
+	
 
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
 	{

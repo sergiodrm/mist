@@ -17,6 +17,48 @@ namespace Mist
 
 	CStrVar GIniFile("IniFile", "default.cfg");
 
+	SDL_WindowFlags WindowFlagsToSDL(eWindowFlags f)
+	{
+		uint32_t r = 0;
+		if (f & WindowFlags_Borderless) r |= SDL_WINDOW_BORDERLESS;
+		if (f & WindowFlags_Fullscreen) r |= SDL_WINDOW_FULLSCREEN;
+		if (f & WindowFlags_Shown) r |= SDL_WINDOW_SHOWN;
+		if (f & WindowFlags_Hidden) r |= SDL_WINDOW_HIDDEN;
+		if (f & WindowFlags_Resizable) r |= SDL_WINDOW_RESIZABLE;
+		return (SDL_WindowFlags)r;
+	}
+
+	Window Window::Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title, eWindowFlags flags)
+	{
+		Window newWindow;
+		newWindow.Width = width;
+		newWindow.Height = height;
+		strcpy_s(newWindow.Title, title);
+		SDL_WindowFlags windowFlags = (SDL_WindowFlags)(uint32_t(WindowFlagsToSDL(flags)) | SDL_WINDOW_VULKAN);
+		newWindow.WindowInstance = SDL_CreateWindow(
+			title, posx, posy,
+			width, height, windowFlags);
+		SDL_Init(SDL_INIT_VIDEO);
+		return newWindow;
+	}
+
+	void Window::CreateSurface(const Window& window, void* renderApiInstance, void* outSurface)
+	{
+		SDL_Vulkan_CreateSurface((SDL_Window*)window.WindowInstance, *((VkInstance*)renderApiInstance), (VkSurfaceKHR*)outSurface);
+	}
+
+	void Window::Destroy(Window& window)
+	{
+		SDL_DestroyWindow((SDL_Window*)window.WindowInstance);
+		ZeroMemory(&window, sizeof(Window));
+	}
+
+	bool Window::IsMinimized(const Window& window)
+	{
+		Uint32 flags = SDL_GetWindowFlags((SDL_Window*)window.WindowInstance);
+		return flags & SDL_WINDOW_MINIMIZED;
+	}
+
 	tApplication* tApplication::CreateApplication(int argc, char** argv)
 	{
 		tApplication* app = CreateGameApplication();
@@ -63,10 +105,12 @@ namespace Mist
 		int h;
 		int x;
 		int y;
+		bool fullscreen;
+		iniFile.GetBool("Fullscreen", fullscreen, false);
 		iniFile.GetInt("WindowWidth", w, 1920);
 		iniFile.GetInt("WindowHeight", h, 1080);
 		iniFile.GetInt("WindowX", x, 0);
-		iniFile.GetInt("WindowY", y, 40);
+		iniFile.GetInt("WindowY", y, 0);
 
 		for (index_t i = 0; i < iniFile.GetValueCount(); ++i)
 		{
@@ -74,9 +118,8 @@ namespace Mist
 				logfinfo("CVar setted from %s file: %s = %s\n", GIniFile.Get(), iniFile.GetKey(i), iniFile.GetValue(i));
 		}
 
-
-
-		m_window = Window::Create(w, h, x, y, "MistEngine");
+		eWindowFlags f = fullscreen ? WindowFlags_Borderless : WindowFlags_None;
+		m_window = Window::Create(w, h, x, y, "MistEngine", f);
 		m_engine = IRenderEngine::MakeInstance();
 		m_engine->Init(m_window);
 	}
