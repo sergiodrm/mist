@@ -742,6 +742,11 @@ namespace Mist
 		shaderDrawParamsFeatures.pNext = nullptr;
 		shaderDrawParamsFeatures.shaderDrawParameters = VK_TRUE;
 		deviceBuilder.add_pNext(&shaderDrawParamsFeatures);
+		VkPhysicalDeviceFeatures2 features;
+		features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		features.pNext = nullptr;
+		vkGetPhysicalDeviceFeatures2(physicalDevice.physical_device, &features);
+		deviceBuilder.add_pNext(&features);
 		vkb::Result<vkb::Device> deviceResult = deviceBuilder.build();
 		check(deviceResult.has_value());
 		vkb::Device device = deviceResult.value();
