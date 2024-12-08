@@ -110,5 +110,10 @@ namespace Mist
             rect.offset = { 0, 0 };
             vkCmdSetScissor(cmd, scissorIndex, 1, &rect);
         }
+
+        void CmdSetLineWidth(CommandBuffer cmd, float lineWidth)
+        {
+            vkCmdSetLineWidth(cmd, lineWidth);
+        }
     }
 }
