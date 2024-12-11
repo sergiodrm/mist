@@ -369,7 +369,8 @@ namespace Mist
 			break;
 		case DEBUG_SINGLE_RT:
 			{	
-				DebugRender::DrawScreenQuad({ w * 0.5f, 0.f }, { w * 0.5f, h * 0.5f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
+				float f = 0.33f;
+				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
 			}
 			break;
 		case DEBUG_ALL:
@@ -404,8 +405,8 @@ namespace Mist
 			// Join planes
 			DebugRender::DrawLine3D(f.FarLeftTop, f.NearLeftTop, color);
 			DebugRender::DrawLine3D(f.FarRightTop, f.NearRightTop, color);
-			DebugRender::DrawLine3D(f.FarLeftTop, f.NearLeftTop, color);
 			DebugRender::DrawLine3D(f.FarLeftBottom, f.NearLeftBottom, color);
+			DebugRender::DrawLine3D(f.FarRightBottom, f.NearRightBottom, color);
 		}
 	}
 }
