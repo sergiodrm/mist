@@ -109,6 +109,7 @@ namespace Mist
     {
 		PROFILE_SCOPE_LOG(RenderContext_ForceFrameSync, "Force sync operation");
 		ProcessAndWaitFrameCommandContextFences(context.Device, context.FrameContextArray, globals::MaxOverlappedFrames);
+		vkDeviceWaitIdle(context.Device);
     }
 
 	uint32_t RenderContext_PadUniformMemoryOffsetAlignment(const RenderContext& context, uint32_t size)
