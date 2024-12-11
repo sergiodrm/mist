@@ -215,6 +215,14 @@ namespace Mist
 		inline const T* GetData() const { return Data; }
 		inline T* GetData() { return Data; }
 
+		void Swap(index_t item1, index_t item2)
+		{
+			check(item1 < PushIndex && item2 < PushIndex);
+			T temp = Data[item1];
+			Data[item1] = Data[item2];
+			Data[item2] = temp;
+		}
+
 
 	private:
 		T Data[Size];
