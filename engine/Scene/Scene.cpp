@@ -1064,7 +1064,7 @@ namespace Mist
 			{
 				const glm::mat4& mat = m_globalTransforms[i];
 				const glm::vec3 pos = math::GetPos(viewSpace * mat);
-				const glm::vec3 dir = math::GetDir(viewSpace * mat);
+				const glm::vec3 dir = -1.f*math::GetDir(viewSpace * mat);
 				const LightComponent& light = m_lightComponentMap[i];
 				switch (light.Type)
 				{

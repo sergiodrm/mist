@@ -106,10 +106,10 @@ namespace Mist
 			{
 				const float h2 = clip * tanf(fov * 0.5f) * 2.f;
 				const float w2 = h2 * aspectRatio;
-				lt = { -w2, h2, clip };
-				rt = { w2, h2, clip };
-				lb = { -w2, -h2, clip };
-				rb = { w2, -h2, clip };
+				lt = { -w2, h2, -clip };
+				rt = { w2, h2, -clip };
+				lb = { -w2, -h2, -clip };
+				rb = { w2, -h2, -clip };
 			};
 		tFrustum f;
 		calculatePlane(fov, aspectRatio, nearClip, f.NearLeftTop, f.NearRightTop, f.NearLeftBottom, f.NearRightBottom);

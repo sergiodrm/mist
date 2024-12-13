@@ -121,7 +121,7 @@ namespace Mist
 
 		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
 		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
-		lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
+		//lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
 		// Light translation
 		glm::mat4 t = math::PosToMat4(lightPos);
 
@@ -134,7 +134,7 @@ namespace Mist
 		SetDepthVP(lightIndex, depthVP);
 		SetLightVP(lightIndex, lightVP);
 	}
-
+	
 	void ShadowMapPipeline::SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const glm::vec3& rot, float cutoff, float nearClip, float farClip)
 	{
 		glm::mat4 depthProj = glm::perspective(2.f*glm::radians(cutoff), 1.f, nearClip, farClip);
