@@ -101,12 +101,19 @@ namespace Mist
 	// Shader data, be careful with memory layout
 	struct SpotLightData
 	{
+		// vec4. w: shadow map texture index.
 		glm::vec3 Color;
 		float ShadowMapIndex;
+		// vec4. w: cos cutoff angle
 		glm::vec3 Direction;
 		float CosCutoff;
+		// vec4. w: cos outer cutoff angle
 		glm::vec3 Position;
-		float CosOuterCutoff; 
+		float CosOuterCutoff;
+		// vec4. x: radius, y: compression, zw: unused (padding)
+		float Radius;
+		float Compression;
+		float _padding[2];
 	};
 
 	struct EnvironmentData

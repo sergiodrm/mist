@@ -14,6 +14,8 @@ struct SpotLightData
     vec4 Color; // w: project shadows (-1.f not project. >=0.f shadow map index)
     vec4 Dir; // w: inner cutoff
     vec4 Pos; // w: outer cutoff
+    // x: radius, y: compression, zw: unused (padding)
+    vec4 Params;
 };
 
 #define MAX_SHADOW_MAPS 3
@@ -221,8 +223,11 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 A
     float intensity = clamp((theta - cosOuterCutoff) / epsilon, 0.0, 1.0);
     if (intensity > 0.f)
     {
-        // TODO calculate radiance with attenuation
-        vec3 Radiance = light.Color.rgb;
+        float radius = light.Params.x;
+        float compression = light.Params.y;
+        float distance = length(light.Pos.xyz - fragPos);
+        float attenuation = CalculateAttenuation(distance, radius, compression);
+        vec3 Radiance = light.Color.rgb * attenuation;
         vec3 V = normalize(-fragPos);
         vec3 H = normalize(V + lightDir);
         lighting = CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);

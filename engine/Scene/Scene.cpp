@@ -864,7 +864,8 @@ namespace Mist
 						sprintf_s(buff, "##TransformPos%d", i);
 						bool dirty = ImGui::DragFloat3(buff, &t.Position[0], posStep);
 						ImGui::NextColumn();
-						dirty |= ImGuiUtils::EditAngles("TransformRot", t.Rotation);
+						sprintf_s(buff, "TransformRot%d", i);
+						dirty |= ImGuiUtils::EditAngles(buff, "Rotation", t.Rotation);
 						ImGui::NextColumn();
 						ImGui::Text("Scale");
 						ImGui::NextColumn();
@@ -1097,11 +1098,13 @@ namespace Mist
 				switch (light.Type)
 				{
 				case ELightType::Point:
-					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Color = light.Color;
-					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Compression = light.Compression;
-					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Position = pos;
-					environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount].Radius = light.Radius;
-					++environmentData.ActiveLightsCount;
+				{
+					LightData& data = environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount++];
+					data.Color = light.Color;
+					data.Compression = light.Compression;
+					data.Position = pos;
+					data.Radius = light.Radius;
+				}
 					break;
 				case ELightType::Directional:
 					environmentData.DirectionalLight.Color = light.Color;
@@ -1109,13 +1112,17 @@ namespace Mist
 					environmentData.DirectionalLight.Direction = dir;
 					break;
 				case ELightType::Spot:
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Color = light.Color;
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Position = pos;
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].Direction = dir;
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].CosOuterCutoff = cosf(glm::radians(light.OuterCutoff));
-					environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount].CosCutoff = cosf(glm::radians(light.Cutoff));
-					++environmentData.ActiveSpotLightsCount;
+				{
+					SpotLightData& data = environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount++];
+					data.Color = light.Color;
+					data.ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
+					data.Position = pos;
+					data.Direction = dir;
+					data.CosOuterCutoff = cosf(glm::radians(light.OuterCutoff));
+					data.CosCutoff = cosf(glm::radians(light.Cutoff));
+					data.Radius = light.Radius;
+					data.Compression = light.Compression;
+				}
 					break;
 				}
 			}
