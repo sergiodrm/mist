@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.0441176295, 0.0441176295, 0.0441176295]
+  Ambient: [0.0463576317, 0.0463576317, 0.0463576317]
   Skybox:
     Front: textures/skybox/front.jpg
     Back: textures/skybox/back.jpg
@@ -20,31 +20,31 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [-8, 18, -1.5]
-      Rotation: [0.5, 1.5, -0.5]
+      Rotation: [0, -1.60000002, 0]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.362745106, 1, 0.362745106]
+      Color: [0.885180473, 1, 0.774834454]
       Radius: 30.5
       Compression: 30.5
-      OuterCutoff: 45.5999985
-      Cutoff: 12.8000002
+      OuterCutoff: 11.8999996
+      Cutoff: 0
       ProjectShadows: true
   - RenderObject: 2
     Name: Light_2
     Parent: 0
     TransformComponent:
       Position: [7.5, 12.5, 0]
-      Rotation: [0, 0, 0]
+      Rotation: [-1.57000005, 0, 0]
       Scale: [1, 1, 1]
     LightComponent:
-      Type: Point
-      Color: [0.569948196, 1, 0]
+      Type: Directional
+      Color: [0.238410592, 0.234824136, 0.227358446]
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
       Cutoff: 1
-      ProjectShadows: false
+      ProjectShadows: true
   - RenderObject: 3
     Name: Light_3
     Parent: 0
