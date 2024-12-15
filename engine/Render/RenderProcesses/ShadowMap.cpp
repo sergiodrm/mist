@@ -14,9 +14,13 @@
 #include "Utils/GenericUtils.h"
 #include "Application/Application.h"
 #include "Render/Camera.h"
+#include "glm/ext/quaternion_geometric.hpp"
+#include "glm/ext/matrix_transform.hpp"
 
 #define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
 #define SHADOW_MAP_RT_LAYOUT IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+
+#define SHADOW_MAP_CASCADE_SPLITS 1
 
 namespace Mist
 {
@@ -26,9 +30,9 @@ namespace Mist
 		: m_shader(nullptr)
 	{
 		SetProjection(glm::radians(45.f), 16.f / 9.f);
-		SetProjection(-10.f, 10.f, -10.f, 10.f);
+		SetProjection(-160.f, 160.f, -120.f, 120.f);
 		SetPerspectiveClip(1.f, 1000.f);
-		SetOrthographicClip(-10.f, 10.f);
+		SetOrthographicClip(-400.f, 150.f);
 
 		memset(m_depthMVPCache, 0, sizeof(m_depthMVPCache));
 	}
@@ -141,10 +145,19 @@ namespace Mist
 		SetupLight(lightIndex, pos, rot, depthProj, cameraView);
 	}
 
-	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot)
+	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot, float nearClip, float farClip)
 	{
-		glm::mat4 depthProj = GetProjection(PROJECTION_ORTHOGRAPHIC);
-		SetupLight(lightIndex, math::GetPos(cameraView), lightRot, depthProj, cameraView);
+#if 1
+		const glm::mat4 depthProj = GetProjection(PROJECTION_ORTHOGRAPHIC);
+		const glm::vec3 camerapos = glm::vec3(0.f);// math::GetPos(cameraView);
+		SetupLight(lightIndex, camerapos, lightRot, depthProj, cameraView);
+#else
+		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
+		glm::vec3 lightDir = -math::GetDir(lightRotMat);
+		glm::mat4 viewProj = ComputeShadowVolume(cameraView, cameraProj, lightDir, 1.f, 10.f);
+		SetupLight(lightIndex, viewProj, cameraView);
+#endif // 0
+
 	}
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
@@ -196,8 +209,91 @@ namespace Mist
 	{
 	}
 
+	glm::mat4 ShadowMapPipeline::ComputeShadowVolume(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDir, float nearClip, float farClip, float splitLambda)
+	{
+		float ratio = farClip / nearClip;
+		float range = farClip - nearClip;
+
+		float splits[SHADOW_MAP_CASCADE_SPLITS];
+		for (uint32_t i = 0; i < SHADOW_MAP_CASCADE_SPLITS; ++i)
+		{
+			float p = (i + 1) / (float)SHADOW_MAP_CASCADE_SPLITS;
+			float l = nearClip * glm::pow(ratio, p);
+			float u = nearClip + p * range;
+			float d = splitLambda * (l - u) + u;
+			splits[i] = (d - nearClip) / range;
+		}
+		float lastSplit = 0.f;
+		glm::mat4 viewProj(1.f);
+		for (uint32_t i = 0; i < SHADOW_MAP_CASCADE_SPLITS; ++i)
+		{
+			glm::vec3 frustumCorners[8] =
+			{
+				glm::vec3(-1.0f,  1.0f, 0.0f),
+				glm::vec3(1.0f,  1.0f, 0.0f),
+				glm::vec3(1.0f, -1.0f, 0.0f),
+				glm::vec3(-1.0f, -1.0f, 0.0f),
+				glm::vec3(-1.0f,  1.0f,  1.0f),
+				glm::vec3(1.0f,  1.0f,  1.0f),
+				glm::vec3(1.0f, -1.0f,  1.0f),
+				glm::vec3(-1.0f, -1.0f,  1.0f),
+			};
+
+			// Project frustum corners to world space
+			const glm::mat4 matToWorld = glm::inverse(projection * view);
+			for (uint32_t j = 0; j < 8; ++j)
+			{
+				glm::vec4 corner = matToWorld * glm::vec4(frustumCorners[j], 1.f);
+				frustumCorners[j] = corner / corner.w;
+			}
+			for (uint32_t j = 0; j < 4; ++j)
+			{
+				glm::vec3 dist = frustumCorners[j + 4] - frustumCorners[j];
+				frustumCorners[j + 4] = dist * splits[i] + frustumCorners[j];
+				frustumCorners[j] = dist * lastSplit + frustumCorners[j];
+			}
+			// Frustum center
+			glm::vec3 center(0.f);
+			for (uint32_t j = 0; j < 8; ++j)
+				center += frustumCorners[j];
+			center /= 8.f;
+			float radius = 0.f;
+			for (uint32_t j = 0; j < 8; ++j)
+			{
+				float dist = glm::length(frustumCorners[j] - center);
+				radius = __max(radius, dist);
+			}
+			radius = ceilf(radius * 16.f) / 16.f;
+
+			glm::vec3 maxExtents = glm::vec3(radius);
+			glm::vec3 minExtents = -maxExtents;
+			glm::mat4 lightView = glm::lookAt(center - lightDir * -minExtents.z, center, glm::vec3(0.f, 1.f, 0.f));
+			glm::mat4 lightProj = glm::ortho(minExtents.x, maxExtents.x, minExtents.y, maxExtents.y, 0.f, maxExtents.z - minExtents.z);
+
+			viewProj = lightProj * lightView;
+
+			lastSplit = splits[i];
+		}
+
+		return viewProj;
+	}
+
+	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::mat4& depthViewProj, const glm::mat4& view)
+	{
+		static constexpr glm::mat4 depthBias =
+		{
+			0.5f, 0.0f, 0.0f, 0.0f,
+			0.0f, 0.5f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.5f, 0.5f, 0.0f, 1.0f
+		};
+		// Light Matrix with inverse(viewMatrix) because gbuffer calculates position buffer in view space.
+		glm::mat4 lightVP = depthBias * depthViewProj * glm::inverse(view);
+		SetDepthVP(lightIndex, depthViewProj);
+		SetLightVP(lightIndex, lightVP);
+	}
+
 	ShadowMapProcess::ShadowMapProcess()
-		: m_debugFrustum(false)
 	{
 		m_debugLightParams.clips[0] = 1.f;
 		m_debugLightParams.clips[1] = 1000.f;
@@ -258,11 +354,18 @@ namespace Mist
 					switch (light->Type)
 					{
 					case ELightType::Directional:
-						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, glm::inverse(invView), cameraProj, t.Rotation);
+						if (m_debugDirParams.show)
+						{
+							m_debugDirParams.pos = glm::vec3(0.f);
+							m_debugDirParams.rot = t.Rotation;
+							for (uint32_t j = 0; j< CountOf(m_debugDirParams.clips); ++j)
+								m_debugDirParams.clips[j] = m_shadowMapPipeline.m_orthoParams[j];
+						}
+						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, invView, cameraProj, t.Rotation);
 						break;
 					case ELightType::Spot:
 					{
-						if (m_debugFrustum)
+						if (m_debugLightParams.show)
 						{
 							m_debugLightParams.pos = t.Position;
 							m_debugLightParams.rot = t.Rotation;
@@ -307,7 +410,7 @@ namespace Mist
 		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
 		GpuProf_Begin(renderContext, "Shadow mapping");
 
-		check(m_lightCount < globals::MaxShadowMapAttachments);
+		check(m_lightCount <= globals::MaxShadowMapAttachments);
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
 			m_shadowMapTargetArray[i].BeginPass(renderContext, cmd);
@@ -339,7 +442,8 @@ namespace Mist
 			m_debugIndex = math::Clamp(m_debugIndex, 0u, globals::MaxShadowMapAttachments - 1);
 		}
 		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
-		ImGui::Checkbox("Debug frustum", &m_debugFrustum);
+		ImGui::Checkbox("Debug spot frustum", &m_debugLightParams.show);
+		ImGui::Checkbox("Debug dir frustum", &m_debugDirParams.show);
 		ImGui::Separator();
 		ImGui::Text("Debug proj params");
 		ImGui::DragFloat("Near clip", &m_debugLightParams.clips[0], 1.f);
@@ -387,26 +491,23 @@ namespace Mist
 			}
 			break;
 		}
-		if (m_debugFrustum)
+		if (m_debugLightParams.show)
 		{
-			tFrustum f = Camera::CalculateFrustum(m_debugLightParams.pos, 
+			tFrustum f = Camera::CalculateFrustum(m_debugLightParams.pos,
 				m_debugLightParams.rot, glm::radians(m_debugLightParams.cutoff), 1.f, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
 			glm::vec3 color = glm::vec3(0.2f, 0.96f, 0.5f);
-			// Near plane
-			DebugRender::DrawLine3D(f.NearLeftTop, f.NearLeftBottom, color);
-			DebugRender::DrawLine3D(f.NearRightTop, f.NearRightBottom, color);
-			DebugRender::DrawLine3D(f.NearLeftTop, f.NearRightTop, color);
-			DebugRender::DrawLine3D(f.NearLeftBottom, f.NearRightBottom, color);
-			// Far plane
-			DebugRender::DrawLine3D(f.FarLeftTop, f.FarLeftBottom, color);
-			DebugRender::DrawLine3D(f.FarRightTop, f.FarRightBottom, color);
-			DebugRender::DrawLine3D(f.FarLeftTop, f.FarRightTop, color);
-			DebugRender::DrawLine3D(f.FarLeftBottom, f.FarRightBottom, color);
-			// Join planes
-			DebugRender::DrawLine3D(f.FarLeftTop, f.NearLeftTop, color);
-			DebugRender::DrawLine3D(f.FarRightTop, f.NearRightTop, color);
-			DebugRender::DrawLine3D(f.FarLeftBottom, f.NearLeftBottom, color);
-			DebugRender::DrawLine3D(f.FarRightBottom, f.NearRightBottom, color);
+			f.DrawDebug(color);
+		}
+		if (m_debugDirParams.show)
+		{
+			tFrustum f = Camera::CalculateFrustum(m_debugDirParams.pos, m_debugDirParams.rot,
+				m_debugDirParams.clips[0],
+				m_debugDirParams.clips[1],
+				m_debugDirParams.clips[2],
+				m_debugDirParams.clips[3],
+				m_debugDirParams.clips[4],
+				m_debugDirParams.clips[5]);
+			f.DrawDebug({ 0.7f, 0.2f, 0.5f });
 		}
 	}
 }

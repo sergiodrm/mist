@@ -41,7 +41,7 @@ namespace Mist
 		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix);
 
 		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const glm::vec3& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
-		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot);
+		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot, float nearClip = 0.1f, float farClip = 1000.f);
 
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
 		void RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex);
@@ -52,6 +52,10 @@ namespace Mist
 		uint32_t GetBufferSize() const;
 
 		void ImGuiDraw(bool createWindow = false);
+
+	protected:
+		glm::mat4 ComputeShadowVolume(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDir, float nearClip, float farClip, float splitLambda = 0.95f);
+		void SetupLight(uint32_t lightIndex, const glm::mat4& depthViewProjection, const glm::mat4& view);
 	private:
 		// Shader shadowmap pipeline
 		ShaderProgram* m_shader;
@@ -93,13 +97,20 @@ namespace Mist
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;
-		bool m_debugFrustum;
 		struct
 		{
+			bool show = false;
 			glm::vec3 pos;
 			glm::vec3 rot;
 			float cutoff;
 			float clips[2];
 		} m_debugLightParams;
+		struct
+		{
+			bool show = false;
+			glm::vec3 pos;
+			glm::vec3 rot;
+			float clips[6];
+		} m_debugDirParams;
 	};
 }
