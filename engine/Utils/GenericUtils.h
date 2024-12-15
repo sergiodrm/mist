@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Types.h"
+#include "Angles.h"
 #include <glm/glm.hpp>
 
 namespace Mist
@@ -45,6 +46,7 @@ namespace Mist
 		glm::vec3 ToRot(const glm::vec3& direction);
 		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
 		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
+		glm::mat4 ToMat4(const glm::vec3& pos, const tAngles& a, const glm::vec3& scl);
 		glm::mat4 PosToMat4(const glm::vec3& pos);
 
 		glm::vec3 GetDir(const glm::mat4& transform);
@@ -58,5 +60,6 @@ namespace Mist
 	namespace ImGuiUtils
 	{
 		bool CheckboxBitField(const char* id, int32_t* bitfield, int32_t bitflag);
+		bool EditAngles(const char* label, tAngles& a, float speed = 0.5f, float min=0.f, float max= 0.f, const char* fmt = "%5.3f");
 	}
 }

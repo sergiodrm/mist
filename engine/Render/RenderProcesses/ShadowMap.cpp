@@ -113,7 +113,7 @@ namespace Mist
 		m_orthoParams[3] = maxY;
 	}
 
-	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix)
+	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const tAngles& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix)
 	{
 		static constexpr glm::mat4 depthBias =
 		{
@@ -124,7 +124,7 @@ namespace Mist
 		};
 
 		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
-		glm::mat4 lightRotMat = math::PitchYawRollToMat4(lightRot);
+		glm::mat4 lightRotMat = lightRot.ToMat4();
 		//lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
 		// Light translation
 		glm::mat4 t = math::PosToMat4(lightPos);
@@ -139,13 +139,13 @@ namespace Mist
 		SetLightVP(lightIndex, lightVP);
 	}
 	
-	void ShadowMapPipeline::SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const glm::vec3& rot, float cutoff, float nearClip, float farClip)
+	void ShadowMapPipeline::SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip)
 	{
 		glm::mat4 depthProj = glm::perspective(2.f*glm::radians(cutoff), 1.f, nearClip, farClip);
 		SetupLight(lightIndex, pos, rot, depthProj, cameraView);
 	}
 
-	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot, float nearClip, float farClip)
+	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float nearClip, float farClip)
 	{
 #if 1
 		const glm::mat4 depthProj = GetProjection(PROJECTION_ORTHOGRAPHIC);

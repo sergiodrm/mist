@@ -9,6 +9,7 @@
 #include "Core/Logger.h"
 #include "Core/Debug.h"
 #include "Utils/GenericUtils.h"
+#include "Utils/Angles.h"
 #include "DebugRender.h"
 
 namespace Mist
@@ -101,7 +102,7 @@ namespace Mist
 		RecalculateProjection();
 	}
 
-	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float fov, float aspectRatio, float nearClip, float farClip)
+	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const tAngles& rot, float fov, float aspectRatio, float nearClip, float farClip)
 	{
 		auto calculatePlane = [](float fov, float aspectRatio, float clip, glm::vec3& lt, glm::vec3& rt, glm::vec3& lb, glm::vec3& rb)
 			{
@@ -127,7 +128,7 @@ namespace Mist
 		return f;
 	}
 
-	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip)
+	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const tAngles& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip)
 	{
 		glm::mat4 m = math::ToMat4(pos, rot, glm::vec3(1.f));
 		tFrustum f;

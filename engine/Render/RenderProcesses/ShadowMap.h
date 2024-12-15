@@ -5,7 +5,7 @@
 #include "Render/Globals.h"
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
-#include <glm/glm.hpp>
+#include "Utils/Angles.h"
 
 
 namespace Mist
@@ -38,10 +38,10 @@ namespace Mist
 		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
 		void SetProjection(float fov, float aspectRatio);
 		void SetProjection(float minX, float maxX, float minY, float maxY);
-		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const glm::vec3& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix);
+		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const tAngles& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix);
 
-		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const glm::vec3& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
-		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const glm::vec3& lightRot, float nearClip = 0.1f, float farClip = 1000.f);
+		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
+		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float nearClip = 0.1f, float farClip = 1000.f);
 
 		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
 		void RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex);
@@ -101,7 +101,7 @@ namespace Mist
 		{
 			bool show = false;
 			glm::vec3 pos;
-			glm::vec3 rot;
+			tAngles rot;
 			float cutoff;
 			float clips[2];
 		} m_debugLightParams;
@@ -109,7 +109,7 @@ namespace Mist
 		{
 			bool show = false;
 			glm::vec3 pos;
-			glm::vec3 rot;
+			tAngles rot;
 			float clips[6];
 		} m_debugDirParams;
 	};

@@ -172,13 +172,40 @@ namespace Mist
 
 	glm::mat4 math::PitchYawRollToMat4(const glm::vec3& pyr)
 	{
+#if 1
+		glm::mat4 mat;
+		float sr, sp, sy, cr, cp, cy;
+
+		sy = glm::sin(glm::radians(pyr.y));
+		cy = glm::cos(glm::radians(pyr.y));
+		sp = glm::sin(glm::radians(pyr.x));
+		cp = glm::cos(glm::radians(pyr.x));
+		sr = glm::sin(glm::radians(pyr.z));
+		cr = glm::cos(glm::radians(pyr.z));
+
+		mat[0] = glm::vec4(cp * cy, cp * sy, -sp, 0.f);
+		mat[1] = glm::vec4(sr * sp * cy + cr * -sy, sr * sp * sy + cr * cy, sr * cp, 0.f);
+		mat[2] = glm::vec4(cr * sp * cy + -sr * -sy, cr * sp * sy + -sr * cy, cr * cp, 0.f);
+		mat[3] = glm::vec4(0.f, 0.f, 0.f, 1.f);
+
+		return mat;
+#else
 		return glm::eulerAngleXYZ(pyr.x, pyr.y, pyr.z);
+#endif // 0
 	}
 
 	glm::mat4 math::ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
 	{
 		glm::mat4 t = glm::translate(glm::mat4(1.f), pos);
 		glm::mat4 r = PitchYawRollToMat4(rot);
+		glm::mat4 s = glm::scale(glm::mat4(1.f), scl);
+		return t * r * s;
+	}
+
+	glm::mat4 math::ToMat4(const glm::vec3& pos, const tAngles& a, const glm::vec3& scl)
+	{
+		glm::mat4 t = glm::translate(glm::mat4(1.f), pos);
+		glm::mat4 r = a.ToMat4();
 		glm::mat4 s = glm::scale(glm::mat4(1.f), scl);
 		return t * r * s;
 	}
@@ -233,4 +260,17 @@ bool Mist::ImGuiUtils::CheckboxBitField(const char* id, int32_t* bitfield, int32
 		return true;
 	}
 	return false;
+}
+
+bool Mist::ImGuiUtils::EditAngles(const char* label, tAngles& a, float speed, float min, float max, const char* fmt)
+{
+	int col = ImGui::GetColumnsCount();
+	ImGui::Columns(2);
+	ImGui::Text("%s", label);
+	ImGui::NextColumn();
+	char buff[256];
+	sprintf_s(buff, "##%s", label);
+	bool ret = ImGui::DragFloat3(buff, a.ToFloat(), speed, min, max, fmt);
+	ImGui::Columns(col);
+	return ret;
 }

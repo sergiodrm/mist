@@ -49,6 +49,13 @@ YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec4& v)
 	return e;
 }
 
+YAML::Emitter& operator<<(YAML::Emitter& e, const Mist::tAngles& a)
+{
+	e << YAML::Flow << YAML::BeginSeq << a.m_pitch << a.m_yaw << a.m_roll << YAML::EndSeq;
+	return e;
+}
+
+
 namespace YAML
 {
 	template<>
@@ -93,6 +100,30 @@ namespace YAML
 			rhs.x = node[0].as<float>();
 			rhs.y = node[1].as<float>();
 			rhs.z = node[2].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<Mist::tAngles>
+	{
+		static Node encode(const Mist::tAngles& rhs)
+		{
+			Node node;
+			node.push_back(rhs.m_pitch);
+			node.push_back(rhs.m_yaw);
+			node.push_back(rhs.m_roll);
+			return node;
+		}
+
+		static bool decode(const Node& node, Mist::tAngles& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 3)
+				return false;
+
+			rhs.m_pitch = node[0].as<float>();
+			rhs.m_yaw = node[1].as<float>();
+			rhs.m_roll = node[2].as<float>();
 			return true;
 		}
 	};
@@ -220,7 +251,7 @@ namespace Mist
 		sRenderObject node = (uint32_t)m_hierarchy.size();
 		m_localTransforms[node] = glm::mat4(1.f);
 		m_globalTransforms[node] = glm::mat4(1.f);
-		m_transformComponents[node] = { .Position = glm::vec3(0.f), .Rotation = glm::vec3(0.f), .Scale = glm::vec3(1.f) };
+		m_transformComponents[node] = { .Position = glm::vec3(0.f), .Rotation = tAngles(0.f), .Scale = glm::vec3(1.f) };
 		char buff[64];
 		sprintf_s(buff, "RenderObject_%u", node.Id);
 		m_names.push_back(buff);
@@ -257,7 +288,7 @@ namespace Mist
 		{
 			m_models.Push();
 			model = &m_models.GetBack();
-			model->LoadModel(context, filepath);
+			check(model->LoadModel(context, filepath));
 		}
 		check(model);
 		return (index_t)(model-m_models.GetData());
@@ -308,7 +339,7 @@ namespace Mist
 			TransformComponent t;
 			YAML::Node transformNode = it["TransformComponent"];
 			t.Position = transformNode["Position"].as<glm::vec3>();
-			t.Rotation = transformNode["Rotation"].as<glm::vec3>();
+			t.Rotation = transformNode["Rotation"].as<tAngles>();
 			t.Scale = transformNode["Scale"].as<glm::vec3>();
 			SetTransform(rb, t);
 
@@ -833,10 +864,7 @@ namespace Mist
 						sprintf_s(buff, "##TransformPos%d", i);
 						bool dirty = ImGui::DragFloat3(buff, &t.Position[0], posStep);
 						ImGui::NextColumn();
-						ImGui::Text("Rotation");
-						ImGui::NextColumn();
-						sprintf_s(buff, "##TransformRot%d", i);
-						dirty |= ImGui::DragFloat3(buff, &t.Rotation[0], rotStep);
+						dirty |= ImGuiUtils::EditAngles("TransformRot", t.Rotation);
 						ImGui::NextColumn();
 						ImGui::Text("Scale");
 						ImGui::NextColumn();

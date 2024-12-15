@@ -11,6 +11,7 @@
 #include "Render/Material.h"
 #include "Core/Types.h"
 #include <glm/glm.hpp>
+#include "Utils/Angles.h"
 
 #define MIST_MAX_MODELS 128
 
@@ -75,7 +76,7 @@ namespace Mist
 	struct TransformComponent
 	{
 		glm::vec3 Position;
-		glm::vec3 Rotation;
+		tAngles Rotation;
 		glm::vec3 Scale;
 	};
 

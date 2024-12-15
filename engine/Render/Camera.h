@@ -4,6 +4,8 @@
 
 namespace Mist
 {
+	class tAngles;
+
 	enum class ECameraProjectionType
 	{
 		Perspective,
@@ -53,8 +55,8 @@ namespace Mist
 		void SetFarClip(float clip);
 		void SetProjection(float fov, float aspectRatio, float nearClip, float farClip);
 
-		static tFrustum CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float fov, float aspectRatio, float nearClip, float farClip);
-		static tFrustum CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip);
+		static tFrustum CalculateFrustum(const glm::vec3& pos, const tAngles& rot, float fov, float aspectRatio, float nearClip, float farClip);
+		static tFrustum CalculateFrustum(const glm::vec3& pos, const tAngles& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip);
 
 		void ImGuiDraw(bool createWindow = false);
 
