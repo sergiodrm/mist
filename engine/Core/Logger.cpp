@@ -247,9 +247,11 @@ namespace Mist
 
 	void TerminateLog()
 	{
-		check(GLogFile);
-		delete GLogFile;
-		GLogFile = nullptr;
+		if (GLogFile)
+		{
+			delete GLogFile;
+			GLogFile = nullptr;
+		}
 	}
 
 }
