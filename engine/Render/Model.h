@@ -19,7 +19,7 @@ namespace Mist
 		};
 	public:
 
-		void LoadModel(const RenderContext& context, const char* filepath);
+		bool LoadModel(const RenderContext& context, const char* filepath);
 		void Destroy(const RenderContext& context);
 		
 		inline index_t GetTransformsCount() const { return m_nodes.GetSize(); }

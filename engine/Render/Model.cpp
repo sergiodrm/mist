@@ -386,7 +386,7 @@ namespace Mist
 		m_root = index_invalid;
 	}
 
-	void cModel::LoadModel(const RenderContext& context, const char* filepath)
+	bool cModel::LoadModel(const RenderContext& context, const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		check(m_materials.IsEmpty() && m_meshes.IsEmpty());
@@ -397,14 +397,14 @@ namespace Mist
 		if (!data)
 		{
 			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", assetPath);
-			return;
+			return false;
 		}
 
 		if (!data->nodes_count)
 		{
 			Logf(LogLevel::Error, "Model file without nodes in scene: %s.\n", assetPath);
 			gltf_api::FreeData(data);
-			return;
+			return false;
 		}
 		SetName(assetPath);
 
@@ -501,6 +501,7 @@ namespace Mist
 		}
 		loadmeshlog("=== End loading model ===\n");
 		gltf_api::FreeData(data);
+		return true;
 	}
 
 	void cModel::UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform) const
