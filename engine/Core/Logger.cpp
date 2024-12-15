@@ -142,7 +142,7 @@ namespace Mist
 		void PrintHeader()
 		{
 			fprintf_s(m_file, "<!DOCTYPE html>\n");
-			fprintf_s(m_file, "<body style=\"background-color:#282c34;font-family:Arial;font-size:small\">\n");
+			fprintf_s(m_file, "<body style=\"background-color:#282c34;font-family:Cascadia;font-size:small\">\n");
 		}
 
 		void PrintFoot()
