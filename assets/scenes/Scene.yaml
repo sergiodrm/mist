@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0463576317, 0.0463576317, 0.0463576317]
   Skybox:
-    Front: textures/skybox/front.jpg
-    Back: textures/skybox/back.jpg
-    Top: textures/skybox/top.jpg
-    Bottom: textures/skybox/bottom.jpg
-    Left: textures/skybox/left.jpg
-    Right: textures/skybox/right.jpg
+    Front: textures/skybox/left.jpg
+    Back: textures/skybox/right.jpg
+    Top: textures/skybox/front.jpg
+    Bottom: textures/skybox/back.jpg
+    Left: textures/skybox/top.jpg
+    Right: textures/skybox/bottom.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -20,14 +20,14 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [-8, 18, -1.5]
-      Rotation: [0, -1.60000002, 0]
+      Rotation: [-6.5, -90, 0]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
       Color: [0.885180473, 1, 0.774834454]
       Radius: 30.5
       Compression: 30.5
-      OuterCutoff: 11.8999996
+      OuterCutoff: 19.5
       Cutoff: 0
       ProjectShadows: true
   - RenderObject: 2
@@ -35,11 +35,11 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [7.5, 12.5, 0]
-      Rotation: [-1.57000005, 0, 0]
+      Rotation: [42.5, 0, -90]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [0.238410592, 0.234824136, 0.227358446]
+      Color: [0.569536448, 0.524250329, 0.429981142]
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
@@ -66,15 +66,15 @@ RenderObjects:
     TransformComponent:
       Position: [0, 0, 0]
       Rotation: [0, -0, 0]
-      Scale: [1, 1, 1]
+      Scale: [10, 10, 10]
     MeshComponent:
-      MeshAssetPath: models/sponza/sponzatest/Sponzatest.gltf
+      MeshAssetPath: models/sponza/sponza.gltf
   - RenderObject: 5
     Name: EmissiveTest
     Parent: 0
     TransformComponent:
-      Position: [15.5, 8.5, 0]
-      Rotation: [0, -1.57000005, 0]
+      Position: [78, 8.5, -1]
+      Rotation: [0, -90, 0]
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: models/emissive/emissivestrengthtest.gltf
@@ -82,8 +82,8 @@ RenderObjects:
     Name: MetalRoughSpheres
     Parent: 0
     TransformComponent:
-      Position: [37, 15.5, 0]
-      Rotation: [0, -1.57000005, 0]
+      Position: [27, 15.5, 0]
+      Rotation: [0, -90, 0]
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: models/metalrough/metalroughspheres.gltf
