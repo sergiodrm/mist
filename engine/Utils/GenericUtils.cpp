@@ -225,13 +225,6 @@ namespace Mist
 		return transform[3];
 	}
 
-	glm::vec3 math::GetRot(const glm::mat4& transform)
-	{
-		glm::vec3 rot;
-		glm::extractEulerAngleXYZ(transform, rot.x, rot.y, rot.z);
-		return rot;
-	}
-
 	void math::DecomposeMatrix(const glm::mat4& transform, glm::vec3& pos, glm::vec3& rot, glm::vec3& scale)
 	{
 		glm::quat q;
@@ -262,14 +255,14 @@ bool Mist::ImGuiUtils::CheckboxBitField(const char* id, int32_t* bitfield, int32
 	return false;
 }
 
-bool Mist::ImGuiUtils::EditAngles(const char* label, tAngles& a, float speed, float min, float max, const char* fmt)
+bool Mist::ImGuiUtils::EditAngles(const char* id, const char* label, tAngles& a, float speed, float min, float max, const char* fmt)
 {
 	int col = ImGui::GetColumnsCount();
 	ImGui::Columns(2);
 	ImGui::Text("%s", label);
 	ImGui::NextColumn();
 	char buff[256];
-	sprintf_s(buff, "##%s", label);
+	sprintf_s(buff, "##%s", id);
 	bool ret = ImGui::DragFloat3(buff, a.ToFloat(), speed, min, max, fmt);
 	ImGui::Columns(col);
 	return ret;

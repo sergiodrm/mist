@@ -51,7 +51,6 @@ namespace Mist
 
 		glm::vec3 GetDir(const glm::mat4& transform);
 		glm::vec3 GetPos(const glm::mat4& transform);
-		glm::vec3 GetRot(const glm::mat4& transform);
 		void DecomposeMatrix(const glm::mat4& transform, glm::vec3& pos, glm::vec3& rot, glm::vec3& scale);
 	}
 
@@ -60,6 +59,6 @@ namespace Mist
 	namespace ImGuiUtils
 	{
 		bool CheckboxBitField(const char* id, int32_t* bitfield, int32_t bitflag);
-		bool EditAngles(const char* label, tAngles& a, float speed = 0.5f, float min=0.f, float max= 0.f, const char* fmt = "%5.3f");
+		bool EditAngles(const char* id, const char* label, tAngles& a, float speed = 0.5f, float min=0.f, float max= 0.f, const char* fmt = "%5.3f");
 	}
 }
