@@ -18,6 +18,7 @@
 
 namespace Mist
 {
+	CBoolVar CVar_FogEnabled("r_fogenabled", false);
 
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
@@ -41,6 +42,8 @@ namespace Mist
 			blend.Enabled = true;
 			//shaderDesc.ColorAttachmentBlendingArray.push_back(blend);
 			m_lightingShader = ShaderProgram::Create(renderContext, shaderDesc);
+			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "DEFERRED_APPLY_FOG" });
+			m_lightingFogShader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
 
 #if 0
@@ -126,25 +129,28 @@ namespace Mist
 		BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
 		m_lightingOutput.BeginPass(renderContext, cmd);
 		m_lightingOutput.ClearColor(cmd);
-		m_lightingShader->UseProgram(renderContext);
-		m_lightingShader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
-		m_lightingShader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
-		m_lightingShader->BindTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
-		m_lightingShader->BindTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
-		m_lightingShader->BindTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
+		ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
+
+		shader->UseProgram(renderContext);
+		shader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
+		shader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
+		shader->BindTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
+		shader->BindTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
+		shader->BindTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
+		shader->BindTextureSlot(renderContext, 6, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_DEPTH).Tex);
 
 		// Use shared buffer for avoiding doing this here (?)
 		const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
 		tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 			shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
-		m_lightingShader->SetBufferData(renderContext, "u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+		shader->SetBufferData(renderContext, "u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
 
 		EnvironmentData env = frameContext.Scene->GetEnvironmentData();
 		env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
-		m_lightingShader->SetBufferData(renderContext, "u_Env", &env, sizeof(env));
+		shader->SetBufferData(renderContext, "u_Env", &env, sizeof(env));
 
-		m_lightingShader->FlushDescriptors(renderContext);
+		shader->FlushDescriptors(renderContext);
 
 		CmdDrawFullscreenQuad(cmd);
 		m_lightingOutput.EndPass(cmd);

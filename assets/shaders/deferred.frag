@@ -42,6 +42,7 @@ layout(set = 3, binding = 0) uniform sampler2D u_GBufferAlbedo;
 layout(set = 4, binding = 0) uniform sampler2D u_ssao;
 // Shadow map textures
 layout(set = 5, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
+layout(set = 6, binding = 0) uniform sampler2D u_GBufferDepth;
 
 #define LightRadius(l) l.Pos.a
 #define LightCompression(l) l.Color.w
@@ -293,6 +294,20 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     return vec4(Color, 1.f);
 }
 
+#if defined(DEFERRED_APPLY_FOG)
+vec4 ApplyFog(vec4 lightingColor, vec4 fogColor)
+{
+    float d = LinearizeDepth(texture(u_GBufferDepth, inTexCoords).r, 1.f, 1000.f);
+#if 1 // linear interpolation
+    return mix(lightingColor, fogColor, d);
+#elif 1 // custom interp
+    //return (1.f-d*d)*lightingColor+d*d*fogColor;
+    float f = 0.1f*exp(d);
+    return (1.f-f)*lightingColor+f*fogColor;
+#endif
+}
+#endif // DEFERRED_APPLY_FOG
+
 void main()
 {
 #if 1
@@ -306,7 +321,13 @@ void main()
     float ao = texture(u_ssao, inTexCoords).r;
     if (fragColor.a <= 0.1f)
         discard;
-    outColor = main_PBR(fragPos, fragNormal, fragColor.rgb, metallic, roughness, ao);
+    vec4 lightingColor = main_PBR(fragPos, fragNormal, fragColor.rgb, metallic, roughness, ao);
+#if defined(DEFERRED_APPLY_FOG)
+    vec4 c = vec4(0.1, 0.1, 0.1, 1.f);
+    outColor = ApplyFog(lightingColor, c);
+#else
+    outColor = lightingColor;
+#endif // DEFERRED_APPLY_FOG
     return;
 
 

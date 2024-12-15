@@ -35,6 +35,7 @@ namespace Mist
 	private:
 		RenderTarget m_lightingOutput;
 		ShaderProgram* m_lightingShader;
+		ShaderProgram* m_lightingFogShader;
 		ShaderProgram* m_skyboxShader;
 
 		ShaderProgram* m_hdrShader;
