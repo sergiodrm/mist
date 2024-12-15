@@ -153,12 +153,14 @@ namespace win
 void Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
 	Mist::Debug::PrintCallstack();
-	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
-	Mist::Logf(Mist::LogLevel::Error, "Check failed: %s\n\n", txt);
-	Mist::Logf(Mist::LogLevel::Error, "File: %s\n", file);
-	Mist::Logf(Mist::LogLevel::Error, "Function: %s\n", fn);
-	Mist::Logf(Mist::LogLevel::Error, "Line: %d\n\n", line);
-	Mist::Log(Mist::LogLevel::Error, "============================================================\n\n");
+	logerror("============================================================\n\n");
+	logferror("Check failed: %s\n\n", txt);
+	logferror("File: %s\n", file);
+	logferror("Function: %s\n", fn);
+	logferror("Line: %d\n\n", line);
+	logerror("============================================================\n\n");
+	Mist::FlushLogToFile();
+	Mist::TerminateLog();
 
 	eDialogMessageResult res = DialogMsgErrorF(DIALOG_BUTTON_YESNO, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\n\nLine: %d\n\nDebug program?", txt, file, fn, line);
 	if (res == DIALOG_MESSAGE_RESULT_YES)
@@ -170,7 +172,7 @@ void Mist::Debug::DebugVkCheck(int res, const char* txt, const char* file, const
 {
 	VkResult vkres = (VkResult)res;
 	const char* vkstr = Mist::VkResultToStr(vkres);
-	Mist::Logf(Mist::LogLevel::Error, "VkCheck failed. VkResult %d: %s\n", res, vkstr);
+	logferror("VkCheck failed. VkResult %d: %s\n", res, vkstr);
 	DebugCheck(txt, file, fn, line);
 }
 
