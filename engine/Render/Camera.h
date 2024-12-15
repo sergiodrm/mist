@@ -29,6 +29,8 @@ namespace Mist
 			};
 			glm::vec3 Points[8];
 		};
+
+		void DrawDebug(const glm::vec3& color);
 	};
 
 	class Camera
@@ -52,6 +54,7 @@ namespace Mist
 		void SetProjection(float fov, float aspectRatio, float nearClip, float farClip);
 
 		static tFrustum CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float fov, float aspectRatio, float nearClip, float farClip);
+		static tFrustum CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip);
 
 		void ImGuiDraw(bool createWindow = false);
 

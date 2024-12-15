@@ -9,6 +9,7 @@
 #include "Core/Logger.h"
 #include "Core/Debug.h"
 #include "Utils/GenericUtils.h"
+#include "DebugRender.h"
 
 namespace Mist
 {
@@ -126,6 +127,21 @@ namespace Mist
 		return f;
 	}
 
+	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const glm::vec3& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip)
+	{
+		glm::mat4 m = math::ToMat4(pos, rot, glm::vec3(1.f));
+		tFrustum f;
+		f.NearLeftTop = m * glm::vec4(minX, maxY, -nearClip, 1.f);
+		f.NearRightTop = m * glm::vec4(maxX, maxY, -nearClip, 1.f);
+		f.NearLeftBottom = m * glm::vec4(minX, minY, -nearClip, 1.f);
+		f.NearRightBottom = m * glm::vec4(maxX, minY, -nearClip, 1.f);
+		f.FarLeftTop = m * glm::vec4(minX, maxY, -farClip, 1.f);
+		f.FarRightTop = m * glm::vec4(maxX, maxY, -farClip, 1.f);
+		f.FarLeftBottom = m * glm::vec4(minX, minY, -farClip, 1.f);
+		f.FarRightBottom = m * glm::vec4(maxX, minY, -farClip, 1.f);
+		return f;
+	}
+
 	void Camera::ImGuiDraw(bool createWindow)
 	{
 		if (createWindow)
@@ -234,10 +250,10 @@ namespace Mist
 	void CameraController::ReadMouseState()
 	{
 		int32_t buttonBits = SDL_GetMouseState(nullptr, nullptr);
-		
+
 		// This function is called intensively, control calls to SDL_SetRelativeMouseMode
 		static bool lastMotionState = m_isMotionControlActive;
-		
+
 		m_isMotionControlActive = buttonBits & SDL_BUTTON(3);
 		if (lastMotionState != m_isMotionControlActive)
 		{
@@ -330,5 +346,24 @@ namespace Mist
 			}
 			break;
 		}
+	}
+
+	void tFrustum::DrawDebug(const glm::vec3& color)
+	{
+		// Near plane
+		DebugRender::DrawLine3D(NearLeftTop, NearLeftBottom, color);
+		DebugRender::DrawLine3D(NearRightTop, NearRightBottom, color);
+		DebugRender::DrawLine3D(NearLeftTop, NearRightTop, color);
+		DebugRender::DrawLine3D(NearLeftBottom, NearRightBottom, color);
+		// Far plane
+		DebugRender::DrawLine3D(FarLeftTop, FarLeftBottom, color);
+		DebugRender::DrawLine3D(FarRightTop, FarRightBottom, color);
+		DebugRender::DrawLine3D(FarLeftTop, FarRightTop, color);
+		DebugRender::DrawLine3D(FarLeftBottom, FarRightBottom, color);
+		// Join planes
+		DebugRender::DrawLine3D(FarLeftTop, NearLeftTop, color);
+		DebugRender::DrawLine3D(FarRightTop, NearRightTop, color);
+		DebugRender::DrawLine3D(FarLeftBottom, NearLeftBottom, color);
+		DebugRender::DrawLine3D(FarRightBottom, NearRightBottom, color);
 	}
 }
