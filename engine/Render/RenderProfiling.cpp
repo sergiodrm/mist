@@ -289,4 +289,23 @@ namespace Mist
 		}
 		ImGui::End();
 	}
+
+	double GpuProf_GetGpuTime(const RenderContext& context, const char* label)
+	{
+		uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
+		sGpuProfStack& stack = GpuProfStack[frameIndex];
+		index_t index = index_invalid;
+		for (index_t i = 0; i < stack.Items.GetSize(); ++i)
+		{
+			if (stack.Items[i].Label == label)
+			{
+				index = i;
+				break;
+			}
+		}
+		if (index != index_invalid)
+			return stack.Items[index].Value;
+		return 0.0;
+	}
+
 }

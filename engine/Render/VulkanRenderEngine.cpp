@@ -291,7 +291,7 @@ namespace Mist
 		tTimePoint now = GetTimePoint();
 		float ms = GetMiliseconds(now - point);
 		point = now;
-		Profiling::ShowFps(1000.f / (ms));
+		Profiling::AddCPUTime(ms);
 
 		ui::Begin(m_renderContext);
 		for (auto& fn : m_imguiCallbackArray)
@@ -439,6 +439,7 @@ namespace Mist
 		RenderFrameContext& frameContext = GetFrameContext();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 		GpuProf_Resolve(m_renderContext);
+		Profiling::AddGPUTime((float)(0.001 * GpuProf_GetGpuTime(m_renderContext, "GpuTime")));
 
 		BeginFrame();
 		{
@@ -466,23 +467,25 @@ namespace Mist
 
 			// Timestamp queries
 			GpuProf_Reset(m_renderContext);
+			GpuProf_Begin(m_renderContext, "GpuTime");
 
 			BeginGPUEvent(m_renderContext, cmd, "Begin Graphics", 0xff0000ff);
-
 			GpuProf_Begin(m_renderContext, "Graphics_Renderer");
 			m_renderer.Draw(m_renderContext, frameContext);
 			GpuProf_End(m_renderContext);
-
 			m_gpuParticleSystem.Draw(m_renderContext, frameContext);
 
+
 			// Skybox
+			BeginGPUEvent(m_renderContext, cmd, "Skybox");
 			m_renderer.GetLDRTarget().BeginPass(m_renderContext, cmd);
-			if (m_scene && m_scene->GetSkyboxTexture() && 0)
+			if (0&&m_scene && m_scene->GetSkyboxTexture())
 				DrawCubemap(m_renderContext, *m_scene->GetSkyboxTexture());
 			m_renderer.GetLDRTarget().EndPass(cmd);
+			EndGPUEvent(m_renderContext, cmd);
 
-			ui::End(m_renderContext);
 			DebugRender::Draw(m_renderContext);
+			ui::End(m_renderContext);
 
 			GpuProf_Begin(m_renderContext, "Graphics_ScreenDraw");
 			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
@@ -496,6 +499,7 @@ namespace Mist
 			EndGPUEvent(m_renderContext, cmd);
 			GpuProf_End(m_renderContext);
 
+			GpuProf_End(m_renderContext);
 			frameContext.GraphicsCommandContext.EndCommandBuffer();
 			EndGPUEvent(m_renderContext, cmd);
 			frameContext.GraphicsTimestampQueryPool.EndFrame();

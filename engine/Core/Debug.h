@@ -92,7 +92,8 @@ namespace Mist
 		};
 
 		void AddProfilerEntry(const char* key, double timeDiff);
-		void ShowFps(float fps);
+		void AddGPUTime(float ms);
+		void AddCPUTime(float ms);
 		void ImGuiDraw();
 
 		extern sRenderStats GRenderStats;

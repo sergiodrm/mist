@@ -44,4 +44,5 @@ namespace Mist
 	void GpuProf_Reset(const RenderContext& context);
 	void GpuProf_Resolve(const RenderContext& context);
 	void GpuProf_ImGuiDraw(const RenderContext& context);
+	double GpuProf_GetGpuTime(const RenderContext& context, const char* label);
 }

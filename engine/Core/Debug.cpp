@@ -286,8 +286,24 @@ namespace Mist
 
 		struct sProfiler
 		{
-			tCircularBuffer<float, 128> FPSArray;
+			tCircularBuffer<float, 128> CPUTimeArray;
+			tCircularBuffer<float, 128> GPUTimeArray;
 
+			static void GetStats(tCircularBuffer<float, 128>& data, float& min, float& max, float& mean, float& last)
+			{
+				mean = 0.f;
+				min = FLT_MAX;
+				max = -FLT_MAX;
+				last = data.GetLast();
+				for (uint32_t i = 0; i < data.GetCount(); ++i)
+				{
+					float value = data.GetFromOldest(i);
+					min = __min(min, value);
+					max = __max(max, value);
+					mean += value;
+				}
+				mean /= data.GetCount();
+			}
 
 			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 		} GProfiler;
@@ -338,67 +354,38 @@ namespace Mist
 			entry.Min = __min(timeDiff, entry.Min);
 		}
 
-		void ShowFps(float fps)
+		void AddCPUTime(float ms)
 		{
-			GProfiler.FPSArray.Push(fps);
+			GProfiler.CPUTimeArray.Push(ms);
 		}
 
-		void GetFpsStats(float& minFps, float& maxFps, float& meanFps, float& lastFps)
+		void AddGPUTime(float ms)
 		{
-			meanFps = 0.f;
-			minFps = FLT_MAX;
-			maxFps = -FLT_MAX;
-			lastFps = GProfiler.FPSArray.GetLast();
-			for (uint32_t i = 0; i < GProfiler.FPSArray.GetCount(); ++i)
-			{
-				float value = GProfiler.FPSArray.GetFromOldest(i);
-				minFps = __min(minFps, value);
-				maxFps = __max(maxFps, value);
-				meanFps += value;
-			}
-			meanFps /= GProfiler.FPSArray.GetCount();
-		}
-
-		void GetMsStats(float& minMs, float& maxMs, float& meanMs, float& lastMs)
-		{
-			meanMs = 0.f;
-			minMs = FLT_MAX;
-			maxMs = -FLT_MAX;
-			lastMs = 1.f/GProfiler.FPSArray.GetLast();
-			for (uint32_t i = 0; i < GProfiler.FPSArray.GetCount(); ++i)
-			{
-				float value = 1.f/GProfiler.FPSArray.GetFromOldest(i);
-				minMs = __min(minMs, value);
-				maxMs = __max(maxMs, value);
-				meanMs += value;
-			}
-			meanMs /= GProfiler.FPSArray.GetCount();
-			meanMs *= 1000.f;
-			minMs *= 1000.f;
-			maxMs *= 1000.f;
-			lastMs *= 1000.f;
+			GProfiler.GPUTimeArray.Push(ms);
 		}
 
 		float ImGuiGetFpsPlotValue(void* data, int index)
 		{
 			sProfiler& prof = *(sProfiler*)data;
-			return prof.FPSArray.GetFromOldest(index);
+			return prof.CPUTimeArray.GetFromOldest(index);
 		}
 
 		float ImGuiGetMsPlotValue(void* data, int index)
 		{
 			sProfiler& prof = *(sProfiler*)data;
-			return 1000.f/prof.FPSArray.GetFromOldest(index);
+			return 1000.f/prof.CPUTimeArray.GetFromOldest(index);
 		}
 
 		void ImGuiDraw()
 		{
-			float minFps, maxFps, meanFps, lastFps;
-			float minMs, maxMs, meanMs, lastMs;
+			struct
+			{
+				float minMs, maxMs, meanMs, lastMs;
+			} cpuTimes, gpuTimes;
 			if (CVar_ShowStats.Get())
 			{
-				GetFpsStats(minFps, maxFps, meanFps, lastFps);
-				GetMsStats(minMs, maxMs, meanMs, lastMs);
+				sProfiler::GetStats(GProfiler.CPUTimeArray, cpuTimes.minMs, cpuTimes.maxMs, cpuTimes.meanMs, cpuTimes.lastMs);
+				sProfiler::GetStats(GProfiler.GPUTimeArray, gpuTimes.minMs, gpuTimes.maxMs, gpuTimes.meanMs, gpuTimes.lastMs);
 			}
 
 			if (CVar_ShowStats.Get() == 1)
@@ -433,23 +420,36 @@ namespace Mist
 				ImGui::Text("%.4f ms Min [%.4f ms] Max [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
 				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
 #else
-				ImGui::Columns(2, nullptr, false);
-				auto utilLamb = [&](const char* label, float fps, float ms)
+				ImGui::Columns(3, nullptr, false);
+				auto utilLamb = [&](const char* label, float ms)
 					{
 						ImGui::Text("%8s", label);
 						ImGui::NextColumn();
-						ImGui::Text("%3.3f fps", fps);
+						ImGui::Text("%3.3f fps", 1000.f/ms);
 						ImGui::NextColumn();
 						ImGui::Text("%3.3f ms", ms);
 						ImGui::NextColumn();
 					};
-				if (ImGui::BeginChild("Child_perf"))
+				if (ImGui::BeginChild("Child_cpu_perf"))
 				{
+					ImGui::Text("CPU stats");
 					ImGui::Columns(3, nullptr, false);
-					utilLamb("Last", lastFps, lastMs);
-					utilLamb("Mean", meanFps, meanMs);
-					utilLamb("Min", minFps, minMs);
-					utilLamb("Max", maxFps, maxMs);
+					utilLamb("Last", cpuTimes.lastMs);
+					utilLamb("Mean", cpuTimes.meanMs);
+					utilLamb("Max", cpuTimes.maxMs);
+					utilLamb("Min", cpuTimes.minMs);
+					ImGui::Columns();
+					ImGui::EndChild();
+				}
+				ImGui::NextColumn();
+				if (ImGui::BeginChild("Child_gpu_perf"))
+				{
+					ImGui::Text("GPU stats");
+					ImGui::Columns(3, nullptr, false);
+					utilLamb("Last", gpuTimes.lastMs);
+					utilLamb("Mean", gpuTimes.meanMs);
+					utilLamb("Min", gpuTimes.minMs);
+					utilLamb("Max", gpuTimes.maxMs);
 					ImGui::Columns();
 					ImGui::EndChild();
 				}
@@ -497,7 +497,7 @@ namespace Mist
 				ImGui::SetNextWindowPos({ 0.f, 0.f });
 				ImGui::SetNextWindowSize({ 400.f, 300.f });
 				ImGui::Begin("Render stats", nullptr, flags);
-				ImGui::Text("%.4f fps", meanFps);
+				ImGui::Text("%.4f ms", cpuTimes.meanMs);
 				ImGui::Columns(5);
 				ImGui::Text("ID");
 				ImGui::NextColumn();
