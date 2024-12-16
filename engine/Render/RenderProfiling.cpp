@@ -8,88 +8,125 @@ namespace Mist
 {
 	CBoolVar CVar_ShowGpuProf("r_ShowGpuProf", false);
 
-	struct sGpuProfItem
+	uint32_t GpuProf_GetOldestFrameIndex(const RenderContext& context)
+	{
+		return (context.FrameIndex + 1) % globals::MaxOverlappedFrames;
+	}
+
+	struct tGpuProfItem
 	{
 		index_t Id = index_invalid;
 		double Value = 0.0;
 		tFixedString<64> Label;
-
-		index_t Parent = index_invalid;
-		index_t Child = index_invalid;
-		index_t Sibling = index_invalid;
 	};
 
-	struct sGpuProfStack
+	struct tGpuProfiler
 	{
-		tStaticArray<sGpuProfItem, 128> Items;
-		index_t Current = index_invalid;
+		typedef tStackTree<tGpuProfItem, 16> tGpuProfStackTree;
+		tGpuProfStackTree GpuProfStacks[globals::MaxOverlappedFrames];
 
-		void Push(const char* label, index_t id)
+		void Resolve(const RenderContext& context)
 		{
-			Items.Push();
-			index_t newItem = Items.GetSize() - 1;
-			sGpuProfItem& item = Items[newItem];
-			item.Label = label;
-			item.Id = id;
-			item.Value = 0.0;
-			item.Parent = index_invalid;
-			item.Child = index_invalid;
-			item.Sibling = index_invalid;
-
-			if (Current != index_invalid)
+			uint32_t lastIndex = GpuProf_GetOldestFrameIndex(context);
+			const sTimestampQueryPool& queryPool = context.FrameContextArray[lastIndex].GraphicsTimestampQueryPool;
+			tGpuProfStackTree& stack = GpuProfStacks[lastIndex];
+			check(stack.Current == index_invalid);
+			for (index_t i = 0; i < stack.Data.GetSize(); ++i)
 			{
-				item.Parent = Current;
-				check(Current != index_invalid);
-				sGpuProfItem& parent = Items[Current];
-				index_t lastChild = parent.Child;
-				for (lastChild; lastChild != index_invalid && (Items[lastChild].Sibling != index_invalid); lastChild = Items[lastChild].Sibling);
-				if (lastChild != index_invalid)
-					Items[lastChild].Sibling = newItem;
-				else
-					parent.Child = newItem;
-			}
-			else
-			{
-				index_t sibling = 0;
-				for (sibling; sibling < Items.GetSize() && (Items[sibling].Parent != index_invalid || sibling == newItem); ++sibling);
-				if (sibling < Items.GetSize())
-				{
-					for (sibling; Items[sibling].Sibling != index_invalid; sibling = Items[sibling].Sibling);
-					check(sibling < Items.GetSize());
-					Items[sibling].Sibling = newItem;
-				}
-			}
-			Current = newItem;
-		}
-
-		index_t Pop()
-		{
-			check(Current != index_invalid);
-			index_t ret = Items[Current].Id;
-			Current = Items[Current].Parent;
-			return ret;
-		}
-
-		void Resolve(const RenderContext& context, const sTimestampQueryPool& queryPool)
-		{
-			check(Current == index_invalid);
-			for (index_t i = 0; i < Items.GetSize(); ++i)
-			{
-				sGpuProfItem& item = Items[i];
+				tGpuProfItem& item = stack.Data[i];
 				uint64_t t = queryPool.GetElapsedTimestamp(context.Device, context.GPUDevice, item.Id);
 				item.Value = (double)t * 0.001;
 			}
 		}
 
-		void Reset()
+		static void BuildGpuProfTree(tGpuProfStackTree& stack, index_t root)
 		{
-			check(Current == index_invalid);
-			Items.Clear();
-			Items.Resize(0);
+			index_t index = root;
+			const char* valuefmt = "%8.4f";
+			while (index != index_invalid)
+			{
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				tGpuProfStackTree::tItem& item = stack.Items[index];
+				tGpuProfItem& data = stack.Data[item.DataIndex];
+				if (item.Child != index_invalid)
+				{
+					bool treeOpen = ImGui::TreeNodeEx(data.Label.CStr(),
+						ImGuiTreeNodeFlags_SpanAllColumns
+						| ImGuiTreeNodeFlags_DefaultOpen);
+					ImGui::TableNextColumn();
+					ImGui::Text(valuefmt, data.Value);
+					if (treeOpen)
+					{
+						BuildGpuProfTree(stack, item.Child);
+						ImGui::TreePop();
+					}
+				}
+				else
+				{
+					ImGui::Text("%s", data.Label.CStr());
+					ImGui::TableNextColumn();
+					ImGui::Text(valuefmt, stack.Data[item.DataIndex].Value);
+				}
+				index = item.Sibling;
+			}
+		}
+
+		void ImGuiDraw(const RenderContext& context)
+		{
+			uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
+			tGpuProfiler::tGpuProfStackTree& stack = GpuProfStacks[frameIndex];
+
+			index_t size = stack.Items.GetSize();
+			float heightPerLine = 20.f; //approx?
+			ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+			ImVec2 winpos = ImVec2(0.f, viewport->Size.y - heightPerLine * size);
+			ImGui::SetNextWindowPos(winpos);
+			ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
+			ImGui::SetNextWindowBgAlpha(0.f);
+			ImGui::Begin("Gpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
+				| ImGuiWindowFlags_NoBackground
+				| ImGuiWindowFlags_NoDocking);
+			if (!stack.Items.IsEmpty())
+			{
+				ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
+					| ImGuiTableFlags_Resizable
+					| ImGuiTableFlags_RowBg
+					| ImGuiTableFlags_NoBordersInBody;
+				if (ImGui::BeginTable("GpuProf", 2, flags))
+				{
+					ImGui::TableSetupColumn("Gpu process");
+					ImGui::TableSetupColumn("Time (us)");
+					ImGui::TableHeadersRow();
+					BuildGpuProfTree(stack, 0);
+					ImGui::EndTable();
+				}
+			}
+			ImGui::End();
+		}
+
+		double GetTimeStat(const RenderContext& context, const char* label)
+		{
+			uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
+			tGpuProfStackTree& stack = GpuProfStacks[frameIndex];
+			index_t index = index_invalid;
+			for (index_t i = 0; i < stack.Data.GetSize(); ++i)
+			{
+				if (stack.Data[i].Label == label)
+				{
+					index = i;
+					break;
+				}
+			}
+			if (index != index_invalid)
+				return stack.Data[index].Value;
+			return 0.0;
 		}
 	};
 
-	sGpuProfStack GpuProfStack[globals::MaxOverlappedFrames];
+	tGpuProfiler GpuProfiler;
+
 
 
 	void sTimestampQueryPool::Init(VkDevice device, index_t queryCount)
@@ -181,13 +218,8 @@ namespace Mist
 			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 			sTimestampQueryPool& queryPool = frameContext.GraphicsTimestampQueryPool;
 			index_t id = queryPool.BeginTimestamp(cmd);
-			GpuProfStack[context.GetFrameIndex()].Push(label, id);
+			GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Push({ id, 0.0, label });
 		}
-	}
-
-	uint32_t GpuProf_GetOldestFrameIndex(const RenderContext& context)
-	{
-		return (context.FrameIndex + 1) % globals::MaxOverlappedFrames;
 	}
 
 	void GpuProf_End(const RenderContext& context)
@@ -197,14 +229,15 @@ namespace Mist
 			RenderFrameContext& frameContext = context.GetFrameContext();
 			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 
-			index_t id = GpuProfStack[context.GetFrameIndex()].Pop();
+			index_t id = GpuProfiler.GpuProfStacks[context.GetFrameIndex()].GetCurrent().Id;
 			frameContext.GraphicsTimestampQueryPool.EndTimestamp(cmd, id);
+			GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Pop();
 		}
 	}
 
 	void GpuProf_Reset(const RenderContext& context)
 	{
-		GpuProfStack[context.GetFrameIndex()].Reset();
+		GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Reset();
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		frameContext.GraphicsTimestampQueryPool.ResetQueries(frameContext.GraphicsCommandContext.CommandBuffer);
 		frameContext.GraphicsTimestampQueryPool.BeginFrame();
@@ -214,98 +247,20 @@ namespace Mist
 	{
 		if (GpuProf_CanMakeProfile(context))
 		{
-			uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
-			const sTimestampQueryPool& queryPool = context.FrameContextArray[frameIndex].GraphicsTimestampQueryPool;
-			GpuProfStack[frameIndex].Resolve(context, queryPool);
+			GpuProfiler.Resolve(context);
 		}
-	}
-
-	void BuildGpuProfTree(sGpuProfStack& stack, index_t root)
-	{
-		index_t index = root;
-		const char* valuefmt = "%8.4f";
-		while (index != index_invalid)
-		{
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-			sGpuProfItem& item = stack.Items[index];
-			if (item.Child != index_invalid)
-			{
-				bool treeOpen = ImGui::TreeNodeEx(item.Label.CStr(), 
-					ImGuiTreeNodeFlags_SpanAllColumns 
-					| ImGuiTreeNodeFlags_DefaultOpen);
-				ImGui::TableNextColumn();
-				ImGui::Text(valuefmt, item.Value);
-				if (treeOpen)
-				{
-					BuildGpuProfTree(stack, item.Child);
-					ImGui::TreePop();
-				}
-			}
-			else
-			{
-				ImGui::Text("%s", item.Label.CStr());
-				ImGui::TableNextColumn();
-				ImGui::Text(valuefmt, item.Value);
-			}
-			index = item.Sibling;
-		}
-
 	}
 
 	void GpuProf_ImGuiDraw(const RenderContext& context)
 	{
 		if (!CVar_ShowGpuProf.Get())
 			return;
-
-		uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
-		sGpuProfStack& stack = GpuProfStack[frameIndex];
-
-		index_t size = stack.Items.GetSize();
-		float heightPerLine = 20.f; //approx?
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-		ImVec2 winpos = ImVec2(0.f, viewport->Size.y-heightPerLine*size);
-		ImGui::SetNextWindowPos(winpos);
-		ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
-		ImGui::SetNextWindowBgAlpha(0.f);
-		ImGui::Begin("Gpu profiling", nullptr, ImGuiWindowFlags_NoDecoration 
-			| ImGuiWindowFlags_NoBackground 
-			| ImGuiWindowFlags_NoDocking);
-		if (!stack.Items.IsEmpty())
-		{
-			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH 
-				| ImGuiTableFlags_Resizable 
-				| ImGuiTableFlags_RowBg 
-				| ImGuiTableFlags_NoBordersInBody;
-			if (ImGui::BeginTable("GpuProf", 2, flags))
-			{
-				ImGui::TableSetupColumn("Gpu process");
-				ImGui::TableSetupColumn("Time (us)");
-				ImGui::TableHeadersRow();
-				BuildGpuProfTree(stack, 0);
-				ImGui::EndTable();
-			}
-		}
-		ImGui::End();
+		GpuProfiler.ImGuiDraw(context);
 	}
 
 	double GpuProf_GetGpuTime(const RenderContext& context, const char* label)
 	{
-		uint32_t frameIndex = GpuProf_GetOldestFrameIndex(context);
-		sGpuProfStack& stack = GpuProfStack[frameIndex];
-		index_t index = index_invalid;
-		for (index_t i = 0; i < stack.Items.GetSize(); ++i)
-		{
-			if (stack.Items[i].Label == label)
-			{
-				index = i;
-				break;
-			}
-		}
-		if (index != index_invalid)
-			return stack.Items[index].Value;
-		return 0.0;
+		return GpuProfiler.GetTimeStat(context, label);
 	}
 
 }

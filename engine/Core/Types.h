@@ -344,6 +344,85 @@ namespace Mist
 		IndexType m_count;
 	};
 
+
+	template <typename T, index_t N>
+	struct tStackTree
+	{
+		struct tItem
+		{
+			index_t DataIndex = index_invalid;
+			index_t Parent = index_invalid;
+			index_t Child = index_invalid;
+			index_t Sibling = index_invalid;
+		};
+
+		index_t Current = index_invalid;
+		tStaticArray<tItem, N> Items;
+		tStaticArray<T, N> Data;
+
+		void Push(const T& v)
+		{
+			// Push new data
+			Data.Push(v);
+			index_t dataIndex = Data.GetSize() - 1;
+			// Push new item to stack
+			Items.Push();
+			index_t newItem = Items.GetSize() - 1;
+			tItem& item = Items[newItem];
+			item.DataIndex = dataIndex;
+			item.Parent = index_invalid;
+			item.Child = index_invalid;
+			item.Sibling = index_invalid;
+			// Connect new item to tree
+			if (Current != index_invalid)
+			{
+				// Add as child of Current item and connect with its siblings
+				item.Parent = Current;
+				check(Current != index_invalid);
+				tItem& parent = Items[Current];
+				index_t lastChild = parent.Child;
+				for (lastChild; lastChild != index_invalid && (Items[lastChild].Sibling != index_invalid); lastChild = Items[lastChild].Sibling);
+				if (lastChild != index_invalid)
+					Items[lastChild].Sibling = newItem;
+				else
+					parent.Child = newItem;
+			}
+			else
+			{
+				// No Current, so this is a "base" stack item. Connect to others "base" items.
+				index_t sibling = 0;
+				for (sibling; sibling < Items.GetSize() && (Items[sibling].Parent != index_invalid || sibling == newItem); ++sibling);
+				if (sibling < Items.GetSize())
+				{
+					for (sibling; Items[sibling].Sibling != index_invalid; sibling = Items[sibling].Sibling);
+					check(sibling < Items.GetSize());
+					Items[sibling].Sibling = newItem;
+				}
+			}
+			// Last item added is this.
+			Current = newItem;
+		}
+
+		void Pop()
+		{
+			check(Current != index_invalid);
+			Current = Items[Current].Parent;
+		}
+
+		const T& GetCurrent() const { check(Current != index_invalid); return Data[Items[Current].DataIndex]; }
+		T& GetCurrent() { check(Current != index_invalid); return Data[Items[Current].DataIndex]; }
+
+		void Reset()
+		{
+			check(Current == index_invalid && "Stack tree is not closed! There is a call to Push method without its Pop.");
+			Items.Clear();
+			Items.Resize(0);
+			Data.Clear();
+			Data.Resize(0);
+		}
+	};
+
+
 	// return number of elements in a static array
 	template <typename T, uint32_t N>
 	inline constexpr uint32_t CountOf(const T(&)[N])
