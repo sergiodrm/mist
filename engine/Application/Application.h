@@ -45,6 +45,7 @@ namespace Mist
 
 		int Run();
 		class IRenderEngine* GetEngineInstance() const { return m_engine; }
+		static uint64_t GetFrame();
 	protected:
 		virtual void LogicProcess(float deltaTime) {}
 		void ProcessAppEvents();

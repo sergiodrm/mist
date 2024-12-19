@@ -17,6 +17,8 @@ namespace Mist
 
 	CStrVar GIniFile("IniFile", "default.cfg");
 
+	uint64_t GFrame = 0;
+
 	SDL_WindowFlags WindowFlagsToSDL(eWindowFlags f)
 	{
 		uint32_t r = 0;
@@ -137,6 +139,8 @@ namespace Mist
 		int result = 0;
 		while (!m_windowClosed)
 		{
+			Profiling::CpuProf_Reset();
+			CPU_PROFILE_SCOPE(CpuTime);
 			ProcessAppEvents();
 			LogicProcess(0.033f);
 			if (!m_windowMinimized)
@@ -144,8 +148,14 @@ namespace Mist
 				if (!m_engine->RenderProcess())
 					result = EXIT_FAILURE;
 			}
+			GFrame++;
 		}
 		return result;
+	}
+
+	uint64_t tApplication::GetFrame()
+	{
+		return GFrame;
 	}
 
 	void tApplication::ProcessAppEvents()
