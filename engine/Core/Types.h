@@ -378,7 +378,6 @@ namespace Mist
 			{
 				// Add as child of Current item and connect with its siblings
 				item.Parent = Current;
-				check(Current != index_invalid);
 				tItem& parent = Items[Current];
 				index_t lastChild = parent.Child;
 				for (lastChild; lastChild != index_invalid && (Items[lastChild].Sibling != index_invalid); lastChild = Items[lastChild].Sibling);
