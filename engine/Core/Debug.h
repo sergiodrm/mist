@@ -96,6 +96,11 @@ namespace Mist
 		void AddCPUTime(float ms);
 		void ImGuiDraw();
 
+		void CpuProf_Begin(const char* label);
+		void CpuProf_End(float ms);
+		void CpuProf_Reset();
+		void CpuProf_ImGuiDraw();
+
 		extern sRenderStats GRenderStats;
 	}
 }

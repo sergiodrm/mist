@@ -14,6 +14,8 @@
 #include "Render/RenderEngine.h"
 #include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
+#include "Application/Application.h"
+
 
 #pragma comment(lib,"Dbghelp.lib")
 
@@ -250,10 +252,18 @@ namespace Mist::Debug
 namespace Mist
 {
 	CIntVar CVar_ShowStats("ShowStats", 1);
+	CBoolVar CVar_ShowCpuProf("r_ShowCpuProf", 0);
+	CIntVar CVar_ShowCpuProfRatio("r_ShowCpuProfRatio", 30);
 
 	namespace Profiling
 	{
 		sRenderStats GRenderStats;
+
+		struct tCpuProfItem
+		{
+			tFixedString<64> Label;
+			double Value;
+		};
 
 		struct sProfilerKey
 		{
@@ -289,6 +299,10 @@ namespace Mist
 			tCircularBuffer<float, 128> CPUTimeArray;
 			tCircularBuffer<float, 128> GPUTimeArray;
 
+			typedef tStackTree<tCpuProfItem, 64> tCpuProfStackTree;
+			tCpuProfStackTree CpuProfStack[2];
+			uint32_t CurrentFrame = 0;
+
 			static void GetStats(tCircularBuffer<float, 128>& data, float& min, float& max, float& mean, float& last)
 			{
 				mean = 0.f;
@@ -303,6 +317,73 @@ namespace Mist
 					mean += value;
 				}
 				mean /= data.GetCount();
+			}
+
+			static void BuildGpuProfTree(tCpuProfStackTree& stack, index_t root)
+			{
+				index_t index = root;
+				const char* valuefmt = "%10.5f";
+				while (index != index_invalid)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					tCpuProfStackTree::tItem& item = stack.Items[index];
+					tCpuProfItem& data = stack.Data[item.DataIndex];
+					if (item.Child != index_invalid)
+					{
+						bool treeOpen = ImGui::TreeNodeEx(data.Label.CStr(),
+							ImGuiTreeNodeFlags_SpanAllColumns
+							| ImGuiTreeNodeFlags_DefaultOpen);
+						ImGui::TableNextColumn();
+						ImGui::Text(valuefmt, data.Value);
+						if (treeOpen)
+						{
+							BuildGpuProfTree(stack, item.Child);
+							ImGui::TreePop();
+						}
+					}
+					else
+					{
+						ImGui::Text("%s", data.Label.CStr());
+						ImGui::TableNextColumn();
+						ImGui::Text(valuefmt, stack.Data[item.DataIndex].Value);
+					}
+					index = item.Sibling;
+				}
+			}
+
+			void ImGuiDraw()
+			{
+				tCpuProfStackTree& stack = CpuProfStack[0x0001&~CurrentFrame];
+				check(stack.Current == index_invalid);
+
+				index_t size = stack.Items.GetSize();
+				float heightPerLine = 20.f; //approx?
+				ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+				ImVec2 winpos = ImVec2(0.f, 100.f);
+				ImGui::SetNextWindowPos(winpos);
+				ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
+				ImGui::SetNextWindowBgAlpha(0.f);
+				ImGui::Begin("Cpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
+					| ImGuiWindowFlags_NoBackground
+					| ImGuiWindowFlags_NoDocking);
+				if (!stack.Items.IsEmpty())
+				{
+					ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
+						| ImGuiTableFlags_Resizable
+						| ImGuiTableFlags_RowBg
+						| ImGuiTableFlags_NoBordersInBody;
+					if (ImGui::BeginTable("CpuProf", 2, flags))
+					{
+						ImGui::TableSetupColumn("Process");
+						ImGui::TableSetupColumn("Time (ms)");
+						ImGui::TableHeadersRow();
+						BuildGpuProfTree(stack, 0);
+						ImGui::EndTable();
+					}
+				}
+				ImGui::End();
 			}
 
 			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
@@ -328,6 +409,7 @@ namespace Mist
 		sScopedTimer::sScopedTimer(const char* nameId)
 		{
 			strcpy_s(Id, nameId);
+			CpuProf_Begin(Id);
 			Start();
 		}
 
@@ -335,6 +417,7 @@ namespace Mist
 		{
 			double elapsed = Stop();
 			AddProfilerEntry(Id, elapsed);
+			CpuProf_End(static_cast<float>(elapsed));
 		}
 
 		void sRenderStats::Reset()
@@ -378,6 +461,9 @@ namespace Mist
 
 		void ImGuiDraw()
 		{
+			CpuProf_ImGuiDraw();
+
+
 			struct
 			{
 				float minMs, maxMs, meanMs, lastMs;
@@ -420,6 +506,7 @@ namespace Mist
 				ImGui::Text("%.4f ms Min [%.4f ms] Max [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
 				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
 #else
+				ImGui::Text("Frame: %d", tApplication::GetFrame());
 				ImGui::Columns(3, nullptr, false);
 				auto utilLamb = [&](const char* label, float ms)
 					{
@@ -545,6 +632,38 @@ namespace Mist
 				ImGui::End();
 				ImGui::PopStyleColor();
 			}
+		}
+
+		void CpuProf_Begin(const char* label)
+		{
+			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
+			{
+				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Push({label, 0.0});
+			}
+		}
+
+		void CpuProf_End(float ms)
+		{
+			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
+			{
+				GProfiler.CpuProfStack[GProfiler.CurrentFrame].GetCurrent().Value = ms;
+				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Pop();
+			}
+		}
+
+		void CpuProf_Reset()
+		{
+			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
+			{
+				GProfiler.CurrentFrame = (GProfiler.CurrentFrame + 1) % 2;
+				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Reset();
+			}
+		}
+
+		void CpuProf_ImGuiDraw()
+		{
+			if (CVar_ShowCpuProf.Get())
+				GProfiler.ImGuiDraw();
 		}
 	}
 }
