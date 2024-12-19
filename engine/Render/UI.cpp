@@ -204,6 +204,7 @@ namespace Mist
 
 		void Begin(const RenderContext& context)
 		{
+			CPU_PROFILE_SCOPE(UI_Begin);
 			ImGuiInstance.BeginFrame(context);
 		}
 

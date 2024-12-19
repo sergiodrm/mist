@@ -207,7 +207,6 @@ namespace Mist
 #else
 		return true;
 #endif // 0
-
 	}
 
 	void GpuProf_Begin(const RenderContext& context, const char* label)
