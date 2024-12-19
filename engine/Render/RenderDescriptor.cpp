@@ -68,10 +68,12 @@ namespace Mist
 		};
 
 		vkcheck(vkAllocateDescriptorSets(m_renderContext->Device, &allocInfo, set));
+#if defined(_DEBUG)
 		static uint32_t c = 0;
 		char buff[32];
 		sprintf_s(buff, "DescriptorSet_%d", c++);
 		SetVkObjectName(*m_renderContext, set, VK_OBJECT_TYPE_DESCRIPTOR_SET, buff);
+#endif // defined(_DEBUG)
 		return true;
 	}
 
