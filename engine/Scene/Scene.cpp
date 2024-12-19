@@ -531,6 +531,7 @@ namespace Mist
 
 	void Scene::RecalculateTransforms()
 	{
+		CPU_PROFILE_SCOPE(RecalculateTransforms);
 		check(m_localTransforms.size() == m_transformComponents.size());
 		check(m_globalTransforms.size() == m_transformComponents.size());
 		TransformComponentToMatrix(m_transformComponents.data(), m_localTransforms.data(), (uint32_t)m_transformComponents.size());
@@ -995,6 +996,7 @@ namespace Mist
 
 	void Scene::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
+		CPU_PROFILE_SCOPE(SceneUpdateRenderData);
 		if (GetRenderObjectCount())
 		{
 			// Update geometry
@@ -1081,6 +1083,7 @@ namespace Mist
 
 	void Scene::ProcessEnvironmentData(const glm::mat4& viewSpace, EnvironmentData& environmentData)
 	{
+		CPU_PROFILE_SCOPE(ProcessEnvData);
 		environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
 #if 1
 		environmentData.AmbientColor = m_ambientColor;

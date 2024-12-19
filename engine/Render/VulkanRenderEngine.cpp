@@ -294,8 +294,11 @@ namespace Mist
 		Profiling::AddCPUTime(ms);
 
 		ui::Begin(m_renderContext);
-		for (auto& fn : m_imguiCallbackArray)
-			fn();
+		{
+			CPU_PROFILE_SCOPE(ImGuiCalbacks);
+			for (auto& fn : m_imguiCallbackArray)
+				fn();
+		}
 		//BeginFrame();
 		Mist::Profiling::GRenderStats.Reset();
 		Draw();
@@ -413,6 +416,7 @@ namespace Mist
 
 	void VulkanRenderEngine::BeginFrame()
 	{
+		CPU_PROFILE_SCOPE(BeginFrame);
 		// TODO descriptor allocators must be instanciated on each frame context.
 		m_renderContext.DescAllocator = &m_descriptorAllocators[m_renderContext.GetFrameIndex()];
 		RenderFrameContext& frameContext = GetFrameContext();
@@ -433,24 +437,28 @@ namespace Mist
 
 	void VulkanRenderEngine::Draw()
 	{
-		CPU_PROFILE_SCOPE(Draw);
-		RenderContext_NewFrame(m_renderContext);
-		uint32_t frameIndex = m_renderContext.GetFrameIndex();
+		{
+			CPU_PROFILE_SCOPE(NextFrame);
+			RenderContext_NewFrame(m_renderContext);
+			GpuProf_Resolve(m_renderContext);
+			Profiling::AddGPUTime((float)(0.001 * GpuProf_GetGpuTime(m_renderContext, "GpuTime")));
+		}
 		RenderFrameContext& frameContext = GetFrameContext();
+		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
-		GpuProf_Resolve(m_renderContext);
-		Profiling::AddGPUTime((float)(0.001 * GpuProf_GetGpuTime(m_renderContext, "GpuTime")));
 
 		BeginFrame();
 		{
-			CPU_PROFILE_SCOPE(PrepareFrame);
+			CPU_PROFILE_SCOPE(AcquireImage);
 			// Acquire render image from swapchain
 			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore,
 				nullptr, &m_currentSwapchainIndex));
 		}
 
+		CPU_PROFILE_SCOPE(Draw);
 		// Compute
 		{
+			CPU_PROFILE_SCOPE(CpuComputeDispatch);
 			frameContext.ComputeCommandContext.ResetCommandBuffer();
 			frameContext.ComputeCommandContext.BeginCommandBuffer();
 			BeginGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer, "Begin Compute");
@@ -461,6 +469,7 @@ namespace Mist
 
 		// Graphics
 		{
+			CPU_PROFILE_SCOPE(CpuGraphics);
 			frameContext.GraphicsCommandContext.ResetCommandBuffer();
 			frameContext.GraphicsCommandContext.BeginCommandBuffer();
 			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
