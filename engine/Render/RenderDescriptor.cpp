@@ -221,7 +221,7 @@ namespace Mist
 			.stageFlags = stageFlags,
 			.pImmutableSamplers = nullptr
 		};
-		m_bindings.push_back(bindingInfo);
+		m_bindings.Push(bindingInfo);
 
 		uint32_t size = m_bufferInfoArray.GetSize();
 		uint32_t newSize = size + bufferInfoCount;
@@ -239,7 +239,7 @@ namespace Mist
 			.descriptorType = type,
 			.pBufferInfo = &m_bufferInfoArray[size]
 		};
-		m_writes.push_back(newWrite);
+		m_writes.Push(newWrite);
 		return *this;
 	}
 
@@ -253,7 +253,7 @@ namespace Mist
 			.stageFlags = stageFlags,
 			.pImmutableSamplers = nullptr
 		};
-		m_bindings.push_back(bindingInfo);
+		m_bindings.Push(bindingInfo);
 
 		uint32_t size = (uint32_t)m_imageInfoArray.GetSize();
 		uint32_t newSize = size + imageInfoCount;
@@ -271,7 +271,7 @@ namespace Mist
 			.descriptorType = type,
 			.pImageInfo = &m_imageInfoArray[size]
 		};
-		m_writes.push_back(newWrite);
+		m_writes.Push(newWrite);
 		return *this;
 	}
 
@@ -281,18 +281,16 @@ namespace Mist
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 			.pNext = nullptr,
-			.bindingCount = (uint32_t)m_bindings.size(),
-			.pBindings = m_bindings.data()
+			.bindingCount = m_bindings.GetSize(),
+			.pBindings = m_bindings.GetData()
 		};
 		layout = m_cache->CreateLayout(layoutInfo);
 
 		bool res = m_allocator->Allocate(&set, layout);
 		check(res);
-		for (VkWriteDescriptorSet& it : m_writes)
-		{
-			it.dstSet = set;
-		}
-		vkUpdateDescriptorSets(rc.Device, (uint32_t)m_writes.size(), m_writes.data(), 0, nullptr);
+		for (uint32_t i = 0; i < m_writes.GetSize(); ++i)
+			m_writes[i].dstSet = set;
+		vkUpdateDescriptorSets(rc.Device, m_writes.GetSize(), m_writes.GetData(), 0, nullptr);
 		return true;
 	}
 
