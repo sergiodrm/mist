@@ -49,7 +49,7 @@ namespace Mist
 	struct ShaderReflectionProperties
 	{
 		tDynArray<ShaderDescriptorSetInfo> DescriptorSetInfoArray;
-		std::unordered_map<VkShaderStageFlags, ShaderPushConstantBufferInfo> PushConstantMap;
+		tMap<VkShaderStageFlags, ShaderPushConstantBufferInfo> PushConstantMap;
 	};
 
 
@@ -193,8 +193,8 @@ namespace Mist
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
 		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset);
 
-		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler = nullptr);
-		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler = nullptr);
+		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler = nullptr);
+		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler = nullptr);
 
 		void MarkAsDirty(const RenderContext& context);
 		void FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout);
@@ -243,7 +243,9 @@ namespace Mist
 
 		inline const tShaderParam GetParam(const char* paramName) const { return m_paramAccess.GetParam(paramName); }
 
-		inline VkPipelineLayout GetLayout() const { return m_pipelineLayout; }
+		inline VkPipeline GetPipeline() const { return m_pipeline; }
+		inline VkPipelineLayout GetPipelineLayout() const { return m_pipelineLayout; }
+		inline VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t index) const { check(index < (uint32_t)m_setLayoutArray.size());  return m_setLayoutArray[index]; }
 
 		const tShaderProgramDescription& GetDescription() const { return m_description; }
 

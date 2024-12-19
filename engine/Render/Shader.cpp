@@ -794,13 +794,13 @@ namespace Mist
 		setUnit.Dirty = true;
 	}
 
-	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler)
 	{
 		const cTexture* const tex = &texture;
-		BindTextureArraySlot(context, cmd, bindPoint, pipelineLayout, slot, &tex, 1, sampler);
+		BindTextureArraySlot(context, cmd, bindPoint, pipelineLayout, setLayout, slot, &tex, 1, sampler);
 	}
 
-	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler)
 	{
 		check(textures && textureCount);
 		RenderFrameContext& frameContext = context.GetFrameContext();
@@ -817,10 +817,30 @@ namespace Mist
 			infos[i].imageLayout = tovk::GetImageLayout(textures[i]->GetImageLayout());
 			infos[i].imageView = textures[i]->GetView(0);
 			infos[i].sampler = sampler ? *sampler : textures[i]->GetSampler();
+
 		}
+#if 0
 		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
 			.BindImage(0, infos.data(), textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(context, set);
+#else
+
+		// Update descriptor set without DescriptorBuilder. LayoutCache is slow to find layouts, we can ask for them as input because ShaderProgram has already cached its own layouts.
+		bool res = context.DescAllocator->Allocate(&set, setLayout);
+		check(res);
+		VkWriteDescriptorSet writeInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			.pNext = nullptr,
+			.dstSet = set,
+			.dstBinding = 0,
+			.dstArrayElement = 0,
+			.descriptorCount = textureCount,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.pImageInfo = infos.data(),
+		};
+		vkUpdateDescriptorSets(context.Device, 1, &writeInfo, 0, nullptr);
+#endif // 0
 		RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, &set, 1, slot, nullptr, 0);
 	}
 
@@ -1318,12 +1338,12 @@ namespace Mist
 
 	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const cTexture& texture)
 	{
-		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, texture, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, GetDescriptorSetLayout(slot), slot, texture, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const cTexture* const* textureArray, uint32_t textureCount)
 	{
-		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, slot, textureArray, textureCount, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, GetDescriptorSetLayout(slot), slot, textureArray, textureCount, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
