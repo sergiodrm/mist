@@ -48,6 +48,7 @@ namespace Mist
 
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
+		CPU_PROFILE_SCOPE(CpuGBuffer);
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 
 		// MRT

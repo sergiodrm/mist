@@ -406,6 +406,7 @@ namespace Mist
 
 	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
+		CPU_PROFILE_SCOPE(CpuShadowMapping);
 		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
 		GpuProf_Begin(renderContext, "Shadow mapping");

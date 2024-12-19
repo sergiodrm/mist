@@ -97,6 +97,7 @@ namespace Mist
 
 	void GPUParticleSystem::UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext)
 	{
+		CPU_PROFILE_SCOPE(ParticlesUpdateBuffers);
 		ParameterUBO params = m_params;
 		if (m_flags & GPU_PARTICLES_FOLLOW_MOUSE)
 		{
@@ -126,6 +127,7 @@ namespace Mist
 
 	void GPUParticleSystem::Dispatch(const RenderContext& context, uint32_t frameIndex)
 	{
+		CPU_PROFILE_SCOPE(ParticlesDispatch);
 		CommandBuffer cmd = context.GetFrameContext().ComputeCommandContext.CommandBuffer;
 
 		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
@@ -164,6 +166,7 @@ namespace Mist
 
 	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
+		CPU_PROFILE_SCOPE(ParticlesDraw);
 		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
 		{

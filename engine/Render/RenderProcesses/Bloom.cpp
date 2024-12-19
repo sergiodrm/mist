@@ -136,7 +136,7 @@ namespace Mist
 
 	void BloomEffect::Draw(const RenderContext& context)
 	{
-		CPU_PROFILE_SCOPE(BloomDownsampler);
+		CPU_PROFILE_SCOPE(Bloom);
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 

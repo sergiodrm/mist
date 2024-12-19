@@ -119,6 +119,7 @@ namespace Mist
 
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
+		CPU_PROFILE_SCOPE(CpuSSAO);
 		VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(renderContext, cmd, "SSAO");
 		GpuProf_Begin(renderContext, "SSAO");
