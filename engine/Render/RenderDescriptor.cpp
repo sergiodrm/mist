@@ -245,6 +245,7 @@ namespace Mist
 
 	DescriptorBuilder& DescriptorBuilder::BindImage(uint32_t binding, const VkDescriptorImageInfo* imageInfo, uint32_t imageInfoCount, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
 	{
+		// Generate binding to fing descriptor set layout on Build fn.
 		VkDescriptorSetLayoutBinding bindingInfo
 		{
 			.binding = binding,
@@ -255,6 +256,7 @@ namespace Mist
 		};
 		m_bindings.Push(bindingInfo);
 
+		// Cache DescriptorImageInfo, we can save pointers to input arguments, maybe are temporal or stack pointers.
 		uint32_t size = (uint32_t)m_imageInfoArray.GetSize();
 		uint32_t newSize = size + imageInfoCount;
 		m_imageInfoArray.Resize(newSize);
