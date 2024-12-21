@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0235294122, 0.0235294122, 0.0235294122]
   Skybox:
-    Front: textures/skybox/front.jpg
-    Back: textures/skybox/back.jpg
-    Top: textures/skybox/top.jpg
-    Bottom: textures/skybox/bottom.jpg
-    Left: textures/skybox/left.jpg
-    Right: textures/skybox/right.jpg
+    Front: textures/skybox/top.jpg
+    Back: textures/skybox/bottom.jpg
+    Top: textures/skybox/left.jpg
+    Bottom: textures/skybox/right.jpg
+    Left: textures/skybox/front.jpg
+    Right: textures/skybox/back.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -20,14 +20,14 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [-8, 18, -1.5]
-      Rotation: [-6.5, -90, 0]
+      Rotation: [0, -91.5, 0]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.885180473, 1, 0.774834454]
-      Radius: 957.5
-      Compression: 957.5
-      OuterCutoff: 19.5
+      Color: [0.787246168, 1, 0.582781434]
+      Radius: 10000
+      Compression: 10000
+      OuterCutoff: 26.5
       Cutoff: 0
       ProjectShadows: true
   - RenderObject: 2
@@ -35,11 +35,11 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [7.5, 12.5, 0]
-      Rotation: [42.5, 0, -90]
+      Rotation: [34, 0, -90]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [0.0993377566, 0.0690236613, 0.00592079619]
+      Color: [0.264900684, 0.182924524, 0.012280168]
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
@@ -54,12 +54,12 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.291390538, 1, 0]
-      Radius: 1281
-      Compression: 1281
+      Color: [1, 0, 0]
+      Radius: 5000
+      Compression: 5000
       OuterCutoff: 55
       Cutoff: 41.7999992
-      ProjectShadows: false
+      ProjectShadows: true
   - RenderObject: 4
     Name: Sponza
     Parent: 0
