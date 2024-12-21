@@ -209,7 +209,16 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     vec3 lightDir = normalize(vec3(-light.Pos));
     vec3 H = normalize(V + lightDir);
     vec3 Radiance = light.Color.rgb;
-    return CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);
+    // Calculate pbr contribution
+    vec3 lighting = CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);
+    // Calculate shadow contribution
+    if (light.Pos.w >= 0.f)
+    {
+        int shadowIndex = int(light.Pos.w);
+        float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
+        lighting *= (1.f - shadow);
+    }
+    return lighting;
     //return CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
 }
 
@@ -233,6 +242,14 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 A
         vec3 H = normalize(V + lightDir);
         lighting = CalculateBRDF(fragNormal, lightDir, Radiance, Albedo, Metallic, Roughness, V, H);
         //lighting = CalculateLighting(fragPos, fragNormal, viewPos, lightDir, vec3(light.Color));
+
+        // Calculate shadow inside lighting cone
+        if (light.Color.w >= 0.f)
+        {
+            int shadowIndex = int(light.Color.w);
+            float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
+            lighting *= (1.f-shadow);
+        }
     }
     //intensity *= 10.f;
     return lighting * intensity;
@@ -256,34 +273,15 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     // Spot lights
     int numSpotLights = int(u_Env.AmbientColor.w);
     vec3 spotLightColor = vec3(0.f);
-    float spotLightShadow = 0.f;
     for (int i = 0; i < numSpotLights; ++i)
     {
-        SpotLightData Light = u_Env.SpotLights[i];
-        spotLightColor += ProcessSpotLight(FragViewPos, N, Light, Albedo, Metallic, Roughness);
-#if 1
-        if (u_Env.SpotLights[i].Color.w >= 0.f)
-        {
-            int shadowIndex = int(u_Env.SpotLights[i].Color.w);
-            float shadow = CalculateShadow(vec4(FragViewPos, 1.f), shadowIndex);
-            //shadow = 1.f - shadow;
-            spotLightColor *= (1.f-shadow);
-            //return vec4(shadow, shadow, shadow, 1.f);
-        }
-#endif
+        spotLightColor += ProcessSpotLight(FragViewPos, N, u_Env.SpotLights[i], Albedo, Metallic, Roughness);
     }
-    spotLightColor *= (1.f-spotLightShadow);
     Lo += spotLightColor;
     //return vec4(spotLightColor, 1.f);
 
     // Directional light
     vec3 directionalLightColor = ProcessDirectionalLight(FragViewPos, N, u_Env.DirectionalLight, Albedo, Metallic, Roughness);
-    if (u_Env.DirectionalLight.Pos.w >= 0.f)
-    {
-        int shadowIndex = int(u_Env.DirectionalLight.Pos.w);
-        float shadow = CalculateShadow(vec4(FragViewPos, 1.f), shadowIndex);
-        directionalLightColor *= (1.f - shadow);
-    }
     Lo += directionalLightColor;
 
     vec3 Ambient = vec3(u_Env.AmbientColor) * Albedo * AO;
