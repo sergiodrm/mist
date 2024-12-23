@@ -1547,5 +1547,9 @@ namespace Mist
 		return nullptr;
 	}
 
+	bool IsOnlyDepthFormat(EFormat format)
+	{
+		return format == FORMAT_D16_UNORM || format == FORMAT_D32_SFLOAT;
+	}
 }
 

@@ -615,6 +615,8 @@ namespace Mist
 	const char* DescriptorTypeToStr(EDescriptorType type);
 	const char* CullModeToStr(ECullMode mode);
 
+	bool IsOnlyDepthFormat(EFormat format);
+
 	namespace tovk
 	{
 		VkImageLayout GetImageLayout(EImageLayout layout);
