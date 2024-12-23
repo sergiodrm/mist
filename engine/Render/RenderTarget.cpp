@@ -172,7 +172,7 @@ namespace Mist
 		if (HasDepthBufferAttachment())
 		{
 			VkClearAttachment clearAttachment;
-			clearAttachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+			clearAttachment.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 			clearAttachment.clearValue = { .depthStencil = {depth, stencil} };
 			clearAttachment.colorAttachment = UINT32_MAX;
 
