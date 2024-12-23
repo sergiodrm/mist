@@ -151,6 +151,17 @@ namespace Mist
 		tString Name;
 	};
 
+	struct tStencilState
+	{
+		EStencilOp FailOp = STENCIL_OP_REPLACE;
+		EStencilOp PassOp = STENCIL_OP_REPLACE;
+		EStencilOp DepthFailOp = STENCIL_OP_REPLACE;
+		ECompareOp CompareOp = COMPARE_OP_ALWAYS;
+		uint32_t CompareMask = 0xff;
+		uint32_t WriteMask = 0xff;
+		uint32_t Reference = 0x01;
+	};
+
 	struct tShaderProgramDescription
 	{
 		tShaderType Type = tShaderType::Graphics;
@@ -164,9 +175,16 @@ namespace Mist
 		const RenderTarget* RenderTarget = nullptr;
 		VertexInputLayout InputLayout;
 		EPrimitiveTopology Topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
 		ECullMode CullMode = CULL_MODE_FRONT_BIT;
 		EFrontFace FrontFaceMode = FRONT_FACE_CLOCKWISE;
+
 		EDepthStencilState DepthStencilMode = DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_DEPTH_WRITE;
+		ECompareOp DepthCompareOp = COMPARE_OP_LESS_OR_EQUAL;
+
+		tStencilState FrontStencil;
+		tStencilState BackStencil;
+
 		tDynArray<tColorBlendState> ColorAttachmentBlendingArray;
 		tDynArray<EDynamicState> DynamicStates;
 

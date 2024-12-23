@@ -579,6 +579,32 @@ namespace Mist
 		inline bool operator ==(const tColorBlendState& other) const { return !memcmp(this, &other, sizeof(tColorBlendState)); }
 		inline bool operator !=(const tColorBlendState& other) const { return !(*this).operator ==(other); }
 	};
+
+	enum ECompareOp
+	{
+		COMPARE_OP_NEVER = 0,
+		COMPARE_OP_LESS = 1,
+		COMPARE_OP_EQUAL = 2,
+		COMPARE_OP_LESS_OR_EQUAL = 3,
+		COMPARE_OP_GREATER = 4,
+		COMPARE_OP_NOT_EQUAL = 5,
+		COMPARE_OP_GREATER_OR_EQUAL = 6,
+		COMPARE_OP_ALWAYS = 7,
+		COMPARE_OP_MAX_ENUM = 0x7FFFFFFF
+	};
+
+	enum EStencilOp 
+	{
+		STENCIL_OP_KEEP = 0,
+		STENCIL_OP_ZERO = 1,
+		STENCIL_OP_REPLACE = 2,
+		STENCIL_OP_INCREMENT_AND_CLAMP = 3,
+		STENCIL_OP_DECREMENT_AND_CLAMP = 4,
+		STENCIL_OP_INVERT = 5,
+		STENCIL_OP_INCREMENT_AND_WRAP = 6,
+		STENCIL_OP_DECREMENT_AND_WRAP = 7,
+		STENCIL_OP_MAX_ENUM = 0x7FFFFFFF
+	};
 	
 
 #ifdef MIST_VULKAN
@@ -607,6 +633,8 @@ namespace Mist
 		VkBlendFactor GetBlendFactor(EBlendFactor f);
 		VkColorComponentFlags GetColorWriteMask(EColorWriteMask f);
 		VkPipelineColorBlendAttachmentState GetPipelineColorBlendAttachmentState(const tColorBlendState& state);
+		VkCompareOp GetCompareOp(ECompareOp op);
+		VkStencilOp GetStencilOp(EStencilOp op);
 	}
 	namespace fromvk
 	{

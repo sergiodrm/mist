@@ -650,6 +650,42 @@ namespace Mist
 				.colorWriteMask = GetColorWriteMask(state.WriteMask)
 			};
 		}
+		VkCompareOp GetCompareOp(ECompareOp op)
+		{
+			switch (op)
+			{
+			case COMPARE_OP_NEVER: return VK_COMPARE_OP_NEVER;
+			case COMPARE_OP_LESS: return VK_COMPARE_OP_LESS;
+			case COMPARE_OP_EQUAL: return VK_COMPARE_OP_EQUAL;
+			case COMPARE_OP_LESS_OR_EQUAL: return VK_COMPARE_OP_LESS_OR_EQUAL;
+			case COMPARE_OP_GREATER: return VK_COMPARE_OP_GREATER;
+			case COMPARE_OP_NOT_EQUAL: return VK_COMPARE_OP_NOT_EQUAL;
+			case COMPARE_OP_GREATER_OR_EQUAL: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+			case COMPARE_OP_ALWAYS: return VK_COMPARE_OP_ALWAYS;
+			case COMPARE_OP_MAX_ENUM: return VK_COMPARE_OP_MAX_ENUM;
+			default:
+				check(false && "Unreachable");
+			}
+			return VK_COMPARE_OP_MAX_ENUM;
+		}
+		VkStencilOp GetStencilOp(EStencilOp op)
+		{
+			switch (op)
+			{
+			case STENCIL_OP_KEEP: return VK_STENCIL_OP_KEEP;
+			case STENCIL_OP_ZERO: return VK_STENCIL_OP_ZERO;
+			case STENCIL_OP_REPLACE: return VK_STENCIL_OP_REPLACE;
+			case STENCIL_OP_INCREMENT_AND_CLAMP: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+			case STENCIL_OP_DECREMENT_AND_CLAMP: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+			case STENCIL_OP_INVERT: return VK_STENCIL_OP_INVERT;
+			case STENCIL_OP_INCREMENT_AND_WRAP: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+			case STENCIL_OP_DECREMENT_AND_WRAP: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+			case STENCIL_OP_MAX_ENUM: return VK_STENCIL_OP_MAX_ENUM;
+			default:
+				check(false && "Unreachable");
+			}
+			return VK_STENCIL_OP_MAX_ENUM;
+		}
 	}
 
 

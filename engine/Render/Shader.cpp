@@ -276,6 +276,19 @@ namespace Mist
 		strcat_s(key, paramName);
 	}
 
+	VkStencilOpState GetStencilOpState(const tStencilState& state)
+	{
+		VkStencilOpState s;
+		s.compareMask = state.CompareMask;
+		s.writeMask = state.WriteMask;
+		s.reference = state.Reference;
+		s.compareOp = tovk::GetCompareOp(state.CompareOp);
+		s.depthFailOp = tovk::GetStencilOp(state.DepthFailOp);
+		s.failOp = tovk::GetStencilOp(state.FailOp);
+		s.passOp = tovk::GetStencilOp(state.PassOp);
+		return s;
+	}
+
 	ShaderCompiler::ShaderCompiler(const RenderContext& renderContext) : m_renderContext(renderContext)
 	{}
 
@@ -1138,6 +1151,8 @@ namespace Mist
 		builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
 		builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
 		builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.front = GetStencilOpState(m_description.FrontStencil);
+		builder.DepthStencil.back = GetStencilOpState(m_description.BackStencil);
 		builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
 		builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
 		builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
