@@ -82,7 +82,7 @@ namespace Mist
 			uint32_t Height = 0;
 			uint32_t Channels = 0;
 		};
-		bool LoadTexture(const char* path, TextureRaw& out);
+		bool LoadTexture(const char* path, TextureRaw& out, bool flipVertical = false);
 		void FreeTexture(unsigned char* data);
 	}
 

@@ -17,13 +17,13 @@
 namespace Mist
 {
 
-	bool io::LoadTexture(const char* path, TextureRaw& out)
+	bool io::LoadTexture(const char* path, TextureRaw& out, bool flipVertical)
 	{
 		if (!path || !*path)
 			return false;
 
 		cAssetPath assetPath(path);
-		//stbi_set_flip_vertically_on_load(true);
+		stbi_set_flip_vertically_on_load(flipVertical);
 		int32_t width, height, channels;
 		stbi_uc* pixels = stbi_load(assetPath, &width, &height, &channels, STBI_rgb_alpha);
 		if (!pixels)
