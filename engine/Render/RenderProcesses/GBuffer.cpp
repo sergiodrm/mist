@@ -184,9 +184,9 @@ namespace Mist
 			shaderDesc.RenderTarget = &m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
-			shaderDesc.FrontStencil.CompareMask = 0xff;
+			shaderDesc.FrontStencil.CompareMask = 0x1;
 			shaderDesc.FrontStencil.Reference = 0x1;
-			shaderDesc.FrontStencil.WriteMask = 0xff;
+			shaderDesc.FrontStencil.WriteMask = 0x1;
 			shaderDesc.FrontStencil.CompareOp = COMPARE_OP_ALWAYS;
 			shaderDesc.FrontStencil.FailOp = STENCIL_OP_REPLACE;
 			shaderDesc.FrontStencil.PassOp = STENCIL_OP_REPLACE;
@@ -213,13 +213,13 @@ namespace Mist
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
 			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 
-			shaderDesc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
-			shaderDesc.FrontStencil.CompareMask = 0xff;
+			shaderDesc.DepthStencilMode = /*DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST |*/ DEPTH_STENCIL_STENCIL_TEST;
+			shaderDesc.FrontStencil.CompareMask = 0x1;
 			shaderDesc.FrontStencil.Reference = 0x1;
-			shaderDesc.FrontStencil.WriteMask = 0xff;
+			shaderDesc.FrontStencil.WriteMask = 0x1;
 			shaderDesc.FrontStencil.CompareOp = COMPARE_OP_NOT_EQUAL;
 			shaderDesc.FrontStencil.FailOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.PassOp = STENCIL_OP_REPLACE;
+			shaderDesc.FrontStencil.PassOp = STENCIL_OP_KEEP;
 			shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_KEEP;
 			shaderDesc.BackStencil = shaderDesc.FrontStencil;
 
