@@ -2,7 +2,15 @@
 
 layout (location = 0) in vec3 inTexCoords;
 layout (location = 1) in mat4 inView;
+
+#if !defined(SKYBOX_GBUFFER)
 layout (location = 0) out vec4 outFragColor;
+#else
+layout (location = 0) out vec4 outPosition;
+layout (location = 1) out vec4 outNormal;
+layout (location = 2) out vec4 outAlbedo;
+layout (location = 3) out vec4 outEmissive;
+#endif
 
 layout (set = 1, binding = 0) uniform samplerCube u_cubemap;
 
@@ -43,7 +51,12 @@ vec3 Sky(in vec3 ro, in vec3 rd)
 
 void main()
 {
+#if !defined(SKYBOX_GBUFFER)
     outFragColor = texture(u_cubemap, inTexCoords);
+#else
+    outAlbedo = texture(u_cubemap, inTexCoords);
+    //outEmissive = 0.5f*texture(u_cubemap, inTexCoords);
+#endif
 
 #if 0
     vec2 res = vec2(1920.f, 1080.f);

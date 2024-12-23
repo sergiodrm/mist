@@ -665,26 +665,33 @@ namespace Mist
 
 	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
+		PROFILE_SCOPE_LOG(LoadSkybox);
 		// descriptors generator
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 
+		strcpy_s(skybox.CubemapFiles[Skybox::FRONT], front);
+		strcpy_s(skybox.CubemapFiles[Skybox::BACK], back);
+		strcpy_s(skybox.CubemapFiles[Skybox::LEFT], left);
+		strcpy_s(skybox.CubemapFiles[Skybox::RIGHT], right);
+		strcpy_s(skybox.CubemapFiles[Skybox::TOP], top);
+		strcpy_s(skybox.CubemapFiles[Skybox::BOTTOM], bottom);
+
 		// Load textures from files
-		const char* files[] = { left, right, top, bottom, front, back };
 		io::TextureRaw textureData[Skybox::COUNT];
-		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
-			check(io::LoadTexture(files[i], textureData[i]));
+		check(io::LoadTexture(front, textureData[Skybox::FRONT]));
+		check(io::LoadTexture(back, textureData[Skybox::BACK]));
+		check(io::LoadTexture(left, textureData[Skybox::LEFT]));
+		check(io::LoadTexture(right, textureData[Skybox::RIGHT]));
+		check(io::LoadTexture(top, textureData[Skybox::TOP]));
+		check(io::LoadTexture(bottom, textureData[Skybox::BOTTOM]));
 		// Size integrity check and generate an array to reference the pixels of each texture.
 		const uint8_t* pixelsArray[Skybox::COUNT];
-		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
-		{
-			check(*files[i]);
-			strcpy_s(skybox.CubemapFiles[i], files[i]);
-			check(textureData[i].Width == textureData[(i + 1) % Skybox::COUNT].Width
-				&& textureData[i].Height == textureData[(i + 1) % Skybox::COUNT].Height
-				&& textureData[i].Channels == textureData[(i + 1) % Skybox::COUNT].Channels
-				&& textureData[i].Pixels);
-			pixelsArray[i] = textureData[i].Pixels;
-		}
+		pixelsArray[Skybox::FRONT] = textureData[Skybox::FRONT].Pixels;
+		pixelsArray[Skybox::BACK] = textureData[Skybox::BACK].Pixels;
+		pixelsArray[Skybox::LEFT] = textureData[Skybox::LEFT].Pixels;
+		pixelsArray[Skybox::RIGHT] = textureData[Skybox::RIGHT].Pixels;
+		pixelsArray[Skybox::TOP] = textureData[Skybox::TOP].Pixels;
+		pixelsArray[Skybox::BOTTOM] = textureData[Skybox::BOTTOM].Pixels;
 
 		// Create texture
 		tImageDescription imageDesc;

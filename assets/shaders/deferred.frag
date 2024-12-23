@@ -327,8 +327,6 @@ void main()
     outColor = lightingColor;
 #endif // DEFERRED_APPLY_FOG
     return;
-
-
 #else // non pbr
 
 	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).rgb;

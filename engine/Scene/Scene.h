@@ -136,10 +136,10 @@ namespace Mist
 		{
 			FRONT, 
 			BACK, 
-			LEFT, 
-			RIGHT, 
 			TOP, 
 			BOTTOM,
+			RIGHT, 
+			LEFT, 
 			COUNT
 		};
 		cTexture* Tex;

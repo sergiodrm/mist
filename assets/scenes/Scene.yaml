@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0235294122, 0.0235294122, 0.0235294122]
   Skybox:
-    Front: textures/skybox/top.jpg
-    Back: textures/skybox/bottom.jpg
-    Top: textures/skybox/left.jpg
-    Bottom: textures/skybox/right.jpg
-    Left: textures/skybox/front.jpg
-    Right: textures/skybox/back.jpg
+    Front: textures/skybox/front.jpg
+    Back: textures/skybox/back.jpg
+    Top: textures/skybox/top.jpg
+    Bottom: textures/skybox/bottom.jpg
+    Left: textures/skybox/left.jpg
+    Right: textures/skybox/right.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
