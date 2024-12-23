@@ -9,7 +9,7 @@
 #define GBUFFER_RT_FORMAT_POSITION FORMAT_R32G32B32A32_SFLOAT
 #define GBUFFER_RT_FORMAT_NORMAL GBUFFER_RT_FORMAT_POSITION
 #define GBUFFER_RT_FORMAT_ALBEDO FORMAT_R8G8B8A8_UNORM
-#define GBUFFER_RT_FORMAT_DEPTH FORMAT_D32_SFLOAT
+#define GBUFFER_RT_FORMAT_DEPTH FORMAT_D24_UNORM_S8_UINT // FORMAT_D32_SFLOAT
 #define GBUFFER_RT_FORMAT_EMISSIVE FORMAT_R8G8B8A8_UNORM
 
 
@@ -27,6 +27,7 @@ namespace Mist
 {
 	struct RenderContext;
 	class ShaderProgram;
+	class cModel;
 
 	class GBuffer : public RenderProcess
 	{
@@ -68,7 +69,9 @@ namespace Mist
 		virtual void DebugDraw(const RenderContext& context) override;
 	public:
 		RenderTarget m_renderTarget;
-		ShaderProgram* m_shader;
+		ShaderProgram* m_gbufferShader;
+		ShaderProgram* m_skyboxShader;
+		cModel* m_skyboxModel;
 		EDebugMode m_debugMode = DEBUG_NONE;
 	};
 }
