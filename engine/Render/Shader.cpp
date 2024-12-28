@@ -104,10 +104,10 @@ namespace shader_compiler
 		return ret;
 	}
 
-	void BuildShaderDependencies(Mist::tShaderDependency& dependencies, const char* filepath)
+	void GatherShaderDependencies(Mist::tShaderDependency& dependencies, const char* filepath)
 	{
 		check(filepath && *filepath);
-		PROFILE_SCOPE_LOGF(BuildShaderDependencies, "Build shader dependency (%s)", filepath);
+		PROFILE_SCOPE_LOGF(GatherShaderDependencies, "Build shader dependency (%s)", filepath);
 		size_t contentSize;
 		char* content;
 		check(Mist::FileSystem::ReadTextFile(filepath, &content, contentSize));
@@ -137,7 +137,7 @@ namespace shader_compiler
 			Mist::cAssetPath dependencyAssetPath(dependencyPath);
 			dependencies.Dependencies.Push(dependencyAssetPath.c_str());
 			// Keep building dependencies inside current dependency.
-			BuildShaderDependencies(dependencies, dependencyAssetPath.c_str());
+			GatherShaderDependencies(dependencies, dependencyAssetPath.c_str());
 		}
 		delete[] content;
 	}
@@ -404,7 +404,7 @@ namespace Mist
 		check(CheckShaderFileExtension(filepath, shaderStage));
 
 		tShaderDependency dependency;
-		shader_compiler::BuildShaderDependencies(dependency, filepath);
+		shader_compiler::GatherShaderDependencies(dependency, filepath);
 
 		char binaryFilepath[1024];
 		shader_compiler::GenerateSpvFileName(binaryFilepath, filepath, compileOptions);
