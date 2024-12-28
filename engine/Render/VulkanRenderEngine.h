@@ -71,7 +71,7 @@ namespace Mist
 
 		const RenderContext& GetContext() const { return m_renderContext; }
 
-		void ReloadShaders();
+		virtual void ReloadShaders() override;
 		void DumpShadersInfo();
 
 	protected:

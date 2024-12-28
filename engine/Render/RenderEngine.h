@@ -34,6 +34,7 @@ namespace Mist
 		virtual void Shutdown() = 0;
 
 		virtual void UpdateSceneView(const glm::mat4& view, const glm::mat4& projection) = 0;
+		virtual void ReloadShaders() = 0;
 
 		/** Scene to draw. Engine does NOT own the scene. Delete of the scene is on the side of the app. */
 		virtual Scene* GetScene() = 0;

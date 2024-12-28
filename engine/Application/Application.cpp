@@ -191,6 +191,9 @@ namespace Mist
 
 		if (GetKeyboardState(MIST_KEY_CODE_TAB) && !GetKeyboardPreviousState(MIST_KEY_CODE_TAB))
 			CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
+		if ((GetKeyboardState(MIST_KEY_CODE_LCTRL) || GetKeyboardState(MIST_KEY_CODE_RCTRL))
+			&& !GetKeyboardState(MIST_KEY_CODE_R) && GetKeyboardPreviousState(MIST_KEY_CODE_R))
+			m_engine->ReloadShaders();
 	}
 
 	void tApplication::ProcessEvent(void* e)
