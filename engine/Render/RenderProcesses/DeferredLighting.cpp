@@ -1,4 +1,4 @@
-#include "Lighting.h"
+#include "DeferredLighting.h"
 #include <vector>
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"

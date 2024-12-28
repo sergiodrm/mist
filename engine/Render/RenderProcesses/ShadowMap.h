@@ -89,10 +89,10 @@ namespace Mist
 
 		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
 
+		ShadowMapPipeline m_shadowMapPipeline;
 	private:
 		virtual void DebugDraw(const RenderContext& context) override;
 	private:
-		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;

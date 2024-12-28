@@ -1,7 +1,8 @@
 #include "RendererBase.h"
 #include "RenderProcesses/SSAO.h"
 #include "RenderProcesses/GBuffer.h"
-#include "RenderProcesses/Lighting.h"
+#include "RenderProcesses/DeferredLighting.h"
+#include "RenderProcesses/ForwardLighting.h"
 #include "RenderProcesses/ShadowMap.h"
 #include "Core/SystemMemory.h"
 #include "Swapchain.h"
@@ -44,6 +45,7 @@ namespace Mist
 		m_processArray[RENDERPROCESS_SSAO] = _new SSAO();
 		m_processArray[RENDERPROCESS_GBUFFER] = _new GBuffer();
 		m_processArray[RENDERPROCESS_LIGHTING] = _new DeferredLighting();
+		m_processArray[RENDERPROCESS_FORWARD_LIGHTING] = _new ForwardLighting();
 		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess();
 
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)

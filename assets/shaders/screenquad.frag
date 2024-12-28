@@ -7,8 +7,14 @@ layout (location = 0) out vec4 outFragColor;
 
 layout (set = 1, binding = 0) uniform sampler2D u_tex[8];
 
+float LinearizeDepth(float z, float n, float f)
+{
+  return (2.0 * n) / (f + n - z * (f - n));
+}
+
 void main() 
 {
   outFragColor = texture(u_tex[inTexIndex], inUV);
-  //outFragColor = vec4(inUV, 1.f, 1.f);
+  //float d = LinearizeDepth(texture(u_tex[inTexIndex], inUV).r, 1.f, 1000.f);
+  //outFragColor = vec4(d, d, d, 1.f);
 }
