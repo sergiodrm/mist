@@ -2,11 +2,137 @@
 #include "Core/Logger.h"
 #include <direct.h>
 #include "Application/CmdParser.h"
+#include <fstream>
 
 namespace Mist
 {
 	CStrVar CVar_Workspace("Workspace", "../assets/");
 
+	bool FileSystem::IsFileNewerThanOther(const char* file, const char* other)
+	{
+		check(file && *file && other && *other);
+		struct stat statsFile;
+		stat(file, &statsFile);
+		struct stat statsOther;
+		stat(other, &statsOther);
+		// stat.st_mtime: The most recent time that the file's contents were modified.
+		return statsFile.st_mtime > statsOther.st_mtime;
+	}
+
+	bool FileSystem::ReadFile(const char* filename, tDynArray<uint32_t>& data)
+	{
+		data.clear();
+		// Open file with std::ios::ate -> with cursor at the end of the file
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		if (!file.is_open())
+		{
+			logferror("File not found: %s.\n", filename);
+			return false;
+		}
+		// Tell size (remember cursor at the end of the file)
+		size_t fileSize = (size_t)file.tellg();
+		// SpirV expects a uint32 buffer
+		data.resize(fileSize / sizeof(uint32_t));
+		// Move cursor file to the beginning
+		file.seekg(0);
+		// Read the entire file to the buffer
+		file.read((char*)data.data(), fileSize);
+		// Terminated with file stream
+		file.close();
+		return true;
+	}
+
+	bool FileSystem::ReadFile(const char* filename, uint32_t** data, size_t& size)
+	{
+		// Open file with std::ios::ate -> with cursor at the end of the file
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		if (!file.is_open())
+		{
+			logferror("File not found: %s.\n", filename);
+			return false;
+		}
+		// Tell size (remember cursor at the end of the file)
+		size_t bytes = (size_t)file.tellg();
+		// SpirV expects a uint32 buffer
+		*data = (uint32_t*)malloc(bytes);
+		// Move cursor file to the beginning
+		file.seekg(0);
+		// Read the entire file to the buffer
+		file.read((char*)*data, bytes);
+		// Terminated with file stream
+		file.close();
+
+		size = bytes / sizeof(uint32_t);
+		return true;
+	}
+
+	bool FileSystem::ReadFile(const char* filename, char** out, size_t& size)
+	{
+		// Open file with std::ios::ate -> with cursor at the end of the file
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		if (!file.is_open())
+		{
+			logferror("File not found: %s.\n", filename);
+			return false;
+		}
+		// Tell size (remember cursor at the end of the file)
+		size = (size_t)file.tellg();
+		// SpirV expects a uint32 buffer
+		*out = (char*)malloc(size);
+		// Move cursor file to the beginning
+		file.seekg(0);
+		// Read the entire file to the buffer
+		file.read(*out, size);
+		// Terminated with file stream
+		file.close();
+
+		return true;
+	}
+
+	bool FileSystem::ReadTextFile(const char* filename, char** out, size_t& size)
+	{
+		// Open file with std::ios::ate -> with cursor at the end of the file
+		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		if (!file.is_open())
+		{
+			logferror("File not found: %s.\n", filename);
+			return false;
+		}
+		// Tell size (remember cursor at the end of the file)
+		size = (size_t)file.tellg() + 1;
+		// SpirV expects a uint32 buffer
+		*out = (char*)malloc(size);
+		// Move cursor file to the beginning
+		file.seekg(0);
+		// Read the entire file to the buffer
+		file.read(*out, size);
+		// Terminated with file stream
+		file.close();
+
+		(*out)[size - 1] = 0;
+
+		return true;
+	}
+
+	void FileSystem::GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size)
+	{
+		size_t len = strlen(filepath);
+		GetDirectoryFromFilepath(filepath, len, dir, size);
+	}
+
+	void FileSystem::GetDirectoryFromFilepath(const char* filepath, size_t filepathSize, char* dir, size_t size)
+	{
+		check(size >= filepathSize);
+		for (size_t i = filepathSize - 1; i < filepathSize; --i)
+		{
+			if (filepath[i] == '/' || filepath[i] == '\\')
+			{
+				strncpy_s(dir, size, filepath, i + 1);
+				dir[i + 2] = '\0';
+				break;
+			}
+		}
+	}
 
 
 	cFile::~cFile()
@@ -14,17 +140,33 @@ namespace Mist
 		Close();
 	}
 
-	cFile::eResult cFile::Open(const char* filepath, eFileMode mode)
+	cFile::eResult cFile::OpenBinary(const char* filepath, eFileMode mode)
 	{
-		const char* m = nullptr;
+		const char* m;
 		switch (mode)
 		{
 		case FileMode_Read: m = "rb"; break;
 		case FileMode_Write: m = "wb"; break;
 		}
-		check(m && *m);
+		return Open(filepath, m);
+	}
+
+	cFile::eResult cFile::OpenText(const char* filepath, eFileMode mode)
+	{
+		const char* m;
+		switch (mode)
+		{
+		case FileMode_Read: m = "r"; break;
+		case FileMode_Write: m = "w"; break;
+		}
+		return Open(filepath, m);
+	}
+
+	cFile::eResult cFile::Open(const char* filepath, const char* mode)
+	{
+		check(filepath && *filepath && mode && *mode);
 		FILE* f = nullptr;
-		errno_t err = fopen_s(&f, filepath, m);
+		errno_t err = fopen_s(&f, filepath, mode);
 
 		eResult e = Result_Ok;
 		if (err)
@@ -77,7 +219,7 @@ namespace Mist
 	cCfgFile::cCfgFile(const char* filepath)
 	{
 		cFile file;
-		cFile::eResult e = file.Open(filepath, cFile::FileMode_Read);
+		cFile::eResult e = file.OpenText(filepath, cFile::FileMode_Read);
 		if (e != cFile::Result_Ok)
 		{
 			logerror("Ini file not found.\n");

@@ -7,6 +7,27 @@ namespace Mist
 {
 	extern CStrVar CVar_Workspace;
 
+	namespace FileSystem
+	{
+		bool IsFileNewerThanOther(const char* file, const char* other);
+
+		bool ReadFile(const char* filename, tDynArray<uint32_t>& data);
+		// Dynamic memory allocated, ownership by caller.
+		bool ReadFile(const char* filename, uint32_t** data, size_t& size);
+		// Returns non null terminated data. Dynamic memory allocated, ownership by caller.
+		bool ReadFile(const char* filename, char** out, size_t& size);
+		// Returns null terminated data. Dynamic memory allocated, ownership by caller.
+		bool ReadTextFile(const char* filename, char** out, size_t& size);
+
+		void GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size);
+		void GetDirectoryFromFilepath(const char* filepath, size_t filepathSize, char* dir, size_t size);
+		template <size_t N>
+		void GetDirectoryFromFilepath(const char(filepath)[N], char* dir, size_t size)
+		{
+			GetDirectoryFromFilepath(filepath, N, dir, size);
+		}
+	}
+
 	class cAssetPath
 	{
 	public:
@@ -37,6 +58,7 @@ namespace Mist
 		const char* c_str() const { return m_path; }
 		inline bool empty() const { return !*m_path; }
 		void Set(const char* path);
+		uint32_t GetSize() const { size_t s = strlen(m_path); check(s < UINT32_MAX); return static_cast<uint32_t>(s); }
 
 	private:
 		char m_path[256];
@@ -60,7 +82,9 @@ namespace Mist
 
 		~cFile();
 
-		eResult Open(const char* filepath, eFileMode mode);
+		eResult OpenBinary(const char* filepath, eFileMode mode);
+		eResult OpenText(const char* filepath, eFileMode mode);
+		eResult Open(const char* filepath, const char* mode);
 		eResult Close();
 
 		uint32_t Read(void* out, uint32_t bufferSize, uint32_t elementSize, uint32_t elementCount);

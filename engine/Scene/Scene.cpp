@@ -33,6 +33,7 @@
 #include "Core/SystemMemory.h"
 #include "Utils/TimeUtils.h"
 #include "Render/Model.h"
+#include "Utils/FileSystem.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -297,8 +298,8 @@ namespace Mist
 	void Scene::LoadScene(const RenderContext& context, const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadScene, "Load scene (%s)", filepath);
-		io::File file;
-		check(file.Open(filepath, "r"));
+		cFile file;
+		check(file.OpenText(filepath, cFile::FileMode_Read) == cFile::Result_Ok);
 		uint32_t size = file.GetContentSize();
 		char* content = _new char[size];
 		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
@@ -435,12 +436,13 @@ namespace Mist
 		check(emitter.good());
 		const char* out = emitter.c_str();
 		uint32_t size = (uint32_t)emitter.size();
-		Logf(LogLevel::Info, "YAML %u b\n%s\n", size, out);
-
-		io::File file;
-		check(file.Open(filepath, "w"));
+		//logfinfo("YAML %u b\n%s\n", size, out);
+		cFile file;
+		check(file.OpenText(filepath, cFile::FileMode_Write));
 		file.Write(out, size);
 		file.Close();
+
+		logfok("--- Scene file saved in: %s (%d bytes) ---\n", filepath, size);
 	}
 
 	void Scene::DestroyRenderObject(sRenderObject object)

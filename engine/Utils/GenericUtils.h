@@ -6,36 +6,6 @@
 
 namespace Mist
 {
-	namespace io
-	{
-		bool ReadFile(const char* filename, tDynArray<uint32_t>& data);
-		bool ReadFile(const char* filename, uint32_t** data, size_t& size);
-		// returns non null terminated data!
-		bool ReadFile(const char* filename, char** out, size_t& size);
-		void GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size);
-		void GetDirectoryFromFilepath(const char* filepath, size_t filepathSize, char* dir, size_t size);
-		template <size_t N>
-		void GetDirectoryFromFilepath(const char(filepath)[N], char* dir, size_t size)
-		{
-			GetDirectoryFromFilepath(filepath, N, dir, size);
-		}
-
-		class File
-		{
-		public:
-			File();
-			~File();
-
-			bool Open(const char* filepath, const char* mode, bool asAssetPath = true);
-			void Close();
-
-			uint32_t Read(void* out, uint32_t bufferSize, uint32_t elementSize, uint32_t elementCount);
-			uint32_t Write(const void* data, uint32_t bufferSize);
-			uint32_t GetContentSize() const;
-		private:
-			void* m_file;
-		};
-	}
 
 	// Math
 	namespace math
