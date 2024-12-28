@@ -45,7 +45,7 @@ namespace Mist
 		m_renderContext = &rc;
 		m_poolSizes = sizes;
 		m_pool.Reset();
-		m_pool.Pool = CreatePool(rc.Device, sizes, 200, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
+		m_pool.Pool = CreatePool(rc.Device, sizes, 500, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 	}
 
 	void DescriptorAllocator::Destroy()
