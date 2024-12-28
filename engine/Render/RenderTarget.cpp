@@ -438,36 +438,6 @@ namespace Mist
 		if (!m_description.ClearOnLoad)
 		{
 			attachment.Tex->TransferImageLayout(renderContext, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-#if 0
-			utils::CmdSubmitTransfer(renderContext,
-				[&](CommandBuffer cmd)
-				{
-					VkImageAspectFlags fl = IsDepthFormat(description.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-					VkImageSubresourceRange subresourceRange
-					{
-						.aspectMask = fl,
-						.baseMipLevel = 0,
-						.levelCount = 1,
-						.baseArrayLayer = 0,
-						.layerCount = 1
-					};
-					VkImageMemoryBarrier barrier
-					{
-						.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-						.pNext = nullptr,
-						.srcAccessMask = 0,
-						.dstAccessMask = VK_ACCESS_NONE,
-						.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-						.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-						.srcQueueFamilyIndex = 0,
-						.dstQueueFamilyIndex = 0,
-						.image = attachment.Tex->GetNativeImage(),
-						.subresourceRange = subresourceRange,
-					};
-					vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr,
-						1, &barrier);
-				});
-#endif // 0
 		}
 
 		tViewDescription viewDesc;
