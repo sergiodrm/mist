@@ -30,7 +30,7 @@ namespace Mist
 	class cMaterial : public cRenderResource<RenderResource_Material>
 	{
 	public:
-		cMaterial() { ZeroMem(this, sizeof(cMaterial)); }
+		cMaterial();
 		void Destroy(const RenderContext& context);
 
 		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot);

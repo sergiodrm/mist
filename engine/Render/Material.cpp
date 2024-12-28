@@ -22,6 +22,11 @@ namespace Mist
         return nullptr;
     }
 
+    cMaterial::cMaterial()
+    {
+        ZeroMemory(m_textures, CountOf(m_textures) * sizeof(cTexture*));
+    }
+
     void cMaterial::Destroy(const RenderContext& context)
     {
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)

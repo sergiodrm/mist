@@ -393,16 +393,16 @@ namespace Mist
 		cAssetPath assetPath(filepath);
 		cgltf_data* data = gltf_api::ParseFile(assetPath);
 		char rootAssetPath[512];
-		io::GetDirectoryFromFilepath(assetPath, rootAssetPath, 512);
+		FileSystem::GetDirectoryFromFilepath(assetPath, rootAssetPath, 512);
 		if (!data)
 		{
-			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", assetPath);
+			logferror("Cannot open file to load scene model: %s.\n", assetPath);
 			return false;
 		}
 
 		if (!data->nodes_count)
 		{
-			Logf(LogLevel::Error, "Model file without nodes in scene: %s.\n", assetPath);
+			logferror("Model file without nodes in scene: %s.\n", assetPath);
 			gltf_api::FreeData(data);
 			return false;
 		}
@@ -413,12 +413,17 @@ namespace Mist
 		loadmeshlogf("* materials: %d\n", data->materials_count);
 		loadmeshlogf("* meshes: %d\n", data->meshes_count);
 
-		InitMaterials((index_t)data->materials_count);
-		for (uint32_t i = 0; i < data->materials_count; ++i)
+		if (data->materials_count)
 		{
-			m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
-			gltf_api::LoadMaterial(m_materials[i], context, data->materials[i], rootAssetPath);
+			InitMaterials((index_t)data->materials_count);
+			for (uint32_t i = 0; i < data->materials_count; ++i)
+			{
+				m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
+				gltf_api::LoadMaterial(m_materials[i], context, data->materials[i], rootAssetPath);
+			}
 		}
+		else
+			logfwarn("Model without materials: %s\n", assetPath);
 
 		InitNodes((index_t)data->nodes_count);
 		InitMeshes((index_t)data->meshes_count);
@@ -478,13 +483,16 @@ namespace Mist
 					gltf_api::LoadIndices(cgltfprimitive, tempIndices.data() + indexOffset, vertexOffset);
 					gltf_api::LoadVertices(cgltfprimitive, tempVertices.data() + vertexOffset, vertexCount);
 
-					check(cgltfprimitive.material);
-					index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
-					cMaterial* material = &m_materials[materialIndex];
-					primitive.Material = material;
-					primitive.RenderFlags = RenderFlags_Fixed | RenderFlags_ShadowMap;
-					if (material->m_textures[MATERIAL_TEXTURE_EMISSIVE] || material->m_emissiveFactor != glm::vec4(0.f))
-						primitive.RenderFlags |= RenderFlags_Emissive;
+					if (cgltfprimitive.material)
+					{
+						index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
+						check(materialIndex < m_materials.GetSize());
+						cMaterial* material = &m_materials[materialIndex];
+						primitive.Material = material;
+						primitive.RenderFlags = RenderFlags_Fixed | RenderFlags_ShadowMap;
+						if (material->m_textures[MATERIAL_TEXTURE_EMISSIVE] || material->m_emissiveFactor != glm::vec4(0.f))
+							primitive.RenderFlags |= RenderFlags_Emissive;
+					}
 
 					check(cgltfprimitive.indices->count == primitive.Count);
 				}
