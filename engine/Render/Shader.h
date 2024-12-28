@@ -67,6 +67,11 @@ namespace Mist
 			Macro.Set(str);
 			Value[0] = 0;
 		}
+		tCompileMacroDefinition(const char* macro, const char* value)
+		{
+			Macro.Set(macro);
+			Value.Set(value);
+		}
 	};
 
 	struct tCompileOptions
@@ -84,6 +89,12 @@ namespace Mist
 	{
 		cAssetPath Filepath;
 		tCompileOptions CompileOptions;
+	};
+
+	struct tShaderDependency
+	{
+		typedef Mist::tFixedString<128> tDependency;
+		Mist::tStaticArray<tDependency, 8> Dependencies;
 	};
 
 	class ShaderCompiler
@@ -121,7 +132,7 @@ namespace Mist
 		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage);
 		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage);
 		static bool GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount);
-		static bool GetSpvBinaryFromFile(const char* shaderFilepath, const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount);
+		static bool GetSpvBinaryFromFile(const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount);
 	protected:
 		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount);
 		

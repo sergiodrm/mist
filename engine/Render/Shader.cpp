@@ -16,6 +16,7 @@
 #include "Application/Application.h"
 
 #include "Utils/TimeUtils.h"
+#include "Utils/FileSystem.h"
 
 
 
@@ -91,22 +92,71 @@ namespace shader_compiler
 	template<typename T>
 	bool HandleError(const shaderc::CompilationResult<T>& res, const char* compilationStage)
 	{
+		bool ret = true;
 		shaderc_compilation_status status = res.GetCompilationStatus();
 		Mist::LogLevel level = status == shaderc_compilation_status_success ? Mist::LogLevel::Ok : Mist::LogLevel::Error;
-		Mist::Logf(level, "-- Shader %s result (%s): %d warnings, %d errors --\n", compilationStage, GetShaderStatusStr(status), res.GetNumWarnings(), res.GetNumErrors());
 		if (status != shaderc_compilation_status_success)
 		{
-			Mist::Logf(Mist::LogLevel::Error, "Shader compilation error: %s\n", res.GetErrorMessage().c_str());
-			return false;
+			logferror("=== Shader compilation error ===\n%s\n\n", res.GetErrorMessage().c_str());
+			ret = false;
 		}
-		return true;
+		Mist::Logf(level, "-- Shader %s result (%s): %d warnings, %d errors --\n", compilationStage, GetShaderStatusStr(status), res.GetNumWarnings(), res.GetNumErrors());
+		return ret;
 	}
+
+	void BuildShaderDependencies(Mist::tShaderDependency& dependencies, const char* filepath)
+	{
+		check(filepath && *filepath);
+		PROFILE_SCOPE_LOGF(BuildShaderDependencies, "Build shader dependency (%s)", filepath);
+		size_t contentSize;
+		char* content;
+		check(Mist::FileSystem::ReadTextFile(filepath, &content, contentSize));
+		char* it = content;
+		while (it = strstr(it, "#include"))
+		{
+			// #include length
+			size_t tokenLength = 8;
+			it += tokenLength;
+			// After include always at least one space
+			check(*it == ' ');
+			// Looking for open token " or <
+			while (*it == ' ') ++it;
+			check((*it == '"' || *it == '<') && "Unexpected token. Expected '\"' or '<' after include preprocessor instruction.");
+			// Determinate matching close token
+			char closeToken = (*it == '"') ? '"' : '>';
+			++it;
+			// After open token we have the path
+			char* dependencyPath = it;
+			// Find close token
+			while (*it && *it != '\r' && *it != '\n' && *it != closeToken) ++it;
+			check(*it == closeToken && "Unexpected close token. Expected '\"' or '>' to close include preprocessor instruction.");
+			// In close token, terminate string dependencyPath
+			*it = 0;
+			++it;
+			// Build complete asset path and register it.
+			Mist::cAssetPath dependencyAssetPath(dependencyPath);
+			dependencies.Dependencies.Push(dependencyAssetPath.c_str());
+			// Keep building dependencies inside current dependency.
+			BuildShaderDependencies(dependencies, dependencyAssetPath.c_str());
+		}
+		delete[] content;
+	}
+
+	class tShaderIncluder : public shaderc::CompileOptions::IncluderInterface
+	{
+	public:
+		tShaderIncluder() = default;
+		virtual ~tShaderIncluder() = default;
+
+		virtual shaderc_include_result* GetInclude(const char* requestedSource, shaderc_include_type type, const char* requestingSource, size_t includeDepth) override;
+		virtual void ReleaseInclude(shaderc_include_result* data) override;
+	};
 
 	tCompilationResult Compile(const char* filepath, VkShaderStageFlags stage, const Mist::tCompileOptions* compileOptions = nullptr)
 	{
 		char* source;
 		size_t s;
-		check(Mist::io::ReadFile(filepath, &source, s));
+		check(Mist::FileSystem::ReadFile(filepath, &source, s));
 #ifdef SHADER_DUMP_PREPROCESS_RESULT
 		Mist::Logf(Mist::LogLevel::Debug, "Preprocess: %s\n");
 #endif
@@ -114,6 +164,8 @@ namespace shader_compiler
 		shaderc::Compiler compiler;
 		shaderc::CompileOptions options;
 		const char* entryPoint = "main";
+
+		options.SetIncluder(std::make_unique<tShaderIncluder>());
 
 		if (compileOptions)
 		{
@@ -186,6 +238,36 @@ namespace shader_compiler
 		}
 		strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
 	}
+
+	shaderc_include_result* tShaderIncluder::GetInclude(const char* requestedSource, shaderc_include_type type, const char* requestingSource, size_t includeDepth)
+	{
+		shaderc_include_result* result = _new shaderc_include_result;
+
+		Mist::cAssetPath path(requestedSource);
+		char* content = nullptr;
+		size_t contentSize;
+		check(Mist::FileSystem::ReadFile(path.c_str(), &content, contentSize));
+		check(content);
+		result->content = content;
+		result->content_length = contentSize;
+		result->user_data = nullptr;
+		result->source_name_length = path.GetSize() + 1;
+		char* sourceName = _new char[result->source_name_length];
+		strcpy_s(sourceName, result->source_name_length, path.c_str());
+		result->source_name = sourceName;
+		logfok("Read include shader: %s (%d bytes) from %s\n", sourceName, result->source_name_length, requestingSource);
+		return result;
+	}
+
+	void tShaderIncluder::ReleaseInclude(shaderc_include_result* data)
+	{
+		if (data)
+		{
+			delete data->content;
+			delete data->source_name;
+			delete data;
+		}
+	}
 }
 
 #endif // SHADER_RUNTIME_COMPILATION
@@ -248,6 +330,8 @@ namespace vkutils
 
 namespace Mist
 {
+	CBoolVar CVar_ForceShaderRecompilation("r_ForceShaderRecompilation", false);
+
 	template <size_t _KeySize>
 	void GenerateKey(char(&key)[_KeySize], const ShaderFileDescription** descriptions, uint32_t count)
 	{
@@ -319,25 +403,41 @@ namespace Mist
 		check(GetCompiledModule(shaderStage) == VK_NULL_HANDLE);
 		check(CheckShaderFileExtension(filepath, shaderStage));
 
+		tShaderDependency dependency;
+		shader_compiler::BuildShaderDependencies(dependency, filepath);
+
 		char binaryFilepath[1024];
 		shader_compiler::GenerateSpvFileName(binaryFilepath, filepath, compileOptions);
 
+		// Check if shader source is newer than the compiled. If is newer, we have to recompile it.
+		bool recompileShaderSource = CVar_ForceShaderRecompilation.Get() || FileSystem::IsFileNewerThanOther(filepath, binaryFilepath);
+		// Check also its dependencies with compiled binary.
+		if (!recompileShaderSource)
+		{
+			for (uint32_t i = 0; i < dependency.Dependencies.GetSize(); ++i)
+			{
+				if (FileSystem::IsFileNewerThanOther(dependency.Dependencies[i].CStr(), binaryFilepath))
+				{
+					recompileShaderSource = true;
+					logfwarn("Shader dependency newer than compiled binary (%s)\n", dependency.Dependencies[i].CStr());
+				}
+			}
+		}
+
 #ifdef SHADER_RUNTIME_COMPILATION
 		shader_compiler::tCompilationResult bin;
-		if (
-#ifndef SHADER_FORCE_COMPILATION
-			GetSpvBinaryFromFile(filepath, binaryFilepath, &bin.binary, &bin.binaryCount)
-#else
-			false
-#endif // !SHADER_FORCE_COMPILATION
-			)
+		if (!recompileShaderSource)
 		{
 			shaderlogf("Loading shader binary from compiled file: %s.spv\n", filepath);
+			check(GetSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount));
 		}
 		else
 		{
 			PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
-			Logf(LogLevel::Warn, "Compiled binary not found for: %s\n", filepath);
+			if (CVar_ForceShaderRecompilation.Get())
+				logfwarn("Force shader recompilation: %s\n", filepath);
+			else
+				logfwarn("Compiled binary not found or shader source is newer (%s)\n", filepath);
 			bin = shader_compiler::Compile(filepath, shaderStage, &compileOptions);
 			check(bin.IsCompilationSucceed());
 			GenerateCompiledFile(binaryFilepath, bin.binary, bin.binaryCount);
@@ -608,18 +708,9 @@ namespace Mist
 		return true;
 	}
 
-	bool ShaderCompiler::GetSpvBinaryFromFile(const char* shaderFilepath, const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount)
+	bool ShaderCompiler::GetSpvBinaryFromFile(const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount)
 	{
 		check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
-
-		// Binary file is older than source file
-		struct stat attrFile;
-		stat(shaderFilepath, &attrFile);
-		struct stat attrCompiled;
-		stat(binaryFilepath, &attrCompiled);
-		if (attrFile.st_mtime > attrCompiled.st_mtime)
-			return false;
-
 		//PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
 		// Binary file is created after last file modification, valid binary
 		FILE* f;
@@ -876,7 +967,6 @@ namespace Mist
 	{
 		if (!HasBatch())
 			return;
-
 		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
 
 		tDescriptorSetBatch& batch = setCache.GetBatch(m_batchId);
