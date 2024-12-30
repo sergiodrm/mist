@@ -40,6 +40,17 @@ namespace Mist
 			logferror("Unknown CVar: %s\n", name);
 			return false;
 		}
+		return SetCVar(cvar, strValue);
+	}
+
+	bool SetCVar(CVar* cvar, const char* strValue)
+	{
+		check(cvar);
+		if (cvar->HasFlag(CVarFlag_Const))
+		{
+			logferror("Can not modify a constant CVar. (%s)\n", cvar->GetName());
+			return false;
+		}
 		switch (cvar->GetType())
 		{
 		case CVar::CVarType::Int:
@@ -241,36 +252,36 @@ namespace Mist
 
 
 
-	CVar::CVar(const char* name, CVarType type) : Name{ 0 }, Type(type)
+	CVar::CVar(const char* name, CVarType type, tCVarFlags flags) : Name{ 0 }, Type(type), Flags(flags)
 	{
 		check(name && *name);
 		strcpy_s(Name, name);
 		NewCVar(this);
 	}
 
-	CIntVar::CIntVar(const char* name, int32_t defaultValue)
-		: CVar(name, CVarType::Int)
+	CIntVar::CIntVar(const char* name, int32_t defaultValue, tCVarFlags flags)
+		: CVar(name, CVarType::Int, flags)
 	{
 		DefaultValue.IntValue = defaultValue;
 		Value.IntValue = defaultValue;
 	}
 
-	CFloatVar::CFloatVar(const char* name, float defaultValue)
-		: CVar(name, CVarType::Float)
+	CFloatVar::CFloatVar(const char* name, float defaultValue, tCVarFlags flags)
+		: CVar(name, CVarType::Float, flags)
 	{
 		DefaultValue.FloatValue = defaultValue;
 		Value.FloatValue = defaultValue;
 	}
 
-	CBoolVar::CBoolVar(const char* name, bool defaultValue)
-		: CVar(name, CVarType::Bool)
+	CBoolVar::CBoolVar(const char* name, bool defaultValue, tCVarFlags flags)
+		: CVar(name, CVarType::Bool, flags)
 	{
 		DefaultValue.BoolValue = defaultValue;
 		Value.BoolValue = defaultValue;
 	}
 
-	CStrVar::CStrVar(const char* name, const char* defaultValue)
-		: CVar(name, CVarType::String)
+	CStrVar::CStrVar(const char* name, const char* defaultValue, tCVarFlags flags)
+		: CVar(name, CVarType::String, flags)
 	{
 		strcpy_s(DefaultValue.StringValue, defaultValue);
 		strcpy_s(Value.StringValue, defaultValue);
