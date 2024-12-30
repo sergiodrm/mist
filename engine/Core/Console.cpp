@@ -9,6 +9,7 @@
 #include <imgui/imgui.h>
 #include "Core/SystemMemory.h"
 #include "Application/CmdParser.h"
+#include "Application/Application.h"
 
 
 namespace Mist
@@ -48,7 +49,7 @@ namespace Mist
 	void Console::Log(LogLevel level, const char* msg)
 	{
 		tLogEntry entry;
-		strcpy_s(entry.Msg, msg);
+		sprintf_s(entry.Msg, "[%d] %s", tApplication::GetFrame(), msg);
 		entry.Level = level;
 		m_logs.Push(entry);
 		m_newEntry = true;
