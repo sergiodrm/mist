@@ -116,8 +116,12 @@ namespace Mist
 
 		for (index_t i = 0; i < iniFile.GetValueCount(); ++i)
 		{
-			if (SetCVar(iniFile.GetKey(i), iniFile.GetValue(i)))
+			if (CVar* var = FindCVar(iniFile.GetKey(i)))
+			{
+				check(!var->HasFlag(CVarFlag_SetOnlyByCmd) && "CVars with flag SetOnlyByCmd can not be changed by cfg file.");
+				SetCVar(var, iniFile.GetValue(i));
 				logfinfo("CVar setted from %s file: %s = %s\n", GIniFile.Get(), iniFile.GetKey(i), iniFile.GetValue(i));
+			}
 		}
 
 		eWindowFlags f = fullscreen ? WindowFlags_Borderless : WindowFlags_None;
