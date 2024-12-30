@@ -36,11 +36,27 @@ namespace Mist
 		newWindow.Width = width;
 		newWindow.Height = height;
 		strcpy_s(newWindow.Title, title);
+
+		if (SDL_Init(SDL_INIT_VIDEO) != 0)
+		{
+			const char* sdlError = SDL_GetError();
+			logferror("Error initializating SDL. Error msg:\n%s\n", sdlError);
+			check(false && "Failed initializating SDL.");
+		}
+		int numDisplays = SDL_GetNumVideoDisplays();
+		logfinfo("Num displays detected: %d\n", numDisplays);
+		for (int i = 0; i < numDisplays; ++i)
+		{
+			SDL_Rect rect;
+			SDL_GetDisplayBounds(i, &rect);
+			const char* displayName = SDL_GetDisplayName(i);
+			logfinfo("#%d %s (%dx%d | %d,%d)\n", i, displayName, rect.w, rect.h, rect.x, rect.y);
+		}
+
 		SDL_WindowFlags windowFlags = (SDL_WindowFlags)(uint32_t(WindowFlagsToSDL(flags)) | SDL_WINDOW_VULKAN);
 		newWindow.WindowInstance = SDL_CreateWindow(
 			title, posx, posy,
 			width, height, windowFlags);
-		SDL_Init(SDL_INIT_VIDEO);
 		return newWindow;
 	}
 
