@@ -7,7 +7,8 @@
 #include "ShadowMap.h"
 #include "Core/Logger.h"
 #include "Render/DebugRender.h"
-
+#include <imgui/imgui.h>
+#include "Utils/GenericUtils.h"
 
 namespace Mist
 {
@@ -94,9 +95,14 @@ namespace Mist
 			DebugRender::DrawScreenQuad({ 0.f, 0.f }, { width, height }, *m_rt.GetTexture());
 		}
 	}
+
 	void ForwardLighting::ImGuiDraw()
 	{
+		ImGui::Begin("Forward tech");
+		ImGuiUtils::CheckboxCBoolVar(CVar_ShowForwardTech);
+		ImGui::End();
 	}
+	
 	const RenderTarget* ForwardLighting::GetRenderTarget(uint32_t index) const
 	{
 		return &m_rt;
