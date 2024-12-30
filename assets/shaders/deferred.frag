@@ -21,7 +21,7 @@ layout(set = 4, binding = 0) uniform sampler2D u_ssao;
 layout(set = 5, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
 layout(set = 6, binding = 0) uniform sampler2D u_GBufferDepth;
 
-#define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX u_ShadowMapInfo.LightViewMat
+#define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #define LIGHTING_SHADOWS_PCF
 #include "shaders/includes/lighting.glsl"
@@ -49,6 +49,11 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     vec3 V = normalize(-FragViewPos);
     vec3 Lo = vec3(0.f);
 
+    ShadowInfo shadowInfo;
+    shadowInfo.LightViewMatrices[0] = u_ShadowMapInfo.LightViewMat[0];
+    shadowInfo.LightViewMatrices[1] = u_ShadowMapInfo.LightViewMat[1];
+    shadowInfo.LightViewMatrices[2] = u_ShadowMapInfo.LightViewMat[2];
+
     // Point lights
     int numPointLights = int(u_Env.ViewPos.w);
     for (int i = 0; i < numPointLights; ++i)
@@ -62,13 +67,13 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     vec3 spotLightColor = vec3(0.f);
     for (int i = 0; i < numSpotLights; ++i)
     {
-        spotLightColor += ProcessSpotLight(FragViewPos, N, u_Env.SpotLights[i], Albedo, Metallic, Roughness);
+        spotLightColor += ProcessSpotLight(FragViewPos, N, u_Env.SpotLights[i], Albedo, Metallic, Roughness, shadowInfo);
     }
     Lo += spotLightColor;
     //return vec4(spotLightColor, 1.f);
 
     // Directional light
-    vec3 directionalLightColor = ProcessDirectionalLight(FragViewPos, N, u_Env.DirectionalLight, Albedo, Metallic, Roughness);
+    vec3 directionalLightColor = ProcessDirectionalLight(FragViewPos, N, u_Env.DirectionalLight, Albedo, Metallic, Roughness, shadowInfo);
     Lo += directionalLightColor;
 
     vec3 Ambient = vec3(u_Env.AmbientColor) * Albedo * AO;

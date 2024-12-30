@@ -22,6 +22,28 @@ struct SpotLightData
     vec4 Params;
 };
 
+/*
+ * Data structures for lighting
+*/
+
+
+#ifndef LIGHTING_SHADOWS_TEXTURE_ARRAY
+#error Macro LIGHTING_SHADOWS_TEXTURE_ARRAY must be define to calculate shadow value
+#endif // !LIGHTING_SHADOWS_TEXTURE_ARRAY
+
+#ifndef MAX_SHADOW_MAPS
+#error Define num of shadow maps
+#endif // !MAX_SHADOW_MAPS
+
+struct ShadowInfo
+{
+#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    vec4 ShadowCoordArray[MAX_SHADOW_MAPS];
+#else
+    mat4 LightViewMatrices[MAX_SHADOW_MAPS];
+#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+};
+
 /**
  * Util functions
 */
@@ -113,35 +135,30 @@ vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float
 /**
  * Shadows functions
 */
-
-#ifndef LIGHTING_SHADOWS_TEXTURE_ARRAY
-#error Macro LIGHTING_SHADOWS_TEXTURE_ARRAY must be define to calculate shadow value
-#endif // !LIGHTING_SHADOWS_TEXTURE_ARRAY
-
-#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-float CalculateShadow(vec4 shadowCoord, int shadowMapIndex)
-#else
-float CalculateShadow(vec4 fragPos, int shadowMapIndex)
-#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
 {
-#ifdef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    vec4 lightSpaceCoord = LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX[shadowMapIndex] * fragPos;
-    vec4 shadowCoord = lightSpaceCoord / lightSpaceCoord.w;
-#endif // LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
+#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    vec4 shadowCoord = info.ShadowCoordArray[shadowIndex];
+#else
+    vec4 shadowCoord = info.LightViewMatrices[shadowIndex] * vec4(fragPos, 1.f);
+#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    shadowCoord = shadowCoord / shadowCoord.w;
 
+    // Shadow calculation
 #if defined(LIGHTING_SHADOWS_PCF)
     // PCF
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowMapIndex], 0);
+    vec2 texelSize = 1.0 / textureSize(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], 0);
     float currentDepth = shadowCoord.z;
     float bias = 0.005f;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
         {
-            float pcfDepth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowMapIndex], shadowCoord.xy + vec2(x, y) * texelSize).r; 
+            float pcfDepth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], shadowCoord.xy + vec2(x, y) * texelSize).r; 
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-        }    
+        }
     }
     shadow /= 9.0;
     return shadow;
@@ -161,6 +178,25 @@ float CalculateShadow(vec4 fragPos, int shadowMapIndex)
 #endif // defined(LIGHTING_SHADOWS_PCF)
 }
 
+float ComputeLightShadow(ShadowInfo info, vec3 fragPos, LightData light)
+{
+    float shadow = 0.f;
+    if (light.Pos.w >= 0.f)
+    {
+        shadow = ComputeShadow(info, fragPos, int(light.Pos.w));
+    }
+    return shadow;
+}
+
+float ComputeSpotLightShadow(ShadowInfo info, vec3 fragPos, SpotLightData light)
+{
+    float shadow = 0.f;
+    if (light.Color.w >= 0.f)
+    {
+        shadow = ComputeShadow(info, fragPos, int(light.Color.w));
+    }
+    return shadow;
+}
 
 /**
  * Lighting functions
@@ -192,6 +228,17 @@ vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDi
  * Light types calculations
 */
 
+float ComputeSpotLightIntensity(SpotLightData light, vec3 fragPos)
+{
+    vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
+    float theta = dot(lightDir, -vec3(light.Dir));
+    float cosCutoff = light.Dir.a;
+    float cosOuterCutoff = light.Pos.a;
+    float epsilon = max(cosCutoff - cosOuterCutoff, 0.f);
+    float intensity = clamp((theta - cosOuterCutoff) / epsilon, 0.0, 1.0);
+    return intensity;
+}
+
 vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness)
 {
     // Radiance calculation with attenuation
@@ -209,7 +256,7 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albe
     return CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
 }
 
-vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness)
+vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
 {
     vec3 V = normalize(-fragPos);
     vec3 lightDir = normalize(vec3(-light.Pos));
@@ -218,6 +265,9 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     // Calculate pbr contribution
     vec3 lighting = CalculateBRDF(fragNormal, lightDir, radiance, albedo, metallic, roughness, V, H);
     // Calculate shadow contribution
+    float shadow = ComputeLightShadow(shadowInfo, fragPos, light);
+    lighting *= (1.f-shadow);
+    return vec3(shadow);
     //if (light.Pos.w >= 0.f)
     //{
     //    int shadowIndex = int(light.Pos.w);
@@ -227,15 +277,10 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     return lighting;
 }
 
-vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 albedo, float metallic, float roughness)
+vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
 {
     vec3 lighting = vec3(0.f);
-    vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
-    float theta = dot(lightDir, -vec3(light.Dir));
-    float cosCutoff = light.Dir.a;
-    float cosOuterCutoff = light.Pos.a;
-    float epsilon = max(cosCutoff - cosOuterCutoff, 0.f);
-    float intensity = clamp((theta - cosOuterCutoff) / epsilon, 0.0, 1.0);
+    float intensity = ComputeSpotLightIntensity(light, fragPos);
     if (intensity > 0.f)
     {
         float radius = light.Params.x;
@@ -243,17 +288,20 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 a
         float distance = length(light.Pos.xyz - fragPos);
         float attenuation = CalculateAttenuation(distance, radius, compression);
         vec3 radiance = light.Color.rgb * attenuation;
+        vec3 L = normalize(light.Pos.xyz - fragPos);
         vec3 V = normalize(-fragPos);
-        vec3 H = normalize(V + lightDir);
-        lighting = CalculateBRDF(fragNormal, lightDir, radiance, albedo, metallic, roughness, V, H);
+        vec3 H = normalize(V + L);
+        lighting = CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
 
         // Calculate shadow inside lighting cone
-        if (light.Color.w >= 0.f)
-        {
-            int shadowIndex = int(light.Color.w);
-            float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
-            lighting *= (1.f-shadow);
-        }
+        float shadow = ComputeSpotLightShadow(shadowInfo, fragPos, light);
+        lighting *= (1.f-shadow);
+        //if (light.Color.w >= 0.f)
+        //{
+        //    int shadowIndex = int(light.Color.w);
+        //    float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
+        //    lighting *= (1.f-shadow);
+        //}
     }
     return lighting * intensity;
 }

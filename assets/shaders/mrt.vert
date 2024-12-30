@@ -32,8 +32,8 @@ void main()
 	gl_Position = u_camera.ViewProjection * vec4(worldPos, 1.f);
 #define VIEW_SPACE_TRANSFORMS
 #ifdef VIEW_SPACE_TRANSFORMS
-	mat3 normalTransform = transpose(inverse(mat3(u_camera.View * u_model.Model)));
-	normalTransform = mat3(u_camera.View * u_model.Model);
+	//mat3 normalTransform = transpose(inverse(mat3(u_camera.View * u_model.Model)));
+	mat3 normalTransform = mat3(u_camera.View * u_model.Model);
 	outWorldPos = vec3(u_camera.View * vec4(worldPos, 1.f));
 #else
 	mat3 normalTransform = transpose(inverse(mat3(u_model.Model)));

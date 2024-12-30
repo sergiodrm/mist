@@ -12,7 +12,7 @@ layout(location = 3) in vec2 inTexCoords;
 layout(location = 4) in vec4 inLightSpaceFragPos_0;
 layout(location = 5) in vec4 inLightSpaceFragPos_1;
 layout(location = 6) in vec4 inLightSpaceFragPos_2;
-layout(location = 7) in vec4 inTBN;
+layout(location = 7) in mat3 inTBN;
 
 // Uniforms
 #ifndef MAX_SHADOW_MAPS
@@ -24,6 +24,7 @@ layout (set = 2, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
 
 layout(set = 3, binding = 0) uniform sampler2D u_Textures[6];
 
+#define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #include <shaders/includes/environment.glsl>
 #include <shaders/includes/material.glsl>
@@ -39,17 +40,24 @@ layout (set = 5, binding = 0) uniform MaterialBlock
     MaterialParams data;
 } u_material;
 
+#ifdef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+layout (std140, set = 5, binding = 1) uniform DepthInfo
+{
+    mat4 LightMatrix[3];
+} u_depthInfo;
+#endif // LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+
 vec3 ComputeNormalMapping(vec3 normal)
 {
     if (u_material.data.UseNormalMap)
     {
         vec3 normalValue = texture(TEXTURE_NORMAL(u_Textures), inTexCoords).rgb;
         normalValue = normalize(normalValue*2.f - vec3(1.f));
-        return vec3(normalize(inTBN * vec4(normalValue, 1.f)));
+        return normalize(inTBN * normalValue);
     }
     else
     {
-        return vec3(normalize(inTBN * normalize(vec4(normal, 1.f))));
+        return normalize(normal);
     }
 }
 
@@ -61,6 +69,17 @@ void main()
         discard;
 
     vec3 normal = ComputeNormalMapping(inNormal);
+
+    ShadowInfo shadowInfo;
+#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    shadowInfo.ShadowCoordArray[0] = inLightSpaceFragPos_0;
+    shadowInfo.ShadowCoordArray[1] = inLightSpaceFragPos_1;
+    shadowInfo.ShadowCoordArray[2] = inLightSpaceFragPos_2;
+#else
+    shadowInfo.LightViewMatrices[0] = u_depthInfo.LightMatrix[0];
+    shadowInfo.LightViewMatrices[1] = u_depthInfo.LightMatrix[1];
+    shadowInfo.LightViewMatrices[2] = u_depthInfo.LightMatrix[2];
+#endif
     
     vec4 metallicRoughness = texture(TEXTURE_METALLIC_ROUGHNESS(u_Textures), inTexCoords);
     float metallic = metallicRoughness.b;
@@ -79,23 +98,25 @@ void main()
     vec3 spotLightsColor = vec3(0.f);
     for (int i = 0; i < numSpotLights; ++i)
     {
-        spotLightsColor += ProcessSpotLight(inFragPosWS.xyz, normal, u_env.data.SpotLights[i], albedo.rgb, metallic, roughness);
+        spotLightsColor += ProcessSpotLight(inFragPosWS.xyz, normal, u_env.data.SpotLights[i], albedo.rgb, metallic, roughness, shadowInfo);
     }
 
     // Directional light
-    vec3 directionalLightColor = ProcessDirectionalLight(inFragPosWS.xyz, normal, u_env.data.DirectionalLight, albedo.rgb, metallic, roughness);
+    vec3 directionalLightColor = ProcessDirectionalLight(inFragPosWS.xyz, normal, u_env.data.DirectionalLight, albedo.rgb, metallic, roughness, shadowInfo);
+    outColor = vec4(directionalLightColor, 1.f);
+    //return;
 
     vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
-    lightColor = directionalLightColor;
+    //lightColor = directionalLightColor;
     // Mix
 #if 0
     vec2 texSize = textureSize(u_SSAOTex, 0);
     vec2 uv = gl_FragCoord.xy / texSize;
     vec3 ambientColor = vec3(u_env.data.AmbientColor) * texture(u_SSAOTex, uv).r;
 #else
-    vec3 ambientColor = vec3(1.f);//vec3(u_env.data.AmbientColor);
+    vec3 ambientColor = vec3(u_env.data.AmbientColor);
 #endif
     //lightColor = ambientColor + lightColor;
-    outColor = vec4(lightColor, 1.f) * albedo;
-    outColor = vec4(lightColor, 1.f);
+    outColor = vec4(lightColor, 1.f) + albedo*vec4(ambientColor, 1.f);
+    //outColor = vec4(inFragPosWS.xyz, 1.f);
 }

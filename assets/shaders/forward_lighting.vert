@@ -24,10 +24,10 @@ layout (std140, set = 0, binding = 0) uniform CameraBuffer
     mat4 ViewProjection;
 } u_Camera;
 
-layout (std140, set = 0, binding = 1) uniform DepthInfo
-{
-    mat4 LightMatrix[3];
-} u_depthInfo;
+//layout (std140, set = 0, binding = 1) uniform DepthInfo
+//{
+//    mat4 LightMatrix[3];
+//} u_depthInfo;
 
 // Per draw data
 layout (std140, set = 1, binding = 0) uniform Object
@@ -44,15 +44,21 @@ void main()
     outFragPos = u_Camera.View * wsPos;
     // Normal dir in view space
     mat3 normalTransform = mat3(u_Camera.View * u_model.ModelMatrix);
-    outNormal = normalTransform * normalize(LSNormal);
-    vec3 tangent = normalTransform * normalize(Tangent);
+    outNormal = normalize(normalTransform * normalize(LSNormal));
+    vec3 tangent = normalize(normalTransform * normalize(Tangent));
     // Calculate TBN matrix with View Space
     vec3 B = cross(outNormal, tangent);
     outTBN = mat3(tangent, B, outNormal);
 
     outColor = VIColor;
     outTexCoords = TexCoords;
-    outLightSpaceFragPos_0 = u_depthInfo.LightMatrix[0] * u_model.ModelMatrix * vec4(LSPosition, 1.f);
-    outLightSpaceFragPos_1 = u_depthInfo.LightMatrix[1] * u_model.ModelMatrix * vec4(LSPosition, 1.f);
-    outLightSpaceFragPos_2 = u_depthInfo.LightMatrix[2] * u_model.ModelMatrix * vec4(LSPosition, 1.f);
+#if 0
+    outLightSpaceFragPos_0 = u_depthInfo.LightMatrix[0] * outFragPos;
+    outLightSpaceFragPos_1 = u_depthInfo.LightMatrix[1] * outFragPos;
+    outLightSpaceFragPos_2 = u_depthInfo.LightMatrix[2] * outFragPos;
+#else
+    outLightSpaceFragPos_0 = outFragPos;
+    outLightSpaceFragPos_1 = outFragPos;
+    outLightSpaceFragPos_2 = outFragPos;
+#endif
 }
