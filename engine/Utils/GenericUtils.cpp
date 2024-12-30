@@ -116,3 +116,14 @@ bool Mist::ImGuiUtils::EditAngles(const char* id, const char* label, tAngles& a,
 	ImGui::Columns(col);
 	return ret;
 }
+
+bool Mist::ImGuiUtils::CheckboxCBoolVar(CBoolVar& var)
+{
+	bool b = var.Get();
+	if (ImGui::Checkbox(var.GetName(), &b))
+	{
+		var.Set(b);
+		return true;
+	}
+	return false;
+}
