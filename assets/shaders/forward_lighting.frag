@@ -24,7 +24,6 @@ layout (set = 2, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
 
 layout(set = 3, binding = 0) uniform sampler2D u_Textures[6];
 
-#define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #include <shaders/includes/environment.glsl>
 #include <shaders/includes/material.glsl>
@@ -39,13 +38,6 @@ layout (set = 5, binding = 0) uniform MaterialBlock
 {
     MaterialParams data;
 } u_material;
-
-#ifdef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-layout (std140, set = 5, binding = 1) uniform DepthInfo
-{
-    mat4 LightMatrix[3];
-} u_depthInfo;
-#endif // LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
 
 vec3 ComputeNormalMapping(vec3 normal)
 {
@@ -71,15 +63,9 @@ void main()
     vec3 normal = ComputeNormalMapping(inNormal);
 
     ShadowInfo shadowInfo;
-#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
     shadowInfo.ShadowCoordArray[0] = inLightSpaceFragPos_0;
     shadowInfo.ShadowCoordArray[1] = inLightSpaceFragPos_1;
     shadowInfo.ShadowCoordArray[2] = inLightSpaceFragPos_2;
-#else
-    shadowInfo.LightViewMatrices[0] = u_depthInfo.LightMatrix[0];
-    shadowInfo.LightViewMatrices[1] = u_depthInfo.LightMatrix[1];
-    shadowInfo.LightViewMatrices[2] = u_depthInfo.LightMatrix[2];
-#endif
     
     vec4 metallicRoughness = texture(TEXTURE_METALLIC_ROUGHNESS(u_Textures), inTexCoords);
     float metallic = metallicRoughness.b;
@@ -103,12 +89,10 @@ void main()
 
     // Directional light
     vec3 directionalLightColor = ProcessDirectionalLight(inFragPosWS.xyz, normal, u_env.data.DirectionalLight, albedo.rgb, metallic, roughness, shadowInfo);
-    outColor = vec4(directionalLightColor, 1.f);
-    //return;
 
     vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
-    //lightColor = directionalLightColor;
-    // Mix
+
+    // Ambient color
 #if 0
     vec2 texSize = textureSize(u_SSAOTex, 0);
     vec2 uv = gl_FragCoord.xy / texSize;
@@ -116,7 +100,7 @@ void main()
 #else
     vec3 ambientColor = vec3(u_env.data.AmbientColor);
 #endif
-    //lightColor = ambientColor + lightColor;
+
+    // Mix
     outColor = vec4(lightColor, 1.f) + albedo*vec4(ambientColor, 1.f);
-    //outColor = vec4(inFragPosWS.xyz, 1.f);
 }

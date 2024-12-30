@@ -24,10 +24,10 @@ layout (std140, set = 0, binding = 0) uniform CameraBuffer
     mat4 ViewProjection;
 } u_Camera;
 
-//layout (std140, set = 0, binding = 1) uniform DepthInfo
-//{
-//    mat4 LightMatrix[3];
-//} u_depthInfo;
+layout (std140, set = 0, binding = 1) uniform DepthInfo
+{
+    mat4 LightMatrix[3];
+} u_depthInfo;
 
 // Per draw data
 layout (std140, set = 1, binding = 0) uniform Object
@@ -52,13 +52,9 @@ void main()
 
     outColor = VIColor;
     outTexCoords = TexCoords;
-#if 0
+
+    // Precalculate shadow coordinates
     outLightSpaceFragPos_0 = u_depthInfo.LightMatrix[0] * outFragPos;
     outLightSpaceFragPos_1 = u_depthInfo.LightMatrix[1] * outFragPos;
     outLightSpaceFragPos_2 = u_depthInfo.LightMatrix[2] * outFragPos;
-#else
-    outLightSpaceFragPos_0 = outFragPos;
-    outLightSpaceFragPos_1 = outFragPos;
-    outLightSpaceFragPos_2 = outFragPos;
-#endif
 }

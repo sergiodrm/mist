@@ -23,7 +23,6 @@ layout(set = 6, binding = 0) uniform sampler2D u_GBufferDepth;
 
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
-#define LIGHTING_SHADOWS_PCF
 #include "shaders/includes/lighting.glsl"
 
 
@@ -37,12 +36,6 @@ layout (std140, set = 0, binding = 0) uniform Environment
     SpotLightData SpotLights[8];
 } u_Env;
 
-
-
-
-
-
-
 vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float Roughness, float AO)
 {
     vec3 N = normalize(Normal);
@@ -53,7 +46,7 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     shadowInfo.LightViewMatrices[0] = u_ShadowMapInfo.LightViewMat[0];
     shadowInfo.LightViewMatrices[1] = u_ShadowMapInfo.LightViewMat[1];
     shadowInfo.LightViewMatrices[2] = u_ShadowMapInfo.LightViewMat[2];
-
+    
     // Point lights
     int numPointLights = int(u_Env.ViewPos.w);
     for (int i = 0; i < numPointLights; ++i)

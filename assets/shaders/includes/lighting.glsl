@@ -25,7 +25,7 @@ struct SpotLightData
 /*
  * Data structures for lighting
 */
-
+#define LIGHTING_SHADOWS_PCF
 
 #ifndef LIGHTING_SHADOWS_TEXTURE_ARRAY
 #error Macro LIGHTING_SHADOWS_TEXTURE_ARRAY must be define to calculate shadow value
@@ -267,7 +267,6 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     // Calculate shadow contribution
     float shadow = ComputeLightShadow(shadowInfo, fragPos, light);
     lighting *= (1.f-shadow);
-    return vec3(shadow);
     //if (light.Pos.w >= 0.f)
     //{
     //    int shadowIndex = int(light.Pos.w);
