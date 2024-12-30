@@ -6,7 +6,7 @@
 
 namespace Mist
 {
-	CStrVar CVar_Workspace("Workspace", "../assets/");
+	CStrVar CVar_Workspace("Workspace", "../assets/", CVarFlag_SetOnlyByCmd);
 
 	bool FileSystem::IsFileNewerThanOther(const char* file, const char* other)
 	{
@@ -166,7 +166,8 @@ namespace Mist
 	{
 		check(filepath && *filepath && mode && *mode);
 		FILE* f = nullptr;
-		errno_t err = fopen_s(&f, filepath, mode);
+		cAssetPath assetPath(filepath);
+		errno_t err = fopen_s(&f, assetPath.c_str(), mode);
 
 		eResult e = Result_Ok;
 		if (err)
@@ -222,7 +223,7 @@ namespace Mist
 		cFile::eResult e = file.OpenText(filepath, cFile::FileMode_Read);
 		if (e != cFile::Result_Ok)
 		{
-			logerror("Ini file not found.\n");
+			logerror("Cfg file not found.\n");
 			char buff[512];
 			char* cws = _getcwd(buff, 512);
 			logferror("Current workspace directory: %s\n", cws);
@@ -231,8 +232,10 @@ namespace Mist
 
 		uint32_t size = file.GetContentSize()+1;
 		char* bf = _new char[size];
-		bf[size - 1] = 0;
-		file.Read(bf, size, 1, size);
+		uint32_t r = file.Read(bf, size, 1, size);
+		// size is the content size plus one, so r must be least than size.
+		check(r && r < size);
+		bf[r] = 0;
 		ParseVars(bf);
 		delete[] bf;
 		file.Close();
