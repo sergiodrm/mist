@@ -7,6 +7,7 @@ namespace Mist
 {
 	struct RenderContext;
 	class ShaderProgram;
+	class cModel;
 
 	class ForwardLighting : public RenderProcess
 	{
@@ -26,5 +27,9 @@ namespace Mist
 		// Render State
 		ShaderProgram* m_shader;
 		RenderTarget m_rt;
+
+		ShaderProgram* m_skyboxShader;
+		cModel* m_skyboxModel;
+
 	};
 }
