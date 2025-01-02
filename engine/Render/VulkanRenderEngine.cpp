@@ -231,7 +231,10 @@ namespace Mist
 		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
 		DebugRender::Init(m_renderContext);
 		ui::Init(m_renderContext, m_renderer.GetLDRTarget());
+#if defined(MIST_CUBEMAP)
 		m_cubemapPipeline.Init(m_renderContext, &m_renderer.GetLDRTarget());
+#endif // defined(MIST_CUBEMAP)
+
 
 		const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
 		const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
@@ -324,7 +327,10 @@ namespace Mist
 
 		ui::Destroy(m_renderContext);
 		DebugRender::Destroy(m_renderContext);
+#if defined(MIST_CUBEMAP)
 		m_cubemapPipeline.Destroy(m_renderContext);
+#endif // defined(MIST_CUBEMAP)
+
 		m_renderer.Destroy(m_renderContext);
 
 		if (DefaultTexture)
@@ -666,6 +672,7 @@ namespace Mist
 
 	void VulkanRenderEngine::DrawCubemap(const RenderContext& context, const cTexture& texture)
 	{
+#if defined(MIST_CUBEMAP)
 		m_cubemapPipeline.Shader->UseProgram(context);
 		const RenderFrameContext& frameContext = context.GetFrameContext();
 		glm::mat4 viewRot = frameContext.CameraData->InvView;
@@ -681,6 +688,8 @@ namespace Mist
 		const cMesh& mesh = m_cubemapPipeline.Cube->m_meshes[0];
 		mesh.BindBuffers(cmd);
 		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
+#endif // defined(MIST_CUBEMAP)
+
 	}
 
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()

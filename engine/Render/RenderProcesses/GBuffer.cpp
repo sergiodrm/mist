@@ -37,9 +37,11 @@ namespace Mist
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
 		m_renderTarget.Destroy(renderContext);
+#if 0
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
+#endif // 0
 	}
 
 	void GBuffer::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -69,6 +71,7 @@ namespace Mist
 		//vkCmdSetStencilTestEnable(cmd, VK_TRUE);
 
 		frameContext.Scene->Draw(renderContext, m_gbufferShader, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
+#if 0
 
 		m_skyboxShader->UseProgram(renderContext);
 		const cTexture* texture = frameContext.Scene->GetSkyboxTexture();
@@ -84,6 +87,8 @@ namespace Mist
 		const cMesh& mesh = m_skyboxModel->m_meshes[0];
 		mesh.BindBuffers(cmd);
 		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
+#endif // 0
+
 
 		m_renderTarget.EndPass(frameContext.GraphicsCommandContext.CommandBuffer);
 		EndGPUEvent(renderContext, cmd);
@@ -200,7 +205,7 @@ namespace Mist
 			m_gbufferShader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
 
-#if 1
+#if 0
 		{
 			// Skybox
 			tShaderProgramDescription shaderDesc;

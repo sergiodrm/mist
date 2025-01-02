@@ -92,7 +92,10 @@ namespace Mist
 		RenderContext m_renderContext;
 		Swapchain m_swapchain;
 
+#if defined(MIST_CUBEMAP)
 		CubemapPipeline m_cubemapPipeline;
+#endif // 0
+
 		Renderer m_renderer;
 
 		uint32_t m_currentSwapchainIndex;
