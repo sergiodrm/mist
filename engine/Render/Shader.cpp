@@ -755,6 +755,7 @@ namespace Mist
 		for (uint32_t i = 0; i < frameContextCount; ++i)
 			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
 
+		// Iterate over all descriptor sets one by one to create descriptor bindings
 		uint32_t descriptionSize = (uint32_t)reflection.DescriptorSetInfoArray.size();
 		for (uint32_t i = 0; i < descriptionSize; ++i)
 		{
@@ -771,6 +772,7 @@ namespace Mist
 			tStaticArray<uint32_t, 8> dynamicOffsets;
 			check(bindingCount < (uint32_t)bufferInfoArray.size());
 
+			// Iterate over bindings inside the sets
 			bool generateSet = false;
 			for (uint32_t j = 0; j < bindingCount; ++j)
 			{
@@ -785,6 +787,8 @@ namespace Mist
 						// At the moment dont support array binding on shader resources;
 						check(binding.ArrayCount == 1);
 						check(dynamicBuffersCount && dynamicBuffers);
+
+						// Find the dynamic buffer in reflection properties
 						for (uint32_t propertyIndex = 0; propertyIndex < dynamicBuffersCount; ++propertyIndex)
 						{
 							const tShaderDynamicBufferDescription& dynamicDesc = dynamicBuffers[propertyIndex];
@@ -1167,11 +1171,14 @@ namespace Mist
 
 	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const tShaderProgramDescription& description)
 	{
-		ShaderProgram* program = _new ShaderProgram();
-		check(program->_Create(context, description));
-		program->SetupDescriptors(context);
+		// TODO: const_cast....
 		ShaderFileDB& db = *const_cast<ShaderFileDB*>(context.ShaderDB);
-		db.AddShaderProgram(context, program);
+		ShaderProgram* program = db.AddShaderProgram(context, description);
+		if (!program->IsLoaded())
+		{
+			check(program->_Create(context, description));
+			program->SetupDescriptors(context);
+		}
 		return program;
 	}
 
@@ -1540,17 +1547,26 @@ namespace Mist
 
 
 
-	void ShaderFileDB::AddShaderProgram(const RenderContext& context, ShaderProgram* program)
+	ShaderProgram* ShaderFileDB::AddShaderProgram(const RenderContext& context, const tShaderProgramDescription& description)
 	{
-		const tShaderProgramDescription& description = program->GetDescription();
-		check(!FindShaderProgram(description.VertexShaderFile, description.FragmentShaderFile));
-
-		uint32_t index = (uint32_t)m_shaderArray.size();
-		m_shaderArray.push_back(program);
 		char key[2048];
 		const ShaderFileDescription* descs[] = { &description.VertexShaderFile, &description.FragmentShaderFile };
 		GenerateKey(key, descs, 2);
+
+		// Find shader, if exists return it.
+		ShaderProgram* shader = FindShaderProgram(description.VertexShaderFile, description.FragmentShaderFile);
+		if (shader)
+		{
+			logfwarn("Duplicated shader reference: %s\n", key);
+			return shader;
+		}
+		// Otherwise create it
+		shader = _new ShaderProgram();
+
+		uint32_t index = (uint32_t)m_shaderArray.size();
+		m_shaderArray.push_back(shader);
 		m_indexMap[key] = index;
+		return shader;
 	}
 
 	ShaderProgram* ShaderFileDB::FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const

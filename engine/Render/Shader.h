@@ -302,7 +302,7 @@ namespace Mist
 	public:
 		void Init(const RenderContext& context);
 		void Destroy(const RenderContext& context);
-		void AddShaderProgram(const RenderContext& context, ShaderProgram* shaderProgram);
+		ShaderProgram* AddShaderProgram(const RenderContext& context, const tShaderProgramDescription& description);
 		ShaderProgram* FindShaderProgram(const ShaderFileDescription& vertexFileDesc, const ShaderFileDescription& fragFileDesc) const;
 		ShaderProgram* FindShaderProgram(const ShaderFileDescription& fileDesc) const;
 		ShaderProgram* FindShaderProgram(const char* key) const;
