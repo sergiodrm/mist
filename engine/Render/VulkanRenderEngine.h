@@ -30,12 +30,6 @@ namespace Mist
 	class IRendererBase;
 	struct ShaderModuleLoadDescription;
 
-	struct CameraData
-	{
-		glm::mat4 InvView;
-		glm::mat4 Projection;
-		glm::mat4 ViewProjection;
-	};
 
 	struct UBOTime
 	{
@@ -117,4 +111,5 @@ namespace Mist
 
 	extern void CmdDrawFullscreenQuad(CommandBuffer cmd);
 	extern cTexture* GetTextureCheckerboard4x4(const RenderContext& context);
+	extern cMaterial* GetDefaultMaterial(const RenderContext& context);
 }

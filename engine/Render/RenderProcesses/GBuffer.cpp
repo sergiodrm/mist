@@ -179,7 +179,7 @@ namespace Mist
 
 			tShaderDynamicBufferDescription materialDynDesc = modelDynDesc;
 			materialDynDesc.Name = "u_material";
-			modelDynDesc.ElemCount = globals::MaxRenderObjects;
+			materialDynDesc.ElemCount = globals::MaxMaterials;
 			materialDynDesc.IsShared = true;
 
 			shaderDesc.DynamicBuffers.push_back(modelDynDesc);

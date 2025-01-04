@@ -19,6 +19,7 @@
 #include "Utils/GenericUtils.h"
 #include "Utils/TimeUtils.h"
 #include "Utils/FileSystem.h"
+#include "VulkanRenderEngine.h"
 #undef CGLTF_IMPLEMENTATION
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
@@ -297,6 +298,7 @@ namespace gltf_api
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
 		check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
 		loadmeshlogf("Load texture: %s\n", texView.texture->image->uri);
+		(*texOut)->CreateView(context, Mist::tViewDescription());
 		return true;
 	}
 
@@ -305,36 +307,44 @@ namespace gltf_api
 
 	void LoadMaterial(Mist::cMaterial& material, const Mist::RenderContext& context, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
-		const cgltf_texture_view* views[] = {
-			&cgltfmtl.pbr_metallic_roughness.base_color_texture,
-			&cgltfmtl.normal_texture,
-			&cgltfmtl.pbr_specular_glossiness.specular_glossiness_texture,
-			&cgltfmtl.occlusion_texture,
-			&cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture,
-			&cgltfmtl.emissive_texture
-		};
-		const Mist::EFormat formats[] =
+		// Emissive
+		if (cgltfmtl.has_emissive_strength)
 		{
-			Mist::FORMAT_R8G8B8A8_SRGB,
-			Mist::FORMAT_R8G8B8A8_UNORM,
-			Mist::FORMAT_R8G8B8A8_UNORM,
-			Mist::FORMAT_R8G8B8A8_UNORM,
-			Mist::FORMAT_R8G8B8A8_UNORM,
-			Mist::FORMAT_R8G8B8A8_SRGB,
-		};
-		static_assert(sizeof(views) / sizeof(cgltf_texture_view*) == Mist::MATERIAL_TEXTURE_COUNT);
-		static_assert(sizeof(formats) / sizeof(Mist::EFormat) == Mist::MATERIAL_TEXTURE_COUNT);
-
-		loadmeshlogf("Loading material %s\n", material.GetName());
-		for (uint32_t i = 0; i < Mist::MATERIAL_TEXTURE_COUNT; ++i)
-		{
-			if (LoadTexture(context, rootAssetPath, *views[i],
-				formats[i], &material.m_textures[i]))
+			material.m_flags |= Mist::MATERIAL_FLAG_EMISSIVE;
+			ToVec3(material.m_emissiveFactor, cgltfmtl.emissive_factor);
+			material.m_emissiveStrength = cgltfmtl.emissive_strength.emissive_strength;
+			if (LoadTexture(context, rootAssetPath, cgltfmtl.emissive_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_EMISSIVE]))
 			{
-				material.m_textures[i]->CreateView(context, Mist::tViewDescription());
+				material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 			}
+			else
+				logfwarn("Emissive material without texture: %s\n", material.GetName());
 		}
-		material.m_emissiveFactor = {cgltfmtl.emissive_factor[0], cgltfmtl.emissive_factor[1] , cgltfmtl.emissive_factor[2], cgltfmtl.emissive_strength.emissive_strength };
+		// Metallic roughness
+		if (cgltfmtl.has_pbr_metallic_roughness)
+		{
+			material.m_metallicFactor = cgltfmtl.pbr_metallic_roughness.metallic_factor;
+			material.m_roughnessFactor = cgltfmtl.pbr_metallic_roughness.roughness_factor;
+			if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS]))
+			{
+				material.m_flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
+			}
+			else
+				logfwarn("Metallic roughness material without texture: %s\n", material.GetName());
+		}
+		// Unlit
+		if (cgltfmtl.unlit)
+		{
+			material.m_flags |= Mist::MATERIAL_FLAG_UNLIT;
+		}
+		// Normal
+		if (LoadTexture(context, rootAssetPath, cgltfmtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL]))
+		{
+			material.m_flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
+		}
+		// Albedo
+		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
+		LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO]);
 	}
 
 }
@@ -420,10 +430,15 @@ namespace Mist
 			{
 				m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
 				gltf_api::LoadMaterial(m_materials[i], context, data->materials[i], rootAssetPath);
+				m_materials[i].SetupShader(context);
 			}
 		}
 		else
+		{
 			logfwarn("Model without materials: %s\n", assetPath);
+			InitMaterials(1);
+			m_materials[0] = *GetDefaultMaterial(context);
+		}
 
 		InitNodes((index_t)data->nodes_count);
 		InitMeshes((index_t)data->meshes_count);
@@ -489,9 +504,17 @@ namespace Mist
 						check(materialIndex < m_materials.GetSize());
 						cMaterial* material = &m_materials[materialIndex];
 						primitive.Material = material;
-						primitive.RenderFlags = RenderFlags_Fixed | RenderFlags_ShadowMap;
-						if (material->m_textures[MATERIAL_TEXTURE_EMISSIVE] || material->m_emissiveFactor != glm::vec4(0.f))
+						primitive.RenderFlags = RenderFlags_Fixed;
+						if (!(material->m_flags & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
+							primitive.RenderFlags |= RenderFlags_ShadowMap;
+						if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
 							primitive.RenderFlags |= RenderFlags_Emissive;
+					}
+					else
+					{
+						logfwarn("Primitive mesh without material: %s (Primitive %d)\n", mesh.GetName(), j);
+						check(!m_materials.IsEmpty());
+						primitive.Material = &m_materials[0];
 					}
 
 					check(cgltfprimitive.indices->count == primitive.Count);

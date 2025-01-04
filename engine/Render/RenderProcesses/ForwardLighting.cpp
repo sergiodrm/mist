@@ -14,9 +14,12 @@ namespace Mist
 {
 	CBoolVar CVar_ShowForwardTech("r_showforwardtech", false);
 
+	RenderTarget* g_forwardRt = nullptr;;
+
 	ForwardLighting::ForwardLighting()
 		: m_shader(nullptr)
-	{ }
+	{
+	}
 
 	void ForwardLighting::Init(const RenderContext& renderContext)
 	{
@@ -24,10 +27,14 @@ namespace Mist
 		{
 			RenderTargetDescription desc;
 			desc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
+			// Color attachment
+			desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
+			// Emissive attachment
 			desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
 			desc.SetDepthAttachment(FORMAT_D24_UNORM_S8_UINT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 0.f });
 			desc.ResourceName = "RT_ForwardLighting";
 			m_rt.Create(renderContext, desc);
+			g_forwardRt = &m_rt;
 		}
 
 		// Create shader program
@@ -51,7 +58,7 @@ namespace Mist
 			dynBufferDesc.ElemCount = globals::MaxRenderObjects;
 			tShaderDynamicBufferDescription materialDynDesc;
 			materialDynDesc.Name = "u_material";
-			materialDynDesc.ElemCount = globals::MaxRenderObjects;
+			materialDynDesc.ElemCount = globals::MaxMaterials;
 			materialDynDesc.IsShared = true;
 			desc.DynamicBuffers.push_back(dynBufferDesc);
 			desc.DynamicBuffers.push_back(materialDynDesc);
@@ -108,40 +115,54 @@ namespace Mist
 		CPU_PROFILE_SCOPE(ForwardLighting);
 		CommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 
-		// Shadow map matrices
-		ShadowMapProcess* shadowMapping = (ShadowMapProcess*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
-		const glm::mat4* lightViewMatrices = &shadowMapping->m_shadowMapPipeline.GetLightVP(0);
-		// Shadow map textures
-		tArray<const cTexture*, globals::MaxShadowMapAttachments> shadowMapTextures;
-		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-			shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->GetDepthTexture();
-
 		const cTexture* cubemapTexture = renderFrameContext.Scene->GetSkyboxTexture();
 
 		BeginGPUEvent(renderContext, cmd, "ForwardTech");
 		m_rt.BeginPass(renderContext, cmd);
-		m_shader->UseProgram(renderContext);
-		m_shader->SetBufferData(renderContext, "u_Camera", renderFrameContext.CameraData, sizeof(*renderFrameContext.CameraData));
-		m_shader->SetBufferData(renderContext, "u_depthInfo", lightViewMatrices, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
-		m_shader->SetBufferData(renderContext, "u_env", &renderFrameContext.Scene->GetEnvironmentData(), sizeof(EnvironmentData));
-		m_shader->BindTextureArraySlot(renderContext, 2, shadowMapTextures.data(), globals::MaxShadowMapAttachments);
-		m_shader->BindTextureSlot(renderContext, 6, *cubemapTexture);
-		renderFrameContext.Scene->Draw(renderContext, m_shader, 3, 1, VK_NULL_HANDLE, RenderFlags_Fixed);
+		if (CVar_ShowForwardTech.Get())
+		{
+#if 1
+			tViewRenderInfo renderInfo;
+			// In this pass we render color lighting and 
+			renderInfo.flags = RenderFlags_Fixed | RenderFlags_Emissive;
+			renderInfo.view = *renderFrameContext.CameraData;
+			renderInfo.cubemap = cubemapTexture;
+			renderInfo.cubemapSlot = 6;
+			ShadowMapProcess* shadowMapping = (ShadowMapProcess*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
+			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+			{
+				// Shadow map matrices from shadow map process
+				renderInfo.shadowMap.LightViewMatrices[i] = shadowMapping->m_shadowMapPipeline.GetLightVP(i);
+				// Shadow map textures from shadow map process
+				renderInfo.shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->GetDepthTexture();
+			}
+			renderInfo.shadowMapTexturesSlot = 2;
+			renderInfo.environment = renderFrameContext.Scene->GetEnvironmentData();
+			renderFrameContext.Scene->DrawWithMaterials(renderContext, renderInfo, 3);
+#else
+			m_shader->UseProgram(renderContext);
+			m_shader->SetBufferData(renderContext, "u_Camera", renderFrameContext.CameraData, sizeof(*renderFrameContext.CameraData));
+			m_shader->SetBufferData(renderContext, "u_depthInfo", lightViewMatrices, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
+			m_shader->SetBufferData(renderContext, "u_env", &renderFrameContext.Scene->GetEnvironmentData(), sizeof(EnvironmentData));
+			m_shader->BindTextureArraySlot(renderContext, 2, shadowMapTextures.data(), globals::MaxShadowMapAttachments);
+			m_shader->BindTextureSlot(renderContext, 6, *cubemapTexture);
+			renderFrameContext.Scene->Draw(renderContext, m_shader, 3, 1, VK_NULL_HANDLE, RenderFlags_Fixed);
+#endif // 0
 
-		m_skyboxShader->UseProgram(renderContext);
-		glm::mat4 viewRot = renderFrameContext.CameraData->InvView;
-		viewRot[3] = { 0.f,0.f,0.f,1.f };
-		glm::mat4 ubo[2];
-		ubo[0] = viewRot;
-		ubo[1] = renderFrameContext.CameraData->Projection * viewRot;
-		m_skyboxShader->SetBufferData(renderContext, "u_ubo", ubo, sizeof(glm::mat4) * 2);
-		m_skyboxShader->BindTextureSlot(renderContext, 1, *cubemapTexture);
-		m_skyboxShader->FlushDescriptors(renderContext);
-		check(m_skyboxModel->m_meshes.GetSize() == 1);
-		const cMesh& mesh = m_skyboxModel->m_meshes[0];
-		mesh.BindBuffers(cmd);
-		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
-
+			m_skyboxShader->UseProgram(renderContext);
+			glm::mat4 viewRot = renderFrameContext.CameraData->InvView;
+			viewRot[3] = { 0.f,0.f,0.f,1.f };
+			glm::mat4 ubo[2];
+			ubo[0] = viewRot;
+			ubo[1] = renderFrameContext.CameraData->Projection * viewRot;
+			m_skyboxShader->SetBufferData(renderContext, "u_ubo", ubo, sizeof(glm::mat4) * 2);
+			m_skyboxShader->BindTextureSlot(renderContext, 1, *cubemapTexture);
+			m_skyboxShader->FlushDescriptors(renderContext);
+			check(m_skyboxModel->m_meshes.GetSize() == 1);
+			const cMesh& mesh = m_skyboxModel->m_meshes[0];
+			mesh.BindBuffers(cmd);
+			RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
+		}
 		m_rt.EndPass(cmd);
 		EndGPUEvent(renderContext, cmd);
 
@@ -159,7 +180,7 @@ namespace Mist
 		ImGuiUtils::CheckboxCBoolVar(CVar_ShowForwardTech);
 		ImGui::End();
 	}
-	
+
 	const RenderTarget* ForwardLighting::GetRenderTarget(uint32_t index) const
 	{
 		return &m_rt;
