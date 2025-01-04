@@ -208,7 +208,7 @@ namespace Mist
 		m_localTransforms.resize(globals::MaxRenderObjects);
 		m_renderTransforms.resize(globals::MaxRenderObjects);
 		m_transformComponents.resize(globals::MaxRenderObjects);
-		m_materials.resize(globals::MaxRenderObjects);
+		m_materials.resize(globals::MaxMaterials);
 	}
 
 	void Scene::Destroy()
@@ -813,6 +813,103 @@ namespace Mist
 		}
 	}
 
+	void Scene::DrawWithMaterials(const RenderContext& context, const tViewRenderInfo& viewRenderInfo, uint32_t textureSlot) const
+	{
+		CPU_PROFILE_SCOPE(Scene_DrawWithMaterials);
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+
+		cMaterial* currentMaterial = nullptr;
+		ShaderProgram* currentShader = nullptr;
+		index_t currentTransformOffset = index_invalid;
+
+		// Iterate scene graph to render models.
+		uint32_t nodeCount = GetRenderObjectCount();
+		index_t renderTransformOffset = 0;
+		for (uint32_t i = 0; i < nodeCount; ++i)
+		{
+			sRenderObject renderObject = i;
+			const MeshComponent* meshComponent = GetMesh(renderObject);
+			if (meshComponent)
+			{
+				check(meshComponent->MeshIndex != index_invalid);
+				const cModel& model = m_models[meshComponent->MeshIndex];
+
+				// BaseOffset in buffer is already setted when descriptor was created.
+				for (index_t j = 0; j < model.m_meshes.GetSize(); ++j)
+				{
+					//pso.shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
+
+					const cMesh& mesh = model.m_meshes[j];
+					mesh.BindBuffers(cmd);
+
+					for (index_t k = 0; k < mesh.PrimitiveArray.GetSize(); ++k)
+					{
+						const PrimitiveMeshData& primitive = mesh.PrimitiveArray[k];
+						check(primitive.Material && primitive.Material->m_shader);
+						if (primitive.RenderFlags & viewRenderInfo.flags)
+						{
+							ShaderProgram* shader = primitive.Material->m_shader;
+							if (!(viewRenderInfo.flags & RenderFlags_NoTextures) && primitive.Material != currentMaterial)
+							{
+								check(primitive.Material);
+								currentMaterial = primitive.Material;
+								if (shader != currentShader)
+								{
+									shader->UseProgram(context);
+									shader->SetBufferData(context, "u_Camera", &viewRenderInfo.view, sizeof(CameraData));
+									shader->SetBufferData(context, "u_depthInfo", &viewRenderInfo.shadowMap, sizeof(tShadowMapData));
+									shader->SetBufferData(context, "u_env", &viewRenderInfo.environment, sizeof(EnvironmentData));
+									shader->BindTextureArraySlot(context, viewRenderInfo.shadowMapTexturesSlot, viewRenderInfo.shadowMapTextures, CountOf(viewRenderInfo.shadowMapTextures));
+									shader->BindTextureSlot(context, viewRenderInfo.cubemapSlot, *viewRenderInfo.cubemap);
+									currentShader = shader;
+								}
+								currentMaterial->BindTextures(context, *shader, textureSlot);
+								index_t matIndex = primitive.Material - model.m_materials.GetData();
+								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
+								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
+							}
+
+							if (currentTransformOffset != renderTransformOffset)
+							{
+								shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset);
+								currentTransformOffset = renderTransformOffset;
+							}
+							shader->FlushDescriptors(context);
+							RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+						}
+					}
+					++renderTransformOffset;
+				}
+				++renderTransformOffset;
+#if 0
+				// Bind vertex/index buffers just if needed
+				if (lastMesh != mesh)
+				{
+					lastMesh = mesh;
+					mesh->BindBuffers(cmd);
+				}
+				// Iterate primitives of current mesh
+				for (uint32_t j = 0; j < (uint32_t)mesh->PrimitiveArray.size(); ++j)
+				{
+					const PrimitiveMeshData& drawData = mesh->PrimitiveArray[j];
+					if (drawData.RenderFlags & renderFlags)
+					{
+						// TODO: material by default if there is no material.
+						if (lastMaterial != drawData.Material && !(renderFlags & RenderFlags_NoTextures))
+						{
+							lastMaterial = drawData.Material;
+							drawData.Material->BindTextures(context, *shader, materialSetIndex);
+						}
+						shader->FlushDescriptors(context);
+						RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
+					}
+				}
+#endif // 0
+
+			}
+		}
+	}
+
 	const cTexture* Scene::GetSkyboxTexture() const
 	{
 		return m_skybox.Tex;
@@ -1017,6 +1114,7 @@ namespace Mist
 			index_t offset = 0;
 			for (index_t i = 0; i < m_models.GetSize(); ++i)
 			{
+				check(offset < globals::MaxMaterials);
 				m_models[i].UpdateMaterials(m_materials.data() + offset);
 				m_modelMaterialMap[i] = offset;
 				offset += m_models[i].GetMaterialCount();

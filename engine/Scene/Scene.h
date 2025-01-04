@@ -116,6 +116,11 @@ namespace Mist
 		float _padding[2];
 	};
 
+	struct tShadowMapData
+	{
+		glm::mat4 LightViewMatrices[globals::MaxShadowMapAttachments];
+	};
+
 	struct EnvironmentData
 	{
 		glm::vec3 AmbientColor;
@@ -128,6 +133,33 @@ namespace Mist
 		SpotLightData SpotLights[MaxLights];
 
 		EnvironmentData();
+	};
+
+	struct CameraData
+	{
+		glm::mat4 InvView;
+		glm::mat4 Projection;
+		glm::mat4 ViewProjection;
+	};
+
+	struct tViewRenderInfo
+	{
+		// View info
+		CameraData view;
+
+		// Shadow map
+		uint32_t shadowMapTexturesSlot;
+		tShadowMapData shadowMap;
+		const cTexture* shadowMapTextures[globals::MaxShadowMapAttachments];
+
+		// Scene info
+		EnvironmentData environment;
+
+		uint32_t cubemapSlot;
+		const cTexture* cubemap;
+
+		// Render flags
+		uint16_t flags;
 	};
 
 	struct Skybox
@@ -197,7 +229,9 @@ namespace Mist
 		const glm::mat4* GetRawGlobalTransforms() const;
 
 		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
+		
 		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags = 0) const;
+		void DrawWithMaterials(const RenderContext& context, const tViewRenderInfo& viewRenderInfo, uint32_t textureSlot) const;
 		// can be nullptr
 		const cTexture* GetSkyboxTexture() const;
 
