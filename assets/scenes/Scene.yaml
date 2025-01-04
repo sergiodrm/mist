@@ -1,12 +1,12 @@
 Environment:
   Ambient: [0.0235294122, 0.0235294122, 0.0235294122]
   Skybox:
-    Front: textures/skybox/front.jpg
-    Back: textures/skybox/back.jpg
-    Top: textures/skybox/top.jpg
-    Bottom: textures/skybox/bottom.jpg
-    Left: textures/skybox/left.jpg
-    Right: textures/skybox/right.jpg
+    Front: textures/yokohama/posz.jpg
+    Back: textures/yokohama/negz.jpg
+    Top: textures/yokohama/posy.jpg
+    Bottom: textures/yokohama/negy.jpg
+    Left: textures/yokohama/posx.jpg
+    Right: textures/yokohama/negx.jpg
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -87,3 +87,12 @@ RenderObjects:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: models/metalrough/metalroughspheres.gltf
+  - RenderObject: 7
+    Name: Sphere
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: models/sphere.gltf
