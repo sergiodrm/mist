@@ -25,6 +25,7 @@ struct SpotLightData
 /*
  * Data structures for lighting
 */
+#ifndef LIGHTING_NO_SHADOWS
 #define LIGHTING_SHADOWS_PCF
 
 #ifndef LIGHTING_SHADOWS_TEXTURE_ARRAY
@@ -43,6 +44,8 @@ struct ShadowInfo
     mat4 LightViewMatrices[MAX_SHADOW_MAPS];
 #endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
 };
+
+#endif // !LIGHTING_NO_SHADOWS
 
 /**
  * Util functions
@@ -120,6 +123,9 @@ vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float
     vec3 num = NDF * G * F;
     float denom = 4.f * max(dot(normal, viewDir), 0.f) * max(dot(normal, lightDir), 0.f) + 0.0001f;
     vec3 specular = num/denom;
+#ifdef DEBUG_SPECULAR
+    return specular;
+#endif // DEBUG_SPECULAR
 
     // Light contribution
     vec3 kS = F; // specular contribution
@@ -135,6 +141,9 @@ vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float
 /**
  * Shadows functions
 */
+
+#ifndef LIGHTING_NO_SHADOWS
+
 float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
 {
     // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
@@ -197,6 +206,8 @@ float ComputeSpotLightShadow(ShadowInfo info, vec3 fragPos, SpotLightData light)
     }
     return shadow;
 }
+
+#endif // !LIGHTING_NO_SHADOWS
 
 /**
  * Lighting functions
@@ -264,15 +275,11 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     vec3 radiance = light.Color.rgb;
     // Calculate pbr contribution
     vec3 lighting = CalculateBRDF(fragNormal, lightDir, radiance, albedo, metallic, roughness, V, H);
+#ifndef LIGHTING_NO_SHADOWS
     // Calculate shadow contribution
     float shadow = ComputeLightShadow(shadowInfo, fragPos, light);
     lighting *= (1.f-shadow);
-    //if (light.Pos.w >= 0.f)
-    //{
-    //    int shadowIndex = int(light.Pos.w);
-    //    float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
-    //    lighting *= (1.f - shadow);
-    //}
+#endif // !LIGHTING_NO_SHADOWS
     return lighting;
 }
 
@@ -291,16 +298,11 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 a
         vec3 V = normalize(-fragPos);
         vec3 H = normalize(V + L);
         lighting = CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
-
+#ifndef LIGHTING_NO_SHADOWS
         // Calculate shadow inside lighting cone
         float shadow = ComputeSpotLightShadow(shadowInfo, fragPos, light);
         lighting *= (1.f-shadow);
-        //if (light.Color.w >= 0.f)
-        //{
-        //    int shadowIndex = int(light.Color.w);
-        //    float shadow = CalculateShadow(vec4(fragPos, 1.f), shadowIndex);
-        //    lighting *= (1.f-shadow);
-        //}
+#endif // !LIGHTING_NO_SHADOWS
     }
     return lighting * intensity;
 }
