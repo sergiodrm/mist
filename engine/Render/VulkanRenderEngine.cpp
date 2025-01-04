@@ -156,6 +156,18 @@ namespace Mist
 		return DefaultTexture;
 	}
 
+	cMaterial* DefaultMaterial = nullptr;
+	cMaterial* GetDefaultMaterial(const RenderContext& context)
+	{
+		if (!DefaultMaterial)
+		{
+			DefaultMaterial = _new cMaterial();
+			DefaultMaterial->SetName("DefaultMaterial");
+			DefaultMaterial->m_albedo = glm::vec3(1.f, 0.f, 1.f);
+			DefaultMaterial->SetupShader(context);
+		}
+		return DefaultMaterial;
+	}
 	
 
 	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
@@ -333,9 +345,18 @@ namespace Mist
 
 		m_renderer.Destroy(m_renderContext);
 
+		// Destroy Default resources
 		if (DefaultTexture)
 			cTexture::Destroy(m_renderContext, DefaultTexture);
 		DefaultTexture = nullptr;
+		if (DefaultMaterial)
+		{
+			DefaultMaterial->Destroy(m_renderContext);
+			delete DefaultMaterial;
+			DefaultMaterial = nullptr;
+		}
+
+
 		DestroySamplers(m_renderContext);
 		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
