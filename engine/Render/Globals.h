@@ -30,6 +30,8 @@
 #define SHADER_FRAG_FILE_EXTENSION ".frag" SHADER_ADDITIONAL_EXTENSION
 #define SHADER_FILEPATH(filepath) SHADER_ROOT_PATH filepath SHADER_ADDITIONAL_EXTENSION
 
+#define MAX_SHADOW_MAPS 3
+#define MAX_SHADOW_MAPS_STR "3"
 
 namespace Mist
 {
@@ -47,6 +49,7 @@ namespace Mist
 		extern const char* DepthQuadFragmentShader;
 		inline constexpr unsigned int MaxOverlappedFrames = 3;
 		inline constexpr unsigned int MaxRenderObjects = 1000;
-		inline constexpr unsigned int MaxShadowMapAttachments = 3;
+		inline constexpr unsigned int MaxMaterials = 128;
+		inline constexpr unsigned int MaxShadowMapAttachments = MAX_SHADOW_MAPS;
 	}
 }
