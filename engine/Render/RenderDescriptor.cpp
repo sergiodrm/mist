@@ -281,6 +281,21 @@ namespace Mist
 
 	bool DescriptorBuilder::Build(const RenderContext& rc, VkDescriptorSet& set, VkDescriptorSetLayout& layout)
 	{
+		// Check buffer bindings size
+		for (uint32_t i = 0; i < m_writes.GetSize(); ++i)
+		{
+			for (uint32_t j = 0; j < m_writes[i].descriptorCount; ++j)
+			{
+				if (m_writes[i].pBufferInfo)
+				{
+					if (m_writes[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER || m_writes[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+						check(m_writes[i].pBufferInfo[j].range <= rc.GPUProperties.limits.maxUniformBufferRange);
+					if (m_writes[i].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER || m_writes[i].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+						check(m_writes[i].pBufferInfo[j].range <= rc.GPUProperties.limits.maxStorageBufferRange);
+				}
+			}
+		}
+
 		VkDescriptorSetLayoutCreateInfo layoutInfo
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
