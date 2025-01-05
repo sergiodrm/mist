@@ -78,7 +78,7 @@ namespace Mist
 		}
 
 		// ComposeTarget needs to be != nullptr on create shaders
-		m_bloomEffect.ComposeTarget = &m_lightingOutput;
+		m_bloomEffect.m_composeTarget = &m_lightingOutput;
 		m_bloomEffect.Init(renderContext);
 	}
 
@@ -158,8 +158,8 @@ namespace Mist
 			EndGPUEvent(renderContext, cmd);
 		}
 
-		m_bloomEffect.ComposeTarget = &m_lightingOutput;
-		m_bloomEffect.InputTarget = m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_EMISSIVE).Tex;
+		m_bloomEffect.m_composeTarget = &m_lightingOutput;
+		m_bloomEffect.m_inputTarget = m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_EMISSIVE).Tex;
 		m_bloomEffect.Draw(renderContext);
 
 		{

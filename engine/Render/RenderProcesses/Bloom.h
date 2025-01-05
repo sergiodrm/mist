@@ -37,16 +37,24 @@ namespace Mist
 		void Draw(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 
+
 		void ImGuiDraw();
 
-		tBloomConfig Config;
-		ShaderProgram* DownsampleShader;
-		ShaderProgram* UpsampleShader;
-		ShaderProgram* ComposeShader;
-		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> RenderTargetArray;
 
-		cTexture* InputTarget;
-		RenderTarget* ComposeTarget;
+		// Config of bloom draw. Can be updated before each draw.
+		tBloomConfig m_config;
+		// Output mixing.
+		RenderTarget* m_composeTarget;
+		// Texture to be blurred by downsampling and upsampling.
+		const cTexture* m_inputTarget;
+		// Texture to be mixed with the result of bloom process.
+		const cTexture* m_blendTexture = nullptr;
+
+	private:
+		ShaderProgram* m_downsampleShader;
+		ShaderProgram* m_upsampleShader;
+		ShaderProgram* m_composeShader;
+		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
 	};
 
 }
