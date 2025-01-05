@@ -82,7 +82,7 @@ namespace Mist
 			ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 			ImVec2 winpos = ImVec2(0.f, viewport->Size.y - heightPerLine * size);
-			ImGui::SetNextWindowPos(winpos);
+			//ImGui::SetNextWindowPos(winpos);
 			ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
 			ImGui::SetNextWindowBgAlpha(0.f);
 			ImGui::Begin("Gpu profiling", nullptr, ImGuiWindowFlags_NoDecoration

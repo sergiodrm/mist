@@ -74,7 +74,6 @@ namespace Mist
 		}
 	}
 
-	CBoolVar CVar_ShowConsole("ShowConsole", false);
 	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
 
 	void ExecCommand_ReloadShaders(const char* cmd)
@@ -604,8 +603,7 @@ namespace Mist
 		ImGuiCVars();
 		m_renderer.ImGuiDraw();
 		ImGuiDrawInputState();
-		if (CVar_ShowConsole.Get())
-			DrawConsole();
+		DrawConsole();
 		if (CVar_ShowImGuiDemo.Get())
 			ImGui::ShowDemoWindow();
 #if 0

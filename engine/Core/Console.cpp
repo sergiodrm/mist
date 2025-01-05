@@ -14,6 +14,8 @@
 
 namespace Mist
 {
+	CIntVar CVar_ShowConsole("ShowConsole", 0);
+
 	Console g_Console;
 
 	extern ImVec4 LogLevelImGuiColor(LogLevel level);
@@ -49,7 +51,7 @@ namespace Mist
 	void Console::Log(LogLevel level, const char* msg)
 	{
 		tLogEntry entry;
-		sprintf_s(entry.Msg, "[%d] %s", tApplication::GetFrame(), msg);
+		sprintf_s(entry.Msg, "[%lld] %s", tApplication::GetFrame(), msg);
 		entry.Level = level;
 		m_logs.Push(entry);
 		m_newEntry = true;
@@ -67,7 +69,23 @@ namespace Mist
 
 	void Console::Draw()
 	{
-		ImGui::Begin("Console");
+		if (!CVar_ShowConsole.Get())
+			return;
+
+		ImGuiWindowFlags flags = ImGuiWindowFlags_None;
+		if (CVar_ShowConsole.Get() == 1)
+		{
+			ImGuiViewport* viewport = ImGui::GetMainViewport();
+			const float width = viewport->Size.x;
+			const float height = viewport->Size.y;
+			ImGui::SetNextWindowPos({ 0.f, 0.5f * height });
+			ImGui::SetNextWindowSize({ width, 0.5f * height });
+			flags = ImGuiWindowFlags_NoMove 
+				| ImGuiWindowFlags_NoResize 
+				| ImGuiWindowFlags_NoBackground 
+				| ImGuiWindowFlags_NoDecoration;
+		}
+		ImGui::Begin("Console", nullptr, flags);
 		// ImGui::Checkbox("AutoMove", &m_autoMove);
 		bool goend = ImGui::Button("Go end") || m_newEntry;
 		m_newEntry = false;
@@ -87,7 +105,7 @@ namespace Mist
 			ImGui::EndChild();
 		}
 
-		ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll 
+		flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll 
 			| ImGuiInputTextFlags_CallbackHistory
 			| ImGuiInputTextFlags_CallbackEdit;
 		bool reclaimFocus = false;

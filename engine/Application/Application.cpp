@@ -13,7 +13,7 @@ extern void DestroyGameApplication(Mist::tApplication*);
 
 namespace Mist
 {
-	extern CBoolVar CVar_ShowConsole;
+	extern CIntVar CVar_ShowConsole;
 
 	CStrVar GIniFile("IniFile", "default.cfg");
 

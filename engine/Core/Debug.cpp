@@ -354,7 +354,7 @@ namespace Mist
 
 			void ImGuiDraw()
 			{
-				tCpuProfStackTree& stack = CpuProfStack[0x0001&~CurrentFrame];
+				tCpuProfStackTree& stack = CpuProfStack[0x0001 & ~CurrentFrame];
 				check(stack.Current == index_invalid);
 
 				index_t size = stack.Items.GetSize();
@@ -362,7 +362,7 @@ namespace Mist
 				ImGuiViewport* viewport = ImGui::GetMainViewport();
 
 				ImVec2 winpos = ImVec2(0.f, 100.f);
-				ImGui::SetNextWindowPos(winpos);
+				//ImGui::SetNextWindowPos(winpos);
 				ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
 				ImGui::SetNextWindowBgAlpha(0.f);
 				ImGui::Begin("Cpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
@@ -456,7 +456,7 @@ namespace Mist
 		float ImGuiGetMsPlotValue(void* data, int index)
 		{
 			sProfiler& prof = *(sProfiler*)data;
-			return 1000.f/prof.CPUTimeArray.GetFromOldest(index);
+			return 1000.f / prof.CPUTimeArray.GetFromOldest(index);
 		}
 
 		void ImGuiDraw()
@@ -472,10 +472,7 @@ namespace Mist
 			{
 				sProfiler::GetStats(GProfiler.CPUTimeArray, cpuTimes.minMs, cpuTimes.maxMs, cpuTimes.meanMs, cpuTimes.lastMs);
 				sProfiler::GetStats(GProfiler.GPUTimeArray, gpuTimes.minMs, gpuTimes.maxMs, gpuTimes.meanMs, gpuTimes.lastMs);
-			}
 
-			if (CVar_ShowStats.Get() == 1)
-			{
 #if 1
 
 				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
@@ -487,7 +484,7 @@ namespace Mist
 #endif // 0
 				ImGuiViewport* viewport = ImGui::GetMainViewport();
 				ImGui::SetNextWindowPos(viewport->Pos);
-				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.4f, viewport->Size.y * 0.15f});
+				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.5f, viewport->Size.y * 0.15f });
 				ImGui::SetNextWindowBgAlpha(0.f);
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
 				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
@@ -506,131 +503,75 @@ namespace Mist
 				ImGui::Text("%.4f ms Min [%.4f ms] Max [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
 				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
 #else
-				ImGui::Text("Frame: %d", tApplication::GetFrame());
-				ImGui::Columns(3, nullptr, false);
-				auto utilLamb = [&](const char* label, float ms)
-					{
-						ImGui::Text("%8s", label);
-						ImGui::NextColumn();
-						ImGui::Text("%3.3f fps", 1000.f/ms);
-						ImGui::NextColumn();
-						ImGui::Text("%3.3f ms", ms);
-						ImGui::NextColumn();
-					};
-				if (ImGui::BeginChild("Child_cpu_perf"))
+				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
+				if (CVar_ShowStats.Get() > 1)
 				{
-					ImGui::Text("CPU stats");
+
 					ImGui::Columns(3, nullptr, false);
-					utilLamb("Last", cpuTimes.lastMs);
-					utilLamb("Mean", cpuTimes.meanMs);
-					utilLamb("Max", cpuTimes.maxMs);
-					utilLamb("Min", cpuTimes.minMs);
-					ImGui::Columns();
-					ImGui::EndChild();
-				}
-				ImGui::NextColumn();
-				if (ImGui::BeginChild("Child_gpu_perf"))
-				{
-					ImGui::Text("GPU stats");
-					ImGui::Columns(3, nullptr, false);
-					utilLamb("Last", gpuTimes.lastMs);
-					utilLamb("Mean", gpuTimes.meanMs);
-					utilLamb("Min", gpuTimes.minMs);
-					utilLamb("Max", gpuTimes.maxMs);
-					ImGui::Columns();
-					ImGui::EndChild();
-				}
-				ImGui::NextColumn();
-				if (ImGui::BeginChild("Child_mem"))
-				{
-					auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
+					auto utilLamb = [&](const char* label, float ms)
 						{
-							ImGui::Text("%20s", label);
+							ImGui::Text("%8s", label);
 							ImGui::NextColumn();
-							ImGui::Text("%8.3f MB", (float)allocated / 1024.f / 1024.f);
-							ImGui::NextColumn();
-							ImGui::Text("%8.3f MB", (float)maxAllocated / 1024.f / 1024.f);
+							//ImGui::Text("%3.3f fps", 1000.f/ms);
+							//ImGui::NextColumn();
+							ImGui::Text("%3.3f ms", ms);
 							ImGui::NextColumn();
 						};
+					if (ImGui::BeginChild("Child_cpu_perf"))
+					{
+						ImGui::Text("CPU stats");
+						ImGui::Columns(2, nullptr, false);
+						utilLamb("Last", cpuTimes.lastMs);
+						utilLamb("Mean", cpuTimes.meanMs);
+						utilLamb("Max", cpuTimes.maxMs);
+						utilLamb("Min", cpuTimes.minMs);
+						ImGui::Columns();
+						ImGui::EndChild();
+					}
+					ImGui::NextColumn();
+					if (ImGui::BeginChild("Child_gpu_perf"))
+					{
+						ImGui::Text("GPU stats");
+						ImGui::Columns(2, nullptr, false);
+						utilLamb("Last", gpuTimes.lastMs);
+						utilLamb("Mean", gpuTimes.meanMs);
+						utilLamb("Min", gpuTimes.minMs);
+						utilLamb("Max", gpuTimes.maxMs);
+						ImGui::Columns();
+						ImGui::EndChild();
+					}
+					ImGui::NextColumn();
+					if (ImGui::BeginChild("Child_mem"))
+					{
+						auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
+							{
+								ImGui::Text("%15s", label);
+								ImGui::NextColumn();
+								ImGui::Text("%8.3f MB", (float)allocated / 1024.f / 1024.f);
+								ImGui::NextColumn();
+								ImGui::Text("%8.3f MB", (float)maxAllocated / 1024.f / 1024.f);
+								ImGui::NextColumn();
+							};
 
-					const tSystemMemStats& systemStats = GetMemoryStats();
-					const RenderContext& context = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext();
-					const tMemStats& bufferStats = context.Allocator->BufferStats;
-					const tMemStats& texStats = context.Allocator->TextureStats;
-					ImGui::Columns(3, nullptr, false);
-					lmbShowMemStat("System memory", systemStats.Allocated, systemStats.MaxAllocated);
-					lmbShowMemStat("GPU buffer memory", bufferStats.Allocated, bufferStats.MaxAllocated);
-					lmbShowMemStat("GPU texture memory", texStats.Allocated, texStats.MaxAllocated);
+						const tSystemMemStats& systemStats = GetMemoryStats();
+						const RenderContext& context = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext();
+						const tMemStats& bufferStats = context.Allocator->BufferStats;
+						const tMemStats& texStats = context.Allocator->TextureStats;
+						ImGui::Text("Memory");
+						ImGui::Columns(3, nullptr, false);
+						lmbShowMemStat("System", systemStats.Allocated, systemStats.MaxAllocated);
+						lmbShowMemStat("GPU buffer", bufferStats.Allocated, bufferStats.MaxAllocated);
+						lmbShowMemStat("GPU texture", texStats.Allocated, texStats.MaxAllocated);
+						ImGui::Columns();
+						ImGui::EndChild();
+					}
+
 					ImGui::Columns();
-					ImGui::EndChild();
-				}
-
-				ImGui::Columns();
 #endif // 0
-
-				ImGui::End();
-				ImGui::PopStyleColor(3);
-			}
-			if (CVar_ShowStats.Get() == 2)
-			{
-				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
-					//| ImGuiWindowFlags_NoDecoration
-					| ImGuiWindowFlags_AlwaysAutoResize
-					| ImGuiWindowFlags_NoResize
-					//| ImGuiWindowFlags_NoInputs
-					;
-				ImGui::PushStyleColor(ImGuiCol_WindowBg, { 0.12f, 0.22f, 0.12f, 0.f });
-				ImGui::SetNextWindowBgAlpha(0.f);
-				ImGui::SetNextWindowPos({ 0.f, 0.f });
-				ImGui::SetNextWindowSize({ 400.f, 300.f });
-				ImGui::Begin("Render stats", nullptr, flags);
-				ImGui::Text("%.4f ms", cpuTimes.meanMs);
-				ImGui::Columns(5);
-				ImGui::Text("ID");
-				ImGui::NextColumn();
-				ImGui::Text("Last time");
-				ImGui::NextColumn();
-				ImGui::Text("Min time");
-				ImGui::NextColumn();
-				ImGui::Text("Max time");
-				ImGui::NextColumn();
-				ImGui::Text("Avg time");
-				ImGui::NextColumn();
-				for (const auto& item : GProfiler.EntryMap)
-				{
-					ImGui::Text("%s", item.first);
-					ImGui::NextColumn();
-					ImGui::Text("%.4f ms", item.second.Data.GetLast());
-					ImGui::NextColumn();
-					ImGui::Text("%.4f ms", item.second.Min);
-					ImGui::NextColumn();
-					ImGui::Text("%.4f ms", item.second.Max);
-					ImGui::NextColumn();
-					double avg = 0.0;
-					for (uint32_t i = 0; i < item.second.Data.GetCount(); ++i)
-						avg += item.second.Data.Get(i);
-					avg /= (double)item.second.Data.GetCount();
-					ImGui::Text("%.4f ms", avg);
-					ImGui::NextColumn();
 				}
-				ImGui::Columns(2);
-				ImGui::Text("Draw calls");
-				ImGui::NextColumn();
-				ImGui::Text("%u", GRenderStats.DrawCalls);
-				ImGui::NextColumn();
-				ImGui::Text("Triangles");
-				ImGui::NextColumn();
-				ImGui::Text("%u", GRenderStats.TrianglesCount);
-				ImGui::NextColumn();
-				ImGui::Text("Binding count");
-				ImGui::NextColumn();
-				ImGui::Text("%u", GRenderStats.SetBindingCount);
-				ImGui::NextColumn();
-				ImGui::Columns();
-				if (Mist::Debug::GVulkanLayerValidationErrors)
-					ImGui::TextColored(ImVec4(1.f, 0.f, 0.f, 1.f), "Vulkan validation layer errors: %u", Mist::Debug::GVulkanLayerValidationErrors);
-				ImGui::End();
-				ImGui::PopStyleColor();
+
+					ImGui::End();
+					ImGui::PopStyleColor(3);
 			}
 		}
 
@@ -638,7 +579,7 @@ namespace Mist
 		{
 			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
 			{
-				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Push({label, 0.0});
+				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Push({ label, 0.0 });
 			}
 		}
 

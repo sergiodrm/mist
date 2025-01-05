@@ -90,7 +90,7 @@ namespace Mist
 		case LogLevel::Info: return ImVec4(0.7f, 0.7f, 0.7f, 1.f);
 		case LogLevel::Debug: return ImVec4(0.4f, 0.65f, 0.85f, 1.f);
 		case LogLevel::Ok: return ImVec4(0.2f, 0.91f, 0.26f, 1.f);
-		case LogLevel::Warn: return ImVec4(0.1f, 0.7f, 0.7f, 1.f);
+		case LogLevel::Warn: return ImVec4(0.9647f, 1.f, 0.2392f, 1.f);
 		case LogLevel::Error: return ImVec4(1.f, 0.f, 0.f, 1.f);
 		default:
 			break;
