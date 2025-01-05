@@ -14,6 +14,8 @@ extern void DestroyGameApplication(Mist::tApplication*);
 namespace Mist
 {
 	extern CIntVar CVar_ShowConsole;
+	extern CIntVar CVar_ShowStats;
+	extern CBoolVar CVar_ShowImGui;
 
 	CStrVar GIniFile("IniFile", "default.cfg");
 
@@ -209,11 +211,14 @@ namespace Mist
 		ProcessEvents(processEventLambda, this);
 		UpdateInputState();
 
-		if (GetKeyboardState(MIST_KEY_CODE_TAB) && !GetKeyboardPreviousState(MIST_KEY_CODE_TAB))
+		if (IsKeyReleased(MIST_KEY_CODE_GRAVE))
 			CVar_ShowConsole.Set(!CVar_ShowConsole.Get());
-		if ((GetKeyboardState(MIST_KEY_CODE_LCTRL) || GetKeyboardState(MIST_KEY_CODE_RCTRL))
-			&& !GetKeyboardState(MIST_KEY_CODE_R) && GetKeyboardPreviousState(MIST_KEY_CODE_R))
+		if ((GetKeyboardState(MIST_KEY_CODE_LCTRL) || GetKeyboardState(MIST_KEY_CODE_RCTRL)) && IsKeyReleased(MIST_KEY_CODE_R))
 			m_engine->ReloadShaders();
+		if (IsKeyReleased(MIST_KEY_CODE_TAB))
+			CVar_ShowImGui.Set(!CVar_ShowImGui.Get());
+		if (IsKeyReleased(MIST_KEY_CODE_F9))
+			CVar_ShowStats.Set((CVar_ShowStats.Get() + 1) % 3);
 	}
 
 	void tApplication::ProcessEvent(void* e)

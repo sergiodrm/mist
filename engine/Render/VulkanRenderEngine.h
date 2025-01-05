@@ -61,7 +61,6 @@ namespace Mist
 		virtual Scene* GetScene() override;
 		virtual const Scene* GetScene() const override;
 		virtual void SetScene(Scene* scene);
-		virtual void AddImGuiCallback(std::function<void()>&& fn) { m_imguiCallbackArray.push_back(fn); }
 
 		const RenderContext& GetContext() const { return m_renderContext; }
 
@@ -104,9 +103,6 @@ namespace Mist
 
 		Scene* m_scene = nullptr;
 		CameraData m_cameraData;
-
-		typedef std::function<void()> ImGuiCallback;
-		tDynArray<ImGuiCallback> m_imguiCallbackArray;
 
 		GPUParticleSystem m_gpuParticleSystem;
 	};

@@ -264,6 +264,8 @@ namespace Mist
     void ImGuiDrawInputState();
     bool GetKeyboardState(eKeyCode code);
     bool GetKeyboardPreviousState(eKeyCode code);
+    bool IsKeyPressed(eKeyCode code);
+    bool IsKeyReleased(eKeyCode code);
     bool GetMouseButton(eMouseCode code);
     bool GetMousePreviousButton(eMouseCode code);
     void GetMousePosition(unsigned int* x, unsigned int* y);

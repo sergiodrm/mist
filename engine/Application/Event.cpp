@@ -365,6 +365,16 @@ namespace Mist
 		return GetState(g_InputState.KeyboardPrevState, (uint32_t)code);
 	}
 
+	bool IsKeyPressed(eKeyCode code)
+	{
+		return !GetKeyboardPreviousState(code) && GetKeyboardState(code);
+	}
+
+	bool IsKeyReleased(eKeyCode code)
+	{
+		return GetKeyboardPreviousState(code) && !GetKeyboardState(code);
+	}
+
 	bool GetMouseButton(eMouseCode code)
 	{
 		return g_InputState.MouseState & code;

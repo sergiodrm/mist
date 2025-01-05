@@ -43,6 +43,7 @@
 namespace Mist
 {
 	CBoolVar CVar_ExitValidationLayer("ExitValidationLayer", true);
+	CBoolVar CVar_ShowImGui("ShowImGui", true);
 
 	namespace Debug
 	{
@@ -281,11 +282,6 @@ namespace Mist
 			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Init(m_renderContext.Device, 40);
 		}
 
-
-		AddImGuiCallback(&Profiling::ImGuiDraw);
-		AddImGuiCallback([this]() { ImGuiDraw(); });
-		AddImGuiCallback([this]() { if (m_scene) m_scene->ImGuiDraw(); });
-
 		m_gpuParticleSystem.Init(m_renderContext);
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
 
@@ -310,8 +306,7 @@ namespace Mist
 		ui::Begin(m_renderContext);
 		{
 			CPU_PROFILE_SCOPE(ImGuiCalbacks);
-			for (auto& fn : m_imguiCallbackArray)
-				fn();
+			ImGuiDraw();
 		}
 		//BeginFrame();
 		Mist::Profiling::GRenderStats.Reset();
@@ -600,92 +595,28 @@ namespace Mist
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
-		ImGuiCVars();
-		m_renderer.ImGuiDraw();
-		ImGuiDrawInputState();
+		// Show always profiling for fps and frame counter and console
 		DrawConsole();
-		if (CVar_ShowImGuiDemo.Get())
-			ImGui::ShowDemoWindow();
-#if 0
-		ImGui::Begin("Engine");
+		Profiling::ImGuiDraw();
 
-		auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
-			{
-				ImGui::Text("%s:		%.3f MB | %.3f MB max", label, (float)allocated / 1024.f / 1024.f, (float)maxAllocated / 1024.f / 1024.f);
-				ImGui::NextColumn();
-				ImGui::ProgressBar((float)allocated / (float)maxAllocated);
-				ImGui::NextColumn();
-			};
-
-		const tSystemMemStats& systemStats = GetMemoryStats();
-		const tMemStats& bufferStats = m_renderContext.Allocator->BufferStats;
-		const tMemStats& texStats = m_renderContext.Allocator->TextureStats;
-		ImGui::Columns(2);
-		lmbShowMemStat("System memory", systemStats.Allocated, systemStats.MaxAllocated);
-		lmbShowMemStat("GPU buffer memory", bufferStats.Allocated, bufferStats.MaxAllocated);
-		lmbShowMemStat("GPU texture memory", texStats.Allocated, texStats.MaxAllocated);
-		ImGui::Columns();
-
-
-
-		ImGui::Separator();
-		if (ImGui::TreeNode("Graphics Shaders"))
+		// Show the rest of imgui windows only if is desired
+		if (CVar_ShowImGui.Get())
 		{
-			ImGui::Columns(3);
-			ShaderProgram** shaderArray = m_shaderDb.GetShaderArray();
-			uint32_t shaderCount = m_shaderDb.GetShaderCount();
-			for (uint32_t i = 0; i < shaderCount; ++i)
-			{
-				char label[32];
-				sprintf_s(label, "Reload_%d", i);
-				if (ImGui::Button(label))
-				{
-					RenderContext_ForceFrameSync(m_renderContext);
-					shaderArray[i]->Destroy(m_renderContext);
-					shaderArray[i]->Reload(m_renderContext);
-				}
-				ImGui::NextColumn();
-				const tShaderProgramDescription& shaderDesc = shaderArray[i]->GetDescription();
-				ImGui::Text("%s", shaderDesc.VertexShaderFile.Filepath.c_str());
-				ImGui::NextColumn();
-				ImGui::Text("%s", shaderDesc.FragmentShaderFile.Filepath.c_str());
-				ImGui::NextColumn();
-			}
-			ImGui::Columns();
-			ImGui::TreePop();
-		}
-		if (ImGui::Button("Reload all"))
-		{
-			RenderContext_ForceFrameSync(m_renderContext);
-			for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
-			{
-				m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
-				m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
-			}
-		}
-		ImGui::End();
-#endif // 0
+			// Application imgui calls
+			ImGuiCVars();
+			ImGuiDrawInputState();
 
-#if 0
-		ImGui::Begin("Gpu queries");
-		if (m_renderContext.FrameIndex > globals::MaxOverlappedFrames && m_renderContext.FrameIndex % globals::MaxOverlappedFrames == 0)
-		{
-			uint32_t prevframe = m_renderContext.FrameIndex - 1;
-			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[prevframe % globals::MaxOverlappedFrames];
-			if (frameContext.GraphicsTimestampQueryPool.Flags == sTimestampQueryPool::QueryPool_Terminated)
-			{
-				uint64_t ns = frameContext.GraphicsTimestampQueryPool.GetElapsedTimestamp(m_renderContext.Device, m_renderContext.GPUDevice, m_drawQueryTimestamp);
-				double us = (double)ns / 1000.0;
-				ImGui::Text("%f us", us);
-			}
-		}
-		ImGui::End();
-#else
-		//GpuProf_Resolve(m_renderContext);
-		GpuProf_ImGuiDraw(m_renderContext);
-#endif // 0
+			// Render engine imgui calls
+			m_renderer.ImGuiDraw();
+			GpuProf_ImGuiDraw(m_renderContext);
+			m_gpuParticleSystem.ImGuiDraw();
+			if (m_scene)
+				m_scene->ImGuiDraw();
 
-		m_gpuParticleSystem.ImGuiDraw();
+			// Demo imgui
+			if (CVar_ShowImGuiDemo.Get())
+				ImGui::ShowDemoWindow();
+		}
 	}
 
 	void VulkanRenderEngine::DrawCubemap(const RenderContext& context, const cTexture& texture)
