@@ -12,13 +12,23 @@ namespace Mist
 
 	void NewCVar(CVar* var)
 	{
-		check(VarArrayIndex <= MAX_VAR_COUNT);
+		check(VarArrayIndex < MAX_VAR_COUNT);
 		check(var);
 		CVar* v = FindCVar(var->GetName());
 		check(!v);
 
 		VarArray[VarArrayIndex] = var;
 		++VarArrayIndex;
+	}
+
+	CVar** GetCVarArray()
+	{
+		return VarArray;
+	}
+
+	uint32_t GetCVarCount()
+	{
+		return VarArrayIndex;
 	}
 
 	CVar* FindCVar(const char* name)

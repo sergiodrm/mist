@@ -601,14 +601,13 @@ namespace Mist
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
+		ImGuiCVars();
 		m_renderer.ImGuiDraw();
 		ImGuiDrawInputState();
-
 		if (CVar_ShowConsole.Get())
 			DrawConsole();
 		if (CVar_ShowImGuiDemo.Get())
 			ImGui::ShowDemoWindow();
-
 #if 0
 		ImGui::Begin("Engine");
 
@@ -716,6 +715,19 @@ namespace Mist
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
 		return m_renderContext.GetFrameContext();
+	}
+
+	void VulkanRenderEngine::ImGuiCVars()
+	{
+		ImGui::Begin("CVars");
+		uint32_t count = GetCVarCount();
+		CVar** cvarArray = GetCVarArray();
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			CVar* cvar = cvarArray[i];
+			ImGuiUtils::EditCVar(*cvar);
+		}
+		ImGui::End();
 	}
 
 	bool VulkanRenderEngine::InitVulkan()

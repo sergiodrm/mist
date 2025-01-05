@@ -76,6 +76,8 @@ namespace Mist
 		void Set(const char* value) { strcpy_s(Value.StringValue, value); }
 	};
 
+	CVar** GetCVarArray();
+	uint32_t GetCVarCount();
 	CVar* FindCVar(const char* name);
 	bool SetCVar(const char* name, const char* strValue);
 	bool SetCVar(CVar* cvar, const char* strValue);
