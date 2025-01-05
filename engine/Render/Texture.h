@@ -35,7 +35,7 @@ namespace Mist
 		uint32_t MipLevels = 1;
 		uint32_t Depth = 1;
 		uint32_t Layers = 1;
-		ESampleCountBit SampleCount = SAMPLE_COUNT_1_BIT;
+		ESampleCount SampleCount = SAMPLE_COUNT_1_BIT;
 		EImageUsage Usage = IMAGE_USAGE_TRANSFER_SRC_BIT | IMAGE_USAGE_TRANSFER_DST_BIT | IMAGE_USAGE_SAMPLED_BIT;
 		EImageLayout InitialLayout = IMAGE_LAYOUT_UNDEFINED;
 		VkImageCreateFlags Flags = 0;
@@ -71,6 +71,7 @@ namespace Mist
 	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const tImageDescription& imageDesc);
 	bool BindDescriptorTexture(const RenderContext& context, cTexture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 	bool IsDepthFormat(EFormat format);
+	bool IsStencilFormat(EFormat format);
 
 
 	namespace io

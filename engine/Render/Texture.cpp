@@ -647,6 +647,13 @@ namespace Mist
 			|| format == FORMAT_D32_SFLOAT_S8_UINT;
 	}
 
+	bool IsStencilFormat(EFormat format)
+	{
+		return format == FORMAT_D16_UNORM_S8_UINT
+			|| format == FORMAT_D24_UNORM_S8_UINT
+			|| format == FORMAT_D32_SFLOAT_S8_UINT;
+	}
+
 	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format)
 	{
 		PROFILE_SCOPE_LOGF(LoadTextureFromFile, "Load texture from file (%s)", filepath);
