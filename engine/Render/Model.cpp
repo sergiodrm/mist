@@ -608,9 +608,13 @@ namespace Mist
 					for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
 						ImGui::Text("%s: %s", 
 							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ?material.m_textures[j]->GetName() : "none");
+					ImGui::ColorEdit3("Albedo", &material.m_albedo[0]);
+					ImGui::DragFloat("Metallic", &material.m_metallicFactor);
+					ImGui::DragFloat("Roughness", &material.m_roughnessFactor);
 					ImGui::ColorEdit3("Emissive", &material.m_emissiveFactor[0]);
-					ImGui::DragFloat("Emissive strength", &material.m_emissiveFactor[3], 0.1f, 0.f, FLT_MAX);
+					ImGui::DragFloat("Emissive strength", &material.m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
 					
+					ImGui::Button("Reload");
 					ImGui::TreePop();
 				}
 			}
