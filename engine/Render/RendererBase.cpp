@@ -27,8 +27,10 @@ namespace Mist
 		{
 			RenderTargetDescription rtDesc;
 			rtDesc.RenderArea = renderArea;
-			rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
-			rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
+			//rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
+			RenderTargetAttachmentDescription attachmentDesc{ SAMPLE_COUNT_1_BIT, swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, {0.2f, 0.4f, 0.1f, 0.f}, swapchain.GetImageViewAt(i) };
+			rtDesc.AddColorAttachment(attachmentDesc);
+			//rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
 			rtDesc.ResourceName.Fmt("Swapchaing_%d_RT", i);
 			m_presentRenderTargets[i].Create(context, rtDesc);
 		}

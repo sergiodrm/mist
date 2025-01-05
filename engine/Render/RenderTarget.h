@@ -19,47 +19,53 @@ namespace Mist
 		ESampleCount MultisampledBit = SAMPLE_COUNT_1_BIT;
 		EFormat Format = FORMAT_UNDEFINED;
 		EImageLayout Layout = IMAGE_LAYOUT_UNDEFINED;
-		tClearValue ClearValue;
+		tClearValue ClearValue = { 0.f, 0.f, 0.f, 1.f };
 
+		// Use for external attachments
+		VkImageView Attachment = VK_NULL_HANDLE;
+		
 		inline bool IsValidAttachment() const { return Format != FORMAT_UNDEFINED && Layout != IMAGE_LAYOUT_UNDEFINED; }
 
 		inline bool operator==(const RenderTargetAttachmentDescription& other) const
 		{
-			return Format == other.Format && Layout == other.Layout && MultisampledBit == other.MultisampledBit;
+			return Format == other.Format && Layout == other.Layout && MultisampledBit == other.MultisampledBit && Attachment == other.Attachment;
 		}
 		inline bool operator!=(const RenderTargetAttachmentDescription& other) const { return !(*this).operator ==(other); }
-	};
-
-	struct RenderTargetExternalAttachmentDescription : public RenderTargetAttachmentDescription
-	{
-		VkImageView View = VK_NULL_HANDLE;
 	};
 
 	struct RenderTargetDescription
 	{
 		bool ClearOnLoad = true;
 		tRect2D RenderArea{ .offset = {.x=0, .y=0} };
-		tArray<RenderTargetAttachmentDescription, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> ColorAttachmentDescriptions;
-		uint32_t ColorAttachmentCount = 0;
+		tStaticArray<RenderTargetAttachmentDescription, MAX_RENDER_TARGET_COLOR_ATTACHMENTS> ColorAttachmentDescriptions;
 		RenderTargetAttachmentDescription DepthAttachmentDescription;
-		tArray<RenderTargetExternalAttachmentDescription, MAX_RENDER_TARGET_ATTACHMENTS> ExternalAttachments;
-		uint32_t ExternalAttachmentCount = 0;
 		tRenderResourceName ResourceName;
 
 		RenderTargetDescription()
-		{
-			memset(ExternalAttachments.data(), 0, sizeof(VkImageView) * ExternalAttachments.size());
-		}
+		{ }
 
 		inline void AddColorAttachment(const RenderTargetAttachmentDescription& desc)
 		{
-			check(ColorAttachmentCount < MAX_RENDER_TARGET_COLOR_ATTACHMENTS);
-			ColorAttachmentDescriptions[ColorAttachmentCount++] = desc;
+			ColorAttachmentDescriptions.Push(desc);
 		}
 
 		inline void AddColorAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
 		{
 			AddColorAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
+		}
+
+		inline void AddColorAttachment(const cTexture* texture, uint32_t viewIndex = 0)
+		{
+			check(texture && viewIndex < texture->GetViewCount());
+			const tImageDescription& imageDesc = texture->GetDescription();
+			RenderTargetAttachmentDescription desc
+			{
+				.MultisampledBit = imageDesc.SampleCount,
+				.Format = imageDesc.Format,
+				.Layout = IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.Attachment = texture->GetView(viewIndex)
+			};
+			AddColorAttachment(desc);
 		}
 
 		inline void SetDepthAttachment(const RenderTargetAttachmentDescription& desc)
@@ -72,15 +78,20 @@ namespace Mist
 			SetDepthAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
 		}
 
-		inline void AddExternalAttachment(VkImageView view, EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
+		inline void SetDepthAttachment(const cTexture* texture, uint32_t viewIndex = 0)
 		{
-			check(ExternalAttachmentCount < MAX_RENDER_TARGET_ATTACHMENTS);
-			ExternalAttachments[ExternalAttachmentCount].Format = format;
-			ExternalAttachments[ExternalAttachmentCount].Layout = layout;
-			ExternalAttachments[ExternalAttachmentCount].MultisampledBit = sampleCount;
-			ExternalAttachments[ExternalAttachmentCount].ClearValue = clearValue;
-			ExternalAttachments[ExternalAttachmentCount].View = view;
-			ExternalAttachmentCount++;
+			check(texture && viewIndex < texture->GetViewCount());
+			const tImageDescription& imageDesc = texture->GetDescription();
+			check(IsDepthFormat(imageDesc.Format));
+			EImageLayout depthLayout = IsStencilFormat(imageDesc.Format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+			RenderTargetAttachmentDescription desc
+			{
+				.MultisampledBit = imageDesc.SampleCount,
+				.Format = imageDesc.Format,
+				.Layout = depthLayout,
+				.Attachment = texture->GetView(viewIndex)
+			};
+			AddColorAttachment(desc);
 		}
 
 		inline bool operator==(const RenderTargetDescription& desc) const
@@ -89,19 +100,12 @@ namespace Mist
 				|| RenderArea.offset.y != desc.RenderArea.offset.y
 				|| RenderArea.extent.width != desc.RenderArea.extent.width
 				|| RenderArea.extent.height != desc.RenderArea.extent.height
-				|| ColorAttachmentCount != desc.ColorAttachmentCount
-				|| ExternalAttachmentCount != desc.ExternalAttachmentCount
 				|| DepthAttachmentDescription.Format != desc.DepthAttachmentDescription.Format
 				|| DepthAttachmentDescription.MultisampledBit != desc.DepthAttachmentDescription.MultisampledBit)
 				return false;
-			for (uint32_t i = 0; i < ColorAttachmentCount; ++i)
+			for (uint32_t i = 0; i < ColorAttachmentDescriptions.GetSize(); ++i)
 			{
 				if (ColorAttachmentDescriptions[i] != desc.ColorAttachmentDescriptions[i])
-					return false;
-			}
-			for (uint32_t i = 0; i < ExternalAttachmentCount; ++i)
-			{
-				if (ExternalAttachments[i] != desc.ExternalAttachments[i])
 					return false;
 			}
 			return true;
@@ -150,7 +154,7 @@ namespace Mist
 
 		uint32_t GetAttachmentCount() const;
 		const RenderTargetAttachment& GetAttachment(uint32_t index) const;
-		inline const RenderTargetAttachment& GetDepthAttachment() const { check(HasDepthBufferAttachment()); return GetAttachment(m_description.ColorAttachmentCount); }
+		inline const RenderTargetAttachment& GetDepthAttachment() const { check(HasDepthBufferAttachment()); return GetAttachment(m_description.ColorAttachmentDescriptions.GetSize()); }
 		const RenderTargetDescription& GetDescription() const;
 		inline bool HasDepthBufferAttachment() const { return m_description.DepthAttachmentDescription.IsValidAttachment(); }
 		static bool ExecuteFormatValidation(const RenderContext& renderContext, const RenderTargetDescription& description);
@@ -160,7 +164,7 @@ namespace Mist
 		void CreateResources(const RenderContext& renderContext);
 		void CreateRenderPass(const RenderContext& renderContext);
 		void CreateFramebuffer(const RenderContext& renderContext);
-		void CreateFramebuffer(const RenderContext& renderContext, const RenderTargetExternalAttachmentDescription* externalAttachments, uint32_t externalAttachmentCount);
+		//void CreateFramebuffer(const RenderContext& renderContext, const RenderTargetExternalAttachmentDescription* externalAttachments, uint32_t externalAttachmentCount);
 		void CreateAttachment(RenderTargetAttachment& attachment, const RenderContext& renderContext, const RenderTargetAttachmentDescription& description, EImageAspect aspect, EImageUsage imageUsage) const;
 	private:
 #ifdef MIST_VULKAN
@@ -181,10 +185,8 @@ struct std::hash<Mist::RenderTargetDescription>
 		std::size_t hash = 0;
 		Mist::HashCombine(hash, desc.RenderArea.extent.width);
 		Mist::HashCombine(hash, desc.RenderArea.extent.height);
-		for (uint32_t i = 0; i < desc.ColorAttachmentCount; ++i)
+		for (uint32_t i = 0; i < desc.ColorAttachmentDescriptions.GetSize(); ++i)
 			Mist::HashCombine(hash, desc.ColorAttachmentDescriptions[i].Format);
-		for (uint32_t i = 0; i < desc.ExternalAttachmentCount; ++i)
-			Mist::HashCombine(hash, desc.ExternalAttachments[i].Format);
 		Mist::HashCombine(hash, desc.DepthAttachmentDescription.Format);
 		return hash;
 	}

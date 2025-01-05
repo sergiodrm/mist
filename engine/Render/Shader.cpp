@@ -1282,7 +1282,7 @@ namespace Mist
 		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
 
 		// Blending info for color attachments
-		uint32_t colorAttachmentCount = m_description.RenderTarget->GetDescription().ColorAttachmentCount;
+		uint32_t colorAttachmentCount = m_description.RenderTarget->GetDescription().ColorAttachmentDescriptions.GetSize();
 		check((uint32_t)m_description.ColorAttachmentBlendingArray.size() <= colorAttachmentCount);
 		builder.ColorBlendAttachment.resize(colorAttachmentCount);
 		for (uint32_t i = 0; i < colorAttachmentCount; ++i)
