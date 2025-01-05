@@ -6,7 +6,11 @@
 
 namespace Mist
 {
+	class CVar;
 	class CBoolVar;
+	class CIntVar;
+	class CFloatVar;
+	class CStrVar;
 
 	// Math
 	namespace math
@@ -32,5 +36,9 @@ namespace Mist
 		bool CheckboxBitField(const char* id, int32_t* bitfield, int32_t bitflag);
 		bool EditAngles(const char* id, const char* label, tAngles& a, float speed = 0.5f, float min=0.f, float max= 0.f, const char* fmt = "%5.3f");
 		bool CheckboxCBoolVar(CBoolVar& var);
+		bool EditCIntVar(CIntVar& var);
+		bool EditCFloatVar(CFloatVar& var);
+		bool EditCStrVar(CStrVar& var);
+		bool EditCVar(CVar& cvar);
 	}
 }

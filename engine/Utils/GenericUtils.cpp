@@ -120,10 +120,58 @@ bool Mist::ImGuiUtils::EditAngles(const char* id, const char* label, tAngles& a,
 bool Mist::ImGuiUtils::CheckboxCBoolVar(CBoolVar& var)
 {
 	bool b = var.Get();
-	if (ImGui::Checkbox(var.GetName(), &b))
+	if (ImGui::Checkbox(var.GetName(), &b) && !(var.GetFlags() & (CVarFlag_Const | CVarFlag_SetOnlyByCmd)))
 	{
 		var.Set(b);
 		return true;
+	}
+	return false;
+}
+
+bool Mist::ImGuiUtils::EditCIntVar(CIntVar& var)
+{
+	int v = var.Get();
+	if (ImGui::InputInt(var.GetName(), &v) && !(var.GetFlags() & (CVarFlag_Const | CVarFlag_SetOnlyByCmd)))
+	{
+		var.Set(v);
+		return true;
+	}
+	return false;
+}
+
+bool Mist::ImGuiUtils::EditCFloatVar(CFloatVar& var)
+{
+	float v = var.Get();
+	if (ImGui::InputFloat(var.GetName(), &v) && !(var.GetFlags() & (CVarFlag_Const | CVarFlag_SetOnlyByCmd)))
+	{
+		var.Set(v);
+		return true;
+	}
+	return false;
+}
+
+bool Mist::ImGuiUtils::EditCStrVar(CStrVar& var)
+{
+	char buff[64];
+	strcpy_s(buff, var.Get());
+	if (ImGui::InputText(var.GetName(), buff, 64, ImGuiInputTextFlags_EnterReturnsTrue) && !(var.GetFlags() & (CVarFlag_Const | CVarFlag_SetOnlyByCmd)))
+	{
+		var.Set(buff);
+		return true;
+	}
+	return false;
+}
+
+bool Mist::ImGuiUtils::EditCVar(CVar& cvar)
+{
+	switch (cvar.GetType())
+	{
+	case CVar::CVarType::Int: return EditCIntVar(*(CIntVar*)(&cvar));
+	case CVar::CVarType::Float: return EditCFloatVar(*(CFloatVar*)(&cvar));
+	case CVar::CVarType::Bool: return CheckboxCBoolVar(*(CBoolVar*)(&cvar));
+	case CVar::CVarType::String: return EditCStrVar(*(CStrVar*)(&cvar));
+	default:
+		check(false && "Unreachable");
 	}
 	return false;
 }
