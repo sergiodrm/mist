@@ -49,12 +49,17 @@ Here are some features that I will develop from now on:
 * Forward lighting+
 * Material system
 * IBL
+* Render API to abstract engine from graphics API
+* DX12 backend
 * Improve compute shaders pipeline to use them in rendering pipeline
 * SSR
 * Skinning animation
+* Capsule shadows
 * Mesh LODs
 * Job system
 * Instance meshes
+* Tesselation
+* Terrains
 * ...
 
 ## Dependencies
