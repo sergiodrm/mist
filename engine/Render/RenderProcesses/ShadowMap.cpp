@@ -32,7 +32,7 @@ namespace Mist
 		SetProjection(glm::radians(45.f), 16.f / 9.f);
 		SetProjection(-160.f, 160.f, -120.f, 120.f);
 		SetPerspectiveClip(1.f, 1000.f);
-		SetOrthographicClip(-400.f, 150.f);
+		SetOrthographicClip(-500.f, 150.f);
 
 		memset(m_depthMVPCache, 0, sizeof(m_depthMVPCache));
 	}
