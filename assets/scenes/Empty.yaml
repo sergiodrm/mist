@@ -1,0 +1,11 @@
+Environment:
+  Ambient: [0.0235294122, 0.0235294122, 0.0235294122]
+  Skybox:
+    Front: textures/yokohama/posz.jpg
+    Back: textures/yokohama/negz.jpg
+    Top: textures/yokohama/posy.jpg
+    Bottom: textures/yokohama/negy.jpg
+    Left: textures/yokohama/posx.jpg
+    Right: textures/yokohama/negx.jpg
+RenderObjects:
+  

@@ -49,12 +49,12 @@ RenderObjects:
     Name: Light_3
     Parent: 0
     TransformComponent:
-      Position: [31.5, 9.5, 0]
-      Rotation: [0, 217, 0]
+      Position: [-19.5, 3.5, 0]
+      Rotation: [0, -26.5, 0]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [1, 1, 1]
+      Color: [1, 0, 0]
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
@@ -69,21 +69,3 @@ RenderObjects:
       Scale: [10, 10, 10]
     MeshComponent:
       MeshAssetPath: models/sponza/sponza.gltf
-  - RenderObject: 5
-    Name: EmissiveTest
-    Parent: 0
-    TransformComponent:
-      Position: [52, 8.5, 9]
-      Rotation: [0, -180, 0]
-      Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/emissive/emissivestrengthtest.gltf
-  - RenderObject: 6
-    Name: MetalRoughSpheres
-    Parent: 0
-    TransformComponent:
-      Position: [27, 15.5, 0]
-      Rotation: [0, -90, 0]
-      Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/metalrough/metalroughspheres.gltf
