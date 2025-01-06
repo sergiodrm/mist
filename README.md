@@ -60,6 +60,7 @@ Here are some features that I will develop from now on:
 * Instance meshes
 * Tesselation
 * Terrains
+* Lib project for custom data containers (wip)
 * ...
 
 ## Dependencies
