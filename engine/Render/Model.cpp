@@ -31,7 +31,7 @@
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
 
-//#define MESH_DUMP_LOAD_INFO
+#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
 #define loadmeshlabel "[loadmesh] "
 #define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
@@ -498,13 +498,13 @@ namespace Mist
 					gltf_api::LoadIndices(cgltfprimitive, tempIndices.data() + indexOffset, vertexOffset);
 					gltf_api::LoadVertices(cgltfprimitive, tempVertices.data() + vertexOffset, vertexCount);
 
+					primitive.RenderFlags = RenderFlags_Fixed;
 					if (cgltfprimitive.material)
 					{
 						index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
 						check(materialIndex < m_materials.GetSize());
 						cMaterial* material = &m_materials[materialIndex];
 						primitive.Material = material;
-						primitive.RenderFlags = RenderFlags_Fixed;
 						if (!(material->m_flags & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
 							primitive.RenderFlags |= RenderFlags_ShadowMap;
 						if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
@@ -571,7 +571,7 @@ namespace Mist
 							cMesh& mesh = m_meshes[node.MeshId];
 							ImGui::Text("Primitives: %5d", mesh.PrimitiveArray.GetSize());
 							ImGui::Text("Triangles:  %5d", mesh.IndexCount / 3);
-							ImGui::Text("Gpu memory: %5.2f MB", (float)mesh.IndexCount / 3.f * sizeof(Vertex) / 1024.f / 1024.f);
+							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.IndexCount / 3.f * sizeof(Vertex) / 1024.f);
 							sprintf_s(buff, "##prim%d", i);
 							if (ImGui::TreeNode(buff, "Primitives"))
 							{
@@ -609,12 +609,12 @@ namespace Mist
 						ImGui::Text("%s: %s", 
 							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ?material.m_textures[j]->GetName() : "none");
 					ImGui::ColorEdit3("Albedo", &material.m_albedo[0]);
-					ImGui::DragFloat("Metallic", &material.m_metallicFactor);
-					ImGui::DragFloat("Roughness", &material.m_roughnessFactor);
+					ImGui::DragFloat("Metallic", &material.m_metallicFactor, 0.05f, 0.f, 1.f);
+					ImGui::DragFloat("Roughness", &material.m_roughnessFactor, 0.05f, 0.f, 1.f);
 					ImGui::ColorEdit3("Emissive", &material.m_emissiveFactor[0]);
 					ImGui::DragFloat("Emissive strength", &material.m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
 					
-					ImGui::Button("Reload");
+					//ImGui::Button("Reload");
 					ImGui::TreePop();
 				}
 			}
