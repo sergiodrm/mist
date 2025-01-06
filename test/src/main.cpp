@@ -201,6 +201,8 @@ int main(int32_t argc, char** argv)
 
 #include "Application/Application.h"
 
+Mist::CStrVar CVar_LoadScene("g_LoadScene", "../assets/scenes/empty.yaml");
+
 class tGameApplication : public Mist::tApplication
 {
 public:
@@ -212,7 +214,7 @@ public:
 		Mist::VulkanRenderEngine* engine = (Mist::VulkanRenderEngine*)GetEngineInstance();
 		Mist::Scene* scene = new Mist::Scene(engine);
 		engine->SetScene(scene);
-		scene->LoadScene(engine->GetContext(), "../assets/scenes/scene.yaml");
+		scene->LoadScene(engine->GetContext(), CVar_LoadScene.Get());
 	}
 
 	virtual void LogicProcess(float deltaTime) override 
