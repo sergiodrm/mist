@@ -76,9 +76,11 @@ namespace Mist
 		if (CVar_ShowConsole.Get() == 1)
 		{
 			ImGuiViewport* viewport = ImGui::GetMainViewport();
+			float x = viewport->Pos.x;
+			float y = viewport->Pos.y;
 			const float width = viewport->Size.x;
 			const float height = viewport->Size.y;
-			ImGui::SetNextWindowPos({ 0.f, 0.5f * height });
+			ImGui::SetNextWindowPos({ x + 0.f, y + 0.5f * height });
 			ImGui::SetNextWindowSize({ width, 0.5f * height });
 			flags = ImGuiWindowFlags_NoMove 
 				| ImGuiWindowFlags_NoResize 

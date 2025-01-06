@@ -363,7 +363,7 @@ namespace Mist
 
 				ImVec2 winpos = ImVec2(0.f, 100.f);
 				//ImGui::SetNextWindowPos(winpos);
-				ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
+				ImGui::SetNextWindowSize(ImVec2(500.f, (float)size * heightPerLine));
 				ImGui::SetNextWindowBgAlpha(0.f);
 				ImGui::Begin("Cpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
 					| ImGuiWindowFlags_NoBackground
