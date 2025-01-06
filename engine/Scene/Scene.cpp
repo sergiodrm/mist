@@ -301,6 +301,7 @@ namespace Mist
 		cFile file;
 		check(file.OpenText(filepath, cFile::FileMode_Read) == cFile::Result_Ok);
 		uint32_t size = file.GetContentSize();
+		check(size);
 		char* content = _new char[size];
 		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
 		file.Close();
@@ -438,7 +439,7 @@ namespace Mist
 		uint32_t size = (uint32_t)emitter.size();
 		//logfinfo("YAML %u b\n%s\n", size, out);
 		cFile file;
-		check(file.OpenText(filepath, cFile::FileMode_Write));
+		check(file.OpenText(filepath, cFile::FileMode_Write) == cFile::Result_Ok);
 		file.Write(out, size);
 		file.Close();
 
