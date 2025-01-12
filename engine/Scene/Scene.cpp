@@ -185,8 +185,8 @@ namespace Mist
 			SpotLights[i].Direction = { 1.f, 0.f, 0.f };
 			SpotLights[i].Position = { 0.f, 0.f, 0.f };
 			SpotLights[i].Color = { 1.f, 1.f, 1.f };
-			SpotLights[i].CosOuterCutoff = 1.f;
-			SpotLights[i].CosCutoff = 1.f;
+			SpotLights[i].CosCutoff.x = 1.f;
+			SpotLights[i].CosCutoff.y = 1.f;
 			SpotLights[i].ShadowMapIndex = -1.f;
 		}
 		ZeroMem(this, sizeof(*this));
@@ -1193,10 +1193,9 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(ProcessEnvData);
 		environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
-#if 1
 		environmentData.AmbientColor = m_ambientColor;
-		environmentData.ActiveLightsCount = 0.f;
-		environmentData.ActiveSpotLightsCount = 0.f;
+		environmentData.ActiveLightsCount = 0;
+		environmentData.ActiveSpotLightsCount = 0;
 		uint32_t shadowMapIndex = 0;
 		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
@@ -1210,37 +1209,45 @@ namespace Mist
 				{
 				case ELightType::Point:
 				{
-					LightData& data = environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount++];
-					data.Color = light.Color;
-					data.Compression = light.Compression;
-					data.Position = pos;
-					data.Radius = light.Radius;
+					if (environmentData.ActiveLightsCount < EnvironmentData::MaxLights)
+					{
+						LightData& data = environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount++];
+						data.Color = light.Color;
+						data.Compression = light.Compression;
+						data.Position = pos;
+						data.Radius = light.Radius;
+					}
+					else
+						logferror("Too many point lights in scene. Current MaxLights is %d.\n", EnvironmentData::MaxLights);
 				}
 					break;
 				case ELightType::Directional:
 					environmentData.DirectionalLight.Color = light.Color;
-					environmentData.DirectionalLight.ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
+					environmentData.DirectionalLight.ShadowMapIndex = light.ProjectShadows ? shadowMapIndex++ : -1;
 					environmentData.DirectionalLight.Direction = dir;
 					break;
 				case ELightType::Spot:
 				{
-					SpotLightData& data = environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount++];
-					data.Color = light.Color;
-					data.ShadowMapIndex = light.ProjectShadows ? (float)shadowMapIndex++ : -1.f;
-					data.Position = pos;
-					data.Direction = dir;
-					data.CosOuterCutoff = cosf(glm::radians(light.OuterCutoff));
-					data.CosCutoff = cosf(glm::radians(light.Cutoff));
-					data.Radius = light.Radius;
-					data.Compression = light.Compression;
+					if (environmentData.ActiveSpotLightsCount < EnvironmentData::MaxLights)
+					{
+						LightData& data = environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount++];
+						data.Color = light.Color;
+						data.ShadowMapIndex = light.ProjectShadows ? shadowMapIndex++ : -1;
+						data.Position = pos;
+						data.Direction = dir;
+						data.CosCutoff.y = cosf(glm::radians(light.OuterCutoff));
+						data.CosCutoff.x = cosf(glm::radians(light.Cutoff));
+						data.Radius = light.Radius;
+						data.Compression = light.Compression;
+					}
+					else
+                        logferror("Too many spot lights in scene. Current MaxLights is %d.\n", EnvironmentData::MaxLights);
 				}
 					break;
 				}
 			}
 		}
 		check(shadowMapIndex <= globals::MaxShadowMapAttachments);
-#endif // 0
-
 	}
 }
 

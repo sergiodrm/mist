@@ -149,7 +149,7 @@ namespace Mist
 
 			EnvironmentData env = frameContext.Scene->GetEnvironmentData();
 			env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
-			shader->SetBufferData(renderContext, "u_Env", &env, sizeof(env));
+			shader->SetBufferData(renderContext, "u_env", &env, sizeof(env));
 
 			shader->FlushDescriptors(renderContext);
 

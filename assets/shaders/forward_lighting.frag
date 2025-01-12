@@ -70,18 +70,17 @@ vec4 DoLighting(vec3 fragPos, vec3 normal, vec4 albedo, float metallic, float ro
     shadowInfo.ShadowCoordArray[1] = inLightSpaceFragPos_1;
     shadowInfo.ShadowCoordArray[2] = inLightSpaceFragPos_2;
     
+#if 0
     // Point lights
-    int numPointLights = int(u_env.data.ViewPos.w);
     vec3 pointLightsColor = vec3(0.f);
-    for (int i = 0; i < numPointLights; ++i)
+    for (int i = 0; i < u_env.data.NumOfPointLights; ++i)
     {
         pointLightsColor += ProcessPointLight(fragPos, normal, u_env.data.Lights[i], albedo.rgb, metallic, roughness);
     }
 
     // Spot lights
-    int numSpotLights = int(u_env.data.AmbientColor.w);
     vec3 spotLightsColor = vec3(0.f);
-    for (int i = 0; i < numSpotLights; ++i)
+    for (int i = 0; i < u_env.data.NumOfSpotLights; ++i)
     {
         spotLightsColor += ProcessSpotLight(fragPos, normal, u_env.data.SpotLights[i], albedo.rgb, metallic, roughness, shadowInfo);
     }
@@ -100,9 +99,13 @@ vec4 DoLighting(vec3 fragPos, vec3 normal, vec4 albedo, float metallic, float ro
     vec3 ambientColor = vec3(u_env.data.AmbientColor);
 #endif
 
-
     // Mix
     vec4 color = vec4(lightColor, 1.f) + albedo*vec4(ambientColor, 1.f);
+#else
+    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, u_env.data, albedo.rgb, metallic, roughness, shadowInfo);
+    vec4 color = vec4(lightColor, 1.f);
+#endif
+
 #ifdef CUBEMAP_REFLECTION
     // Cubemap reflection
     vec3 reflection = ComputeCubemapReflection(fragPos, normal, vec3(0.f));

@@ -7,19 +7,22 @@
 
 struct LightData
 {
-    // Point light -> Pos: position
-    // Directional light -> Pos : direction
-    vec4 Pos; // w: pointlight-radius; directional-project shadows (-1.f not project. >=0.f shadow map index)
-    vec4 Color; // w: compression
-};
+    vec3 Color;
+    float Compression;
+    // 16 bytes
 
-struct SpotLightData
-{
-    vec4 Color; // w: project shadows (-1.f not project. >=0.f shadow map index)
-    vec4 Dir; // w: inner cutoff
-    vec4 Pos; // w: outer cutoff
-    // x: radius, y: compression, zw: unused (padding)
-    vec4 Params;
+    vec3 Pos; // w: pointlight-radius; directional-project shadows (-1.f not project. >=0.f shadow map index)
+    float Radius;
+    //16 bytes
+
+    vec3 Dir;
+    int Type;
+    //16 bytes
+
+    vec2 CosCutoff; // x: inner, y: outer
+    int ShadowMapIndex;
+    float _padding;
+    //16 bytes
 };
 
 /*
@@ -190,19 +193,9 @@ float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
 float ComputeLightShadow(ShadowInfo info, vec3 fragPos, LightData light)
 {
     float shadow = 0.f;
-    if (light.Pos.w >= 0.f)
+    if (light.ShadowMapIndex >= 0)
     {
-        shadow = ComputeShadow(info, fragPos, int(light.Pos.w));
-    }
-    return shadow;
-}
-
-float ComputeSpotLightShadow(ShadowInfo info, vec3 fragPos, SpotLightData light)
-{
-    float shadow = 0.f;
-    if (light.Color.w >= 0.f)
-    {
-        shadow = ComputeShadow(info, fragPos, int(light.Color.w));
+        shadow = ComputeShadow(info, fragPos, light.ShadowMapIndex);
     }
     return shadow;
 }
@@ -239,12 +232,12 @@ vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDi
  * Light types calculations
 */
 
-float ComputeSpotLightIntensity(SpotLightData light, vec3 fragPos)
+float ComputeSpotLightIntensity(LightData light, vec3 fragPos)
 {
     vec3 lightDir = normalize(vec3(light.Pos) - fragPos);
     float theta = dot(lightDir, -vec3(light.Dir));
-    float cosCutoff = light.Dir.a;
-    float cosOuterCutoff = light.Pos.a;
+    float cosCutoff = light.CosCutoff.x;
+    float cosOuterCutoff = light.CosCutoff.y;
     float epsilon = max(cosCutoff - cosOuterCutoff, 0.f);
     float intensity = clamp((theta - cosOuterCutoff) / epsilon, 0.0, 1.0);
     return intensity;
@@ -259,8 +252,8 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albe
     vec3 L = normalize(lightDir);
     vec3 H = normalize(V + L);
     float distance = length(lightDir);
-    float radius = LightRadius(light);
-    float compression = LightCompression(light);
+    float radius = light.Radius;
+    float compression = light.Compression;
     float attenuation = CalculateAttenuation(distance, radius, compression);
     vec3 radiance = light.Color.rgb * attenuation;
 
@@ -270,7 +263,7 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albe
 vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
 {
     vec3 V = normalize(-fragPos);
-    vec3 lightDir = normalize(vec3(-light.Pos));
+    vec3 lightDir = normalize(vec3(-light.Dir));
     vec3 H = normalize(V + lightDir);
     vec3 radiance = light.Color.rgb;
     // Calculate pbr contribution
@@ -283,14 +276,14 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     return lighting;
 }
 
-vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
+vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
 {
     vec3 lighting = vec3(0.f);
     float intensity = ComputeSpotLightIntensity(light, fragPos);
     if (intensity > 0.f)
     {
-        float radius = light.Params.x;
-        float compression = light.Params.y;
+        float radius = light.Radius;
+        float compression = light.Compression;
         float distance = length(light.Pos.xyz - fragPos);
         float attenuation = CalculateAttenuation(distance, radius, compression);
         vec3 radiance = light.Color.rgb * attenuation;
@@ -300,7 +293,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, SpotLightData light, vec3 a
         lighting = CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
 #ifndef LIGHTING_NO_SHADOWS
         // Calculate shadow inside lighting cone
-        float shadow = ComputeSpotLightShadow(shadowInfo, fragPos, light);
+        float shadow = ComputeLightShadow(shadowInfo, fragPos, light);
         lighting *= (1.f-shadow);
 #endif // !LIGHTING_NO_SHADOWS
     }

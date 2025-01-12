@@ -23,30 +23,21 @@ layout(set = 6, binding = 0) uniform sampler2D u_GBufferDepth;
 
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
-#include "shaders/includes/lighting.glsl"
+#include "shaders/includes/environment.glsl"
 
-
-// Per frame data
-layout (std140, set = 0, binding = 0) uniform Environment
+layout (std140, set = 0, binding = 0) uniform EnvBlock
 {
-    vec4 AmbientColor; // w: num of spot lights to process
-    vec4 ViewPos; // w: num of lights to process
-    LightData Lights[8];
-    LightData DirectionalLight;
-    SpotLightData SpotLights[8];
-} u_Env;
+    Environment data;
+} u_env;
 
 vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float Roughness, float AO)
 {
-    vec3 N = normalize(Normal);
-    vec3 V = normalize(-FragViewPos);
-    vec3 Lo = vec3(0.f);
-
     ShadowInfo shadowInfo;
     shadowInfo.LightViewMatrices[0] = u_ShadowMapInfo.LightViewMat[0];
     shadowInfo.LightViewMatrices[1] = u_ShadowMapInfo.LightViewMat[1];
     shadowInfo.LightViewMatrices[2] = u_ShadowMapInfo.LightViewMat[2];
     
+#if 0
     // Point lights
     int numPointLights = int(u_Env.ViewPos.w);
     for (int i = 0; i < numPointLights; ++i)
@@ -73,8 +64,12 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     vec3 Color = Ambient + Lo;
     //Color = Color / (Color + vec3(1.f));
     //Color = pow(Color, vec3(1.f/2.2f));
-
     return vec4(Color, 1.f);
+#else
+    vec3 color = DoEnvironmentLighting(FragViewPos, Normal, u_env.data, Albedo, Metallic, Roughness, shadowInfo);
+
+    return vec4(color, 1.f);
+#endif
 }
 
 #if defined(DEFERRED_APPLY_FOG)

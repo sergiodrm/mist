@@ -84,36 +84,18 @@ namespace Mist
 
 	struct LightData
 	{
-		union
-		{
-			glm::vec3 Position;
-			glm::vec3 Direction;
-		};
-		union
-		{
-			float Radius;
-			float ShadowMapIndex;
-		};
 		glm::vec3 Color;
 		float Compression;
-	};
 
-	// Shader data, be careful with memory layout
-	struct SpotLightData
-	{
-		// vec4. w: shadow map texture index.
-		glm::vec3 Color;
-		float ShadowMapIndex;
-		// vec4. w: cos cutoff angle
-		glm::vec3 Direction;
-		float CosCutoff;
-		// vec4. w: cos outer cutoff angle
 		glm::vec3 Position;
-		float CosOuterCutoff;
-		// vec4. x: radius, y: compression, zw: unused (padding)
 		float Radius;
-		float Compression;
-		float _padding[2];
+
+		glm::vec3 Direction;
+		int Type;
+
+		glm::vec2 CosCutoff;
+		int ShadowMapIndex;
+		float _padding;
 	};
 
 	struct tShadowMapData
@@ -124,13 +106,13 @@ namespace Mist
 	struct EnvironmentData
 	{
 		glm::vec3 AmbientColor;
-		float ActiveSpotLightsCount;
+		int ActiveSpotLightsCount;
 		glm::vec3 ViewPosition;
-		float ActiveLightsCount;
+		int ActiveLightsCount;
 		static constexpr uint32_t MaxLights = 8;
 		LightData Lights[MaxLights];
 		LightData DirectionalLight;
-		SpotLightData SpotLights[MaxLights];
+		LightData SpotLights[MaxLights];
 
 		EnvironmentData();
 	};
