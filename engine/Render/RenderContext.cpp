@@ -176,20 +176,26 @@ namespace Mist
         ++context.FrameIndex;
         RenderFrameContext& frameContext = context.GetFrameContext();
 
-        // wait for current frame to end gpu work
-//#define MIST_FORCE_SYNC
-#ifndef MIST_FORCE_SYNC
-		ProcessAndWaitFrameCommandContextFences(context.Device, &frameContext, 1);
-#else
-		RenderContext_ForceFrameSync(context);
-#endif // !MIST_FORCE_SYNC
-
-        // Clear volatile descriptor sets on new frame
-        tDescriptorSetCache& descriptorCache = frameContext.DescriptorSetCache;
-        if (!descriptorCache.m_volatileDescriptors.empty())
         {
-			frameContext.DescriptorAllocator->FreeDescriptors(descriptorCache.m_volatileDescriptors.data(), (uint32_t)descriptorCache.m_volatileDescriptors.size());
-            descriptorCache.m_volatileDescriptors.clear();
+			CPU_PROFILE_SCOPE(SyncFrame);
+            // wait for current frame to end gpu work
+            //#define MIST_FORCE_SYNC
+#ifndef MIST_FORCE_SYNC
+            ProcessAndWaitFrameCommandContextFences(context.Device, &frameContext, 1);
+#else
+            RenderContext_ForceFrameSync(context);
+#endif // !MIST_FORCE_SYNC
+        }
+
+        {
+			CPU_PROFILE_SCOPE(FreeVolatileDescriptors);
+            // Clear volatile descriptor sets on new frame
+            tDescriptorSetCache& descriptorCache = frameContext.DescriptorSetCache;
+            if (!descriptorCache.m_volatileDescriptors.empty())
+            {
+                frameContext.DescriptorAllocator->FreeDescriptors(descriptorCache.m_volatileDescriptors.data(), (uint32_t)descriptorCache.m_volatileDescriptors.size());
+                descriptorCache.m_volatileDescriptors.clear();
+            }
         }
 
 		frameContext.TempStageBuffer.Reset();
