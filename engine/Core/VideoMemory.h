@@ -113,7 +113,11 @@ namespace Mist
 	};
 }
 
+// static AllocatedBuffer CreateBuffer(const char* file, uint16_t line, Allocator* allocator, VkDeviceSize bufferSize, VkBufferUsageFlags usageFlags, EMemUsage memUsage);
 #define MemNewBuffer(...) Mist::Memory::CreateBuffer(__FILE__, (uint16_t)__LINE__, __VA_ARGS__)
+// static AllocatedImage CreateImage(const char* file, uint16_t line, Allocator* allocator, VkImageCreateInfo imageInfo, EMemUsage memUsage);
 #define MemNewImage(...) Mist::Memory::CreateImage(__FILE__, (uint16_t)__LINE__, __VA_ARGS__)
+// static void DestroyBuffer(Allocator* allocator, AllocatedBuffer buffer);
 #define MemFreeBuffer(...) Mist::Memory::DestroyBuffer(__VA_ARGS__)
+// static void DestroyImage(Allocator* allocator, AllocatedImage image);
 #define MemFreeImage(...) Mist::Memory::DestroyImage(__VA_ARGS__)
