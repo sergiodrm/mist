@@ -63,6 +63,8 @@ float CalculateAttenuation(float distance, float radius, float compression)
 {
 #if 1
     return pow(smoothstep(radius, 0, distance), compression);
+#elif 1
+    return 1.f - smoothstep(radius * 0.75f, radius, distance);
 #else
     return 1.f / (distance * distance);
 #endif

@@ -23,12 +23,14 @@ layout(set = 6, binding = 0) uniform sampler2D u_GBufferDepth;
 
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
-#include "shaders/includes/environment.glsl"
+#define ENVIRONMENT_DATA u_env.data
+#include <shaders/includes/environment_data.glsl>
 
 layout (std140, set = 0, binding = 0) uniform EnvBlock
 {
     Environment data;
 } u_env;
+#include <shaders/includes/environment.glsl>
 
 vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float Roughness, float AO)
 {
@@ -66,7 +68,7 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     //Color = pow(Color, vec3(1.f/2.2f));
     return vec4(Color, 1.f);
 #else
-    vec3 color = DoEnvironmentLighting(FragViewPos, Normal, u_env.data, Albedo, Metallic, Roughness, shadowInfo);
+    vec3 color = DoEnvironmentLighting(FragViewPos, Normal, Albedo, Metallic, Roughness, shadowInfo);
 
     return vec4(color, 1.f);
 #endif

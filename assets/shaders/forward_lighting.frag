@@ -26,7 +26,8 @@ layout (set = 2, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
 layout(set = 3, binding = 0) uniform sampler2D u_Textures[6];
 
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
-#include <shaders/includes/environment.glsl>
+#define ENVIRONMENT_DATA u_env.data
+#include <shaders/includes/environment_data.glsl>
 #include <shaders/includes/material.glsl>
 
 // Per frame data
@@ -34,6 +35,7 @@ layout (std140, set = 4, binding = 0) uniform EnvBlock
 {
     Environment data;
 } u_env;
+#include <shaders/includes/environment.glsl>
 
 layout (set = 5, binding = 0) uniform MaterialBlock
 {
@@ -102,7 +104,7 @@ vec4 DoLighting(vec3 fragPos, vec3 normal, vec4 albedo, float metallic, float ro
     // Mix
     vec4 color = vec4(lightColor, 1.f) + albedo*vec4(ambientColor, 1.f);
 #else
-    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, u_env.data, albedo.rgb, metallic, roughness, shadowInfo);
+    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, albedo.rgb, metallic, roughness, shadowInfo);
     vec4 color = vec4(lightColor, 1.f);
 #endif
 
