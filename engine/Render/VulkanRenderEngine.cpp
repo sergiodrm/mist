@@ -238,18 +238,11 @@ namespace Mist
 		// Init sync vars
 		check(InitSync());
 
-		// Initialize render processes after instantiate render context
-		m_renderContext.Renderer = &m_renderer;
-		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
-		DebugRender::Init(m_renderContext);
-		ui::Init(m_renderContext, m_renderer.GetLDRTarget());
-#if defined(MIST_CUBEMAP)
-		m_cubemapPipeline.Init(m_renderContext, &m_renderer.GetLDRTarget());
-#endif // defined(MIST_CUBEMAP)
 
 
-		const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
-		const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
+
+		//const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
+		//const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			UniformBufferMemoryPool& buffer = m_renderContext.FrameContextArray[i].GlobalBuffer;
@@ -280,8 +273,19 @@ namespace Mist
 
 			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Init(m_renderContext.Device, 40);
 			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Init(m_renderContext.Device, 40);
+
+			// 3 stage buffer per frame with 20 MB each one.
+			m_renderContext.FrameContextArray[i].TempStageBuffer.Init(m_renderContext, 20 * 1024 * 1024, 3);
 		}
 
+		// Initialize render processes after instantiate render context
+		m_renderContext.Renderer = &m_renderer;
+		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
+		DebugRender::Init(m_renderContext);
+		ui::Init(m_renderContext, m_renderer.GetLDRTarget());
+#if defined(MIST_CUBEMAP)
+		m_cubemapPipeline.Init(m_renderContext, &m_renderer.GetLDRTarget());
+#endif // defined(MIST_CUBEMAP)
 		m_gpuParticleSystem.Init(m_renderContext);
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
 
@@ -356,6 +360,7 @@ namespace Mist
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
+			m_renderContext.FrameContextArray[i].TempStageBuffer.Destroy(m_renderContext);
 			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Destroy(m_renderContext.Device);
 			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Destroy(m_renderContext.Device);
 			m_renderContext.FrameContextArray[i].GlobalBuffer.Destroy(m_renderContext);

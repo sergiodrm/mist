@@ -148,20 +148,24 @@ namespace Mist
 
 	void GPUBuffer::SubmitBufferToGpu(GPUBuffer gpuBuffer, const void* cpuData, uint32_t size)
 	{
+		CPU_PROFILE_SCOPE(SubmitGpuBuffer);
 		check(gpuBuffer.m_size >= size);
 		check(gpuBuffer.m_usage != EBufferUsageBits::BUFFER_USAGE_INVALID);
 		check(gpuBuffer.m_buffer.Buffer != VK_NULL_HANDLE);
 		check(cpuData && size > 0);
 
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
-		const RenderContext& context = engine->GetContext();
-		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
-		Memory::MemCopy(context.Allocator, stageBuffer, cpuData, size);
-		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd) 
+		RenderContext& context = *const_cast<RenderContext*>(&engine->GetContext());
+		RenderFrameContext& frameContext = context.GetFrameContext();
+		TemporalStageBuffer::TemporalBuffer temporalBuffer = frameContext.TempStageBuffer.MemCopy(context, cpuData, size, 0);
+		check(temporalBuffer.Buffer.IsAllocated());
+		//AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
+		//Memory::MemCopy(context.Allocator, stageBuffer, cpuData, size);
+		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd)
 			{
-				gpuBuffer.UpdateData(cmd, stageBuffer.Buffer, size, 0);
+				gpuBuffer.UpdateData(cmd, temporalBuffer.Buffer.Buffer, size, 0, temporalBuffer.Offset);
 			});
-		MemFreeBuffer(context.Allocator, stageBuffer);
+		//MemFreeBuffer(context.Allocator, stageBuffer);
 	}
 
 	GPUBuffer::GPUBuffer()
@@ -195,13 +199,13 @@ namespace Mist
 		m_size = 0;
 	}
 
-	void GPUBuffer::UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t offset)
+	void GPUBuffer::UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t dstOffset, uint32_t srcOffset)
 	{
-		check(m_buffer.Buffer != VK_NULL_HANDLE);
-		check(size + offset <= m_size);
+		check(m_buffer.IsAllocated());
+		check(size + dstOffset <= m_size);
 		VkBufferCopy copyBuffer;
-		copyBuffer.dstOffset = offset;
-		copyBuffer.srcOffset = offset;
+		copyBuffer.dstOffset = dstOffset;
+		copyBuffer.srcOffset = srcOffset;
 		copyBuffer.size = size;
 		vkCmdCopyBuffer(cmd, buffer, m_buffer.Buffer, 1, &copyBuffer);
 	}

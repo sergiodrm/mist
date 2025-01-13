@@ -57,7 +57,7 @@ namespace Mist
 		if (m_layout == dstLayout)
 			return;
 
-		utils::CmdSubmitTransfer(context, 
+		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), 
 			[&](CommandBuffer cmd) 
 			{
 				VkImageAspectFlags flags = IsDepthFormat(m_description.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
@@ -437,7 +437,7 @@ namespace Mist
 		{
 			Memory::MemCopy(context.Allocator, stageBuffer, layerArray[i], size);
 
-			utils::CmdSubmitTransfer(context,
+			utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
 				[&](CommandBuffer cmd)
 				{
 					VkBufferImageCopy copyRegion
@@ -501,7 +501,7 @@ namespace Mist
 
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels)
 	{
-		utils::CmdSubmitTransfer(context,
+		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
 			[&](CommandBuffer cmd)
 			{
 				VkImageMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr };
@@ -550,7 +550,7 @@ namespace Mist
 		if (!(props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
 			check(false && "Unsupported format to generate mipmap levels.");
 
-		utils::CmdSubmitTransfer(context,
+		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
 			[&](CommandBuffer cmd)
 			{
 				VkImageMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr };

@@ -27,6 +27,96 @@ namespace Mist
 		Flags &= ~(CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE);
 	}
 
+	bool CommandBufferContext::NeedsToProcessFence()
+	{
+		return !(Flags & CMD_CONTEXT_FLAG_FENCE_READY);
+	}
+
+	void CommandBufferContext::MarkFenceReady()
+	{
+		check(!(Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE) && "Can't mark fence as ready meanwhile command buffer is still active.");
+		Flags |= CMD_CONTEXT_FLAG_FENCE_READY;
+	}
+
+	void CommandBufferContext::WaitFenceReady(VkDevice device)
+	{
+		if (NeedsToProcessFence())
+		{
+			RenderAPI::WaitAndResetFences(device, &Fence, 1);
+			MarkFenceReady();
+		}
+	}
+
+
+    TemporalStageBuffer::TemporalStageBuffer()
+		: m_size(0)
+    { }
+
+    TemporalStageBuffer::~TemporalStageBuffer()
+    {
+		for (uint32_t i = 0; i < m_buffers.GetSize(); ++i)
+			check(!m_buffers[i].Buffer.IsAllocated());
+		check(!m_size);
+    }
+
+    void TemporalStageBuffer::Init(const RenderContext& context, uint32_t bufferSize, uint32_t bufferCountLimit)
+    {
+        check(m_buffers.IsEmpty());
+        check(!m_size && bufferSize);
+
+		m_buffers.Allocate(bufferCountLimit);
+		m_buffers.Resize(bufferCountLimit);
+		for (uint32_t i = 0; i < bufferCountLimit; ++i)
+		{
+			m_buffers[i].Buffer = MemNewBuffer(context.Allocator, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
+			m_buffers[i].Offset = 0;
+		}
+		m_size = bufferSize;
+    }
+
+    void TemporalStageBuffer::Destroy(const RenderContext& context)
+    {
+		for (uint32_t i = 0; i < m_buffers.GetSize(); ++i)
+		{
+			check(m_buffers[i].Buffer.IsAllocated());
+			MemFreeBuffer(context.Allocator, m_buffers[i].Buffer);
+			m_buffers[i].Buffer.Alloc = VK_NULL_HANDLE;
+			m_buffers[i].Buffer.Buffer = VK_NULL_HANDLE;
+			m_buffers[i].Offset = 0;
+		}
+		m_size = 0;
+    }
+
+    TemporalStageBuffer::TemporalBuffer TemporalStageBuffer::MemCopy(const RenderContext& context, const void* src, uint32_t size, uint32_t offset)
+    {
+		check(src && size);
+
+		TemporalBuffer* buffer = nullptr;
+		for (uint32_t i = 0; i < m_buffers.GetSize(); ++i)
+		{
+			check(m_buffers[i].Buffer.IsAllocated());
+			if (m_buffers[i].Offset + size < m_size)
+			{
+				buffer = &m_buffers[i];
+				break;
+			}
+			logfwarn("Temporal stage buffer %d is full (%d b/%d b). Trying to allocate %d bytes.\n", i, m_buffers[i].Offset, m_size, size);
+		}
+
+		check(buffer && "All temporal stage buffers are full.");
+
+		TemporalBuffer result = *buffer;
+
+		Memory::MemCopy(context.Allocator, buffer->Buffer, src, size, buffer->Offset, offset);
+		buffer->Offset += size;
+		return result;
+    }
+
+    void TemporalStageBuffer::Reset()
+    {
+		for (uint32_t i = 0; i < m_buffers.GetSize(); ++i)
+			m_buffers[i].Offset = 0;
+    }
 
     void BeginGPUEvent(const RenderContext& renderContext, VkCommandBuffer cmd, const char* name, Color color)
     {
@@ -62,10 +152,9 @@ namespace Mist
 	template <uint16_t N>
 	void ProcessCommandBufferContextFence(CommandBufferContext& cmdContext, tStaticArray<VkFence, N>& outFences)
 	{
-		check(!(cmdContext.Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE) && "cant wait a fence on an active CommandBuffer recording.");
-		if (!(cmdContext.Flags & CMD_CONTEXT_FLAG_FENCE_READY))
+		if (cmdContext.NeedsToProcessFence())
 		{
-			cmdContext.Flags |= CMD_CONTEXT_FLAG_FENCE_READY;
+			cmdContext.MarkFenceReady();
 			outFences.Push(cmdContext.Fence);
 		}
 	}
@@ -102,6 +191,8 @@ namespace Mist
 			frameContext.DescriptorAllocator->FreeDescriptors(descriptorCache.m_volatileDescriptors.data(), (uint32_t)descriptorCache.m_volatileDescriptors.size());
             descriptorCache.m_volatileDescriptors.clear();
         }
+
+		frameContext.TempStageBuffer.Reset();
 	}
 
 

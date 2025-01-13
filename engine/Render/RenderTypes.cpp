@@ -1152,24 +1152,40 @@ namespace Mist
 
 		}
 
-	void utils::CmdSubmitTransfer(const RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback)
+	void utils::CmdSubmitTransfer(RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback)
 	{
-		// Begin command buffer recording.
-		VkCommandBufferBeginInfo beginInfo = vkinit::CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		vkcheck(vkBeginCommandBuffer(renderContext.TransferContext.CommandBuffer, &beginInfo));
-		// Call to extern code to record commands.
-		fillCmdCallback(renderContext.TransferContext.CommandBuffer);
-		// Finish recording.
-		vkcheck(vkEndCommandBuffer(renderContext.TransferContext.CommandBuffer));
+		VkCommandBuffer cmd = VK_NULL_HANDLE;
+		if (renderContext.GetFrameContext().GraphicsCommandContext.Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE)
+		{
+			cmd = renderContext.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		}
+		else
+		{
+			// Begin command buffer recording.
+            VkCommandBufferBeginInfo beginInfo = vkinit::CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+            vkcheck(vkBeginCommandBuffer(renderContext.TransferContext.CommandBuffer, &beginInfo));
 
-		VkSubmitInfo info = vkinit::SubmitInfo(&renderContext.TransferContext.CommandBuffer);
-		vkcheck(vkQueueSubmit(renderContext.GraphicsQueue, 1, &info, renderContext.TransferContext.Fence));
-		vkcheck(vkWaitForFences(renderContext.Device, 1, &renderContext.TransferContext.Fence, false, 1000000000));
-		vkcheck(vkResetFences(renderContext.Device, 1, &renderContext.TransferContext.Fence));
-		vkResetCommandPool(renderContext.Device, renderContext.TransferContext.CommandPool, 0);
+			//renderContext.TransferContext.BeginCommandBuffer(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+			cmd = renderContext.TransferContext.CommandBuffer;
+		}
+		check(cmd != VK_NULL_HANDLE);
+		// Call to extern code to record commands.
+		fillCmdCallback(cmd);
+
+		if (cmd == renderContext.TransferContext.CommandBuffer)
+		{
+			//renderContext.TransferContext.EndCommandBuffer();
+			vkcheck(vkEndCommandBuffer(renderContext.TransferContext.CommandBuffer));
+
+			VkSubmitInfo info = vkinit::SubmitInfo(&renderContext.TransferContext.CommandBuffer);
+			vkcheck(vkQueueSubmit(renderContext.GraphicsQueue, 1, &info, renderContext.TransferContext.Fence));
+			//renderContext.TransferContext.WaitFenceReady(renderContext.Device);
+			RenderAPI::WaitAndResetFences(renderContext.Device, &renderContext.TransferContext.Fence, 1);
+			vkResetCommandPool(renderContext.Device, renderContext.TransferContext.CommandPool, 0);
+		}
 	}
 
-	void utils::CmdCopyBuffer(const RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size)
+	void utils::CmdCopyBuffer(RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size)
 	{
 		CmdSubmitTransfer(renderContext,
 			[&](CommandBuffer cmd)

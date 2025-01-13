@@ -67,7 +67,7 @@ namespace Mist
 
 	protected:
 		// To record a command to copy data from specified buffer.
-		void UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t offset = 0);
+		void UpdateData(VkCommandBuffer cmd, VkBuffer buffer, uint32_t size, uint32_t dstOffset = 0, uint32_t srcOffset = 0);
 
 		uint32_t m_size;
 		EBufferUsageBits m_usage;

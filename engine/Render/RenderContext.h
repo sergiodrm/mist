@@ -29,7 +29,7 @@ namespace Mist
 
 	struct CommandBufferContext
 	{
-		byte Flags = 0;
+		byte Flags = CMD_CONTEXT_FLAG_NONE;
 		VkFence Fence;
 		VkCommandPool CommandPool;
 		VkCommandBuffer CommandBuffer;
@@ -37,6 +37,39 @@ namespace Mist
 		void BeginCommandBuffer(uint32_t flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		void ResetCommandBuffer(uint32_t flags = 0);
 		void EndCommandBuffer();
+		
+		bool NeedsToProcessFence();
+		void MarkFenceReady();
+
+		void WaitFenceReady(VkDevice device);
+	};
+
+	class TemporalStageBuffer
+	{
+	public:
+
+		struct TemporalBuffer
+		{
+			AllocatedBuffer Buffer;
+			uint32_t Offset = 0;
+		};
+
+		TemporalStageBuffer(const TemporalStageBuffer&) = delete;
+		TemporalStageBuffer(TemporalStageBuffer&&) = delete;
+		TemporalStageBuffer& operator=(const TemporalStageBuffer&) = delete;
+		TemporalStageBuffer& operator=(TemporalStageBuffer&&) = delete;
+
+		TemporalStageBuffer();
+		~TemporalStageBuffer();
+		void Init(const RenderContext& context, uint32_t bufferSize, uint32_t bufferCountLimit);
+		void Destroy(const RenderContext& context);
+
+		[[nodiscard]] TemporalBuffer MemCopy(const RenderContext& context, const void* src, uint32_t size, uint32_t offset = 0);
+		void Reset();
+
+	private:
+		tFixedHeapArray<TemporalBuffer> m_buffers;
+		uint32_t m_size;
 	};
 
 
@@ -55,6 +88,8 @@ namespace Mist
 		// Queries
 		sTimestampQueryPool GraphicsTimestampQueryPool;
 		sTimestampQueryPool ComputeTimestampQueryPool;
+
+		TemporalStageBuffer TempStageBuffer;
 
 		// Descriptors
 		[[deprecated]]

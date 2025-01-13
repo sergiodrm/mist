@@ -253,7 +253,7 @@ namespace Mist
 		Memory::MemCopy(context.Allocator, stageBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
 
 
-		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd) 
+		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), [&](VkCommandBuffer cmd)
 			{
 				VkBufferCopy bufferCopy{ 0, 0, 0 };
 				bufferCopy.size = PARTICLE_STORAGE_BUFFER_SIZE;

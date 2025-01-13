@@ -273,9 +273,14 @@ namespace Mist
 			Renderer* renderer = context.Renderer;
 			CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 			BeginGPUEvent(context, cmd, "DebugRenderer");
+
+			// process batches before render passes.
+			bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
+			bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
+
 			renderer->GetLDRTarget().BeginPass(context, cmd);
 			const CameraData& cameraData = *context.GetFrameContext().CameraData;
-			if (DebugRenderPipeline.LineBatch.Flush(context))
+			if (processLine)
 			{
 				DebugRenderPipeline.m_lineShader->UseProgram(context);
 				DebugRenderPipeline.m_lineShader->SetBufferData(context, "camera", &cameraData, sizeof(CameraData));
@@ -285,7 +290,7 @@ namespace Mist
 				DebugRenderPipeline.LineBatch.Reset();
 			}
 
-			if (DebugRenderPipeline.QuadBatch.Flush(context))
+			if (processQuad)
 			{
 				const glm::mat4 orthoproj = glm::ortho(0.f, (float)context.Window->Width, 0.f, (float)context.Window->Height, -1.f, 1.f);
 				DebugRenderPipeline.m_quadShader->UseProgram(context);
