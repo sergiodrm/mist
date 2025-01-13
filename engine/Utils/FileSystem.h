@@ -47,10 +47,11 @@ namespace Mist
 		static void GetWorkspacePath(char(&dst)[N], const char* path)
 		{
 			check(!strchr(path, ':') && "Absolute path not allowed.");
+			// check if path is already processed to our workspace.
 			if (!strnicmp(CVar_Workspace.Get(), path, strlen(CVar_Workspace.Get()) - 1))
 				strcpy_s(dst, path);
 			else
-				sprintf_s(dst, "%s%s", CVar_Workspace.Get(), path);
+				sprintf_s(dst, "%s/%s", CVar_Workspace.Get(), path);
 		}
 
 		operator const char* () const { return m_path; }
