@@ -42,6 +42,7 @@
 
 namespace Mist
 {
+	CBoolVar CVar_EnableValidationLayer("EnableValidationLayer", true);
 	CBoolVar CVar_ExitValidationLayer("ExitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
 
@@ -695,7 +696,7 @@ namespace Mist
 		vkb::InstanceBuilder builder;
 		vkb::Result<vkb::Instance> instanceReturn = builder
 			.set_app_name("Vulkan renderer")
-			.request_validation_layers(true)
+			.request_validation_layers(CVar_EnableValidationLayer.Get())
 			.require_api_version(1, 1, 0)
 			//.use_default_debug_messenger()
 			.set_debug_callback(&Mist::Debug::DebugVulkanCallback)
