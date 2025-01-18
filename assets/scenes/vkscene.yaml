@@ -1,0 +1,34 @@
+Environment:
+  Ambient: [0.0235294122, 0.0235294122, 0.0235294122]
+  Skybox:
+    Front: textures/yokohama/posz.jpg
+    Back: textures/yokohama/negz.jpg
+    Top: textures/yokohama/posy.jpg
+    Bottom: textures/yokohama/negy.jpg
+    Left: textures/yokohama/posx.jpg
+    Right: textures/yokohama/negx.jpg
+RenderObjects:
+  - RenderObject: 1
+    Name: VkScene
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: models/vulkanscene_shadow.gltf
+  - RenderObject: 2
+    Name: Light_2
+    Parent: 0
+    TransformComponent:
+      Position: [7.5, 12.5, 0]
+      Rotation: [6, 1, -83]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Directional
+      Color: [1, 0.907256424, 0.523489952]
+      Radius: 1000
+      Compression: 1000
+      OuterCutoff: 0.800000012
+      Cutoff: 1
+      ProjectShadows: true
