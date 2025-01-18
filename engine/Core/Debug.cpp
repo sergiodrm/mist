@@ -503,6 +503,13 @@ namespace Mist
 				ImGui::Text("%.4f ms Min [%.4f ms] Max [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
 				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
 #else
+				ImGui::Text(
+#if defined(_DEBUG)
+                    "DEBUG"
+#else
+                    "RELEASE"
+#endif
+				);
 				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
 				if (CVar_ShowStats.Get() > 1)
 				{
