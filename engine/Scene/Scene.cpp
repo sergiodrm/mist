@@ -34,6 +34,8 @@
 #include "Utils/TimeUtils.h"
 #include "Render/Model.h"
 #include "Utils/FileSystem.h"
+#include "Render/RendererBase.h"
+#include "Render/RenderProcesses/ShadowMap.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -209,6 +211,10 @@ namespace Mist
 		m_renderTransforms.resize(globals::MaxRenderObjects);
 		m_transformComponents.resize(globals::MaxRenderObjects);
 		m_materials.resize(globals::MaxMaterials);
+
+		PushRenderPipeline(RenderFlags_Fixed);
+		PushRenderPipeline(RenderFlags_ShadowMap);
+		PushRenderPipeline(RenderFlags_Emissive);
 	}
 
 	void Scene::Destroy()
@@ -217,6 +223,7 @@ namespace Mist
 		if (m_engine->GetScene() == this)
 			m_engine->SetScene(nullptr);
 #endif // 0
+		DestroyRenderLists();
 
 		const RenderContext& renderContext = m_engine->GetContext();
 
@@ -1088,6 +1095,16 @@ namespace Mist
 			ImGui::PopStyleColor();
 			ImGui::EndChild();
 		}
+		if (ImGui::TreeNode("Render transforms"))
+		{
+			for (uint32_t i = 0; i < m_renderTransforms.size(); ++i)
+			{
+				ImGui::Text("%3d", i);
+				for (uint32_t row = 0; row < 4; ++row)
+					ImGui::Text("%6.3f, %6.3f, %6.3f, %6.3f", m_renderTransforms[i][0][row], m_renderTransforms[i][1][row], m_renderTransforms[i][2][row], m_renderTransforms[i][3][row]);
+			}
+			ImGui::TreePop();
+		}
 		ImGui::End();
 	}
 
@@ -1099,6 +1116,152 @@ namespace Mist
 				return true;
 		}
 		return false;
+	}
+
+	void Scene::InitRenderPass()
+	{
+		if (m_drawListArray.IsEmpty())
+			return;
+		ClearDrawLists();
+
+		index_t transformGlobalIndex = 0;
+		index_t materialGlobalIndex = 0;
+		for (index_t i = 0; i < GetRenderObjectCount(); ++i)
+		{
+			if (m_meshComponentMap.contains(i))
+			{
+				index_t meshIndex = m_meshComponentMap[i].MeshIndex;
+				const cModel& model = m_models[meshIndex];
+				for (index_t j = 0; j < model.m_nodes.GetSize(); ++j)
+				{
+					if (model.m_nodes[j].MeshId != index_invalid)
+					{
+						const cMesh& mesh = model.m_meshes[model.m_nodes[j].MeshId];
+						for (index_t k = 0; k < mesh.PrimitiveArray.GetSize(); ++k)
+						{
+							for (index_t m = 0; m < m_drawListArray.GetSize(); ++m)
+							{
+								index_t materialIndex = mesh.PrimitiveArray[k].Material - model.m_materials.GetData();
+
+								// the transform index match with the node index inside model node graph
+								m_drawListArray[m].SubmitRenderPrimitive(&mesh, k, transformGlobalIndex + j, materialIndex + materialGlobalIndex);
+							}
+						}
+					}
+				}
+				transformGlobalIndex += model.GetTransformsCount();
+				materialGlobalIndex += model.GetMaterialCount();
+			}
+		}
+	}
+
+	void Scene::PushRenderPipeline(uint32_t pipelineFlags)
+	{
+		m_drawListArray.Push();
+		m_drawListArray.GetBack().RenderFlags = pipelineFlags;
+		m_drawListArray.GetBack().Items.Allocate(200);
+	}
+
+	const tDrawList* Scene::FindRenderPipeline(uint32_t pipelineFlags) const
+	{
+		for (index_t i = 0; i < m_drawListArray.GetSize(); ++i)
+		{
+			if (m_drawListArray[i].RenderFlags == pipelineFlags)
+				return &m_drawListArray[i];
+		}
+		return nullptr;
+	}
+
+	void Scene::DestroyRenderLists()
+	{
+		for (index_t i = 0; i < m_drawListArray.GetSize(); ++i)
+		{
+			m_drawListArray[i].Items.Delete();
+			m_drawListArray[i].RenderFlags = 0;
+		}
+		m_drawListArray.Clear();
+	}
+
+	void Scene::ClearDrawLists()
+	{
+		for (uint32_t i = 0; i < m_drawListArray.GetSize(); ++i)
+		{
+			tDrawList& list = m_drawListArray[i];
+			//list.RenderFlags = 0;
+			list.Items.Clear();
+		}
+		//m_drawListArray.Clear();
+	}
+
+	void Scene::RenderPipelineDraw(const RenderContext& context, uint32_t pipelineFlags, index_t materialSetIndex, ShaderProgram* program)
+	{
+		const tDrawList* drawList = FindRenderPipeline(pipelineFlags);
+		if (!drawList)
+			return;
+
+		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+
+		const RenderFrameContext& frameContext = context.GetFrameContext();
+		const CameraData& cameraData = *frameContext.CameraData;
+		const Renderer* renderer = context.Renderer;
+		const ShadowMapProcess* shadowMapping = (ShadowMapProcess*)renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
+
+        const uint32_t shadowMapTexturesSlot = 2;
+		tShadowMapData depthViewInfo;
+		const cTexture* shadowMapTextures[globals::MaxShadowMapAttachments];
+        for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+        {
+            // Shadow map matrices from shadow map process
+            depthViewInfo.LightViewMatrices[i] = shadowMapping->m_shadowMapPipeline.GetLightVP(i);
+            // Shadow map textures from shadow map process
+            shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->GetDepthTexture();
+        }
+
+		const cMesh* mesh = nullptr;
+		const cMaterial* material = nullptr;
+		ShaderProgram* shader = program;
+
+		if (shader)
+		{
+			shader->UseProgram(context);
+		}
+
+		for (index_t i = 0; i < drawList->Items.GetSize(); ++i)
+		{
+			const tDrawListItem& data = drawList->Items[i];
+			check(data.Mesh && data.PrimitiveIndex < data.Mesh->PrimitiveArray.GetSize() && data.TransformIndex != index_invalid);
+			if (data.Mesh != mesh)
+			{
+				mesh = data.Mesh;
+				mesh->BindBuffers(cmd);
+			}
+
+			const PrimitiveMeshData& primitive = mesh->PrimitiveArray[data.PrimitiveIndex];
+			check(primitive.Count && primitive.Material);
+			if (material != primitive.Material)
+			{
+                material = primitive.Material;
+				check(program || material->m_shader);
+                if (!program && shader != material->m_shader)
+                {
+					shader = material->m_shader;
+                    shader->UseProgram(context);
+                    shader->SetBufferData(context, "u_Camera", &cameraData, sizeof(CameraData));
+                    shader->SetBufferData(context, "u_depthInfo", &depthViewInfo, sizeof(tShadowMapData));
+                    shader->SetBufferData(context, "u_env", &m_environmentData, sizeof(EnvironmentData));
+					shader->BindTextureArraySlot(context, shadowMapTexturesSlot, shadowMapTextures, CountOf(shadowMapTextures));
+					shader->BindTextureSlot(context, 6, *m_skybox.Tex);
+                }
+				if (materialSetIndex != index_invalid)
+				{
+					material->BindTextures(context, *shader, materialSetIndex);
+					shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), data.MaterialIndex);
+				}
+			}
+			shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), data.TransformIndex);
+            shader->FlushDescriptors(context);
+            RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+		}
 	}
 
 	void Scene::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
@@ -1120,6 +1283,8 @@ namespace Mist
 				m_modelMaterialMap[i] = offset;
 				offset += m_models[i].GetMaterialCount();
 			}
+
+			InitRenderPass();
 
 			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
@@ -1248,6 +1413,20 @@ namespace Mist
 			}
 		}
 		check(shadowMapIndex <= globals::MaxShadowMapAttachments);
+	}
+
+	void tDrawList::SubmitRenderPrimitive(const cMesh* mesh, index_t primitiveIndex, index_t transformIndex, index_t materialIndex)
+	{
+		check(mesh && primitiveIndex < mesh->PrimitiveArray.GetSize());
+		if (mesh->PrimitiveArray[primitiveIndex].RenderFlags & RenderFlags)
+		{
+			Items.Push({
+				.TransformIndex = transformIndex,
+				.MaterialIndex = materialIndex,
+				.PrimitiveIndex = primitiveIndex,
+				.Mesh = mesh,
+				});
+		}
 	}
 }
 

@@ -144,6 +144,22 @@ namespace Mist
 		uint16_t flags;
 	};
 
+	struct tDrawListItem
+	{
+		index_t TransformIndex = index_invalid;
+		index_t MaterialIndex = index_invalid;
+		index_t PrimitiveIndex = index_invalid;
+		const cMesh* Mesh = nullptr;
+	};
+	
+	struct tDrawList
+	{
+		tFixedHeapArray<tDrawListItem> Items;
+		uint32_t RenderFlags;
+
+		void SubmitRenderPrimitive(const cMesh* mesh, index_t primitiveIndex, index_t transformOffset, index_t materialIndex);
+	};
+
 	struct Skybox
 	{
 		enum
@@ -169,7 +185,6 @@ namespace Mist
 
 	class Scene
 	{
-
 	protected:
 		Scene(const Scene&) = delete;
 		Scene(Scene&&) = delete;
@@ -220,6 +235,15 @@ namespace Mist
 		void ImGuiDraw();
 		bool IsDirty() const;
 		const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
+
+		void InitRenderPass();
+		void PushRenderPipeline(uint32_t pipelineFlags);
+		const tDrawList* FindRenderPipeline(uint32_t pipelineFlags) const;
+		void DestroyRenderLists();
+		void ClearDrawLists();
+
+		void RenderPipelineDraw(const RenderContext& context, uint32_t pipelineFlags, index_t materialSetIndex = index_invalid, ShaderProgram* program = nullptr);
+
 	protected:
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
@@ -229,6 +253,7 @@ namespace Mist
 		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
 		cModel* GetModel(const char* modelName);
 		index_t LoadModel(const RenderContext& context, const char* filepath);
+
 
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
@@ -254,5 +279,6 @@ namespace Mist
 
 		Skybox m_skybox;
 		EnvironmentData m_environmentData;
+		tStaticArray<tDrawList, 4> m_drawListArray;
 	};
 }
