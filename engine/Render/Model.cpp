@@ -556,6 +556,8 @@ namespace Mist
 	{
 		if (ImGui::TreeNode("Model tree"))
 		{
+			if (ImGui::Button("Dump info"))
+				DumpInfo();
 			for (index_t i = 0; i < m_nodes.GetSize(); ++i)
 			{
 				const sNode& node = m_nodes[i];
@@ -746,5 +748,36 @@ namespace Mist
 		check(!m_materials.IsEmpty());
 		m_materials.Push();
 		return m_materials.GetSize() - 1;
+	}
+
+	void cModel::DumpInfo() const
+	{
+		index_t it = m_root;
+		while (it != index_invalid)
+		{
+			const sNode& node = m_nodes[it];
+			logfinfo("* node: %d (%s) (Parent: %d|MeshId: %d)\n", it, m_nodeNames[it].CStr(), node.Parent, node.MeshId);
+			logfinfo("** transform: \n");
+			const glm::mat4& m = m_transforms[it];
+			logfinfo("** [%6.3f %6.3f %6.3f %6.3f]\n", m[0][0], m[1][0], m[2][0], m[3][0]);
+			logfinfo("** [%6.3f %6.3f %6.3f %6.3f]\n", m[0][1], m[1][1], m[2][1], m[3][1]);
+			logfinfo("** [%6.3f %6.3f %6.3f %6.3f]\n", m[0][2], m[1][2], m[2][2], m[3][2]);
+			logfinfo("** [%6.3f %6.3f %6.3f %6.3f]\n", m[0][3], m[1][3], m[2][3], m[3][3]);
+
+			if (node.Child != index_invalid)
+				it = node.Child;
+			else if (node.Sibling != index_invalid)
+				it = node.Sibling;
+			else if (node.Parent != index_invalid)
+			{
+				const sNode& parent = m_nodes[node.Parent];
+				if (parent.Sibling != index_invalid)
+					it = parent.Sibling;
+				else
+					it = index_invalid;
+			}
+			else
+				it = index_invalid;
+		}
 	}
 }

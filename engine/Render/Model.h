@@ -42,6 +42,8 @@ namespace Mist
 		index_t CreateMesh();
 		index_t CreateMaterial();
 
+		void DumpInfo() const;
+
 
 		index_t m_root = index_invalid;
 	public:
