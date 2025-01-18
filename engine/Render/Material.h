@@ -56,7 +56,7 @@ namespace Mist
 		void SetupShader(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 
-		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot);
+		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot) const;
 		sMaterialRenderData GetRenderData() const;
 
 		ShaderProgram* m_shader;

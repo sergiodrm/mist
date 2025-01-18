@@ -74,7 +74,7 @@ namespace Mist
             m_textures[i] = nullptr;
         }
     }
-    void cMaterial::BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot)
+    void cMaterial::BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot) const
     {
         cTexture* textures[MATERIAL_TEXTURE_COUNT];
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
