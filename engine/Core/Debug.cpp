@@ -152,7 +152,7 @@ namespace win
 	}
 }
 
-void Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
+bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
 	Mist::Debug::PrintCallstack();
 	logerror("============================================================\n\n");
@@ -165,9 +165,7 @@ void Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 	Mist::TerminateLog();
 
 	eDialogMessageResult res = DialogMsgErrorF(DIALOG_BUTTON_YESNO, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\n\nLine: %d\n\nDebug program?", txt, file, fn, line);
-	if (res == DIALOG_MESSAGE_RESULT_YES)
-		__debugbreak();
-	Mist::Debug::ExitError();
+	return res == DIALOG_MESSAGE_RESULT_YES;
 }
 
 void Mist::Debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)

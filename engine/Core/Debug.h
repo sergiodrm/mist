@@ -7,18 +7,26 @@
 #ifdef _USE_CHRONO_PROFILING
 #include <chrono>
 #endif
+#include <intrin.h>
 
 #define DUMMY_MACRO do {((void)0);}while(0)
 
 #define expand(x) (x)
+
+#define MIST_DEBUG_BREAK __debugbreak()
+#define MIST_INSTRUCTION_EXCEPTION __ud2()
+
 #define check(expr) \
 do \
 { \
 	if (!expand(expr)) \
 	{ \
-		Mist::Debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__); \
+		if (Mist::Debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__)) \
+			MIST_DEBUG_BREAK; \
+		MIST_INSTRUCTION_EXCEPTION; \
 	} \
 } while(0)
+
 
 #define vkcheck(expr) \
 do { \
@@ -49,7 +57,7 @@ namespace Mist
 			DIALOG_MESSAGE_RESULT_NO,
 		};
 
-		void DebugCheck(const char* txt, const char* file, const char* fn, int line);
+		bool DebugCheck(const char* txt, const char* file, const char* fn, int line);
 		void DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line);
 		void PrintCallstack(size_t count = 0, size_t offset = 0);
 		void ExitError();
