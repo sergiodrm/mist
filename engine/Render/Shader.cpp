@@ -26,6 +26,7 @@
 //#define SHADER_FORCE_COMPILATION
 //#define SHADER_DUMP_PREPROCESS_RESULT
 #define SHADER_BINARY_FILE_EXTENSION ".spv"
+#define SHADER_MAX_TEXTURES 8
 
 
 //#define SHADER_DUMP_INFO
@@ -549,7 +550,7 @@ namespace Mist
 				// To get the name of the instance use compiler.get_name(resource.id)
 				//bufferInfo.Name = resource.name.c_str();
 				bufferInfo.Name = compiler.get_name(resource.id);
-				if (descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				if (descriptorType != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER && descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
 				{
 					const spirv_cross::SPIRType& bufferType = compiler.get_type(resource.base_type_id);
 					bufferInfo.Size = (uint32_t)compiler.get_declared_struct_size(bufferType);
@@ -595,6 +596,9 @@ namespace Mist
 
 		for (const spirv_cross::Resource& resource : resources.sampled_images)
 			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+
+		for (const spirv_cross::Resource& resource : resources.storage_images)
+			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
 		for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
 		{
@@ -832,9 +836,15 @@ namespace Mist
 						generateSet = true;
 					}
 					break;
+					case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 					case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+					{
 						// created on demmand.
-						check(bindingCount == 1);
+						check(bindingCount == 1 && binding.Binding == 0);
+						check(binding.ArrayCount <= SHADER_MAX_TEXTURES);
+                        NewShaderParam(binding.Name.c_str(), false, setInfo.SetIndex, binding.Binding);
+                        // with images we dont need to create a buffer info, we just need to create the descriptor set.
+					}
 						break;
 					default:
 						break;
@@ -902,30 +912,39 @@ namespace Mist
 		setUnit.Dirty = true;
 	}
 
-	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, VkDescriptorType texType, const Sampler* sampler)
 	{
 		const cTexture* const tex = &texture;
-		BindTextureArraySlot(context, cmd, bindPoint, pipelineLayout, setLayout, slot, &tex, 1, sampler);
+		BindTextureArraySlot(context, cmd, bindPoint, pipelineLayout, setLayout, slot, &tex, 1, texType, sampler);
 	}
 
-	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, VkDescriptorType texType, const Sampler* sampler)
 	{
+        check(texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || texType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 		check(textures && textureCount);
+
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		tDescriptorSetCache& setCache = frameContext.DescriptorSetCache;
 
 		uint32_t setIndex = setCache.NewVolatileDescriptorSet();
 		VkDescriptorSet& set = setCache.GetVolatileDescriptorSet(setIndex);
 
-		check(textureCount <= 8);
-		tArray<VkDescriptorImageInfo, 8> infos;
+
+		check(textureCount <= SHADER_MAX_TEXTURES);
+		tArray<VkDescriptorImageInfo, SHADER_MAX_TEXTURES> infos;
 		for (uint32_t i = 0; i < textureCount; ++i)
 		{
 			check(textures[i]);
+
+            // check if textures has valid usage for storage image and combined image sampler
+            if (texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                check(textures[i]->GetDescription().Usage & IMAGE_USAGE_STORAGE_BIT);
+			else if (texType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                check(textures[i]->GetDescription().Usage & IMAGE_USAGE_SAMPLED_BIT);
+
 			infos[i].imageLayout = tovk::GetImageLayout(textures[i]->GetImageLayout());
 			infos[i].imageView = textures[i]->GetView(0);
 			infos[i].sampler = sampler ? *sampler : textures[i]->GetSampler();
-
 		}
 #if 0
 		DescriptorBuilder::Create(*context.LayoutCache, *frameContext.DescriptorAllocator)
@@ -944,7 +963,7 @@ namespace Mist
 			.dstBinding = 0,
 			.dstArrayElement = 0,
 			.descriptorCount = textureCount,
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.descriptorType = texType,
 			.pImageInfo = infos.data(),
 		};
 		vkUpdateDescriptorSets(context.Device, 1, &writeInfo, 0, nullptr);
@@ -1376,6 +1395,14 @@ namespace Mist
 		computeInfo.flags = 0;
 		vkcheck(vkCreateComputePipelines(context.Device, nullptr, 1, &computeInfo, nullptr, &m_pipeline));
 		check(m_pipeline != VK_NULL_HANDLE);
+
+        m_reflectionProperties = compiler.GetReflectionProperties();
+        m_setLayoutArray.resize(compiler.GetDescriptorSetLayoutCount());
+        for (uint32_t i = 0; i < compiler.GetDescriptorSetLayoutCount(); ++i)
+            m_setLayoutArray[i] = compiler.GetDescriptorSetLayoutArray()[i];
+
+        // Free shader compiler cached data
+        compiler.ClearCachedData();
 		return true;
 	}
 
@@ -1405,6 +1432,24 @@ namespace Mist
 			check(false);
 		}
 		return false;
+	}
+
+	uint32_t ShaderProgram::FindTextureSlot(const char* textureName, VkDescriptorType type) const
+	{
+        const tShaderParam& param = GetParam(textureName);
+        check(param.Binding == 0);
+        // integrity check
+        for (uint32_t i = 0; i < m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+        {
+            if (m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex == param.SetIndex)
+            {
+                check(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray.size() == 1);
+                check(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[0].Type == type);
+                check(!strcmp(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[0].Name.c_str(), textureName));
+                break;
+            }
+        }
+		return param.SetIndex;
 	}
 
 	void ShaderProgram::SetupDescriptors(const RenderContext& context)
@@ -1448,14 +1493,55 @@ namespace Mist
 		m_paramAccess.SetDynamicBufferOffset(renderContext, bufferName, elemSize, elemOffset);
 	}
 
-	void ShaderProgram::BindTextureSlot(const RenderContext& context, uint32_t slot, const cTexture& texture)
+	void ShaderProgram::BindSampledTexture(const RenderContext& context, const char* uniformName, const cTexture& texture)
 	{
-		m_paramAccess.BindTextureSlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, GetDescriptorSetLayout(slot), slot, texture, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+        BindTexture(context, uniformName, texture, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 	}
 
-	void ShaderProgram::BindTextureArraySlot(const RenderContext& context, uint32_t slot, const cTexture* const* textureArray, uint32_t textureCount)
+	void ShaderProgram::BindSampledTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount)
 	{
-		m_paramAccess.BindTextureArraySlot(context, GetCommandBuffer(context), m_bindPoint, m_pipelineLayout, GetDescriptorSetLayout(slot), slot, textureArray, textureCount, m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+		BindTextureArray(context, uniformName, textureArray, textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+	}
+
+	void ShaderProgram::BindStorageTexture(const RenderContext& context, const char* uniformName, const cTexture& texture)
+	{
+        BindTexture(context, uniformName, texture, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	}
+
+	void ShaderProgram::BindStorageTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount)
+	{
+        BindTextureArray(context, uniformName, textureArray, textureCount, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	}
+
+	void ShaderProgram::BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, VkDescriptorType texType)
+	{
+        uint32_t textureSlot = FindTextureSlot(uniformName, texType);
+        m_paramAccess.BindTextureSlot(
+            context,
+            GetCommandBuffer(context),
+            m_bindPoint,
+            m_pipelineLayout,
+            GetDescriptorSetLayout(textureSlot),
+            textureSlot,
+            texture,
+			texType,
+            m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+	}
+
+	void ShaderProgram::BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, VkDescriptorType texType)
+	{
+        uint32_t textureSlot = FindTextureSlot(uniformName, texType);
+        m_paramAccess.BindTextureArraySlot(
+            context,
+            GetCommandBuffer(context),
+            m_bindPoint,
+            m_pipelineLayout,
+            GetDescriptorSetLayout(textureSlot),
+            textureSlot,
+			textureArray,
+            textureCount,
+			texType,
+            m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
@@ -1550,8 +1636,24 @@ namespace Mist
 	ShaderProgram* ShaderFileDB::AddShaderProgram(const RenderContext& context, const tShaderProgramDescription& description)
 	{
 		char key[2048];
-		const ShaderFileDescription* descs[] = { &description.VertexShaderFile, &description.FragmentShaderFile };
-		GenerateKey(key, descs, 2);
+		switch (description.Type)
+		{
+		case tShaderType::Graphics:
+		{
+			const ShaderFileDescription* descs[] = { &description.VertexShaderFile, &description.FragmentShaderFile };
+			GenerateKey(key, descs, 2);
+		}
+			break;
+		case tShaderType::Compute:
+		{
+			const ShaderFileDescription* descs[] = { &description.ComputeShaderFile };
+			GenerateKey(key, descs, 1);
+		}
+			break;
+		default:
+			check(false && "Invalid shader type.");
+			break;
+		}
 
 		// Find shader, if exists return it.
 		ShaderProgram* shader = FindShaderProgram(description.VertexShaderFile, description.FragmentShaderFile);
