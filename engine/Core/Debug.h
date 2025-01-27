@@ -31,7 +31,7 @@ do \
 #define vkcheck(expr) \
 do { \
 VkResult __vkres = expand(expr); \
-if (__vkres != VK_SUCCESS) { Mist::Debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__); } \
+if (__vkres != VK_SUCCESS) { if (Mist::Debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__)) MIST_DEBUG_BREAK; MIST_INSTRUCTION_EXCEPTION; } \
 } while(0)
 
 
@@ -58,7 +58,7 @@ namespace Mist
 		};
 
 		bool DebugCheck(const char* txt, const char* file, const char* fn, int line);
-		void DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line);
+		bool DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line);
 		void PrintCallstack(size_t count = 0, size_t offset = 0);
 		void ExitError();
 

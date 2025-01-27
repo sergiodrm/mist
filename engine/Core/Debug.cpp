@@ -168,12 +168,12 @@ bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 	return res == DIALOG_MESSAGE_RESULT_YES;
 }
 
-void Mist::Debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
+bool Mist::Debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
 {
 	VkResult vkres = (VkResult)res;
 	const char* vkstr = Mist::VkResultToStr(vkres);
 	logferror("VkCheck failed. VkResult %d: %s\n", res, vkstr);
-	DebugCheck(txt, file, fn, line);
+	return DebugCheck(txt, file, fn, line);
 }
 
 void Mist::Debug::PrintCallstack(size_t count, size_t offset)
