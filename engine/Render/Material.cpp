@@ -84,7 +84,8 @@ namespace Mist
                 tex = GetTextureCheckerboard4x4(context);
             textures[i] = tex;
         }
-        shader.BindTextureArraySlot(context, slot, textures, MATERIAL_TEXTURE_COUNT);
+        //shader.BindTextureArraySlot(context, slot, textures, MATERIAL_TEXTURE_COUNT);
+        shader.BindSampledTextureArray(context, "u_Textures", textures, MATERIAL_TEXTURE_COUNT);
     }
     sMaterialRenderData cMaterial::GetRenderData() const
     {

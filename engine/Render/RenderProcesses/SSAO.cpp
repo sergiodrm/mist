@@ -130,9 +130,9 @@ namespace Mist
 			m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
 
 			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
-			m_ssaoShader->BindTextureSlot(renderContext, 1, *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
-			m_ssaoShader->BindTextureSlot(renderContext, 2, *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
-			m_ssaoShader->BindTextureSlot(renderContext, 3, *m_noiseTexture);
+			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferPosition", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
+			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferNormal", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
+			m_ssaoShader->BindSampledTexture(renderContext, "u_SSAONoise", *m_noiseTexture);
 			m_ssaoShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 		}
@@ -147,7 +147,7 @@ namespace Mist
 		{
 			m_blurShader->UseProgram(renderContext);
 			const cTexture* tex = m_rt.GetAttachment(0).Tex;
-			m_blurShader->BindTextureSlot(renderContext, 0, *tex);
+			m_blurShader->BindSampledTexture(renderContext, "u_ssaoTex", *tex);
 			m_ssaoShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 		}

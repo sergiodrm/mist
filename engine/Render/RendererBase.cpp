@@ -144,7 +144,7 @@ namespace Mist
 		BeginGPUEvent(*params.Context, cmd, "CopyRT");
 		params.Dst->BeginPass(*params.Context, cmd);
 		copyShader->UseProgram(*params.Context);
-		copyShader->BindTextureSlot(*params.Context, 1, *params.Src->GetTexture());
+		copyShader->BindSampledTexture(*params.Context, "u_tex", *params.Src->GetTexture());
 		copyShader->FlushDescriptors(*params.Context);
 		CmdDrawFullscreenQuad(cmd);
 		params.Dst->EndPass(cmd);

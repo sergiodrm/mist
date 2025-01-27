@@ -294,7 +294,7 @@ namespace Mist
 			{
 				const glm::mat4 orthoproj = glm::ortho(0.f, (float)context.Window->Width, 0.f, (float)context.Window->Height, -1.f, 1.f);
 				DebugRenderPipeline.m_quadShader->UseProgram(context);
-				DebugRenderPipeline.m_quadShader->BindTextureArraySlot(context, 1, DebugRenderPipeline.QuadBatch.Textures.GetData(), tQuadBatch::MaxViews);
+				DebugRenderPipeline.m_quadShader->BindSampledTextureArray(context, "u_tex", DebugRenderPipeline.QuadBatch.Textures.GetData(), tQuadBatch::MaxViews);
 				DebugRenderPipeline.m_quadShader->SetBufferData(context, "u_camera", &orthoproj, sizeof(orthoproj));
 				DebugRenderPipeline.m_quadShader->FlushDescriptors(context);
 				DebugRenderPipeline.QuadBatch.vb.Bind(cmd);

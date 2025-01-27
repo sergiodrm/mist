@@ -867,8 +867,8 @@ namespace Mist
 									shader->SetBufferData(context, "u_Camera", &viewRenderInfo.view, sizeof(CameraData));
 									shader->SetBufferData(context, "u_depthInfo", &viewRenderInfo.shadowMap, sizeof(tShadowMapData));
 									shader->SetBufferData(context, "u_env", &viewRenderInfo.environment, sizeof(EnvironmentData));
-									shader->BindTextureArraySlot(context, viewRenderInfo.shadowMapTexturesSlot, viewRenderInfo.shadowMapTextures, CountOf(viewRenderInfo.shadowMapTextures));
-									shader->BindTextureSlot(context, viewRenderInfo.cubemapSlot, *viewRenderInfo.cubemap);
+									shader->BindSampledTextureArray(context, "u_ShadowMap", viewRenderInfo.shadowMapTextures, CountOf(viewRenderInfo.shadowMapTextures));
+									shader->BindSampledTexture(context, "u_cubemap", *viewRenderInfo.cubemap);
 									currentShader = shader;
 								}
 								currentMaterial->BindTextures(context, *shader, textureSlot);
@@ -1249,8 +1249,8 @@ namespace Mist
                     shader->SetBufferData(context, "u_Camera", &cameraData, sizeof(CameraData));
                     shader->SetBufferData(context, "u_depthInfo", &depthViewInfo, sizeof(tShadowMapData));
                     shader->SetBufferData(context, "u_env", &m_environmentData, sizeof(EnvironmentData));
-					shader->BindTextureArraySlot(context, shadowMapTexturesSlot, shadowMapTextures, CountOf(shadowMapTextures));
-					shader->BindTextureSlot(context, 6, *m_skybox.Tex);
+					shader->BindSampledTextureArray(context, "u_ShadowMap", shadowMapTextures, CountOf(shadowMapTextures));
+					shader->BindSampledTexture(context, "u_cubemap", *m_skybox.Tex);
                 }
 				if (materialSetIndex != index_invalid)
 				{

@@ -133,12 +133,12 @@ namespace Mist
 			ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
 
 			shader->UseProgram(renderContext);
-			shader->BindTextureSlot(renderContext, 1, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
-			shader->BindTextureSlot(renderContext, 2, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
-			shader->BindTextureSlot(renderContext, 3, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
-			shader->BindTextureSlot(renderContext, 4, *m_ssaoRenderTarget->GetAttachment(0).Tex);
-			shader->BindTextureArraySlot(renderContext, 5, shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
-			shader->BindTextureSlot(renderContext, 6, *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_DEPTH).Tex);
+			shader->BindSampledTexture(renderContext, "u_GBufferPosition", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
+			shader->BindSampledTexture(renderContext, "u_GBufferNormal", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
+			shader->BindSampledTexture(renderContext, "u_GBufferAlbedo", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
+			shader->BindSampledTexture(renderContext, "u_ssao", *m_ssaoRenderTarget->GetAttachment(0).Tex);
+			shader->BindSampledTextureArray(renderContext, "u_ShadowMap", shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
+			shader->BindSampledTexture(renderContext, "u_GBufferDepth", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_DEPTH).Tex);
 
 			// Use shared buffer for avoiding doing this here (?)
 			const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
@@ -170,7 +170,7 @@ namespace Mist
 			rt.BeginPass(renderContext, cmd);
 			m_hdrShader->UseProgram(renderContext);
 			m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
-			m_hdrShader->BindTextureSlot(renderContext, 0, *m_lightingOutput.GetAttachment(0).Tex);
+			m_hdrShader->BindSampledTexture(renderContext, "u_hdrtex", *m_lightingOutput.GetAttachment(0).Tex);
 			m_hdrShader->FlushDescriptors(renderContext);
 			CmdDrawFullscreenQuad(cmd);
 			rt.EndPass(cmd);

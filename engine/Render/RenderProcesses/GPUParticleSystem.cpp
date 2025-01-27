@@ -182,7 +182,7 @@ namespace Mist
 			m_graphicsShader->UseProgram(context);
 			VkDeviceSize offset = 0;
 			vkCmdBindVertexBuffers(cmd, 0, 1, &m_particlesBuffer.Buffer, &offset);
-			m_graphicsShader->BindTextureSlot(context, 0, *m_circleGradientTexture);
+			m_graphicsShader->BindSampledTexture(context, "u_gradientTex", *m_circleGradientTexture);
 			m_graphicsShader->FlushDescriptors(context);
 			RenderAPI::CmdDraw(cmd, m_particleCount, 1, 0, 0);
 		}

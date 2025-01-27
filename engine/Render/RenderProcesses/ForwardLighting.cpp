@@ -156,7 +156,7 @@ namespace Mist
 			ubo[0] = viewRot;
 			ubo[1] = renderFrameContext.CameraData->Projection * viewRot;
 			m_skyboxShader->SetBufferData(renderContext, "u_ubo", ubo, sizeof(glm::mat4) * 2);
-			m_skyboxShader->BindTextureSlot(renderContext, 1, *cubemapTexture);
+			m_skyboxShader->BindSampledTexture(renderContext, "u_cubemap", *cubemapTexture);
 			m_skyboxShader->FlushDescriptors(renderContext);
 			check(m_skyboxModel->m_meshes.GetSize() == 1);
 			const cMesh& mesh = m_skyboxModel->m_meshes[0];
