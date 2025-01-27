@@ -750,7 +750,7 @@ namespace Mist
 		Log(LogLevel::Ok, "Vulkan graphics queue instance created...\n");
 
 		// Compute queue from device
-#if 1
+#if 0
 		m_renderContext.ComputeQueue = device.get_queue(vkb::QueueType::compute).value();
 		m_renderContext.ComputeQueueFamily = device.get_queue_index(vkb::QueueType::compute).value();
 		check(m_renderContext.ComputeQueue != VK_NULL_HANDLE);
@@ -760,21 +760,27 @@ namespace Mist
 #else
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, nullptr);
-		VkQueueFamilyProperties* queueFamilyProperties = _newVkQueueFamilyProperties[queueFamilyCount];
+		VkQueueFamilyProperties* queueFamilyProperties = _new VkQueueFamilyProperties[queueFamilyCount];
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, queueFamilyProperties);
 
 		uint32_t graphicsComputeQueueIndex = UINT32_MAX;
 		for (uint32_t i = 0; i < queueFamilyCount; ++i)
 		{
+			logfinfo("DeviceQueue %d:\n", i);
+			logfinfo("* Graphics: %d, Compute: %d, Transfer: %d, SparseBinding: %d\n",
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT? 1 : 0,
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT? 1 : 0,
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT? 1 : 0,
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT? 1 : 0);
+
 			if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT
 				&& queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
 			{
 				graphicsComputeQueueIndex = i;
-				break;
 			}
 		}
 
-		check(graphicsComputeQueueIndex != UINT32_MAX);
+		check(graphicsComputeQueueIndex != UINT32_MAX && "Architecture doesn't support separate graphics and compute hardware queues.");
 		delete[] queueFamilyProperties;
 		queueFamilyProperties = nullptr;
 
@@ -824,6 +830,9 @@ namespace Mist
 				vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &frameContext.GraphicsCommandContext.CommandPool));
 				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandContext.CommandPool);
 				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommandContext.CommandBuffer));
+				char buff[64];
+                sprintf_s(buff, "GraphicsCommandBuffer_%u", i);
+                SetVkObjectName(m_renderContext, &frameContext.GraphicsCommandContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
 			}
 
 			// Compute commands
@@ -831,12 +840,18 @@ namespace Mist
 				vkcheck(vkCreateCommandPool(m_renderContext.Device, &computePoolInfo, nullptr, &frameContext.ComputeCommandContext.CommandPool));
 				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.ComputeCommandContext.CommandPool);
 				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.ComputeCommandContext.CommandBuffer));
+                char buff[64];
+                sprintf_s(buff, "ComputeCommandBuffer_%u", i);
+                SetVkObjectName(m_renderContext, &frameContext.ComputeCommandContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
 			}
 		}
 
 		vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &m_renderContext.TransferContext.CommandPool));
 		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_renderContext.TransferContext.CommandPool, 1);
 		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_renderContext.TransferContext.CommandBuffer));
+        char buff[64];
+        sprintf_s(buff, "TransferCommandBuffer");
+        SetVkObjectName(m_renderContext, &m_renderContext.TransferContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
 		return true;
 	}
 
