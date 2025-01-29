@@ -172,13 +172,13 @@ namespace Mist
 
 	EnvironmentData::EnvironmentData() :
 		AmbientColor(0.02f, 0.02f, 0.02f),
-		ActiveSpotLightsCount(0.f),
+		ActiveSpotLightsCount(0),
 		ViewPosition(0.f),
-		ActiveLightsCount(0.f)
+		ActiveLightsCount(0)
 	{
 		DirectionalLight.Color = { 0.01f, 0.01f, 0.1f };
 		DirectionalLight.Position = { 0.f, 0.f, 1.f };
-		DirectionalLight.ShadowMapIndex = -1.f;
+		DirectionalLight.ShadowMapIndex = -1;
 		DirectionalLight.Compression = 0.5f;
 		for (uint32_t i = 0; i < MaxLights; ++i)
 		{
@@ -189,7 +189,7 @@ namespace Mist
 			SpotLights[i].Color = { 1.f, 1.f, 1.f };
 			SpotLights[i].CosCutoff.x = 1.f;
 			SpotLights[i].CosCutoff.y = 1.f;
-			SpotLights[i].ShadowMapIndex = -1.f;
+			SpotLights[i].ShadowMapIndex = -1;
 		}
 		ZeroMem(this, sizeof(*this));
 		AmbientColor = { 0.02f, 0.02f, 0.02f };
