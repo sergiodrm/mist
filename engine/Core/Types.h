@@ -455,4 +455,12 @@ namespace Mist
 
 	bool WildStrcmp(const char* wild, const char* str);
 	bool WildStricmp(const char* wild, const char* str);
+
+	template <typename Type>
+	inline void Swap(Type& t0, Type& t1)
+	{
+		Type t = t0;
+		t0 = t1;
+		t1 = t;
+	}
 }
