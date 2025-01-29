@@ -6,7 +6,7 @@
 namespace Mist
 {
 
-	void cMesh::BindBuffers(CommandBuffer cmd) const
+	void cMesh::BindBuffers(VkCommandBuffer cmd) const
 	{
 		VertexBuffer.Bind(cmd);
 		IndexBuffer.Bind(cmd);

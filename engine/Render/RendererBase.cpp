@@ -140,7 +140,7 @@ namespace Mist
 		}
 		ShaderProgram* copyShader = m_copyPrograms[key];
 		check(copyShader);
-		CommandBuffer cmd = params.Context->GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		VkCommandBuffer cmd = params.Context->GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		BeginGPUEvent(*params.Context, cmd, "CopyRT");
 		params.Dst->BeginPass(*params.Context, cmd);
 		copyShader->UseProgram(*params.Context);

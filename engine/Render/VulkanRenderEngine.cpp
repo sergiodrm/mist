@@ -131,7 +131,7 @@ namespace Mist
 		}
 	} FullscreenQuad;
 
-	void CmdDrawFullscreenQuad(CommandBuffer cmd)
+	void CmdDrawFullscreenQuad(VkCommandBuffer cmd)
 	{
 		FullscreenQuad.Draw(cmd);
 	}

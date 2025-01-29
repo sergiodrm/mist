@@ -111,8 +111,13 @@ namespace Mist
 		inline EImageLayout GetImageLayout() const { return m_layout; }
 		// used for render target for update layout after using texture as attachment. Must not be use to change layout tracking.
 		inline void SetImageLayout(EImageLayout layout) { m_layout = layout; }
-		void TransferImageLayout(const RenderContext& context, EImageLayout dstLayout,
-			VkAccessFlags srcAccess = 0, VkAccessFlags dstAccess = 0);
+        void TransferImageLayout(const RenderContext& context, EImageLayout dstLayout, VkAccessFlags srcAccess = 0, VkAccessFlags dstAccess = 0,
+            VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
+		void CmdImageBarrier(VkCommandBuffer cmd, EImageLayout dstLayout, VkAccessFlags srcAccess = 0, VkAccessFlags dstAccess = 0, 
+			VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+			VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
 	private:
 		void Destroy(const RenderContext& context);

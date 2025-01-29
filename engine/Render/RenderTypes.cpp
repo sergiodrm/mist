@@ -1188,7 +1188,7 @@ namespace Mist
 	void utils::CmdCopyBuffer(RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size)
 	{
 		CmdSubmitTransfer(renderContext,
-			[&](CommandBuffer cmd)
+			[&](VkCommandBuffer cmd)
 			{
 				VkBufferCopy copyInfo;
 				copyInfo.size = size;

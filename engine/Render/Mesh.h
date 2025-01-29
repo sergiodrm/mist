@@ -24,7 +24,7 @@ namespace Mist
 	class cMesh : public cRenderResource<RenderResource_Mesh>
 	{
 	public:
-		void BindBuffers(CommandBuffer cmd) const;
+		void BindBuffers(VkCommandBuffer cmd) const;
 		void Destroy(const RenderContext& context);
 		void SetupVertexBuffer(const RenderContext& context, const void* vertices, uint32_t vertexSize);
 		void SetupIndexBuffer(const RenderContext& context, const uint32_t* indices, uint32_t indexCount);

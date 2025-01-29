@@ -1457,7 +1457,7 @@ namespace Mist
 		m_paramAccess.SetupBatch(context, m_reflectionProperties, m_description.DynamicBuffers.data(), (uint32_t)m_description.DynamicBuffers.size());
 	}
 
-	void ShaderProgram::UseProgram(CommandBuffer cmd) const
+	void ShaderProgram::UseProgram(VkCommandBuffer cmd) const
 	{
 		RenderAPI::CmdBindPipeline(cmd, m_pipeline, m_bindPoint);
 	}
@@ -1618,13 +1618,13 @@ namespace Mist
 		return true;
 	}
 
-	void ComputeShader::UseProgram(CommandBuffer cmd) const
+	void ComputeShader::UseProgram(VkCommandBuffer cmd) const
 	{
 		vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
 		++Mist::Profiling::GRenderStats.ShaderProgramCount;
 	}
 
-	void ComputeShader::BindDescriptorSets(CommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
+	void ComputeShader::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const
 	{
 		vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, firstSet, setCount, setArray, dynamicOffsetCount, dynamicOffsetArray);
 		++Mist::Profiling::GRenderStats.SetBindingCount;

@@ -128,7 +128,8 @@ namespace Mist
 	void GPUParticleSystem::Dispatch(const RenderContext& context, uint32_t frameIndex)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDispatch);
-		CommandBuffer cmd = context.GetFrameContext().ComputeCommandContext.CommandBuffer;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		//VkCommandBuffer cmd = context.GetFrameContext().ComputeCommandContext.CommandBuffer;
 
 		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
 		{
@@ -167,7 +168,7 @@ namespace Mist
 	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDraw);
-		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
 		{
 			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,

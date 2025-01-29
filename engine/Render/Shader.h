@@ -252,9 +252,10 @@ namespace Mist
 		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
 
 		[[deprecated]]
-		void UseProgram(CommandBuffer cmd) const;
+		void UseProgram(VkCommandBuffer cmd) const;
 
 		void UseProgram(const RenderContext& context);
+		void UseProgram(const RenderContext& context, VkCommandBuffer cmd);
 		void BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0) const;
 
 		void SetSampler(const RenderContext& context,

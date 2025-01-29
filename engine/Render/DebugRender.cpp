@@ -271,7 +271,7 @@ namespace Mist
 		{
 			CPU_PROFILE_SCOPE(DebugPass);
 			Renderer* renderer = context.Renderer;
-			CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+			VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 			BeginGPUEvent(context, cmd, "DebugRenderer");
 
 			// process batches before render passes.

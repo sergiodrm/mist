@@ -110,7 +110,7 @@ namespace Mist
 		}
 	}
 
-	void RenderTarget::BeginPass(const RenderContext& context, CommandBuffer cmd)
+	void RenderTarget::BeginPass(const RenderContext& context, VkCommandBuffer cmd)
 	{
 		PreparePass(context);
 
@@ -142,7 +142,7 @@ namespace Mist
 		}
 	}
 
-	void RenderTarget::ClearColor(CommandBuffer cmd, float r, float g, float b, float a)
+	void RenderTarget::ClearColor(VkCommandBuffer cmd, float r, float g, float b, float a)
 	{
 		uint32_t colorAttachments = HasDepthBufferAttachment() ? GetAttachmentCount() - 1 : GetAttachmentCount();
 		if (colorAttachments)
@@ -167,7 +167,7 @@ namespace Mist
 		}
 	}
 
-	void RenderTarget::ClearDepthStencil(CommandBuffer cmd, float depth, uint32_t stencil)
+	void RenderTarget::ClearDepthStencil(VkCommandBuffer cmd, float depth, uint32_t stencil)
 	{
 		if (HasDepthBufferAttachment())
 		{

@@ -1199,7 +1199,7 @@ namespace Mist
 		if (!drawList)
 			return;
 
-		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 
 		const RenderFrameContext& frameContext = context.GetFrameContext();
 		const CameraData& cameraData = *frameContext.CameraData;

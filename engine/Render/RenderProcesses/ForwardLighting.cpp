@@ -113,7 +113,7 @@ namespace Mist
 	void ForwardLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
 		CPU_PROFILE_SCOPE(ForwardLighting);
-		CommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
+		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 
 		const cTexture* cubemapTexture = renderFrameContext.Scene->GetSkyboxTexture();
 

@@ -107,7 +107,7 @@ namespace Mist
 		GPUParticleSystem m_gpuParticleSystem;
 	};
 
-	extern void CmdDrawFullscreenQuad(CommandBuffer cmd);
+	extern void CmdDrawFullscreenQuad(VkCommandBuffer cmd);
 	extern cTexture* GetTextureCheckerboard4x4(const RenderContext& context);
 	extern cMaterial* GetDefaultMaterial(const RenderContext& context);
 }

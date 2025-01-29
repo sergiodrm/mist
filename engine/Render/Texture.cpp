@@ -50,15 +50,12 @@ namespace Mist
 
 #if 1
 
-	void cTexture::TransferImageLayout(const RenderContext& context, EImageLayout dstLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess)
+	void cTexture::TransferImageLayout(const RenderContext& context, EImageLayout dstLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage)
 	{
 		check(m_image.Image != VK_NULL_HANDLE);
 
-		if (m_layout == dstLayout)
-			return;
-
 		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), 
-			[&](CommandBuffer cmd) 
+			[&](VkCommandBuffer cmd)
 			{
 				VkImageAspectFlags flags = IsDepthFormat(m_description.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 				VkImageMemoryBarrier barrier
@@ -81,10 +78,39 @@ namespace Mist
 						.layerCount = VK_REMAINING_ARRAY_LAYERS
 					}
 				};
-				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+				vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0,
 					0, nullptr, 0, nullptr, 1, &barrier);
 			});
 		m_layout = dstLayout;
+	}
+
+	void cTexture::CmdImageBarrier(VkCommandBuffer cmd, EImageLayout dstLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage)
+	{
+        check(m_image.Image != VK_NULL_HANDLE);
+        VkImageAspectFlags flags = IsDepthFormat(m_description.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+        VkImageMemoryBarrier barrier
+        {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext = nullptr,
+            .srcAccessMask = srcAccess,
+            .dstAccessMask = dstAccess,
+            .oldLayout = tovk::GetImageLayout(m_layout),
+            .newLayout = tovk::GetImageLayout(dstLayout),
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = m_image.Image,
+            .subresourceRange =
+            {
+                .aspectMask = flags,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS
+            }
+        };
+        vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0,
+            0, nullptr, 0, nullptr, 1, &barrier);
+        m_layout = dstLayout;
 	}
 
 	void cTexture::Destroy(const RenderContext& context)
@@ -438,7 +464,7 @@ namespace Mist
 			Memory::MemCopy(context.Allocator, stageBuffer, layerArray[i], size);
 
 			utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
-				[&](CommandBuffer cmd)
+				[&](VkCommandBuffer cmd)
 				{
 					VkBufferImageCopy copyRegion
 					{
@@ -502,7 +528,7 @@ namespace Mist
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels)
 	{
 		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
-			[&](CommandBuffer cmd)
+			[&](VkCommandBuffer cmd)
 			{
 				VkImageMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr };
 				barrier.oldLayout = tovk::GetImageLayout(oldLayout);
@@ -551,7 +577,7 @@ namespace Mist
 			check(false && "Unsupported format to generate mipmap levels.");
 
 		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
-			[&](CommandBuffer cmd)
+			[&](VkCommandBuffer cmd)
 			{
 				VkImageMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr };
 				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;

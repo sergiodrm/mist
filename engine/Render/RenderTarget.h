@@ -142,11 +142,11 @@ namespace Mist
 		void Destroy(const RenderContext& renderContext);
 		void Invalidate(const RenderContext& renderContext);
 
-		void BeginPass(const RenderContext& context, CommandBuffer cmd);
+		void BeginPass(const RenderContext& context, VkCommandBuffer cmd);
 		void EndPass(VkCommandBuffer cmd);
 
-		void ClearColor(CommandBuffer cmd, float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
-		void ClearDepthStencil(CommandBuffer cmd, float depth = 1.f, uint32_t stencil = 0);
+		void ClearColor(VkCommandBuffer cmd, float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
+		void ClearDepthStencil(VkCommandBuffer cmd, float depth = 1.f, uint32_t stencil = 0);
 
 		uint32_t GetWidth() const;
 		uint32_t GetHeight() const;

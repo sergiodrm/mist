@@ -137,7 +137,7 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(Bloom);
 		RenderFrameContext& frameContext = context.GetFrameContext();
-		CommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 
 		BeginGPUEvent(context, cmd, "Bloom Downsample");
 		GpuProf_Begin(context, "Bloom Downsample");
