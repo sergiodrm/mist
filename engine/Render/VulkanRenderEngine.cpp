@@ -717,16 +717,29 @@ namespace Mist
 			.value();
 		vkb::DeviceBuilder deviceBuilder{ physicalDevice };
 		Log(LogLevel::Ok, "Vulkan physical device instance created...\n");
+
+		// Enable shader draw parameters
 		VkPhysicalDeviceShaderDrawParametersFeatures shaderDrawParamsFeatures = {};
 		shaderDrawParamsFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
 		shaderDrawParamsFeatures.pNext = nullptr;
 		shaderDrawParamsFeatures.shaderDrawParameters = VK_TRUE;
 		deviceBuilder.add_pNext(&shaderDrawParamsFeatures);
+
+		// Build PhysicalDeviceFeatures
 		VkPhysicalDeviceFeatures2 features;
 		features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
 		features.pNext = nullptr;
 		vkGetPhysicalDeviceFeatures2(physicalDevice.physical_device, &features);
 		deviceBuilder.add_pNext(&features);
+
+		// Enable timeline semaphores.
+		VkPhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures;
+		timelineSemaphoreFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES;
+		timelineSemaphoreFeatures.pNext = nullptr;
+		timelineSemaphoreFeatures.timelineSemaphore = VK_TRUE;
+		deviceBuilder.add_pNext(&timelineSemaphoreFeatures);
+
+		// Create Device
 		vkb::Result<vkb::Device> deviceResult = deviceBuilder.build();
 		check(deviceResult.has_value());
 		vkb::Device device = deviceResult.value();
@@ -748,6 +761,7 @@ namespace Mist
 			&& m_renderContext.ComputeQueueFamily != vkb::detail::QUEUE_INDEX_MAX_VALUE);
 
 #else
+        // Get queue families and find a queue that supports both graphics and compute
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, nullptr);
 		VkQueueFamilyProperties* queueFamilyProperties = _new VkQueueFamilyProperties[queueFamilyCount];
