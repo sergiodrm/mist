@@ -910,6 +910,7 @@ namespace Mist
 		uint32_t offset = elemOffset * RenderContext_PadUniformMemoryOffsetAlignment(renderContext, elemSize);
 		setUnit.DynamicOffsets[param.Binding] = offset;
 		setUnit.Dirty = true;
+		m_dirty = true;
 	}
 
 	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, VkDescriptorType texType, const Sampler* sampler)
@@ -984,11 +985,12 @@ namespace Mist
 			if (setUnit.SetIndex != UINT32_MAX)
 				setUnit.Dirty = true;
 		}
+		m_dirty = true;
 	}
 
 	void tShaderParamAccess::FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout)
 	{
-		if (!HasBatch())
+		if (!HasBatch() || !m_dirty)
 			return;
 		tDescriptorSetCache& setCache = context.GetFrameContext().DescriptorSetCache;
 
@@ -1027,6 +1029,7 @@ namespace Mist
 		if (!setsToBind.IsEmpty())
 			RenderAPI::CmdBindDescriptorSet(cmd, pipelineLayout, bindPoint, setsToBind.GetData(), setsToBind.GetSize(),
 				firstSet, dynamicOffsets.GetSize() ? dynamicOffsets.GetData() : nullptr, dynamicOffsets.GetSize());
+		m_dirty = false;
 	}
 
 	const tShaderParam& tShaderParamAccess::GetParam(const char* str) const
@@ -1464,8 +1467,14 @@ namespace Mist
 
 	void ShaderProgram::UseProgram(const RenderContext& context)
 	{
+		UseProgram(context, GetCommandBuffer(context));
+	}
+
+	void ShaderProgram::UseProgram(const RenderContext& context, VkCommandBuffer cmd)
+	{
+		check(cmd != VK_NULL_HANDLE);
 		m_paramAccess.MarkAsDirty(context);
-		RenderAPI::CmdBindPipeline(GetCommandBuffer(context), m_pipeline, m_bindPoint);
+		RenderAPI::CmdBindPipeline(cmd, m_pipeline, m_bindPoint);
 	}
 
 	void ShaderProgram::BindDescriptorSets(VkCommandBuffer cmd, const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount) const

@@ -225,6 +225,7 @@ namespace Mist
 		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, VkDescriptorType texType, const Sampler* sampler = nullptr);
 		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, VkDescriptorType texType, const Sampler* sampler = nullptr);
 
+        inline bool IsDirty() const { return m_dirty; }
 		void MarkAsDirty(const RenderContext& context);
 		void FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout);
 
@@ -238,6 +239,7 @@ namespace Mist
 	private:
 		uint32_t m_batchId = UINT32_MAX;
 		tMap<tString, tShaderParam> m_paramMap;
+		bool m_dirty;
 	};
 
 	class ShaderProgram
