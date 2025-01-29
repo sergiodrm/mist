@@ -667,39 +667,29 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitVulkan()
 	{
-#if 0
-		{
-			// Create Vulkan instance
-			uint32_t extensionCount = 0;
-			vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-			vkEnumerateInstanceExtensionProperties()
-
-				VkInstance instance;
-			VkApplicationInfo appInfo{ .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pNext = nullptr };
-			appInfo.pApplicationName = "Mist";
-			appInfo.applicationVersion = VK_API_VERSION_1_1;
-			appInfo.apiVersion = VK_API_VERSION_1_1;
-			appInfo.engineVersion = VK_API_VERSION_1_1;
-			appInfo.pEngineName = "Mist";
-
-			tDynArray<const char*> extensions;
-			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-			tDynArray<const char*> layers;
-			layers.push_back("VK_LAYER_KHRONOS_validation");
-
-			VkInstanceCreateInfo instanceCreateInfo{ .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, .pNext = nullptr };
-			//instanceCreateInfo.
+		// Get Vulkan version
+        uint32_t instanceVersion = VK_API_VERSION_1_0;
+        auto FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+		if (vkEnumerateInstanceVersion) {
+			vkEnumerateInstanceVersion(&instanceVersion);
 		}
-#endif // 0
+		else
+			logerror("Fail to get Vulkan API version. Using base api version.\n");
 
+        // 3 macros to extract version info
+        uint32_t major = VK_VERSION_MAJOR(instanceVersion);
+        uint32_t minor = VK_VERSION_MINOR(instanceVersion);
+        uint32_t patch = VK_VERSION_PATCH(instanceVersion);
+		logfok("Vulkan API version: %d.%d.%d\n", major, minor, patch);
 
 		vkb::InstanceBuilder builder;
 		vkb::Result<vkb::Instance> instanceReturn = builder
 			.set_app_name("Vulkan renderer")
 			.request_validation_layers(CVar_EnableValidationLayer.Get())
-			.require_api_version(1, 1, 0)
+			.require_api_version(major, minor, patch)
 			//.use_default_debug_messenger()
 			.set_debug_callback(&Mist::Debug::DebugVulkanCallback)
+			//.enable_extension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)
 			.build();
 		check(instanceReturn.has_value());
 		//check(instanceReturn.full_error().vk_result == VK_SUCCESS);
