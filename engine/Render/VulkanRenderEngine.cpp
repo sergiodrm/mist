@@ -118,7 +118,7 @@ namespace Mist
 			IB.Init(context, quadInfo);
 		}
 
-		void Draw(CommandBuffer cmd)
+		void Draw(VkCommandBuffer cmd)
 		{
 			VB.Bind(cmd);
 			IB.Bind(cmd);
