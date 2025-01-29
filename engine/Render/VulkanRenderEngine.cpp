@@ -66,7 +66,8 @@ namespace Mist
 			if (level == Mist::LogLevel::Error)
 			{
 #if defined(_DEBUG)
-				PrintCallstack();
+				if (!CVar_ExitValidationLayer.Get())
+					PrintCallstack();
 #endif
 #ifdef MIST_CRASH_ON_VALIDATION_LAYER
 				check(!CVar_ExitValidationLayer.Get() && "Validation layer error");
