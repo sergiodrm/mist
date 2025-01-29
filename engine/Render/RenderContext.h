@@ -24,6 +24,7 @@ namespace Mist
 	class tDescriptorSetCache;
 	class ShaderFileDB;
 	class Renderer;
+	class CommandQueue;
 
 	typedef tFixedString<64> tRenderResourceName;
 
@@ -141,6 +142,8 @@ namespace Mist
 		// Graphics queue
 		VkQueue GraphicsQueue;
 		uint32_t GraphicsQueueFamily;
+
+		CommandQueue* Queue = nullptr;
 
 		// Compute queue
 		VkQueue ComputeQueue;

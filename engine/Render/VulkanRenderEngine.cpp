@@ -31,6 +31,7 @@
 #include "Core/SystemMemory.h"
 #include "RenderProfiling.h"
 #include "Render/DebugRender.h"
+#include "Render/CommandList.h"
 #include "Render/UI.h"
 
 
@@ -297,6 +298,8 @@ namespace Mist
 
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
 
+		m_renderContext.Queue = _new CommandQueue(&m_renderContext, QUEUE_GRAPHICS | QUEUE_COMPUTE);
+
 		return true;
 	}
 
@@ -325,6 +328,8 @@ namespace Mist
 		loginfo("Shutdown render engine.\n");
 
 		RenderContext_ForceFrameSync(m_renderContext);
+
+		delete m_renderContext.Queue;
 
 		FullscreenQuad.Destroy(m_renderContext);
 
@@ -474,6 +479,7 @@ namespace Mist
 		RenderFrameContext& frameContext = GetFrameContext();
 		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
+		m_renderContext.Queue->ProcessInFlightCommands();
 
 		BeginFrame();
 		{
@@ -481,68 +487,83 @@ namespace Mist
 			// Acquire render image from swapchain
 			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore,
 				nullptr, &m_currentSwapchainIndex));
+
+			m_renderContext.Queue->AddWaitSemaphore(frameContext.PresentSemaphore, 0);
+			//m_renderContext.Queue->AddWaitSemaphore(frameContext.ComputeSemaphore, 0);
+			m_renderContext.Queue->AddSignalSemaphore(frameContext.RenderSemaphore, 0);
 		}
+
+		CommandBuffer* commandBuffer = m_renderContext.Queue->CreateCommandBuffer();
+		RenderAPI::ResetCommandBuffer(commandBuffer->CmdBuffer, 0);
+		RenderAPI::BeginCommandBuffer(commandBuffer->CmdBuffer, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		frameContext.GraphicsCommandContext.CommandBuffer = commandBuffer->CmdBuffer;
+		frameContext.GraphicsCommandContext.CommandPool = nullptr;
+		frameContext.ComputeCommandContext.CommandBuffer = commandBuffer->CmdBuffer;
+		frameContext.ComputeCommandContext.CommandPool = nullptr;
+
 
 		CPU_PROFILE_SCOPE(Draw);
 		// Compute
-		{
-			CPU_PROFILE_SCOPE(CpuComputeDispatch);
-			frameContext.ComputeCommandContext.ResetCommandBuffer();
-			frameContext.ComputeCommandContext.BeginCommandBuffer();
-			BeginGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer, "Begin Compute");
-			m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
-			frameContext.ComputeCommandContext.EndCommandBuffer();
-			EndGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer);
-		}
+		CPU_PROFILE_SCOPE(CpuComputeDispatch);
+		//frameContext.ComputeCommandContext.ResetCommandBuffer();
+		//frameContext.ComputeCommandContext.BeginCommandBuffer();
+		BeginGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer, "Compute GPUParticles");
+		m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
+		EndGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer);
 
 		// Graphics
+		CPU_PROFILE_SCOPE(CpuGraphics);
+		//frameContext.GraphicsCommandContext.ResetCommandBuffer();
+		//frameContext.GraphicsCommandContext.BeginCommandBuffer();
+		VkCommandBuffer graphicsCmd = frameContext.GraphicsCommandContext.CommandBuffer;
+
+		// Timestamp queries
+		GpuProf_Reset(m_renderContext);
+		GpuProf_Begin(m_renderContext, "GpuTime");
+
+		BeginGPUEvent(m_renderContext, graphicsCmd, "Begin Graphics", 0xff0000ff);
+		GpuProf_Begin(m_renderContext, "Graphics_Renderer");
+		m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
+		m_renderer.Draw(m_renderContext, frameContext);
+		GpuProf_End(m_renderContext);
+		m_gpuParticleSystem.Draw(m_renderContext, frameContext);
+
+
+		// Skybox
+		BeginGPUEvent(m_renderContext, graphicsCmd, "Skybox");
+		m_renderer.GetLDRTarget().BeginPass(m_renderContext, graphicsCmd);
+		if (0&&m_scene && m_scene->GetSkyboxTexture())
+			DrawCubemap(m_renderContext, *m_scene->GetSkyboxTexture());
+		m_renderer.GetLDRTarget().EndPass(graphicsCmd);
+		EndGPUEvent(m_renderContext, graphicsCmd);
+
+		DebugRender::Draw(m_renderContext);
+		ui::End(m_renderContext);
+
+		GpuProf_Begin(m_renderContext, "Graphics_ScreenDraw");
+		BeginGPUEvent(m_renderContext, graphicsCmd, "ScreenDraw");
+		RenderTarget& rt = m_renderer.GetPresentRenderTarget(m_currentSwapchainIndex);
+		Renderer::tCopyParams copyParams;
+		copyParams.BlendState.Enabled = false;
+		copyParams.Src = &m_renderer.GetLDRTarget();
+		copyParams.Dst = &rt;
+		copyParams.Context = &m_renderContext;
+		m_renderer.CopyRenderTarget(copyParams);
+		EndGPUEvent(m_renderContext, graphicsCmd);
+		GpuProf_End(m_renderContext);
+
+		// End command buffers
+		GpuProf_End(m_renderContext);
+		//frameContext.ComputeCommandContext.EndCommandBuffer();
+		//frameContext.GraphicsCommandContext.EndCommandBuffer();
+		RenderAPI::EndCommandBuffer(graphicsCmd);
+		EndGPUEvent(m_renderContext, graphicsCmd);
+		frameContext.GraphicsTimestampQueryPool.EndFrame();
+
+		frameContext.GraphicsCommandContext.CommandBuffer = nullptr;
+
 		{
-			CPU_PROFILE_SCOPE(CpuGraphics);
-			frameContext.GraphicsCommandContext.ResetCommandBuffer();
-			frameContext.GraphicsCommandContext.BeginCommandBuffer();
-			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
-
-			// Timestamp queries
-			GpuProf_Reset(m_renderContext);
-			GpuProf_Begin(m_renderContext, "GpuTime");
-
-			BeginGPUEvent(m_renderContext, cmd, "Begin Graphics", 0xff0000ff);
-			GpuProf_Begin(m_renderContext, "Graphics_Renderer");
-			m_renderer.Draw(m_renderContext, frameContext);
-			GpuProf_End(m_renderContext);
-			m_gpuParticleSystem.Draw(m_renderContext, frameContext);
-
-
-			// Skybox
-			BeginGPUEvent(m_renderContext, cmd, "Skybox");
-			m_renderer.GetLDRTarget().BeginPass(m_renderContext, cmd);
-			if (0&&m_scene && m_scene->GetSkyboxTexture())
-				DrawCubemap(m_renderContext, *m_scene->GetSkyboxTexture());
-			m_renderer.GetLDRTarget().EndPass(cmd);
-			EndGPUEvent(m_renderContext, cmd);
-
-			DebugRender::Draw(m_renderContext);
-			ui::End(m_renderContext);
-
-			GpuProf_Begin(m_renderContext, "Graphics_ScreenDraw");
-			BeginGPUEvent(m_renderContext, cmd, "ScreenDraw");
-			RenderTarget& rt = m_renderer.GetPresentRenderTarget(m_currentSwapchainIndex);
-			Renderer::tCopyParams copyParams;
-			copyParams.BlendState.Enabled = false;
-			copyParams.Src = &m_renderer.GetLDRTarget();
-			copyParams.Dst = &rt;
-			copyParams.Context = &m_renderContext;
-			m_renderer.CopyRenderTarget(copyParams);
-			EndGPUEvent(m_renderContext, cmd);
-			GpuProf_End(m_renderContext);
-
-			GpuProf_End(m_renderContext);
-			frameContext.GraphicsCommandContext.EndCommandBuffer();
-			EndGPUEvent(m_renderContext, cmd);
-			frameContext.GraphicsTimestampQueryPool.EndFrame();
-		}
-
-		{
+#if 0
 			CPU_PROFILE_SCOPE(QueueSubmit);
 
 			// Submit Compute Queue 
@@ -580,6 +601,10 @@ namespace Mist
 			graphicsSubmitInfo.commandBufferCount = 1;
 			graphicsSubmitInfo.pCommandBuffers = &frameContext.GraphicsCommandContext.CommandBuffer;
 			vkcheck(vkQueueSubmit(m_renderContext.GraphicsQueue, 1, &graphicsSubmitInfo, frameContext.GraphicsCommandContext.Fence));
+#else
+			m_renderContext.Queue->Submit(&commandBuffer, 1);
+#endif // 0
+
 		}
 
 		{
@@ -830,14 +855,15 @@ namespace Mist
 		{
 			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
 
+#if 0
 			// Graphics commands
 			{
 				vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &frameContext.GraphicsCommandContext.CommandPool));
 				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.GraphicsCommandContext.CommandPool);
 				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.GraphicsCommandContext.CommandBuffer));
 				char buff[64];
-                sprintf_s(buff, "GraphicsCommandBuffer_%u", i);
-                SetVkObjectName(m_renderContext, &frameContext.GraphicsCommandContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
+				sprintf_s(buff, "GraphicsCommandBuffer_%u", i);
+				SetVkObjectName(m_renderContext, &frameContext.GraphicsCommandContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
 			}
 
 			// Compute commands
@@ -845,11 +871,13 @@ namespace Mist
 				vkcheck(vkCreateCommandPool(m_renderContext.Device, &computePoolInfo, nullptr, &frameContext.ComputeCommandContext.CommandPool));
 				VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(frameContext.ComputeCommandContext.CommandPool);
 				vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &frameContext.ComputeCommandContext.CommandBuffer));
-                char buff[64];
-                sprintf_s(buff, "ComputeCommandBuffer_%u", i);
-                SetVkObjectName(m_renderContext, &frameContext.ComputeCommandContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
+				char buff[64];
+				sprintf_s(buff, "ComputeCommandBuffer_%u", i);
+				SetVkObjectName(m_renderContext, &frameContext.ComputeCommandContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
 			}
+#endif // 0
 		}
+
 
 		vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &m_renderContext.TransferContext.CommandPool));
 		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_renderContext.TransferContext.CommandPool, 1);
@@ -872,10 +900,14 @@ namespace Mist
 			vkcheck(vkCreateFence(m_renderContext.Device, &fenceInfo, nullptr, &frameContext.ComputeCommandContext.Fence));
 
 			// Render semaphore
+			VkSemaphoreTypeCreateInfo typeInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO, nullptr };
+			typeInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
 			VkSemaphoreCreateInfo semaphoreInfo = vkinit::SemaphoreCreateInfo();
+			//semaphoreInfo.pNext = &typeInfo;
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.RenderSemaphore));
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.ComputeSemaphore));
 			// Present semaphore
+			semaphoreInfo.pNext = nullptr;
 			vkcheck(vkCreateSemaphore(m_renderContext.Device, &semaphoreInfo, nullptr, &frameContext.PresentSemaphore));
 
 			char buff[256];

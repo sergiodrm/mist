@@ -165,7 +165,7 @@ namespace Mist
 		for (size_t i = 0; i < frameContextCount; ++i)
 		{
 			ProcessCommandBufferContextFence(frameContextArray[i].ComputeCommandContext, fences);
-			ProcessCommandBufferContextFence(frameContextArray[i].GraphicsCommandContext, fences);
+			//ProcessCommandBufferContextFence(frameContextArray[i].GraphicsCommandContext, fences);
 		}
 		if (!fences.IsEmpty())
 			RenderAPI::WaitAndResetFences(device, fences.GetData(), fences.GetSize());
