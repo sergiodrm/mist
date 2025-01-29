@@ -270,9 +270,7 @@ namespace Mist
 			if (m_data)
 			{
 				Mist::Free(m_data);
-				m_data = nullptr;
-				m_count = 0;
-				m_index = 0;
+				Invalidate();
 			}
 		}
 
@@ -338,6 +336,25 @@ namespace Mist
 
 		inline DataType& operator[](IndexType index) { check(m_data && index < m_index); return m_data[index]; }
 		inline const DataType& operator[](IndexType index) const { check(m_data && index < m_index); return m_data[index]; }
+
+		[[nodiscard]] ThisType Move()
+		{
+			ThisType other;
+			other.m_data = m_data;
+			other.m_index = m_index;
+			other.m_count = m_count;
+			Invalidate();
+			return other;
+		}
+
+	protected:
+		void Invalidate()
+        {
+            m_data = nullptr;
+            m_count = 0;
+            m_index = 0;
+		}
+
 	private:
 		DataType* m_data;
 		IndexType m_index;
