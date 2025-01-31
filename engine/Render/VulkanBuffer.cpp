@@ -12,11 +12,12 @@ namespace vkutils
 	VkBufferUsageFlags GetVulkanBufferUsage(Mist::EBufferUsageBits usage)
 	{
 		VkBufferUsageFlags flags = 0;
-		if (usage == Mist::BUFFER_USAGE_INVALID) return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
+		if (usage == Mist::BUFFER_USAGE_NONE) return VK_BUFFER_USAGE_FLAG_BITS_MAX_ENUM;
 		if (usage & Mist::BUFFER_USAGE_VERTEX) flags |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 		if (usage & Mist::BUFFER_USAGE_INDEX) flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 		if (usage & Mist::BUFFER_USAGE_UNIFORM) flags |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		if (usage & Mist::BUFFER_USAGE_STORAGE) flags |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		if (usage & Mist::BUFFER_USAGE_TRANSFER_DST) flags |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		return flags;
 	}
 
@@ -150,7 +151,7 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(SubmitGpuBuffer);
 		check(gpuBuffer.m_size >= size);
-		check(gpuBuffer.m_usage != EBufferUsageBits::BUFFER_USAGE_INVALID);
+		check(gpuBuffer.m_usage != EBufferUsageBits::BUFFER_USAGE_NONE);
 		check(gpuBuffer.m_buffer.Buffer != VK_NULL_HANDLE);
 		check(cpuData && size > 0);
 
@@ -173,17 +174,17 @@ namespace Mist
 	{	
 		m_buffer.Buffer = VK_NULL_HANDLE;
 		m_buffer.Alloc = VK_NULL_HANDLE;
-		m_usage = EBufferUsageBits::BUFFER_USAGE_INVALID;
+		m_usage = EBufferUsageBits::BUFFER_USAGE_NONE;
 	}
 
 	void GPUBuffer::Init(const RenderContext& renderContext, const BufferCreateInfo& info)
 	{
 		check(m_buffer.Buffer == VK_NULL_HANDLE);
 		check(m_buffer.Alloc == nullptr);
+		m_usage |= info.Usage | BUFFER_USAGE_TRANSFER_DST;
 		m_buffer = MemNewBuffer(renderContext.Allocator,
 			info.Size,
-			vkutils::GetVulkanBufferUsage(m_usage)
-			| VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+			vkutils::GetVulkanBufferUsage(m_usage),
 			MEMORY_USAGE_GPU);
 		m_size = info.Size;
 

@@ -42,11 +42,12 @@ namespace Mist
 
 	enum EBufferUsageBits
 	{
-		BUFFER_USAGE_INVALID = 0x00, 
+		BUFFER_USAGE_NONE = 0x00, 
 		BUFFER_USAGE_VERTEX = 0x01, 
 		BUFFER_USAGE_INDEX = 0x02,
 		BUFFER_USAGE_UNIFORM = 0x04,
 		BUFFER_USAGE_STORAGE = 0x08,
+		BUFFER_USAGE_TRANSFER_DST = 0x10,
 	};
 	DEFINE_ENUM_BIT_OPERATORS(EBufferUsageBits);
 
@@ -54,6 +55,7 @@ namespace Mist
 	{
 		uint32_t Size;
 		const void* Data; // Can be null
+		EBufferUsageBits Usage = BUFFER_USAGE_NONE; // Additinal usage flags
 	};
 
 	class GPUBuffer
@@ -64,6 +66,12 @@ namespace Mist
 		GPUBuffer();
 		void Init(const RenderContext& renderContext, const BufferCreateInfo& info);
 		void Destroy(const RenderContext& renderContext);
+        inline bool IsAllocated() const { return m_buffer.IsAllocated(); }
+        AllocatedBuffer GetBuffer() const { return m_buffer; }
+        uint32_t GetSize() const { return m_size; }
+        EBufferUsageBits GetUsage() const { return m_usage; }
+
+        inline bool operator==(const GPUBuffer& other) const { return m_buffer.Buffer == other.m_buffer.Buffer; }
 
 	protected:
 		// To record a command to copy data from specified buffer.
