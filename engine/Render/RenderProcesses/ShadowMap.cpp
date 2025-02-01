@@ -16,6 +16,7 @@
 #include "Render/Camera.h"
 #include "glm/ext/quaternion_geometric.hpp"
 #include "glm/ext/matrix_transform.hpp"
+#include "../CommandList.h"
 
 #define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
 #define SHADOW_MAP_RT_LAYOUT IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
@@ -167,9 +168,10 @@ namespace Mist
 
 	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex)
 	{
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		check(lightIndex < globals::MaxShadowMapAttachments);
-		m_shader->UseProgram(context);
+		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+
+		//m_shader->UseProgram(context);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
 		m_shader->SetDynamicBufferOffset(context, "u_ubo", sizeof(glm::mat4), lightIndex);
 
@@ -382,7 +384,7 @@ namespace Mist
 			check(m_lightCount <= globals::MaxShadowMapAttachments);
 		}
 
-		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, &renderFrameContext.GlobalBuffer);
+		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, renderFrameContext.GlobalBuffer);
 
 #if 0
 		// Update light VP matrix for lighting pass
@@ -399,7 +401,7 @@ namespace Mist
 			//lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
 			lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
 		}
-		renderFrameContext.GlobalBuffer.SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
+		renderFrameContext.GlobalBuffer->SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
 #endif // 0
 
 	}
@@ -407,20 +409,27 @@ namespace Mist
 	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuShadowMapping);
-		VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
-		BeginGPUEvent(renderContext, cmd, "ShadowMapping");
+		//VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
+		CommandList* commandList = renderContext.CmdList;
+		commandList->BeginMarker("ShadowMapping");
+		//BeginGPUEvent(renderContext, cmd, "ShadowMapping");
 		GpuProf_Begin(renderContext, "Shadow mapping");
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);
+        GraphicsState state = {};
+		state.Program = m_shadowMapPipeline.GetShader();
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-			m_shadowMapTargetArray[i].BeginPass(renderContext, cmd);
+			//m_shadowMapTargetArray[i].BeginPass(renderContext, cmd);
+            state.Rt = &m_shadowMapTargetArray[i];
+            commandList->SetGraphicsState(state);
 			if (i < m_lightCount)
 				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
-			m_shadowMapTargetArray[i].EndPass(cmd);
+			//m_shadowMapTargetArray[i].EndPass(cmd);
 		}
 		GpuProf_End(renderContext);
-		EndGPUEvent(renderContext, cmd);
+		//EndGPUEvent(renderContext, cmd);
+		commandList->EndMarker();
 	}
 
 	void ShadowMapProcess::ImGuiDraw()

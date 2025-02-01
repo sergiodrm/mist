@@ -53,6 +53,8 @@ namespace Mist
 
 		void ImGuiDraw(bool createWindow = false);
 
+        ShaderProgram* GetShader() const { return m_shader; }
+
 	protected:
 		glm::mat4 ComputeShadowVolume(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDir, float nearClip, float farClip, float splitLambda = 0.95f);
 		void SetupLight(uint32_t lightIndex, const glm::mat4& depthViewProjection, const glm::mat4& view);

@@ -29,6 +29,7 @@
 namespace Mist
 {
 	struct RenderContext;
+	class CommandList;
 
 	typedef uint32_t tFlagBits;
 #ifdef MIST_VULKAN
@@ -658,7 +659,7 @@ namespace Mist
 
 	namespace utils
 	{
-		void CmdSubmitTransfer(RenderContext& renderContext, std::function<void(VkCommandBuffer)>&& fillCmdCallback);
+		void CmdSubmitTransfer(RenderContext& renderContext, std::function<void(CommandList*)>&& fillCmdCallback);
 		void CmdCopyBuffer(RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size);
 		EFormat GetImageFormatFromChannels(uint32_t channels);
 		size_t GetPixelSizeFromFormat(EFormat format);

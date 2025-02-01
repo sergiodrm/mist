@@ -14,6 +14,7 @@
 #include "Render/Texture.h"
 #include "Application/Application.h"
 #include "Render/RendererBase.h"
+#include "CommandList.h"
 
 
 namespace Mist
@@ -271,39 +272,56 @@ namespace Mist
 		{
 			CPU_PROFILE_SCOPE(DebugPass);
 			Renderer* renderer = context.Renderer;
-			VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
-			BeginGPUEvent(context, cmd, "DebugRenderer");
+			//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+            CommandList* commandList = context.CmdList;
+
+			//BeginGPUEvent(context, cmd, "DebugRenderer");
+            commandList->BeginMarker("DebugRenderer");
 
 			// process batches before render passes.
-			bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
-			bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
+			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
+			const bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
 
-			renderer->GetLDRTarget().BeginPass(context, cmd);
+            GraphicsState state = {};
+            state.Rt = &renderer->GetLDRTarget();
+			//renderer->GetLDRTarget().BeginPass(context, cmd);
 			const CameraData& cameraData = *context.GetFrameContext().CameraData;
 			if (processLine)
 			{
-				DebugRenderPipeline.m_lineShader->UseProgram(context);
+                state.Program = DebugRenderPipeline.m_lineShader;
+				state.Vbo = DebugRenderPipeline.LineBatch.vb;
+                commandList->SetGraphicsState(state);
+				
+				//DebugRenderPipeline.m_lineShader->UseProgram(context);
 				DebugRenderPipeline.m_lineShader->SetBufferData(context, "camera", &cameraData, sizeof(CameraData));
-				DebugRenderPipeline.m_lineShader->FlushDescriptors(context);
-				DebugRenderPipeline.LineBatch.vb.Bind(cmd);
-				RenderAPI::CmdDraw(cmd, DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
+				//DebugRenderPipeline.m_lineShader->FlushDescriptors(context);
+				//DebugRenderPipeline.LineBatch.vb.Bind(cmd);
+				//RenderAPI::CmdDraw(cmd, DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
+                commandList->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
 				DebugRenderPipeline.LineBatch.Reset();
 			}
 
 			if (processQuad)
 			{
 				const glm::mat4 orthoproj = glm::ortho(0.f, (float)context.Window->Width, 0.f, (float)context.Window->Height, -1.f, 1.f);
-				DebugRenderPipeline.m_quadShader->UseProgram(context);
+
+                state.Program = DebugRenderPipeline.m_quadShader;
+                state.Vbo = DebugRenderPipeline.QuadBatch.vb;
+                state.Ibo = DebugRenderPipeline.QuadBatch.ib;
+                commandList->SetGraphicsState(state);
+				//DebugRenderPipeline.m_quadShader->UseProgram(context);
 				DebugRenderPipeline.m_quadShader->BindSampledTextureArray(context, "u_tex", DebugRenderPipeline.QuadBatch.Textures.GetData(), tQuadBatch::MaxViews);
 				DebugRenderPipeline.m_quadShader->SetBufferData(context, "u_camera", &orthoproj, sizeof(orthoproj));
-				DebugRenderPipeline.m_quadShader->FlushDescriptors(context);
-				DebugRenderPipeline.QuadBatch.vb.Bind(cmd);
-				DebugRenderPipeline.QuadBatch.ib.Bind(cmd);
-				RenderAPI::CmdDrawIndexed(cmd, DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0, 0);
+				//DebugRenderPipeline.m_quadShader->FlushDescriptors(context);
+				//DebugRenderPipeline.QuadBatch.vb.Bind(cmd);
+				//DebugRenderPipeline.QuadBatch.ib.Bind(cmd);
+				//RenderAPI::CmdDrawIndexed(cmd, DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0, 0);
+                commandList->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0);
 				DebugRenderPipeline.QuadBatch.Reset();
 			}
-			renderer->GetLDRTarget().EndPass(cmd);
-			EndGPUEvent(context, cmd);
+			//renderer->GetLDRTarget().EndPass(cmd);
+			//EndGPUEvent(context, cmd);
+            commandList->EndMarker();
 		}
 	}
 }

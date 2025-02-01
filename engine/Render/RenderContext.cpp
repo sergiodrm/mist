@@ -164,7 +164,7 @@ namespace Mist
 		tStaticArray<VkFence, 16> fences;
 		for (size_t i = 0; i < frameContextCount; ++i)
 		{
-			ProcessCommandBufferContextFence(frameContextArray[i].ComputeCommandContext, fences);
+			//ProcessCommandBufferContextFence(frameContextArray[i].ComputeCommandContext, fences);
 			//ProcessCommandBufferContextFence(frameContextArray[i].GraphicsCommandContext, fences);
 		}
 		if (!fences.IsEmpty())

@@ -13,6 +13,7 @@
 #include "Utils/FileSystem.h"
 #include "Render/RenderContext.h"
 #include "Render/RendererBase.h"
+#include "CommandList.h"
 
 namespace Mist
 {
@@ -245,9 +246,13 @@ namespace Mist
 		{
 			// TODO: use LDR render target from renderer
 			Renderer* renderer = context.Renderer;
-			renderer->GetLDRTarget().BeginPass(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
-			ImGuiInstance.Draw(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
-			renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
+            CommandList* commandList = context.CmdList;
+            commandList->SetGraphicsState({ .Rt = &renderer->GetLDRTarget() });
+			//renderer->GetLDRTarget().BeginPass(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
+            commandList->BeginMarker("ImGui");
+			ImGuiInstance.Draw(context, commandList->GetCurrentCommandBuffer()->CmdBuffer);
+			commandList->EndMarker();
+			//renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
 		}
 	}
 }

@@ -59,7 +59,7 @@ namespace Mist
 	private:
 		ShaderProgram* m_computeShader;
 		VkDescriptorSet m_singleBufferDescriptorSet;
-		AllocatedBuffer m_particlesBuffer;
+		VertexBuffer m_particlesBuffer;
 		cTexture* m_circleGradientTexture;
 
 		ShaderProgram* m_graphicsShader;

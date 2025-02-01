@@ -13,6 +13,7 @@
 #include "Application/Event.h"
 #include "Render/InitVulkanTypes.h"
 #include "Core/SystemMemory.h"
+#include "../CommandList.h"
 
 #define PARTICLE_COUNT 512 * 256
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
@@ -62,12 +63,17 @@ namespace Mist
 			m_graphicsShader = ShaderProgram::Create(context, description);
 		}
 
-		m_particlesBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
+        BufferCreateInfo bufferInfo;
+        bufferInfo.Size = PARTICLE_STORAGE_BUFFER_SIZE;
+        bufferInfo.Usage = BUFFER_USAGE_STORAGE;
+        bufferInfo.Data = nullptr;
+        m_particlesBuffer.Init(context, bufferInfo);
+		/*m_particlesBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT
 			| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			EMemUsage::MEMORY_USAGE_GPU);
-		SetVkObjectName(context, &m_particlesBuffer.Buffer, VK_OBJECT_TYPE_BUFFER, "ParticlesBuffer");
+			EMemUsage::MEMORY_USAGE_GPU);*/
+		//SetVkObjectName(context, &m_particlesBuffer.GetBuffer(), VK_OBJECT_TYPE_BUFFER, "ParticlesBuffer");
 
 		// Fill particles
 		ResetParticles(context);
@@ -80,11 +86,11 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
-			frameContextArray[i].GlobalBuffer.AllocUniform(context, "GPUParticles", sizeof(ParameterUBO));
-			VkDescriptorBufferInfo uboBufferInfo = frameContextArray[i].GlobalBuffer.GenerateDescriptorBufferInfo("GPUParticles");
+			frameContextArray[i].GlobalBuffer->AllocUniform(context, "GPUParticles", sizeof(ParameterUBO));
+			VkDescriptorBufferInfo uboBufferInfo = frameContextArray[i].GlobalBuffer->GenerateDescriptorBufferInfo("GPUParticles");
 
 			VkDescriptorBufferInfo singleBufferInfo;
-			singleBufferInfo.buffer = m_particlesBuffer.Buffer;
+			singleBufferInfo.buffer = m_particlesBuffer.GetBuffer().Buffer;
 			singleBufferInfo.offset = 0;
 			singleBufferInfo.range = PARTICLE_STORAGE_BUFFER_SIZE;
 			DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
@@ -116,7 +122,7 @@ namespace Mist
 		{
 			params.MovementMode = m_flags & GPU_PARTICLES_REPULSE ? 1 : -1;
 		}
-		frameContext.GlobalBuffer.SetUniform(context, "GPUParticles", &params, sizeof(ParameterUBO));
+		frameContext.GlobalBuffer->SetUniform(context, "GPUParticles", &params, sizeof(ParameterUBO));
 
 		if (m_flags & GPU_PARTICLES_RESET_PARTICLES)
 		{
@@ -128,39 +134,43 @@ namespace Mist
 	void GPUParticleSystem::Dispatch(const RenderContext& context, uint32_t frameIndex)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDispatch);
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		//VkCommandBuffer cmd = context.GetFrameContext().ComputeCommandContext.CommandBuffer;
+		CommandList* commandList = context.CmdList;
 
 		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
 		{
 			if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
 			{
 				VkBufferMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr };
-				barrier.buffer = m_particlesBuffer.Buffer;
+				barrier.buffer = m_particlesBuffer.GetBuffer().Buffer;
 				barrier.offset = 0;
 				barrier.size = PARTICLE_STORAGE_BUFFER_SIZE;
 				barrier.srcAccessMask = 0;
 				barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 				barrier.srcQueueFamilyIndex = context.GraphicsQueueFamily;
 				barrier.dstQueueFamilyIndex = context.ComputeQueueFamily;
-				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 			}
 
-			m_computeShader->UseProgram(cmd);
-			m_computeShader->BindDescriptorSets(cmd, &m_singleBufferDescriptorSet, 1);
-			RenderAPI::CmdDispatch(cmd, PARTICLE_COUNT / 256, 1, 1);
+			commandList->SetComputeState({ .Program = m_computeShader });
+
+			//m_computeShader->UseProgram(cmd);
+			m_computeShader->BindDescriptorSets(commandList->GetCurrentCommandBuffer()->CmdBuffer, &m_singleBufferDescriptorSet, 1);
+			//RenderAPI::CmdDispatch(cmd, PARTICLE_COUNT / 256, 1, 1);
+			commandList->Dispatch(PARTICLE_COUNT / 256, 1, 1);
 
 			if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
 			{
 				VkBufferMemoryBarrier memoryBarrier{ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr };
-				memoryBarrier.buffer = m_particlesBuffer.Buffer;
+				memoryBarrier.buffer = m_particlesBuffer.GetBuffer().Buffer;
 				memoryBarrier.offset = 0;
 				memoryBarrier.size = PARTICLE_STORAGE_BUFFER_SIZE;
 				memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
 				memoryBarrier.dstAccessMask = 0;
 				memoryBarrier.srcQueueFamilyIndex = context.ComputeQueueFamily;
 				memoryBarrier.dstQueueFamilyIndex = context.GraphicsQueueFamily;
-				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 1, &memoryBarrier, 0, nullptr);
+				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 1, &memoryBarrier, 0, nullptr);
 			}
 		}
 	}
@@ -168,31 +178,42 @@ namespace Mist
 	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDraw);
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+        CommandList* commandList = context.CmdList;
+
 		if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
 		{
-			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
+			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.GetBuffer().Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
 				0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, context.ComputeQueueFamily, context.GraphicsQueueFamily);
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0,
+			vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0,
 				0, nullptr, 1, &barrier, 0, nullptr);
 		}
-		m_renderTarget.BeginPass(context, cmd);
+
+
+		//m_renderTarget.BeginPass(context, cmd);
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
+			GraphicsState state = {};
+			state.Rt = &m_renderTarget;
+			state.Program = m_graphicsShader;
+            state.Vbo = m_particlesBuffer;
+			commandList->SetGraphicsState(state);
 
-			m_graphicsShader->UseProgram(context);
-			VkDeviceSize offset = 0;
-			vkCmdBindVertexBuffers(cmd, 0, 1, &m_particlesBuffer.Buffer, &offset);
+			//m_graphicsShader->UseProgram(context);
+			//VkDeviceSize offset = 0;
+			//vkCmdBindVertexBuffers(commandList->GetCurrentCommandBuffer()->CmdBuffer, 0, 1, &m_particlesBuffer.GetBuffer().Buffer, &offset);
+			
 			m_graphicsShader->BindSampledTexture(context, "u_gradientTex", *m_circleGradientTexture);
-			m_graphicsShader->FlushDescriptors(context);
-			RenderAPI::CmdDraw(cmd, m_particleCount, 1, 0, 0);
+			//m_graphicsShader->FlushDescriptors(context);
+			//RenderAPI::CmdDraw(cmd, m_particleCount, 1, 0, 0);
+            commandList->Draw(m_particleCount, 1, 0, 0);
 		}
-		m_renderTarget.EndPass(cmd);
+		//m_renderTarget.EndPass(cmd);
 		if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
 		{
-			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
+			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.GetBuffer().Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
 				VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, 0, context.GraphicsQueueFamily, context.ComputeQueueFamily);
-			vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+			vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
 				0, nullptr, 1, &barrier, 0, nullptr);
 		}
 
@@ -210,7 +231,8 @@ namespace Mist
 	void GPUParticleSystem::Destroy(const RenderContext& context)
 	{
 		cTexture::Destroy(context, m_circleGradientTexture);
-		MemFreeBuffer(context.Allocator, m_particlesBuffer);
+		//MemFreeBuffer(context.Allocator, m_particlesBuffer);
+		m_particlesBuffer.Destroy(context);
 		m_renderTarget.Destroy(context);
 	}
 
@@ -253,18 +275,18 @@ namespace Mist
 		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, EMemUsage::MEMORY_USAGE_CPU);
 		Memory::MemCopy(context.Allocator, stageBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
 
-
-		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), [&](VkCommandBuffer cmd)
+		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), [&](CommandList* commandList)
 			{
-				VkBufferCopy bufferCopy{ 0, 0, 0 };
-				bufferCopy.size = PARTICLE_STORAGE_BUFFER_SIZE;
-				vkCmdCopyBuffer(context.TransferContext.CommandBuffer, stageBuffer.Buffer, m_particlesBuffer.Buffer, 1, &bufferCopy);
+				//VkBufferCopy bufferCopy{ 0, 0, 0 };
+				//bufferCopy.size = PARTICLE_STORAGE_BUFFER_SIZE;
+				//vkCmdCopyBuffer(context.TransferContext.CommandBuffer, stageBuffer.Buffer, m_particlesBuffer.GetBuffer().Buffer, 1, &bufferCopy);
+				commandList->CopyBuffer(stageBuffer, m_particlesBuffer.GetBuffer(), PARTICLE_STORAGE_BUFFER_SIZE);
 
 				if (context.ComputeQueueFamily != context.GraphicsQueueFamily)
 				{
-					VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
+					VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.GetBuffer().Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
 						VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, 0, context.GraphicsQueueFamily, context.ComputeQueueFamily);
-					vkCmdPipelineBarrier(context.TransferContext.CommandBuffer, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+					vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
 						0, 0, nullptr, 1, &barrier, 0, nullptr);
 				}
 			});

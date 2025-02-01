@@ -25,6 +25,7 @@ namespace Mist
 	class ShaderFileDB;
 	class Renderer;
 	class CommandQueue;
+	class CommandList;
 
 	typedef tFixedString<64> tRenderResourceName;
 
@@ -83,8 +84,8 @@ namespace Mist
 		VkSemaphore PresentSemaphore{};
 
 		// Commands
-		CommandBufferContext GraphicsCommandContext;
-		CommandBufferContext ComputeCommandContext;
+		//CommandBufferContext GraphicsCommandContext;
+		//CommandBufferContext ComputeCommandContext;
 
 		// Queries
 		sTimestampQueryPool GraphicsTimestampQueryPool;
@@ -95,7 +96,7 @@ namespace Mist
 		// Descriptors
 		[[deprecated]]
 		VkDescriptorSet CameraDescriptorSet{};
-		UniformBufferMemoryPool GlobalBuffer{};
+		UniformBufferMemoryPool* GlobalBuffer;
 		DescriptorAllocator* DescriptorAllocator;
 		tDescriptorSetCache DescriptorSetCache;
 
@@ -144,6 +145,7 @@ namespace Mist
 		uint32_t GraphicsQueueFamily;
 
 		CommandQueue* Queue = nullptr;
+        CommandList* CmdList = nullptr;
 
 		// Compute queue
 		VkQueue ComputeQueue;

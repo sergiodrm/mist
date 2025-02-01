@@ -12,6 +12,7 @@
 #include "Core/SystemMemory.h"
 #include "Utils/TimeUtils.h"
 #include "Utils/FileSystem.h"
+#include "CommandList.h"
 
 
 namespace Mist
@@ -55,7 +56,7 @@ namespace Mist
 		check(m_image.Image != VK_NULL_HANDLE);
 
 		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), 
-			[&](VkCommandBuffer cmd)
+			[&](CommandList* commandList)
 			{
 				VkImageAspectFlags flags = IsDepthFormat(m_description.Format) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
 				VkImageMemoryBarrier barrier
@@ -78,7 +79,7 @@ namespace Mist
 						.layerCount = VK_REMAINING_ARRAY_LAYERS
 					}
 				};
-				vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0,
+				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, srcStage, dstStage, 0,
 					0, nullptr, 0, nullptr, 1, &barrier);
 			});
 		m_layout = dstLayout;
@@ -464,7 +465,7 @@ namespace Mist
 			Memory::MemCopy(context.Allocator, stageBuffer, layerArray[i], size);
 
 			utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
-				[&](VkCommandBuffer cmd)
+				[&](CommandList* commandList)
 				{
 					VkBufferImageCopy copyRegion
 					{
@@ -496,12 +497,13 @@ namespace Mist
 					};
 
 					// Prepare image to be transfered
-					vkCmdPipelineBarrier(cmd,
+					vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer,
 						VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 						VK_PIPELINE_STAGE_TRANSFER_BIT,
 						0, 0, nullptr, 0, nullptr, 1, &transferBarrier);
 					// Copy from temporal stage buffer to image
-					vkCmdCopyBufferToImage(cmd, stageBuffer.Buffer, imageOut.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+					vkCmdCopyBufferToImage(commandList->GetCurrentCommandBuffer()->CmdBuffer, 
+						stageBuffer.Buffer, imageOut.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 						1, &copyRegion);
 
 					if (imageDesc.MipLevels == 1)
@@ -512,7 +514,7 @@ namespace Mist
 						imageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 						imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 						imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-						vkCmdPipelineBarrier(cmd,
+						vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer,
 							VK_PIPELINE_STAGE_TRANSFER_BIT,
 							VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 							0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
@@ -528,7 +530,7 @@ namespace Mist
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels)
 	{
 		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
-			[&](VkCommandBuffer cmd)
+			[&](CommandList* commandList)
 			{
 				VkImageMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr };
 				barrier.oldLayout = tovk::GetImageLayout(oldLayout);
@@ -563,7 +565,8 @@ namespace Mist
 				else
 					check(false && "Unsupported transfer operation.");
 
-				vkCmdPipelineBarrier(cmd, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, 
+					srcStage, dstStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 			});
 		return true;
 	}
@@ -577,7 +580,7 @@ namespace Mist
 			check(false && "Unsupported format to generate mipmap levels.");
 
 		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context),
-			[&](VkCommandBuffer cmd)
+			[&](CommandList* commandList)
 			{
 				VkImageMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr };
 				barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -599,7 +602,8 @@ namespace Mist
 					barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 					barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 					barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-					vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+					vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, 
+						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 					// Generate current mip level
 					VkImageBlit blit;
@@ -615,7 +619,8 @@ namespace Mist
 					blit.dstSubresource.mipLevel = i;
 					blit.dstSubresource.baseArrayLayer = 0;
 					blit.dstSubresource.layerCount = 1;
-					vkCmdBlitImage(cmd, image.Image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+					vkCmdBlitImage(commandList->GetCurrentCommandBuffer()->CmdBuffer,
+						image.Image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, image.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
 
 					// Update dimensions
 					width = width > 1 ? width / 2 : 1;
@@ -626,7 +631,8 @@ namespace Mist
 					barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 					barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 					barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-					vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+					vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, 
+						VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 				}
 				// Wait to last miplevel to be ready
 				barrier.subresourceRange.baseMipLevel = imageDesc.MipLevels - 1;
@@ -634,7 +640,8 @@ namespace Mist
 				barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 				barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 				barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-				vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer,
+					VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 			});
 		return true;
 	}

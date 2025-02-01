@@ -13,6 +13,7 @@
 #include "Core/Logger.h"
 #include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
+#include "Render/CommandList.h"
 #include "Application/Application.h"
 
 #include "Utils/TimeUtils.h"
@@ -757,7 +758,7 @@ namespace Mist
 		// Get memory pools of each frame
 		tArray<UniformBufferMemoryPool*, frameContextCount> memoryPoolArray;
 		for (uint32_t i = 0; i < frameContextCount; ++i)
-			memoryPoolArray[i] = &frameContextArray[i].GlobalBuffer;
+			memoryPoolArray[i] = frameContextArray[i].GlobalBuffer;
 
 		// Iterate over all descriptor sets one by one to create descriptor bindings
 		uint32_t descriptionSize = (uint32_t)reflection.DescriptorSetInfoArray.size();
@@ -885,7 +886,7 @@ namespace Mist
 		check(m_paramMap.contains(bufferName) && data && dataSize);
 		const tShaderParam& param = m_paramMap.at(bufferName);
 		RenderFrameContext& frameContext = context.GetFrameContext();
-		frameContext.GlobalBuffer.SetUniform(context, param.Name.CStr(), data, dataSize);
+		frameContext.GlobalBuffer->SetUniform(context, param.Name.CStr(), data, dataSize);
 	}
 
 	void tShaderParamAccess::SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset)
@@ -894,7 +895,7 @@ namespace Mist
 		check(m_paramMap.contains(bufferName) && data && elemSize && elemCount);
 		RenderFrameContext& frameContext = context.GetFrameContext();
 		const tShaderParam& param = m_paramMap.at(bufferName);
-		frameContext.GlobalBuffer.SetDynamicUniform(context, param.Name.CStr(), data, elemCount, elemSize, elemIndexOffset);
+		frameContext.GlobalBuffer->SetDynamicUniform(context, param.Name.CStr(), data, elemCount, elemSize, elemIndexOffset);
 	}
 
 	void tShaderParamAccess::SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset)
@@ -1239,6 +1240,7 @@ namespace Mist
 
 	VkCommandBuffer ShaderProgram::GetCommandBuffer(const RenderContext& context) const
 	{
+#if 0
 		switch (m_description.Type)
 		{
 		case tShaderType::Graphics: return context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
@@ -1246,6 +1248,11 @@ namespace Mist
 		}
 		check(false);
 		return VK_NULL_HANDLE;
+#else
+		check(context.CmdList && context.CmdList->IsRecording());
+		return context.CmdList->GetCurrentCommandBuffer()->CmdBuffer;
+#endif // 0
+
 	}
 
 	bool ShaderProgram::_Create(const RenderContext& context, const tShaderProgramDescription& description)

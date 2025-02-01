@@ -213,11 +213,11 @@ namespace Mist
 	{
 		if (GpuProf_CanMakeProfile(context))
 		{
-			RenderFrameContext& frameContext = context.GetFrameContext();
-			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
-			sTimestampQueryPool& queryPool = frameContext.GraphicsTimestampQueryPool;
-			index_t id = queryPool.BeginTimestamp(cmd);
-			GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Push({ id, 0.0, label });
+			//RenderFrameContext& frameContext = context.GetFrameContext();
+			//VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
+			//sTimestampQueryPool& queryPool = frameContext.GraphicsTimestampQueryPool;
+			//index_t id = queryPool.BeginTimestamp(cmd);
+			//GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Push({ id, 0.0, label });
 		}
 	}
 
@@ -225,28 +225,28 @@ namespace Mist
 	{
 		if (GpuProf_CanMakeProfile(context))
 		{
-			RenderFrameContext& frameContext = context.GetFrameContext();
-			VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
-
-			index_t id = GpuProfiler.GpuProfStacks[context.GetFrameIndex()].GetCurrent().Id;
-			frameContext.GraphicsTimestampQueryPool.EndTimestamp(cmd, id);
-			GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Pop();
+			//RenderFrameContext& frameContext = context.GetFrameContext();
+			//VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
+			//
+			//index_t id = GpuProfiler.GpuProfStacks[context.GetFrameIndex()].GetCurrent().Id;
+			//frameContext.GraphicsTimestampQueryPool.EndTimestamp(cmd, id);
+			//GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Pop();
 		}
 	}
 
 	void GpuProf_Reset(const RenderContext& context)
 	{
-		GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Reset();
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		frameContext.GraphicsTimestampQueryPool.ResetQueries(frameContext.GraphicsCommandContext.CommandBuffer);
-		frameContext.GraphicsTimestampQueryPool.BeginFrame();
+		//GpuProfiler.GpuProfStacks[context.GetFrameIndex()].Reset();
+		//RenderFrameContext& frameContext = context.GetFrameContext();
+		//frameContext.GraphicsTimestampQueryPool.ResetQueries(frameContext.GraphicsCommandContext.CommandBuffer);
+		//frameContext.GraphicsTimestampQueryPool.BeginFrame();
 	}
 
 	void GpuProf_Resolve(const RenderContext& context)
 	{
 		if (GpuProf_CanMakeProfile(context))
 		{
-			GpuProfiler.Resolve(context);
+			//GpuProfiler.Resolve(context);
 		}
 	}
 
@@ -254,12 +254,13 @@ namespace Mist
 	{
 		if (!CVar_ShowGpuProf.Get())
 			return;
-		GpuProfiler.ImGuiDraw(context);
+		//GpuProfiler.ImGuiDraw(context);
 	}
 
 	double GpuProf_GetGpuTime(const RenderContext& context, const char* label)
 	{
-		return GpuProfiler.GetTimeStat(context, label);
+		//return GpuProfiler.GetTimeStat(context, label);
+		return 0.0;
 	}
 
 }

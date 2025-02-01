@@ -36,6 +36,7 @@
 #include "Utils/FileSystem.h"
 #include "Render/RendererBase.h"
 #include "Render/RenderProcesses/ShadowMap.h"
+#include "Render/CommandList.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -244,13 +245,13 @@ namespace Mist
 	void Scene::InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
 #if 0
-		frameContext.GlobalBuffer.AllocDynamicUniform(renderContext, "Material", sizeof(MaterialUniform), MIST_MAX_MATERIALS);
-		VkDescriptorBufferInfo info = frameContext.GlobalBuffer.GenerateDescriptorBufferInfo("Material");
+		frameContext.GlobalBuffer->AllocDynamicUniform(renderContext, "Material", sizeof(MaterialUniform), MIST_MAX_MATERIALS);
+		VkDescriptorBufferInfo info = frameContext.GlobalBuffer->GenerateDescriptorBufferInfo("Material");
 		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
 			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
 			.Build(renderContext, m_materialSetArray[frameContext.FrameIndex]);
 #endif // 0
-		//frameContext.GlobalBuffer.AllocDynamicUniform(renderContext, "u_materials", sizeof(sMaterialRenderData), globals::MaxRenderObjects);
+		//frameContext.GlobalBuffer->AllocDynamicUniform(renderContext, "u_materials", sizeof(sMaterialRenderData), globals::MaxRenderObjects);
 	}
 
 	sRenderObject Scene::CreateRenderObject(sRenderObject parent)
@@ -749,7 +750,9 @@ namespace Mist
 	void Scene::Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		CommandList* commandList = context.CmdList;
+
 		// Iterate scene graph to render models.
 		const cMaterial* lastMaterial = nullptr;
 		const cMesh* lastMesh = nullptr;
@@ -771,7 +774,9 @@ namespace Mist
 					shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
 
 					const cMesh& mesh = model.m_meshes[j];
-					mesh.BindBuffers(cmd);
+					//mesh.BindBuffers(cmd);
+					commandList->BindVertexBuffer(mesh.VertexBuffer);
+                    commandList->BindIndexBuffer(mesh.IndexBuffer);
 
 					for (index_t k = 0; k < mesh.PrimitiveArray.GetSize(); ++k)
 					{
@@ -786,8 +791,9 @@ namespace Mist
 								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
 								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
 							}
-							shader->FlushDescriptors(context);
-							RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+							//shader->FlushDescriptors(context);
+							commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
+							//RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
 						}
 					}
 				}
@@ -824,7 +830,8 @@ namespace Mist
 	void Scene::DrawWithMaterials(const RenderContext& context, const tViewRenderInfo& viewRenderInfo, uint32_t textureSlot) const
 	{
 		CPU_PROFILE_SCOPE(Scene_DrawWithMaterials);
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		CommandList* commandList = context.CmdList;
 
 		cMaterial* currentMaterial = nullptr;
 		ShaderProgram* currentShader = nullptr;
@@ -848,7 +855,9 @@ namespace Mist
 					//pso.shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
 
 					const cMesh& mesh = model.m_meshes[j];
-					mesh.BindBuffers(cmd);
+					//mesh.BindBuffers(cmd);
+                    commandList->BindVertexBuffer(mesh.VertexBuffer);
+                    commandList->BindIndexBuffer(mesh.IndexBuffer);
 
 					for (index_t k = 0; k < mesh.PrimitiveArray.GetSize(); ++k)
 					{
@@ -863,7 +872,10 @@ namespace Mist
 								currentMaterial = primitive.Material;
 								if (shader != currentShader)
 								{
-									shader->UseProgram(context);
+									GraphicsState state = commandList->GetGraphicsState();
+									state.Program = shader;
+									commandList->SetGraphicsState(state);
+									//shader->UseProgram(context);
 									shader->SetBufferData(context, "u_Camera", &viewRenderInfo.view, sizeof(CameraData));
 									shader->SetBufferData(context, "u_depthInfo", &viewRenderInfo.shadowMap, sizeof(tShadowMapData));
 									shader->SetBufferData(context, "u_env", &viewRenderInfo.environment, sizeof(EnvironmentData));
@@ -882,8 +894,9 @@ namespace Mist
 								shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset);
 								currentTransformOffset = renderTransformOffset;
 							}
-							shader->FlushDescriptors(context);
-							RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+							//shader->FlushDescriptors(context);
+							//RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+                            commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 						}
 					}
 					++renderTransformOffset;
@@ -1199,7 +1212,9 @@ namespace Mist
 		if (!drawList)
 			return;
 
-		VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
+		CommandList* commandList = context.CmdList;
+        GraphicsState state = commandList->GetGraphicsState();
 
 		const RenderFrameContext& frameContext = context.GetFrameContext();
 		const CameraData& cameraData = *frameContext.CameraData;
@@ -1223,7 +1238,9 @@ namespace Mist
 
 		if (shader)
 		{
-			shader->UseProgram(context);
+			state.Program = shader;
+			commandList->SetGraphicsState(state);
+			//shader->UseProgram(context);
 		}
 
 		for (index_t i = 0; i < drawList->Items.GetSize(); ++i)
@@ -1233,7 +1250,9 @@ namespace Mist
 			if (data.Mesh != mesh)
 			{
 				mesh = data.Mesh;
-				mesh->BindBuffers(cmd);
+				//mesh->BindBuffers(cmd);
+                commandList->BindVertexBuffer(mesh->VertexBuffer);
+                commandList->BindIndexBuffer(mesh->IndexBuffer);
 			}
 
 			const PrimitiveMeshData& primitive = mesh->PrimitiveArray[data.PrimitiveIndex];
@@ -1245,7 +1264,9 @@ namespace Mist
                 if (!program && shader != material->m_shader)
                 {
 					shader = material->m_shader;
-                    shader->UseProgram(context);
+                    //shader->UseProgram(context);
+					state.Program = shader;
+                    commandList->SetGraphicsState(state);
                     shader->SetBufferData(context, "u_Camera", &cameraData, sizeof(CameraData));
                     shader->SetBufferData(context, "u_depthInfo", &depthViewInfo, sizeof(tShadowMapData));
                     shader->SetBufferData(context, "u_env", &m_environmentData, sizeof(EnvironmentData));
@@ -1259,8 +1280,9 @@ namespace Mist
 				}
 			}
 			shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), data.TransformIndex);
-            shader->FlushDescriptors(context);
-            RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+            //shader->FlushDescriptors(context);
+            //RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+            commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 		}
 	}
 
@@ -1286,7 +1308,7 @@ namespace Mist
 
 			InitRenderPass();
 
-			UniformBufferMemoryPool* buffer = &frameContext.GlobalBuffer;
+			UniformBufferMemoryPool* buffer = frameContext.GlobalBuffer;
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
 			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 			//check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));

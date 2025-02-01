@@ -9,6 +9,7 @@
 #include "RenderContext.h"
 #include "Application/Application.h"
 #include "VulkanRenderEngine.h"
+#include "CommandList.h"
 
 namespace Mist
 {
@@ -56,7 +57,7 @@ namespace Mist
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 		{
 			for (uint32_t j = 0; j < frameContextCount; ++j)
-				m_processArray[i]->InitFrameData(context, *this, j, frameContextArray[j].GlobalBuffer);
+				m_processArray[i]->InitFrameData(context, *this, j, *frameContextArray[j].GlobalBuffer);
 		}
 	}
 
@@ -140,14 +141,21 @@ namespace Mist
 		}
 		ShaderProgram* copyShader = m_copyPrograms[key];
 		check(copyShader);
-		VkCommandBuffer cmd = params.Context->GetFrameContext().GraphicsCommandContext.CommandBuffer;
-		BeginGPUEvent(*params.Context, cmd, "CopyRT");
-		params.Dst->BeginPass(*params.Context, cmd);
-		copyShader->UseProgram(*params.Context);
+		//VkCommandBuffer cmd = params.Context->GetFrameContext().GraphicsCommandContext.CommandBuffer;
+        CommandList* commandList = params.Context->CmdList;
+        commandList->BeginMarker("CopyRT");
+		//BeginGPUEvent(*params.Context, cmd, "CopyRT");
+		//params.Dst->BeginPass(*params.Context, cmd);
+		//copyShader->UseProgram(*params.Context);
+        GraphicsState state = {};
+        state.Program = copyShader;
+        state.Rt = params.Dst;
+        commandList->SetGraphicsState(state);
 		copyShader->BindSampledTexture(*params.Context, "u_tex", *params.Src->GetTexture());
-		copyShader->FlushDescriptors(*params.Context);
-		CmdDrawFullscreenQuad(cmd);
-		params.Dst->EndPass(cmd);
-		EndGPUEvent(*params.Context, cmd);
+		//copyShader->FlushDescriptors(*params.Context);
+		CmdDrawFullscreenQuad(commandList);
+		//params.Dst->EndPass(cmd);
+		//EndGPUEvent(*params.Context, cmd);
+		commandList->EndMarker();
 	}
 }

@@ -6,6 +6,7 @@
 #include "Core/Logger.h"
 #include "Render/RenderContext.h"
 #include "Core/SystemMemory.h"
+#include "CommandList.h"
 
 namespace vkutils
 {
@@ -162,9 +163,9 @@ namespace Mist
 		check(temporalBuffer.Buffer.IsAllocated());
 		//AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU_TO_GPU);
 		//Memory::MemCopy(context.Allocator, stageBuffer, cpuData, size);
-		utils::CmdSubmitTransfer(context, [&](VkCommandBuffer cmd)
+		utils::CmdSubmitTransfer(context, [&](CommandList* commandList)
 			{
-				gpuBuffer.UpdateData(cmd, temporalBuffer.Buffer.Buffer, size, 0, temporalBuffer.Offset);
+				gpuBuffer.UpdateData(commandList->GetCurrentCommandBuffer()->CmdBuffer, temporalBuffer.Buffer.Buffer, size, 0, temporalBuffer.Offset);
 			});
 		//MemFreeBuffer(context.Allocator, stageBuffer);
 	}
