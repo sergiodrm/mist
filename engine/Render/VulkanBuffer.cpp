@@ -223,6 +223,17 @@ namespace Mist
 		vkCmdBindIndexBuffer(cmd, m_buffer.Buffer, 0, VK_INDEX_TYPE_UINT32);
 	}
 
+	UniformBufferMemoryPool::UniformBufferMemoryPool(const RenderContext* context)
+        : m_buffer(), 
+		m_maxMemoryAllocated(0), 
+		m_freeMemoryOffset(0), 
+		m_cacheBuffer(nullptr), 
+		m_cacheSize(0),
+        m_context(context)
+	{
+		check(m_context);
+	}
+
 	void UniformBufferMemoryPool::Init(const RenderContext& renderContext, uint32_t bufferSize, EBufferUsageBits usage)
 	{
 		check(!m_buffer.IsAllocated());
@@ -346,6 +357,61 @@ namespace Mist
 		descInfo.offset = locationInfo.Offset;
 		descInfo.range = locationInfo.Size;
 		return descInfo;
+	}
+
+	uint32_t UniformBufferMemoryPool::AllocStorageBuffer(const char* name, uint32_t size, EBufferUsageBits usage)
+	{
+		check(m_context);
+        check(size > 0 && name && *name);
+		check(!m_storageBufferMap.contains(name));
+        VkBufferUsageFlags flags = vkutils::GetVulkanBufferUsage(usage) | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        AllocatedBuffer buffer = MemNewBuffer(m_context->Allocator, size, flags, MEMORY_USAGE_CPU_TO_GPU);
+        uint32_t index = (uint32_t)m_storageBufferMap.size();
+		if (index >= m_storageBuffers.capacity())
+		{
+			constexpr uint32_t growSize = 8;
+            logfwarn("UniformBufferMemoryPool::AllocStorageBuffer: Allocating [%s]. Storage buffer array is full. Increasing capacity. (%d -> %d)\n",
+				name, index, index + growSize);
+            m_storageBuffers.reserve(index + growSize);
+		}
+		m_storageBuffers.emplace_back(buffer);
+        m_storageBufferMap[name] = { .Size = size, .Index = index };
+		return index;
+	}
+
+	bool UniformBufferMemoryPool::WriteStorageBuffer(const char* name, const void* data, uint32_t size, uint32_t offset)
+	{
+		check(m_context);
+        if (m_storageBufferMap.contains(name))
+        {
+            const ItemMapInfo& info = m_storageBufferMap[name];
+            check(size + offset <= info.Size);
+			check(info.Index < m_storageBuffers.size());
+            Memory::MemCopy(m_context->Allocator, m_storageBuffers[info.Index], data, size, offset);
+            return true;
+        }
+		return false;
+	}
+
+	VkDescriptorBufferInfo UniformBufferMemoryPool::GenerateStorageBufferInfo(const char* name) const
+	{
+		check(m_storageBufferMap.contains(name));
+        const ItemMapInfo& info = m_storageBufferMap.at(name);
+        check(info.Index < m_storageBuffers.size());
+        return VkDescriptorBufferInfo{ .buffer = m_storageBuffers[info.Index].Buffer, .offset = 0, .range = info.Size };
+	}
+
+	AllocatedBuffer UniformBufferMemoryPool::GetStorageBuffer(uint32_t index) const
+	{
+        check(index < m_storageBuffers.size());
+		return m_storageBuffers[index];
+	}
+
+	AllocatedBuffer UniformBufferMemoryPool::GetStorageBuffer(const char* name) const
+	{
+        check(m_storageBufferMap.contains(name));
+        const ItemMapInfo& info = m_storageBufferMap.at(name);
+		return GetStorageBuffer(info.Index);
 	}
 
 	void UniformBufferMemoryPool::MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const

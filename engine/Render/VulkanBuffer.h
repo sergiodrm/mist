@@ -102,10 +102,14 @@ namespace Mist
 		struct ItemMapInfo
 		{
 			uint32_t Size = 0;
-			uint32_t Offset = 0;
+			union
+			{
+				uint32_t Offset = 0;
+				uint32_t Index;
+			};
 		};
 
-		UniformBufferMemoryPool() = default;
+		UniformBufferMemoryPool(const RenderContext* context);
 		UniformBufferMemoryPool(const UniformBufferMemoryPool&) = delete;
 		UniformBufferMemoryPool(UniformBufferMemoryPool&&) = delete;
 		UniformBufferMemoryPool& operator=(const UniformBufferMemoryPool&) = delete;
@@ -124,16 +128,29 @@ namespace Mist
 		VkBuffer GetBuffer() const { return m_buffer.Buffer; }
 		VkDescriptorBufferInfo GenerateDescriptorBufferInfo(const char* name) const;
 
+        uint32_t AllocStorageBuffer(const char* name, uint32_t size, EBufferUsageBits usage);
+		bool WriteStorageBuffer(const char* name, const void* data, uint32_t size, uint32_t offset = 0);
+		VkDescriptorBufferInfo GenerateStorageBufferInfo(const char* name) const;
+        AllocatedBuffer GetStorageBuffer(uint32_t index) const;
+        AllocatedBuffer GetStorageBuffer(const char* name) const;
+
 	private:
 		void MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const;
 		void AllocCacheBuffer(uint32_t size);
 
 	private:
-		std::unordered_map<std::string, ItemMapInfo> m_infoMap;
+		const RenderContext* m_context;
+
+		// Uniform buffer management
+		tMap<tString, ItemMapInfo> m_infoMap;
 		uint32_t m_freeMemoryOffset;
 		uint32_t m_maxMemoryAllocated;
 		AllocatedBuffer m_buffer;
 		uint8_t* m_cacheBuffer;
 		uint32_t m_cacheSize;
+
+		// Storage buffers management
+		tDynArray<AllocatedBuffer> m_storageBuffers;
+		tMap<tString, ItemMapInfo> m_storageBufferMap;
 	};
 }
