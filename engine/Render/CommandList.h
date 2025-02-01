@@ -80,13 +80,23 @@ namespace Mist
     {
         ShaderProgram* Program;
         RenderTarget* Rt;
+        VertexBuffer Vbo;
+        IndexBuffer Ibo;
 
-        inline constexpr bool operator==(const GraphicsState& other) const { return Program == other.Program && Rt == other.Rt; }
+        inline constexpr bool operator==(const GraphicsState& other) const 
+        { 
+            return Program == other.Program 
+                && Rt == other.Rt
+                && Vbo == other.Vbo
+                && Ibo == other.Ibo; 
+        }
     };
 
     struct ComputeState
     {
         ShaderProgram* Program;
+
+        inline constexpr bool operator==(const ComputeState& other) const { return Program == other.Program; }
     };
 
     class CommandList
@@ -94,34 +104,59 @@ namespace Mist
     public:
 
         CommandList(const RenderContext* context);
+        ~CommandList();
+
+        static uint64_t ExecuteCommandLists(CommandList* const* lists, uint32_t count);
 
         void Begin();
         void End();
 
         void BeginMarker(const char* name);
         void EndMarker();
+        // TODO: gpu query for time markers.
 
+        // Graphics related
+        inline const GraphicsState& GetGraphicsState() const { return m_graphicsState; }
         void SetGraphicsState(const GraphicsState& state);
-
+        void ClearColor(float r = 0.f, float g = 0.f, float b = 0.f, float a = 0.f);
+        void ClearDepthStencil(float depth = 1.f, uint32_t stencil = 0);
         void BindVertexBuffer(VertexBuffer vbo);
         void BindIndexBuffer(IndexBuffer ibo);
         void Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset);
 
+        // Viewport operations
+
         // TODO: set depth stencil state
         // TODO: set blending state
 
-        inline CommandBuffer* GetCurrentCommandBuffer() const { return m_currentCmd; }
+        // Compute related
+        void SetComputeState(const ComputeState& state);
+        void Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
+        // Transfer related
+        void CopyBuffer(AllocatedBuffer src, AllocatedBuffer dst, uint32_t size, uint32_t srcOffset = 0, uint32_t dstOffset = 0);
+
+        // TODO: resources state required to be set before draw or dispatch
+        // TODO: pipeline barriers?
+
+        inline CommandBuffer* GetCurrentCommandBuffer() const { return m_currentCmd; }
+        inline bool IsRecording() const { return m_currentCmd != nullptr; }
+
+        void ClearState();
+        inline bool CheckCommandQueueType(EQueueType type) const { return m_currentCmd && m_currentCmd->Type & type; }
+        inline bool CheckGraphicsCommandType() const { return CheckCommandQueueType(QUEUE_GRAPHICS); }
+        inline bool CheckComputeCommandType() const { return CheckCommandQueueType(QUEUE_COMPUTE); }
+        inline bool CheckTransferCommandType() const { return CheckCommandQueueType(QUEUE_TRANSFER); }
     private:
         void EndRenderPass();
-        void ClearState();
+
+        void Executed();
 
     private:
         const RenderContext* m_context;
         GraphicsState m_graphicsState;
         ComputeState m_computeState;
         CommandBuffer* m_currentCmd;
-        EQueueType m_type;
     };
 }

@@ -98,6 +98,7 @@ namespace Mist
             cb = m_commandPool.Back();
             m_commandPool.Pop();
             check(cb->SubmissionId == UINT32_MAX);
+            check(cb->Type == m_type);
         }
         else
         {
@@ -107,6 +108,7 @@ namespace Mist
             VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(cb->Pool);
             vkcheck(vkAllocateCommandBuffers(m_context->Device, &allocInfo, &cb->CmdBuffer));
             cb->SubmissionId = UINT32_MAX;
+            cb->Type = m_type;
             
             m_createdBuffers.Push(cb);
         }
@@ -250,10 +252,35 @@ namespace Mist
         check(m_context);
     }
 
+    CommandList::~CommandList()
+    {
+        check(!IsRecording());
+    }
+
+    uint64_t CommandList::ExecuteCommandLists(CommandList* const* lists, uint32_t count)
+    {
+        static constexpr uint32_t MaxLists = 8;
+        check(lists && count <= MaxLists);
+        tStaticArray<CommandBuffer*, MaxLists> cmds;
+        const RenderContext* context = lists[0]->m_context;
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            check(lists[i] && lists[i]->GetCurrentCommandBuffer());
+            cmds.Push(lists[i]->GetCurrentCommandBuffer());
+            // Check all contexts are the same
+            check(context == lists[i]->m_context);
+            lists[i]->Executed();
+        }
+
+        CommandQueue* queue = context->Queue;
+        uint64_t submission = queue->Submit(cmds.GetData(), count);
+        return submission;
+    }
+
     void CommandList::Begin()
     {
         check(m_context);
-        check(!m_currentCmd);
+        check(!IsRecording());
         // TODO: add support to all types of queues, cache queue type per command list.
         CommandQueue* queue = m_context->Queue;
         m_currentCmd = queue->CreateCommandBuffer();
@@ -264,8 +291,9 @@ namespace Mist
 
     void CommandList::End()
     {
-        EndRenderPass();
-        check(m_currentCmd);
+        check(IsRecording());
+        if (CheckGraphicsCommandType())
+            EndRenderPass();
         m_currentCmd->End();
     }
 
@@ -283,7 +311,7 @@ namespace Mist
 
     void CommandList::SetGraphicsState(const GraphicsState& state)
     {
-        check(m_currentCmd);
+        check(CheckGraphicsCommandType());
         if (state == m_graphicsState)
             return;
 
@@ -303,48 +331,114 @@ namespace Mist
             state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
         }
 
+        // Bind vertex buffer
+        if (state.Vbo.IsAllocated())
+            BindVertexBuffer(state.Vbo);
+        // Bind index buffer
+        if (state.Ibo.IsAllocated())
+            BindIndexBuffer(state.Ibo);
+
         m_graphicsState = state;
+    }
+
+    void CommandList::ClearColor(float r, float g, float b, float a)
+    {
+        check(CheckGraphicsCommandType());
+        if (m_graphicsState.Rt)
+        {
+            m_graphicsState.Rt->ClearColor(m_currentCmd->CmdBuffer, r, g, b, a);
+        }
+    }
+
+    void CommandList::ClearDepthStencil(float depth, uint32_t stencil)
+    {
+        check(CheckGraphicsCommandType());
+        if (m_graphicsState.Rt)
+        {
+            m_graphicsState.Rt->ClearDepthStencil(m_currentCmd->CmdBuffer, depth, stencil);
+        }
     }
 
     void CommandList::BindVertexBuffer(VertexBuffer vbo)
     {
-        check(m_currentCmd);
+        check(CheckGraphicsCommandType() && vbo.IsAllocated());
+        if (vbo == m_graphicsState.Vbo)
+            return;
         vbo.Bind(m_currentCmd->CmdBuffer);
+        m_graphicsState.Vbo = vbo;
     }
 
     void CommandList::BindIndexBuffer(IndexBuffer ibo)
     {
-        check(m_currentCmd);
+        check(CheckGraphicsCommandType() && ibo.IsAllocated());
+        if (ibo == m_graphicsState.Ibo)
+            return;
         ibo.Bind(m_currentCmd->CmdBuffer);
+        m_graphicsState.Ibo = ibo;
     }
 
     void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
-        check(m_currentCmd);
+        check(CheckGraphicsCommandType());
         m_graphicsState.Program->FlushDescriptors(*m_context);
         RenderAPI::CmdDraw(m_currentCmd->CmdBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
     }
 
     void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset)
     {
-        check(m_currentCmd);
+        check(CheckGraphicsCommandType());
         m_graphicsState.Program->FlushDescriptors(*m_context);
         RenderAPI::CmdDrawIndexed(m_currentCmd->CmdBuffer, indexCount, instanceCount, firstIndex, vertexOffset, 0);
     }
 
-    void CommandList::EndRenderPass()
+    void CommandList::SetComputeState(const ComputeState& state)
     {
-        check(m_currentCmd);
-        if (m_graphicsState.Rt)
+        check(CheckComputeCommandType());
+        if (state == m_computeState)
+            return;
+        if (state.Program != m_computeState.Program)
         {
-            m_graphicsState.Rt->EndPass(m_currentCmd->CmdBuffer);
-            m_graphicsState.Rt = nullptr;
+            state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
         }
+        m_computeState = state;
+    }
+
+    void CommandList::Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+    {
+        check(CheckComputeCommandType());
+        m_computeState.Program->FlushDescriptors(*m_context);
+        RenderAPI::CmdDispatch(m_currentCmd->CmdBuffer, groupCountX, groupCountY, groupCountZ);
+    }
+
+    void CommandList::CopyBuffer(AllocatedBuffer src, AllocatedBuffer dst, uint32_t size, uint32_t srcOffset, uint32_t dstOffset)
+    {
+        check(CheckTransferCommandType());
+        check(src.IsAllocated() && dst.IsAllocated());
+        VkBufferCopy copyRegion = {};
+        copyRegion.dstOffset = dstOffset;
+        copyRegion.srcOffset = srcOffset;
+        copyRegion.size = size;
+        vkCmdCopyBuffer(m_currentCmd->CmdBuffer, src.Buffer, dst.Buffer, 1, &copyRegion);
     }
 
     void CommandList::ClearState()
     {
         EndRenderPass();
         m_graphicsState = {};
+        m_computeState = {};
+    }
+
+    void CommandList::EndRenderPass()
+    {
+        check(CheckGraphicsCommandType());
+        if (m_graphicsState.Rt)
+        {
+            m_graphicsState.Rt->EndPass(m_currentCmd->CmdBuffer);
+            m_graphicsState.Rt = nullptr;
+        }
+    }
+    void CommandList::Executed()
+    {
+        m_currentCmd = nullptr;
     }
 }
