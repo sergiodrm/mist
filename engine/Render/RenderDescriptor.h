@@ -14,7 +14,7 @@ namespace Mist
 
 	struct DescriptorPoolTypeInfo
 	{
-		VkDescriptorType Type;
+		EDescriptorType Type;
 		float Multiplier = 1.f;
 	};
 
@@ -91,7 +91,7 @@ namespace Mist
 	public:
 		static DescriptorSetLayoutBuilder Create(DescriptorLayoutCache& layoutCache);
 
-		DescriptorSetLayoutBuilder& AddBinding(uint32_t binding, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t descriptorCount);
+		DescriptorSetLayoutBuilder& AddBinding(uint32_t binding, EDescriptorType type, VkShaderStageFlags stageFlags, uint32_t descriptorCount);
 		bool Build(const RenderContext& rc, VkDescriptorSetLayout* layout);
 	private:
 		DescriptorLayoutCache* m_cache = nullptr;
@@ -106,12 +106,12 @@ namespace Mist
 		DescriptorBuilder& BindBuffer(uint32_t binding,
 			const VkDescriptorBufferInfo* bufferInfo,
 			uint32_t bufferInfoCount,
-			VkDescriptorType type,
+			EDescriptorType type,
 			VkShaderStageFlags stageFlags, uint32_t arrayIndex = 0);
 		DescriptorBuilder& BindImage(uint32_t binding,
 			const VkDescriptorImageInfo* imageInfo,
 			uint32_t imageInfoCount,
-			VkDescriptorType type,
+			EDescriptorType type,
 			VkShaderStageFlags stageFlags, uint32_t arrayIndex = 0);
 
 		bool Build(const RenderContext& rc, VkDescriptorSet& set, VkDescriptorSetLayout& layout);

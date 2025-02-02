@@ -153,6 +153,7 @@ namespace Mist
         commandList->SetGraphicsState(state);
 		copyShader->BindSampledTexture(*params.Context, "u_tex", *params.Src->GetTexture());
 		//copyShader->FlushDescriptors(*params.Context);
+		commandList->BindProgramDescriptorSets();
 		CmdDrawFullscreenQuad(commandList);
 		//params.Dst->EndPass(cmd);
 		//EndGPUEvent(*params.Context, cmd);

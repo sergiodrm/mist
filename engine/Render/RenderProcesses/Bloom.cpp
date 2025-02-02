@@ -160,6 +160,8 @@ namespace Mist
 				//m_downsampleShader->UseProgram(context);
 				//RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
 				//RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+                commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
+                commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
 
 				const cTexture* textureInput = nullptr;
 				if (i == 0)
@@ -171,7 +173,7 @@ namespace Mist
 				m_downsampleShader->BindSampledTexture(context, "u_tex", *textureInput);
 
 				m_downsampleShader->SetDynamicBufferOffset(context, "u_BloomDownsampleParams", sizeof(glm::vec2), i);
-
+				commandList->BindProgramDescriptorSets();
 				CmdDrawFullscreenQuad(commandList);
 			}
 
@@ -213,6 +215,7 @@ namespace Mist
 				shader->BindSampledTexture(context, "u_tex", *m_renderTargetArray[i + 1].GetAttachment(0).Tex);
 				shader->SetBufferData(context, "u_BloomUpsampleParams", &m_config.UpscaleFilterRadius, sizeof(m_config.UpscaleFilterRadius));
 				//shader->FlushDescriptors(context);
+				commandList->BindProgramDescriptorSets();
 				CmdDrawFullscreenQuad(commandList);
 			}
 			//rt.EndPass(cmd);
@@ -231,6 +234,7 @@ namespace Mist
 		m_composeShader->BindSampledTexture(context, "u_tex0", m_blendTexture ? *m_blendTexture : *GetTextureCheckerboard4x4(context));
 		m_composeShader->BindSampledTexture(context, "u_tex1", *m_renderTargetArray[0].GetAttachment(0).Tex);
 		//m_composeShader->FlushDescriptors(context);
+		commandList->BindProgramDescriptorSets();
 		CmdDrawFullscreenQuad(commandList);
 		//m_composeTarget->EndPass(cmd);
 		GpuProf_End(context);

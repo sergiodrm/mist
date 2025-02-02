@@ -94,10 +94,9 @@ namespace Mist
 			singleBufferInfo.offset = 0;
 			singleBufferInfo.range = PARTICLE_STORAGE_BUFFER_SIZE;
 			DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-				.BindBuffer(0, &uboBufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-				.BindBuffer(1, &singleBufferInfo, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+				.BindBuffer(0, &uboBufferInfo, 1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+				.BindBuffer(1, &singleBufferInfo, 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 				.Build(context, m_singleBufferDescriptorSet);
-
 		}
 	}
 
@@ -156,7 +155,8 @@ namespace Mist
 			commandList->SetComputeState({ .Program = m_computeShader });
 
 			//m_computeShader->UseProgram(cmd);
-			m_computeShader->BindDescriptorSets(commandList->GetCurrentCommandBuffer()->CmdBuffer, &m_singleBufferDescriptorSet, 1);
+			//m_computeShader->BindDescriptorSets(commandList->GetCurrentCommandBuffer()->CmdBuffer, &m_singleBufferDescriptorSet, 1);
+			commandList->BindDescriptorSets(&m_singleBufferDescriptorSet, 1);
 			//RenderAPI::CmdDispatch(cmd, PARTICLE_COUNT / 256, 1, 1);
 			commandList->Dispatch(PARTICLE_COUNT / 256, 1, 1);
 
@@ -206,6 +206,7 @@ namespace Mist
 			m_graphicsShader->BindSampledTexture(context, "u_gradientTex", *m_circleGradientTexture);
 			//m_graphicsShader->FlushDescriptors(context);
 			//RenderAPI::CmdDraw(cmd, m_particleCount, 1, 0, 0);
+			commandList->BindProgramDescriptorSets();
             commandList->Draw(m_particleCount, 1, 0, 0);
 		}
 		//m_renderTarget.EndPass(cmd);

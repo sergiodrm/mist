@@ -297,6 +297,7 @@ namespace Mist
 				//DebugRenderPipeline.m_lineShader->FlushDescriptors(context);
 				//DebugRenderPipeline.LineBatch.vb.Bind(cmd);
 				//RenderAPI::CmdDraw(cmd, DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
+				commandList->BindProgramDescriptorSets();
                 commandList->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
 				DebugRenderPipeline.LineBatch.Reset();
 			}
@@ -316,6 +317,7 @@ namespace Mist
 				//DebugRenderPipeline.QuadBatch.vb.Bind(cmd);
 				//DebugRenderPipeline.QuadBatch.ib.Bind(cmd);
 				//RenderAPI::CmdDrawIndexed(cmd, DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0, 0);
+				commandList->BindProgramDescriptorSets();
                 commandList->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0);
 				DebugRenderPipeline.QuadBatch.Reset();
 			}

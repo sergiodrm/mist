@@ -13,7 +13,7 @@ namespace Mist
 	{
 		tDynArray<VkDescriptorPoolSize> vulkanSizes(sizes.Sizes.size());
 		for (uint32_t i = 0; i < sizes.Sizes.size(); ++i)
-			vulkanSizes[i] = { sizes.Sizes[i].Type, (uint32_t)(sizes.Sizes[i].Multiplier * count) };
+			vulkanSizes[i] = { tovk::GetDescriptorType(sizes.Sizes[i].Type), (uint32_t)(sizes.Sizes[i].Multiplier * count) };
 		VkDescriptorPoolCreateInfo poolInfo
 		{
 			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -31,11 +31,11 @@ namespace Mist
 	const DescriptorPoolSizes& DescriptorPoolSizes::GetDefault()
 	{
 		static DescriptorPoolSizes sizes;
-		sizes.Sizes[0] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f};
-		sizes.Sizes[1] = {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f};
-		sizes.Sizes[2] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f};
-		sizes.Sizes[3] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f};
-		sizes.Sizes[4] = { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f };
+		sizes.Sizes[0] = {DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1.f};
+		sizes.Sizes[1] = {DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1.f};
+		sizes.Sizes[2] = {DESCRIPTOR_TYPE_STORAGE_BUFFER, 1.f};
+		sizes.Sizes[3] = {DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1.f};
+		sizes.Sizes[4] = { DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1.f };
 		return sizes;
 	}
 
@@ -175,12 +175,12 @@ namespace Mist
 		return builder;
 	}
 
-	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::AddBinding(uint32_t binding, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t descriptorCount)
+	DescriptorSetLayoutBuilder& DescriptorSetLayoutBuilder::AddBinding(uint32_t binding, EDescriptorType type, VkShaderStageFlags stageFlags, uint32_t descriptorCount)
 	{
 		Bindings.push_back(
 			{
 				.binding = binding,
-				.descriptorType = type,
+				.descriptorType = tovk::GetDescriptorType(type),
 				.descriptorCount = descriptorCount,
 				.stageFlags = stageFlags
 			});
@@ -213,12 +213,12 @@ namespace Mist
 		return builder;
 	}
 
-	DescriptorBuilder& DescriptorBuilder::BindBuffer(uint32_t binding, const VkDescriptorBufferInfo* bufferInfo, uint32_t bufferInfoCount, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
+	DescriptorBuilder& DescriptorBuilder::BindBuffer(uint32_t binding, const VkDescriptorBufferInfo* bufferInfo, uint32_t bufferInfoCount, EDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
 	{
 		VkDescriptorSetLayoutBinding bindingInfo
 		{
 			.binding = binding,
-			.descriptorType = type,
+			.descriptorType = tovk::GetDescriptorType(type),
 			.descriptorCount = bufferInfoCount,
 			.stageFlags = stageFlags,
 			.pImmutableSamplers = nullptr
@@ -238,20 +238,20 @@ namespace Mist
 			.dstBinding = binding,
 			.dstArrayElement = arrayIndex,
 			.descriptorCount = bufferInfoCount,
-			.descriptorType = type,
+			.descriptorType = tovk::GetDescriptorType(type),
 			.pBufferInfo = &m_bufferInfoArray[size]
 		};
 		m_writes.Push(newWrite);
 		return *this;
 	}
 
-	DescriptorBuilder& DescriptorBuilder::BindImage(uint32_t binding, const VkDescriptorImageInfo* imageInfo, uint32_t imageInfoCount, VkDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
+	DescriptorBuilder& DescriptorBuilder::BindImage(uint32_t binding, const VkDescriptorImageInfo* imageInfo, uint32_t imageInfoCount, EDescriptorType type, VkShaderStageFlags stageFlags, uint32_t arrayIndex)
 	{
 		// Generate binding to fing descriptor set layout on Build fn.
 		VkDescriptorSetLayoutBinding bindingInfo
 		{
 			.binding = binding,
-			.descriptorType = type,
+			.descriptorType = tovk::GetDescriptorType(type),
 			.descriptorCount = imageInfoCount,
 			.stageFlags = stageFlags,
 			.pImmutableSamplers = nullptr
@@ -272,7 +272,7 @@ namespace Mist
 			.dstBinding = binding,
 			.dstArrayElement = arrayIndex,
 			.descriptorCount = imageInfoCount,
-			.descriptorType = type,
+			.descriptorType = tovk::GetDescriptorType(type),
 			.pImageInfo = &m_imageInfoArray[size]
 		};
 		m_writes.Push(newWrite);

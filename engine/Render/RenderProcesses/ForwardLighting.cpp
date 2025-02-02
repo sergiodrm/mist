@@ -173,6 +173,7 @@ namespace Mist
 			m_skyboxShader->BindSampledTexture(renderContext, "u_cubemap", *cubemapTexture);
 			//m_skyboxShader->FlushDescriptors(renderContext);
 			//RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
+			commandList->BindProgramDescriptorSets();
             commandList->DrawIndexed(mesh.IndexCount, 1, 0, 0);
 
 			//m_rt.EndPass(cmd);

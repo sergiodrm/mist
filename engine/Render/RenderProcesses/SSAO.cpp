@@ -139,6 +139,7 @@ namespace Mist
 			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferNormal", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
 			m_ssaoShader->BindSampledTexture(renderContext, "u_SSAONoise", *m_noiseTexture);
 			//m_ssaoShader->FlushDescriptors(renderContext);
+			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 		}
 		//m_rt.EndPass(cmd);
@@ -157,6 +158,7 @@ namespace Mist
 			const cTexture* tex = m_rt.GetAttachment(0).Tex;
 			m_blurShader->BindSampledTexture(renderContext, "u_ssaoTex", *tex);
 			//m_ssaoShader->FlushDescriptors(renderContext);
+			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 		}
 		//m_blurRT.EndPass(cmd);

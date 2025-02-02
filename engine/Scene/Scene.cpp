@@ -792,6 +792,7 @@ namespace Mist
 								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
 							}
 							//shader->FlushDescriptors(context);
+							commandList->BindProgramDescriptorSets();
 							commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 							//RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
 						}
@@ -896,6 +897,7 @@ namespace Mist
 							}
 							//shader->FlushDescriptors(context);
 							//RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+							commandList->BindProgramDescriptorSets();
                             commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 						}
 					}
@@ -1282,6 +1284,7 @@ namespace Mist
 			shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), data.TransformIndex);
             //shader->FlushDescriptors(context);
             //RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
+			commandList->BindProgramDescriptorSets();
             commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 		}
 	}

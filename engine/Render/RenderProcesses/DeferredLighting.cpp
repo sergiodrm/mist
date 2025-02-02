@@ -157,6 +157,7 @@ namespace Mist
 			shader->SetBufferData(renderContext, "u_env", &env, sizeof(env));
 
 			//shader->FlushDescriptors(renderContext);
+			commandList->BindProgramDescriptorSets();
 
 			CmdDrawFullscreenQuad(commandList);
 			//m_lightingOutput.EndPass(cmd);
@@ -180,6 +181,7 @@ namespace Mist
 			m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
 			m_hdrShader->BindSampledTexture(renderContext, "u_hdrtex", *m_lightingOutput.GetAttachment(0).Tex);
 			//m_hdrShader->FlushDescriptors(renderContext);
+			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 			//rt.EndPass(cmd);
 			//EndGPUEvent(renderContext, cmd);

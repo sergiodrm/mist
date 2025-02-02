@@ -490,7 +490,7 @@ namespace Mist
 		//frameContext.ComputeCommandContext.BeginCommandBuffer();
 		//BeginGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer, "Compute GPUParticles");
 		commandList->BeginMarker("GpuParticles");
-		m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
+		//m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
         commandList->EndMarker();
 		//EndGPUEvent(m_renderContext, frameContext.ComputeCommandContext.CommandBuffer);
 
@@ -550,7 +550,7 @@ namespace Mist
 		commandList->EndMarker();
 		frameContext.GraphicsTimestampQueryPool.EndFrame();
 
-		m_renderContext.CmdList->End();
+		//m_renderContext.CmdList->End();
 
 		//frameContext.GraphicsCommandContext.CommandBuffer = nullptr;
 
@@ -596,7 +596,7 @@ namespace Mist
 #else
 			//m_renderContext.Queue->Submit(&commandBuffer, 1);
 			CommandList* lists[] = { commandList };
-			CommandList::ExecuteCommandLists(lists, CountOf(lists));
+			frameContext.SubmissionId = CommandList::ExecuteCommandLists(lists, CountOf(lists));
 #endif // 0
 
 		}
@@ -942,7 +942,7 @@ namespace Mist
 			bufferInfo.offset = cameraBufferOffset;
 			bufferInfo.range = cameraBufferSize;
 			DescriptorBuilder::Create(m_descriptorLayoutCache, m_descriptorAllocators[i])
-				.BindBuffer(0, &bufferInfo, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
+				.BindBuffer(0, &bufferInfo, 1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT)
 				.Build(m_renderContext, frameContext.CameraDescriptorSet, m_globalDescriptorLayout);
 
 			// Scene buffer allocation. TODO: this should be done by scene.

@@ -133,6 +133,7 @@ namespace Mist
 		VkDescriptorBufferInfo GenerateStorageBufferInfo(const char* name) const;
         AllocatedBuffer GetStorageBuffer(uint32_t index) const;
         AllocatedBuffer GetStorageBuffer(const char* name) const;
+        inline bool HasStorageBuffer(const char* name) const { return m_storageBufferMap.contains(name); }
 
 	private:
 		void MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const;
