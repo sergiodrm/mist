@@ -515,10 +515,10 @@ namespace Mist
 				{
 					switch (bindingInfo.Type)
 					{
-					case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: bindingInfo.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; return;
-					case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: bindingInfo.Type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; return;
+					case DESCRIPTOR_TYPE_UNIFORM_BUFFER: bindingInfo.Type = DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; return;
+					case DESCRIPTOR_TYPE_STORAGE_BUFFER: bindingInfo.Type = DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; return;
 					default:
-						Logf(LogLevel::Error, "Trying to set as uniform dynamic an invalid Descriptor [%s]\n", uniformBufferName);
+						logferror("Trying to set as uniform dynamic an invalid Descriptor [%s]\n", uniformBufferName);
 					}
 				}
 			}
@@ -539,7 +539,7 @@ namespace Mist
 
 	void ShaderCompiler::ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount)
 	{
-		auto processSpirvResource = [this](const spirv_cross::CompilerGLSL& compiler, const spirv_cross::Resource& resource, VkShaderStageFlags shaderStage, VkDescriptorType descriptorType)
+		auto processSpirvResource = [this](const spirv_cross::CompilerGLSL& compiler, const spirv_cross::Resource& resource, VkShaderStageFlags shaderStage, EDescriptorType descriptorType)
 			{
 				ShaderBindingDescriptorInfo bufferInfo;
 				bufferInfo.Binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
@@ -590,16 +590,16 @@ namespace Mist
 
 
 		for (const spirv_cross::Resource& resource : resources.uniform_buffers)
-			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			processSpirvResource(compiler, resource, shaderStage, DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
 		for (const spirv_cross::Resource& resource : resources.storage_buffers)
-			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+			processSpirvResource(compiler, resource, shaderStage, DESCRIPTOR_TYPE_STORAGE_BUFFER);
 
 		for (const spirv_cross::Resource& resource : resources.sampled_images)
-			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+			processSpirvResource(compiler, resource, shaderStage, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 
 		for (const spirv_cross::Resource& resource : resources.storage_images)
-			processSpirvResource(compiler, resource, shaderStage, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+			processSpirvResource(compiler, resource, shaderStage, DESCRIPTOR_TYPE_STORAGE_IMAGE);
 
 		for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
 		{
@@ -656,7 +656,7 @@ namespace Mist
 		{
 			bindingArray[i].binding = i;
 			bindingArray[i].descriptorCount = setInfo.BindingArray[i].ArrayCount;
-			bindingArray[i].descriptorType = setInfo.BindingArray[i].Type;
+			bindingArray[i].descriptorType = tovk::GetDescriptorType(setInfo.BindingArray[i].Type);
 			bindingArray[i].pImmutableSamplers = nullptr;
 			bindingArray[i].stageFlags = setInfo.BindingArray[i].Stage;
 		}
@@ -914,13 +914,13 @@ namespace Mist
 		m_dirty = true;
 	}
 
-	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, VkDescriptorType texType, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, EDescriptorType texType, const Sampler* sampler)
 	{
 		const cTexture* const tex = &texture;
 		BindTextureArraySlot(context, cmd, bindPoint, pipelineLayout, setLayout, slot, &tex, 1, texType, sampler);
 	}
 
-	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, VkDescriptorType texType, const Sampler* sampler)
+	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, EDescriptorType texType, const Sampler* sampler)
 	{
         check(texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || texType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 		check(textures && textureCount);
@@ -965,7 +965,7 @@ namespace Mist
 			.dstBinding = 0,
 			.dstArrayElement = 0,
 			.descriptorCount = textureCount,
-			.descriptorType = texType,
+			.descriptorType = tovk::GetDescriptorType(texType),
 			.pImageInfo = infos.data(),
 		};
 		vkUpdateDescriptorSets(context.Device, 1, &writeInfo, 0, nullptr);
@@ -1231,7 +1231,7 @@ namespace Mist
 				ShaderBindingDescriptorInfo& bindingInfo = info.BindingArray[j];
 				logfinfo("[%s] (set: %d, binding: %d, array size: %d, type: %s) (%d bytes)\n",
 					bindingInfo.Name.c_str(), info.SetIndex, bindingInfo.Binding, bindingInfo.ArrayCount,
-					DescriptorTypeToStr(fromvk::GetDescriptorType(bindingInfo.Type)), bindingInfo.Size);
+					DescriptorTypeToStr(bindingInfo.Type), bindingInfo.Size);
 			}
 		}
 		m_paramAccess.DumpInfo();
@@ -1444,7 +1444,7 @@ namespace Mist
 		return false;
 	}
 
-	uint32_t ShaderProgram::FindTextureSlot(const char* textureName, VkDescriptorType type) const
+	uint32_t ShaderProgram::FindTextureSlot(const char* textureName, EDescriptorType type) const
 	{
         const tShaderParam& param = GetParam(textureName);
         check(param.Binding == 0);
@@ -1511,25 +1511,25 @@ namespace Mist
 
 	void ShaderProgram::BindSampledTexture(const RenderContext& context, const char* uniformName, const cTexture& texture)
 	{
-        BindTexture(context, uniformName, texture, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+        BindTexture(context, uniformName, texture, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 	}
 
 	void ShaderProgram::BindSampledTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount)
 	{
-		BindTextureArray(context, uniformName, textureArray, textureCount, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		BindTextureArray(context, uniformName, textureArray, textureCount, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 	}
 
 	void ShaderProgram::BindStorageTexture(const RenderContext& context, const char* uniformName, const cTexture& texture)
 	{
-        BindTexture(context, uniformName, texture, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        BindTexture(context, uniformName, texture, DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	}
 
 	void ShaderProgram::BindStorageTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount)
 	{
-        BindTextureArray(context, uniformName, textureArray, textureCount, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+        BindTextureArray(context, uniformName, textureArray, textureCount, DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	}
 
-	void ShaderProgram::BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, VkDescriptorType texType)
+	void ShaderProgram::BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, EDescriptorType texType)
 	{
         uint32_t textureSlot = FindTextureSlot(uniformName, texType);
         m_paramAccess.BindTextureSlot(
@@ -1544,7 +1544,7 @@ namespace Mist
             m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
-	void ShaderProgram::BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, VkDescriptorType texType)
+	void ShaderProgram::BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, EDescriptorType texType)
 	{
         uint32_t textureSlot = FindTextureSlot(uniformName, texType);
         m_paramAccess.BindTextureArraySlot(

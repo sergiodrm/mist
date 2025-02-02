@@ -24,7 +24,7 @@ namespace Mist
 
 	struct ShaderBindingDescriptorInfo
 	{
-		VkDescriptorType Type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+		EDescriptorType Type = DESCRIPTOR_TYPE_NUM;
 		uint32_t Size = 0;
 		uint32_t Binding = 0;
 		uint32_t ArrayCount = 0;
@@ -222,8 +222,8 @@ namespace Mist
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
 		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset);
 
-		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, VkDescriptorType texType, const Sampler* sampler = nullptr);
-		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, VkDescriptorType texType, const Sampler* sampler = nullptr);
+		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, EDescriptorType texType, const Sampler* sampler = nullptr);
+		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, EDescriptorType texType, const Sampler* sampler = nullptr);
 
         inline bool IsDirty() const { return m_dirty; }
 		void MarkAsDirty(const RenderContext& context);
@@ -274,8 +274,8 @@ namespace Mist
         void BindSampledTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount);
         void BindStorageTexture(const RenderContext& context, const char* uniformName, const cTexture& texture);
         void BindStorageTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount);
-		void BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, VkDescriptorType texType);
-		void BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, VkDescriptorType texType);
+		void BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, EDescriptorType texType);
+		void BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, EDescriptorType texType);
 
 		void FlushDescriptors(const RenderContext& context);
 
@@ -291,7 +291,7 @@ namespace Mist
 
 	private:
 
-        uint32_t FindTextureSlot(const char* textureName, VkDescriptorType type) const;
+        uint32_t FindTextureSlot(const char* textureName, EDescriptorType type) const;
 
 		void SetupDescriptors(const RenderContext& context);
 		VkCommandBuffer GetCommandBuffer(const RenderContext& context) const;
