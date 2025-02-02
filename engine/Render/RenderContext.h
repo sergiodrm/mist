@@ -82,6 +82,7 @@ namespace Mist
 		VkSemaphore RenderSemaphore{};
 		VkSemaphore ComputeSemaphore{};
 		VkSemaphore PresentSemaphore{};
+		uint64_t SubmissionId;
 
 		// Commands
 		//CommandBufferContext GraphicsCommandContext;

@@ -1,5 +1,6 @@
 #include "Render/RenderContext.h"
 #include "Render/RenderAPI.h"
+#include "Render/CommandList.h"
 #include "Core/Logger.h"
 #include "RenderDescriptor.h"
 #include "Utils/TimeUtils.h"
@@ -185,6 +186,7 @@ namespace Mist
 #else
             RenderContext_ForceFrameSync(context);
 #endif // !MIST_FORCE_SYNC
+			context.Queue->WaitForCommandSubmission(frameContext.SubmissionId);
         }
 
         {
