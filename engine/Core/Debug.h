@@ -34,6 +34,8 @@ VkResult __vkres = expand(expr); \
 if (__vkres != VK_SUCCESS) { if (Mist::Debug::DebugVkCheck(__vkres, #expr, __FILE__, __FUNCTION__, __LINE__)) MIST_DEBUG_BREAK; MIST_INSTRUCTION_EXCEPTION; } \
 } while(0)
 
+#define unreachable_code() check(false && "Unreachable code")
+
 
 #define CPU_PROFILE_SCOPE(name) Mist::Profiling::sScopedTimer __timer##name(#name)
 
