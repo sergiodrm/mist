@@ -14,12 +14,12 @@ layout (std140, binding = 0) uniform ParameterUBO
     float MaxSpeed;
     int MovementMode;
     vec2 Point;
-};
+} u_movParams;
 
 layout(std140, binding = 1) buffer ParticleBuffer
 {
-    Particle Particles[];
-};
+    Particle data[];
+} u_particles;
 
 layout (local_size_x= 256, local_size_y = 1, local_size_z = 1) in;
 
@@ -30,22 +30,22 @@ vec2 Repulsion(vec2 Position, vec2 Center)
 {
     vec2 Diff = Center - Position;
     float Distance = length(Diff);
-    float dir = float(MovementMode) * -1.f;
+    float dir = float(u_movParams.MovementMode) * -1.f;
     return Diff / (Distance*Distance*Distance) * REPULSION_FACTOR * dir;
 }
 
 
-#define particleIn Particles[index]
-#define particleOut Particles[index]
+#define particleIn u_particles.data[index]
+#define particleOut u_particles.data[index]
 
 
 void main()
 {
     uint index = gl_GlobalInvocationID.x;
 
-    vec2 velocity = min(particleIn.Velocity * Speed, vec2(MaxSpeed));
-    velocity += (Repulsion(particleIn.Position, Point));
-    particleOut.Position = particleIn.Position + velocity * DeltaTime;
+    vec2 velocity = min(particleIn.Velocity * u_movParams.Speed, vec2(u_movParams.MaxSpeed));
+    velocity += (Repulsion(particleIn.Position, u_movParams.Point));
+    particleOut.Position = particleIn.Position + velocity * u_movParams.DeltaTime;
     particleOut.Velocity = particleIn.Velocity;
     if (particleOut.Position.x > 1.f || particleOut.Position.x < -1.f)
     {
