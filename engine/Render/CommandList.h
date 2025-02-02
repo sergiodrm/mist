@@ -103,6 +103,13 @@ namespace Mist
     {
     public:
 
+        enum ECommandListState : uint8_t
+        {
+            STATE_NONE,
+            STATE_GRAPHICS,
+            STATE_COMPUTE
+        };
+
         CommandList(const RenderContext* context);
         ~CommandList();
 
@@ -126,6 +133,8 @@ namespace Mist
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset);
 
         // Viewport operations
+        void SetViewport(float x, float y, float width, float height, float minDepth = 0.f, float maxDepth = 1.f);
+        void SetScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
         // TODO: set depth stencil state
         // TODO: set blending state
@@ -140,7 +149,12 @@ namespace Mist
         // TODO: resources state required to be set before draw or dispatch
         // TODO: pipeline barriers?
 
+        // TODO: binding resources
+        void BindDescriptorSets(const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0);
+        void BindProgramDescriptorSets();
+
         inline CommandBuffer* GetCurrentCommandBuffer() const { return m_currentCmd; }
+        inline ShaderProgram* GetCurrentProgram() const { return m_state != STATE_NONE ? (m_state == STATE_GRAPHICS ? m_graphicsState.Program : m_computeState.Program) : nullptr; }
         inline bool IsRecording() const { return m_currentCmd != nullptr; }
 
         void ClearState();
@@ -158,5 +172,6 @@ namespace Mist
         GraphicsState m_graphicsState;
         ComputeState m_computeState;
         CommandBuffer* m_currentCmd;
+        ECommandListState m_state;
     };
 }

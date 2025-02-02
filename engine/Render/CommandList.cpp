@@ -326,7 +326,7 @@ namespace Mist
         }
 
         // Bind program
-        if (state.Program != m_graphicsState.Program)
+        if (state.Program && state.Program != m_graphicsState.Program)
         {
             state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
         }
@@ -339,6 +339,7 @@ namespace Mist
             BindIndexBuffer(state.Ibo);
 
         m_graphicsState = state;
+        m_state = STATE_GRAPHICS;
     }
 
     void CommandList::ClearColor(float r, float g, float b, float a)
@@ -380,15 +381,27 @@ namespace Mist
     void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
         check(CheckGraphicsCommandType());
-        m_graphicsState.Program->FlushDescriptors(*m_context);
+        //m_graphicsState.Program->FlushDescriptors(*m_context);
         RenderAPI::CmdDraw(m_currentCmd->CmdBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
     }
 
     void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset)
     {
         check(CheckGraphicsCommandType());
-        m_graphicsState.Program->FlushDescriptors(*m_context);
+        //m_graphicsState.Program->FlushDescriptors(*m_context);
         RenderAPI::CmdDrawIndexed(m_currentCmd->CmdBuffer, indexCount, instanceCount, firstIndex, vertexOffset, 0);
+    }
+
+    void CommandList::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
+    {
+        check(CheckGraphicsCommandType());
+        RenderAPI::CmdSetViewport(GetCurrentCommandBuffer()->CmdBuffer, width, height, minDepth, maxDepth, x, y);
+    }
+
+    void CommandList::SetScissor(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    {
+        check(CheckGraphicsCommandType());
+        RenderAPI::CmdSetScissor(GetCurrentCommandBuffer()->CmdBuffer, width, height, x, y);
     }
 
     void CommandList::SetComputeState(const ComputeState& state)
@@ -401,12 +414,13 @@ namespace Mist
             state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
         }
         m_computeState = state;
+        m_state = STATE_COMPUTE;
     }
 
     void CommandList::Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
     {
         check(CheckComputeCommandType());
-        m_computeState.Program->FlushDescriptors(*m_context);
+        //m_computeState.Program->FlushDescriptors(*m_context);
         RenderAPI::CmdDispatch(m_currentCmd->CmdBuffer, groupCountX, groupCountY, groupCountZ);
     }
 
@@ -419,6 +433,26 @@ namespace Mist
         copyRegion.srcOffset = srcOffset;
         copyRegion.size = size;
         vkCmdCopyBuffer(m_currentCmd->CmdBuffer, src.Buffer, dst.Buffer, 1, &copyRegion);
+    }
+
+    void CommandList::BindDescriptorSets(const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount)
+    {
+        ShaderProgram* program = GetCurrentProgram();
+        if (program)
+        {
+            check(IsRecording());
+            program->BindDescriptorSets(m_currentCmd->CmdBuffer, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
+        }
+    }
+
+    void CommandList::BindProgramDescriptorSets()
+    {
+        ShaderProgram* program = GetCurrentProgram();
+        if (program)
+        {
+            check(IsRecording());
+            program->FlushDescriptors(*m_context);
+        }
     }
 
     void CommandList::ClearState()
