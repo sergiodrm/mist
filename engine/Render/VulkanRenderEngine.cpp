@@ -678,6 +678,13 @@ namespace Mist
 		timelineSemaphoreFeatures.timelineSemaphore = VK_TRUE;
 		deviceBuilder.add_pNext(&timelineSemaphoreFeatures);
 
+        // Enable synchronization2
+        VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features;
+        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+        sync2Features.pNext = nullptr;
+        sync2Features.synchronization2 = VK_TRUE;
+        deviceBuilder.add_pNext(&sync2Features);
+
 		// Create Device
 		vkb::Result<vkb::Device> deviceResult = deviceBuilder.build();
 		check(deviceResult.has_value());
