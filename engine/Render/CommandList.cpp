@@ -314,6 +314,8 @@ namespace Mist
         check(CheckGraphicsCommandType());
         if (state == m_graphicsState)
             return;
+        if (m_state != STATE_GRAPHICS)
+            ClearState();
 
         // End render pass if needed
         if (state.Rt != m_graphicsState.Rt)
@@ -409,6 +411,9 @@ namespace Mist
         check(CheckComputeCommandType());
         if (state == m_computeState)
             return;
+        EndRenderPass();
+        if (m_state != STATE_COMPUTE)
+            ClearState();
         if (state.Program != m_computeState.Program)
         {
             state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
