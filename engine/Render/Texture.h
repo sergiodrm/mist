@@ -119,6 +119,9 @@ namespace Mist
 			VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 			VkPipelineStageFlags dstStage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
+		inline bool HasDepth() const { return IsDepthFormat(m_description.Format); }
+        inline bool HasStencil() const { return IsStencilFormat(m_description.Format); }
+
 	private:
 		void Destroy(const RenderContext& context);
 		void AllocateImage(const RenderContext& context, const tImageDescription& desc);
