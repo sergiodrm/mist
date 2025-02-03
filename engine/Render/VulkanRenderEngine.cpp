@@ -152,7 +152,8 @@ namespace Mist
 				.Depth = 1,
 			};
 			DefaultTexture = cTexture::Create(context, desc);
-			float pixels[] = { 0x000000ff, 0xffffffff, 0x000000ff, 0xffffffff };
+			uint8_t pixels[] = { 0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff };
+            check(utils::GetPixelSizeFromFormat(FORMAT_R8G8B8A8_SRGB) * 2 * 2 * 1 == sizeof(pixels));
 			const uint8_t* layer = (uint8_t*)pixels;
 			DefaultTexture->SetImageLayers(context, &layer, 1);
 			DefaultTexture->CreateView(context, tViewDescription());

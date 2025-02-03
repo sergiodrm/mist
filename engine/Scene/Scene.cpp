@@ -750,7 +750,6 @@ namespace Mist
 	void Scene::Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
-		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		CommandList* commandList = context.CmdList;
 
 		// Iterate scene graph to render models.
@@ -774,7 +773,6 @@ namespace Mist
 					shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
 
 					const cMesh& mesh = model.m_meshes[j];
-					//mesh.BindBuffers(cmd);
 					commandList->BindVertexBuffer(mesh.VertexBuffer);
                     commandList->BindIndexBuffer(mesh.IndexBuffer);
 
@@ -791,10 +789,8 @@ namespace Mist
 								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
 								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
 							}
-							//shader->FlushDescriptors(context);
 							commandList->BindProgramDescriptorSets();
 							commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
-							//RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
 						}
 					}
 				}
@@ -831,7 +827,6 @@ namespace Mist
 	void Scene::DrawWithMaterials(const RenderContext& context, const tViewRenderInfo& viewRenderInfo, uint32_t textureSlot) const
 	{
 		CPU_PROFILE_SCOPE(Scene_DrawWithMaterials);
-		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		CommandList* commandList = context.CmdList;
 
 		cMaterial* currentMaterial = nullptr;
@@ -853,10 +848,7 @@ namespace Mist
 				// BaseOffset in buffer is already setted when descriptor was created.
 				for (index_t j = 0; j < model.m_meshes.GetSize(); ++j)
 				{
-					//pso.shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
-
 					const cMesh& mesh = model.m_meshes[j];
-					//mesh.BindBuffers(cmd);
                     commandList->BindVertexBuffer(mesh.VertexBuffer);
                     commandList->BindIndexBuffer(mesh.IndexBuffer);
 
@@ -876,7 +868,6 @@ namespace Mist
 									GraphicsState state = commandList->GetGraphicsState();
 									state.Program = shader;
 									commandList->SetGraphicsState(state);
-									//shader->UseProgram(context);
 									shader->SetBufferData(context, "u_Camera", &viewRenderInfo.view, sizeof(CameraData));
 									shader->SetBufferData(context, "u_depthInfo", &viewRenderInfo.shadowMap, sizeof(tShadowMapData));
 									shader->SetBufferData(context, "u_env", &viewRenderInfo.environment, sizeof(EnvironmentData));
@@ -895,8 +886,6 @@ namespace Mist
 								shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset);
 								currentTransformOffset = renderTransformOffset;
 							}
-							//shader->FlushDescriptors(context);
-							//RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
 							commandList->BindProgramDescriptorSets();
                             commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 						}
@@ -1214,7 +1203,6 @@ namespace Mist
 		if (!drawList)
 			return;
 
-		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		CommandList* commandList = context.CmdList;
         GraphicsState state = commandList->GetGraphicsState();
 
@@ -1242,7 +1230,6 @@ namespace Mist
 		{
 			state.Program = shader;
 			commandList->SetGraphicsState(state);
-			//shader->UseProgram(context);
 		}
 
 		for (index_t i = 0; i < drawList->Items.GetSize(); ++i)
@@ -1252,7 +1239,6 @@ namespace Mist
 			if (data.Mesh != mesh)
 			{
 				mesh = data.Mesh;
-				//mesh->BindBuffers(cmd);
                 commandList->BindVertexBuffer(mesh->VertexBuffer);
                 commandList->BindIndexBuffer(mesh->IndexBuffer);
 			}
@@ -1266,7 +1252,6 @@ namespace Mist
                 if (!program && shader != material->m_shader)
                 {
 					shader = material->m_shader;
-                    //shader->UseProgram(context);
 					state.Program = shader;
                     commandList->SetGraphicsState(state);
                     shader->SetBufferData(context, "u_Camera", &cameraData, sizeof(CameraData));
@@ -1282,8 +1267,6 @@ namespace Mist
 				}
 			}
 			shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), data.TransformIndex);
-            //shader->FlushDescriptors(context);
-            //RenderAPI::CmdDrawIndexed(cmd, primitive.Count, 1, primitive.FirstIndex, 0, 0);
 			commandList->BindProgramDescriptorSets();
             commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 		}
