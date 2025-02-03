@@ -119,7 +119,6 @@ namespace Mist
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
-		//VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
         CommandList* commandList = renderContext.CmdList;
 		{
 			CPU_PROFILE_SCOPE(DeferredLighting);
@@ -130,14 +129,10 @@ namespace Mist
 				shadowMapTextures[i] = m_shadowMapRenderTargetArray[i]->GetDepthAttachment().Tex;
 
 			// Composition
-			//BeginGPUEvent(renderContext, cmd, "Deferred lighting", 0xff00ffff);
             commandList->BeginMarker("Deferred lighting");
 			commandList->SetGraphicsState({.Program = shader, .Rt = &m_lightingOutput});
-			//m_lightingOutput.BeginPass(renderContext, cmd);
-			//m_lightingOutput.ClearColor(cmd);
 			commandList->ClearColor();
 
-			//shader->UseProgram(renderContext);
 			shader->BindSampledTexture(renderContext, "u_GBufferPosition", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
 			shader->BindSampledTexture(renderContext, "u_GBufferNormal", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
 			shader->BindSampledTexture(renderContext, "u_GBufferAlbedo", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
@@ -156,12 +151,9 @@ namespace Mist
 			env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
 			shader->SetBufferData(renderContext, "u_env", &env, sizeof(env));
 
-			//shader->FlushDescriptors(renderContext);
 			commandList->BindProgramDescriptorSets();
 
 			CmdDrawFullscreenQuad(commandList);
-			//m_lightingOutput.EndPass(cmd);
-			//EndGPUEvent(renderContext, cmd);
 			commandList->EndMarker();
 		}
 
@@ -172,19 +164,13 @@ namespace Mist
 		{
 			CPU_PROFILE_SCOPE(CpuHDR);
 			// HDR and tone mapping
-			//BeginGPUEvent(renderContext, cmd, "HDR");
             commandList->BeginMarker("HDR");
 			RenderTarget& rt = renderContext.Renderer->GetLDRTarget();
 			commandList->SetGraphicsState({ .Program = m_hdrShader, .Rt = &rt });
-			//rt.BeginPass(renderContext, cmd);
-			//m_hdrShader->UseProgram(renderContext);
 			m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
 			m_hdrShader->BindSampledTexture(renderContext, "u_hdrtex", *m_lightingOutput.GetAttachment(0).Tex);
-			//m_hdrShader->FlushDescriptors(renderContext);
 			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
-			//rt.EndPass(cmd);
-			//EndGPUEvent(renderContext, cmd);
 			commandList->EndMarker();
 		}
 	}

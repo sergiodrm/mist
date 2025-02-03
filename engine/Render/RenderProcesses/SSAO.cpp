@@ -121,49 +121,35 @@ namespace Mist
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuSSAO);
-		//VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
         CommandList* commandList = renderContext.CmdList;
         commandList->BeginMarker("SSAO");
-		//BeginGPUEvent(renderContext, cmd, "SSAO");
 		GpuProf_Begin(renderContext, "SSAO");
-		//m_rt.BeginPass(renderContext, cmd);
 		if (m_mode != SSAO_Disabled)
 		{
 			commandList->SetGraphicsState({.Program = m_ssaoShader, .Rt = &m_rt });
-
-			//m_ssaoShader->UseProgram(renderContext);
 			m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
 
 			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
 			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferPosition", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
 			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferNormal", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
 			m_ssaoShader->BindSampledTexture(renderContext, "u_SSAONoise", *m_noiseTexture);
-			//m_ssaoShader->FlushDescriptors(renderContext);
 			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 		}
-		//m_rt.EndPass(cmd);
 		GpuProf_End(renderContext);
-		//EndGPUEvent(renderContext, cmd);
 		commandList->EndMarker();
 
-		//BeginGPUEvent(renderContext, cmd, "SSAOBlur");
         commandList->BeginMarker("SSAOBlur");
 		GpuProf_Begin(renderContext, "SSAO Blur");
-		//m_blurRT.BeginPass(renderContext, cmd);
 		if (m_mode != SSAO_Disabled && m_mode != SSAO_NoBlur)
 		{
             commandList->SetGraphicsState({ .Program = m_blurShader, .Rt = &m_blurRT });
-			//m_blurShader->UseProgram(renderContext);
 			const cTexture* tex = m_rt.GetAttachment(0).Tex;
 			m_blurShader->BindSampledTexture(renderContext, "u_ssaoTex", *tex);
-			//m_ssaoShader->FlushDescriptors(renderContext);
 			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 		}
-		//m_blurRT.EndPass(cmd);
 		GpuProf_End(renderContext);
-		//EndGPUEvent(renderContext, cmd);
         commandList->EndMarker();
 	}
 

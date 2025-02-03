@@ -80,13 +80,8 @@ namespace Mist
 		uint8_t StatusFlags = 0;
 		// Sync vars
 		VkSemaphore RenderSemaphore{};
-		VkSemaphore ComputeSemaphore{};
 		VkSemaphore PresentSemaphore{};
 		uint64_t SubmissionId;
-
-		// Commands
-		//CommandBufferContext GraphicsCommandContext;
-		//CommandBufferContext ComputeCommandContext;
 
 		// Queries
 		sTimestampQueryPool GraphicsTimestampQueryPool;

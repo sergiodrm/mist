@@ -113,7 +113,6 @@ namespace Mist
 	void ForwardLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
 		CPU_PROFILE_SCOPE(ForwardLighting);
-		//VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
         CommandList* commandList = renderContext.CmdList;
 
 		const cTexture* cubemapTexture = renderFrameContext.Scene->GetSkyboxTexture();
@@ -123,9 +122,7 @@ namespace Mist
             GraphicsState state = {};
 			state.Program = m_shader;
 			state.Rt = &m_rt;
-			//BeginGPUEvent(renderContext, cmd, "ForwardTech");
 			commandList->BeginMarker("ForwardTech");
-			//m_rt.BeginPass(renderContext, cmd);
 			commandList->SetGraphicsState(state);
 #if 0
 			tViewRenderInfo renderInfo;
@@ -163,7 +160,6 @@ namespace Mist
 			state.Vbo = mesh.VertexBuffer;
             state.Ibo = mesh.IndexBuffer;
 			commandList->SetGraphicsState(state);
-			//m_skyboxShader->UseProgram(renderContext);
 			glm::mat4 viewRot = renderFrameContext.CameraData->InvView;
 			viewRot[3] = { 0.f,0.f,0.f,1.f };
 			glm::mat4 ubo[2];
@@ -171,13 +167,9 @@ namespace Mist
 			ubo[1] = renderFrameContext.CameraData->Projection * viewRot;
 			m_skyboxShader->SetBufferData(renderContext, "u_ubo", ubo, sizeof(glm::mat4) * 2);
 			m_skyboxShader->BindSampledTexture(renderContext, "u_cubemap", *cubemapTexture);
-			//m_skyboxShader->FlushDescriptors(renderContext);
-			//RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
 			commandList->BindProgramDescriptorSets();
             commandList->DrawIndexed(mesh.IndexCount, 1, 0, 0);
 
-			//m_rt.EndPass(cmd);
-			//EndGPUEvent(renderContext, cmd);
 			commandList->EndMarker();
 		}
 #if 0

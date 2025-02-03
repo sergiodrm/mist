@@ -1156,7 +1156,8 @@ namespace Mist
 	void utils::CmdSubmitTransfer(RenderContext& renderContext, std::function<void(CommandList*)>&& fillCmdCallback)
 	{
 		VkCommandBuffer cmd = VK_NULL_HANDLE;
-        // TODO: right now CommandList supports all ops, but maybe we should split it into TransferCommandList and GraphicsCommandList.
+        // TODO: right now CommandList supports all ops, 
+		// but maybe we should split it into TransferCommandList and GraphicsCommandList.
 		CommandList* commandList = renderContext.CmdList;
         bool closeCommandList = false;
 		if (!commandList->IsRecording())
@@ -1164,19 +1165,6 @@ namespace Mist
 			closeCommandList = true;
 			commandList->Begin();
 		}
-		//if (renderContext.GetFrameContext().GraphicsCommandContext.Flags & CMD_CONTEXT_FLAG_CMDBUFFER_ACTIVE)
-		//{
-		//	cmd = renderContext.GetFrameContext().GraphicsCommandContext.CommandBuffer;
-		//}
-		//else
-		//{
-		//	// Begin command buffer recording.
-        //    VkCommandBufferBeginInfo beginInfo = vkinit::CommandBufferBeginInfo(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-        //    vkcheck(vkBeginCommandBuffer(renderContext.TransferContext.CommandBuffer, &beginInfo));
-		//
-		//	//renderContext.TransferContext.BeginCommandBuffer(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-		//	cmd = renderContext.TransferContext.CommandBuffer;
-		//}
 		check(commandList->IsRecording());
 		// Call to extern code to record commands.
 		fillCmdCallback(commandList);
@@ -1185,23 +1173,10 @@ namespace Mist
 		{
 			commandList->End();
 
-			// TODO: submit CommandList.
 			uint64_t submission = CommandList::ExecuteCommandLists(&commandList, 1);
 			renderContext.Queue->WaitForCommandSubmission(submission);
 			renderContext.Queue->ProcessInFlightCommands();
 		}
-
-		//if (cmd == renderContext.TransferContext.CommandBuffer)
-		//{
-		//	//renderContext.TransferContext.EndCommandBuffer();
-		//	vkcheck(vkEndCommandBuffer(renderContext.TransferContext.CommandBuffer));
-		//
-		//	VkSubmitInfo info = vkinit::SubmitInfo(&renderContext.TransferContext.CommandBuffer);
-		//	vkcheck(vkQueueSubmit(renderContext.GraphicsQueue, 1, &info, renderContext.TransferContext.Fence));
-		//	//renderContext.TransferContext.WaitFenceReady(renderContext.Device);
-		//	RenderAPI::WaitAndResetFences(renderContext.Device, &renderContext.TransferContext.Fence, 1);
-		//	vkResetCommandPool(renderContext.Device, renderContext.TransferContext.CommandPool, 0);
-		//}
 	}
 
 	void utils::CmdCopyBuffer(RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size)
@@ -1209,11 +1184,6 @@ namespace Mist
 		CmdSubmitTransfer(renderContext,
 			[&](CommandList* commandList)
 			{
-				//VkBufferCopy copyInfo;
-				//copyInfo.size = size;
-				//copyInfo.dstOffset = 0;
-				//copyInfo.srcOffset = 0;
-				//vkCmdCopyBuffer(cmd, srcBuffer.Buffer, dstBuffer.Buffer, 1, &copyInfo);
                 commandList->CopyBuffer(srcBuffer, dstBuffer, size);
 			});
 	}

@@ -169,12 +169,8 @@ namespace Mist
 	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex)
 	{
 		check(lightIndex < globals::MaxShadowMapAttachments);
-		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
-
-		//m_shader->UseProgram(context);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
 		m_shader->SetDynamicBufferOffset(context, "u_ubo", sizeof(glm::mat4), lightIndex);
-
 		scene->Draw(context, m_shader, 0, 0, 0, RenderFlags_ShadowMap | RenderFlags_NoTextures);
 	}
 
@@ -409,10 +405,8 @@ namespace Mist
 	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuShadowMapping);
-		//VkCommandBuffer cmd = renderFrameContext.GraphicsCommandContext.CommandBuffer;
 		CommandList* commandList = renderContext.CmdList;
 		commandList->BeginMarker("ShadowMapping");
-		//BeginGPUEvent(renderContext, cmd, "ShadowMapping");
 		GpuProf_Begin(renderContext, "Shadow mapping");
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);
@@ -420,15 +414,12 @@ namespace Mist
 		state.Program = m_shadowMapPipeline.GetShader();
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-			//m_shadowMapTargetArray[i].BeginPass(renderContext, cmd);
             state.Rt = &m_shadowMapTargetArray[i];
             commandList->SetGraphicsState(state);
 			if (i < m_lightCount)
 				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
-			//m_shadowMapTargetArray[i].EndPass(cmd);
 		}
 		GpuProf_End(renderContext);
-		//EndGPUEvent(renderContext, cmd);
 		commandList->EndMarker();
 	}
 

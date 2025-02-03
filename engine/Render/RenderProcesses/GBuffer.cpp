@@ -56,17 +56,12 @@ namespace Mist
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
-		//VkCommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
         CommandList* commandList = renderContext.CmdList;
 
 		// MRT
-		//BeginGPUEvent(renderContext, cmd, "GBuffer_MRT", 0xffff00ff);
         commandList->BeginMarker("GBuffer_MRT");
 		commandList->SetGraphicsState({.Program = m_gbufferShader, .Rt = &m_renderTarget});
 		commandList->ClearDepthStencil();
-		//m_renderTarget.BeginPass(renderContext, cmd);
-		//m_renderTarget.ClearDepthStencil(cmd, 1.f, 0.f);
-		//m_gbufferShader->UseProgram(renderContext);
 		m_gbufferShader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
 
 		//vkCmdSetStencilOp(cmd, VK_STENCIL_FACE_FRONT_AND_BACK, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
@@ -94,9 +89,6 @@ namespace Mist
 		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
 #endif // 0
 
-
-		//m_renderTarget.EndPass(frameContext.GraphicsCommandContext.CommandBuffer);
-		//EndGPUEvent(renderContext, cmd);
 		commandList->EndMarker();
 	}
 
