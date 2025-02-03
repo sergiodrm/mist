@@ -144,16 +144,23 @@ namespace Mist
 	{
 		if (!DefaultTexture)
 		{
+			constexpr EFormat f = FORMAT_R8G8B8A8_SRGB;
+			constexpr uint32_t w = 2;
+			constexpr uint32_t h = 2;
+			constexpr uint32_t d = 1;
+			constexpr uint8_t pixels[] = { 
+				0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 
+				0x00, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff 
+			};
+			static_assert(utils::GetPixelSizeFromFormat(f) * w * h * d == sizeof(pixels));
 			tImageDescription desc
 			{
-				.Format = FORMAT_R8G8B8A8_SRGB,
-				.Width = 2,
-				.Height = 2,
-				.Depth = 1,
+				.Format = f,
+				.Width = w,
+				.Height = h,
+				.Depth = d,
 			};
 			DefaultTexture = cTexture::Create(context, desc);
-			uint8_t pixels[] = { 0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff };
-            check(utils::GetPixelSizeFromFormat(FORMAT_R8G8B8A8_SRGB) * 2 * 2 * 1 == sizeof(pixels));
 			const uint8_t* layer = (uint8_t*)pixels;
 			DefaultTexture->SetImageLayers(context, &layer, 1);
 			DefaultTexture->CreateView(context, tViewDescription());

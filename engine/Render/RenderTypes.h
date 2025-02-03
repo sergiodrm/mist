@@ -662,7 +662,22 @@ namespace Mist
 		void CmdSubmitTransfer(RenderContext& renderContext, std::function<void(CommandList*)>&& fillCmdCallback);
 		void CmdCopyBuffer(RenderContext& renderContext, const AllocatedBuffer& srcBuffer, AllocatedBuffer& dstBuffer, uint32_t size);
 		EFormat GetImageFormatFromChannels(uint32_t channels);
-		size_t GetPixelSizeFromFormat(EFormat format);
+
+		inline constexpr size_t GetPixelSizeFromFormat(EFormat format)
+        {
+            switch (format)
+            {
+            case Mist::FORMAT_R8G8B8_UNORM: return 1 * 3;
+            case Mist::FORMAT_R8G8B8A8_UNORM: return 1 * 4;
+            case Mist::FORMAT_R8G8B8_SRGB: return 1 * 3;
+            case Mist::FORMAT_R8G8B8A8_SRGB: return 1 * 4;
+            case Mist::FORMAT_R16G16B16_SFLOAT: return 2 * 3;
+            case Mist::FORMAT_R16G16B16A16_SFLOAT: return 2 * 4;
+            case Mist::FORMAT_R32G32B32_SFLOAT: return 4 * 3;
+            case Mist::FORMAT_R32G32B32A32_SFLOAT: return 4 * 4;
+            }
+            return 0;
+        }
 	}
 #endif // MIST_VULKAN
 
