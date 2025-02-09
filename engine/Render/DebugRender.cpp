@@ -279,11 +279,14 @@ namespace Mist
             commandList->BeginMarker("DebugRenderer");
 
 			// process batches before render passes.
+			commandList->ClearState();
 			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
 			const bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
 
             GraphicsState state = {};
             state.Rt = &renderer->GetLDRTarget();
+            commandList->SetGraphicsState(state);
+
 			//renderer->GetLDRTarget().BeginPass(context, cmd);
 			const CameraData& cameraData = *context.GetFrameContext().CameraData;
 			if (processLine)
