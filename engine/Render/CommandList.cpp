@@ -4,6 +4,14 @@
 #include "Render/RenderTarget.h"
 #include "Render/Shader.h"
 
+//#define DUMP_BARRIERS
+#ifdef DUMP_BARRIERS
+#define logfbarrier(fmt, ...) logfinfo("[Barrier] " fmt, __VA_ARGS__)
+#else
+#define logfbarrier(fmt, ...) DUMMY_MACRO
+#endif
+
+
 namespace Mist
 {
     VkQueueFlags GetVkQueueFlags(EQueueType type)
@@ -16,6 +24,112 @@ namespace Mist
         return flags;
     }
 
+    struct ImageLayoutState
+    {
+        VkImageLayout Layout;
+        VkAccessFlags2 AccessFlags;
+        VkPipelineStageFlags2 StageFlags;
+    };
+
+    ImageLayoutState ConvertImageLayout(EImageLayout layout)
+    {
+        ImageLayoutState state = {};
+        switch (layout)
+        {
+        case IMAGE_LAYOUT_UNDEFINED:
+            state.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+            state.AccessFlags = 0;
+            state.StageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            break;
+        case IMAGE_LAYOUT_GENERAL:
+            state.Layout = VK_IMAGE_LAYOUT_GENERAL;
+            state.AccessFlags = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+            break;
+        case IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            state.Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            state.AccessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+            break;
+        case IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+            state.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+            state.AccessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+            break;
+        case IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+            state.Layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+            state.AccessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+            break;
+        case IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            state.Layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            state.AccessFlags = VK_ACCESS_2_SHADER_READ_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+            break;
+        case IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+            state.Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            state.AccessFlags = VK_ACCESS_2_TRANSFER_READ_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            break;
+        case IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+            state.Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            state.AccessFlags = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+            state.StageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            break;
+        case IMAGE_LAYOUT_PRESENT_SRC_KHR:
+            state.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            state.AccessFlags = 0;
+            state.StageFlags = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+            break;
+        default:
+            unreachable_code();
+        }
+        return state;
+    }
+
+    VkImageMemoryBarrier2 ConvertTextureBarrier(const TextureBarrier& barrier)
+    {
+        ImageLayoutState oldState = ConvertImageLayout(barrier.OldLayout);
+        ImageLayoutState newState = ConvertImageLayout(barrier.NewLayout);
+        VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2, nullptr };
+        imageBarrier.image = barrier.Texture->GetNativeImage();
+        imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageBarrier.srcAccessMask = oldState.AccessFlags;
+        imageBarrier.dstAccessMask = newState.AccessFlags;
+        imageBarrier.oldLayout = oldState.Layout;
+        imageBarrier.newLayout = newState.Layout;
+        imageBarrier.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | oldState.StageFlags;
+        imageBarrier.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | newState.StageFlags;
+        if (barrier.Subresource.LayerCount == SubresourceRange::RemainingRange)
+        {
+            imageBarrier.subresourceRange.baseArrayLayer = 0;
+            imageBarrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        }
+        else
+        {
+            imageBarrier.subresourceRange.baseArrayLayer = barrier.Subresource.BaseArrayLayer;
+            imageBarrier.subresourceRange.layerCount = barrier.Subresource.LayerCount;
+        }
+        if (barrier.Subresource.LevelCount == SubresourceRange::RemainingRange)
+        {
+            imageBarrier.subresourceRange.baseMipLevel = 0;
+            imageBarrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+        }
+        else
+        {
+            imageBarrier.subresourceRange.baseMipLevel = barrier.Subresource.BaseMipLevel;
+            imageBarrier.subresourceRange.levelCount = barrier.Subresource.LevelCount;
+        }
+        imageBarrier.subresourceRange.aspectMask = 0;
+        if (barrier.Texture->HasDepth())
+            imageBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (barrier.Texture->HasStencil())
+            imageBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        if (!imageBarrier.subresourceRange.aspectMask)
+            imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        return imageBarrier;
+    }
 
     void CommandBuffer::Begin()
     {
@@ -438,6 +552,34 @@ namespace Mist
         copyRegion.srcOffset = srcOffset;
         copyRegion.size = size;
         vkCmdCopyBuffer(m_currentCmd->CmdBuffer, src.Buffer, dst.Buffer, 1, &copyRegion);
+    }
+
+    void CommandList::SetTextureState(const TextureBarrier* barriers, uint32_t count)
+    {
+        check(count <= MaxBarriers);
+        tStaticArray<VkImageMemoryBarrier2, MaxBarriers> imageBarriers;
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            imageBarriers.Push(ConvertTextureBarrier(barriers[i]));
+        }
+        VkDependencyInfo depInfo = { .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .pNext = nullptr };
+        depInfo.imageMemoryBarrierCount = count;
+        depInfo.pImageMemoryBarriers = imageBarriers.GetData();
+        vkCmdPipelineBarrier2(m_currentCmd->CmdBuffer, &depInfo);
+    }
+
+    void CommandList::SetTextureState(const TextureBarrier& barrier)
+    {
+        // TODO: cache all barriers and flush them before draw or dispatch.
+        VkImageMemoryBarrier2 imageBarrier = ConvertTextureBarrier(barrier);
+        logfbarrier("Setting texture state from %s to %s [%s]\n", 
+            ImageLayoutToStr(barrier.OldLayout), ImageLayoutToStr(barrier.NewLayout),
+            barrier.Texture->GetName());
+
+        VkDependencyInfo depInfo = { .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .pNext = nullptr };
+        depInfo.imageMemoryBarrierCount = 1;
+        depInfo.pImageMemoryBarriers = &imageBarrier;
+        vkCmdPipelineBarrier2(m_currentCmd->CmdBuffer, &depInfo);
     }
 
     void CommandList::BindDescriptorSets(const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet, const uint32_t* dynamicOffsetArray, uint32_t dynamicOffsetCount)

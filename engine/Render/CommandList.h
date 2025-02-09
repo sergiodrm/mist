@@ -7,6 +7,7 @@ namespace Mist
 {
     class ShaderProgram;
     class RenderTarget;
+    class cTexture;
 
     enum EQueueTypeBits
     {
@@ -76,6 +77,44 @@ namespace Mist
         tStaticArray<uint64_t, MaxSemaphores> m_signalSemaphoreValues;
     };
 
+    struct SubresourceRange
+    {
+        static constexpr uint32_t RemainingRange = UINT32_MAX;
+        uint32_t BaseMipLevel;
+        uint32_t LevelCount = RemainingRange;
+        uint32_t BaseArrayLayer;
+        uint32_t LayerCount = RemainingRange;
+
+        inline void SetAllLevels()
+        {
+            BaseMipLevel = 0;
+            LevelCount = RemainingRange;
+        }
+        inline void SetAllLayers()
+        {
+            BaseArrayLayer = 0;
+            LayerCount = RemainingRange;
+        }
+        inline void SetAll()
+        {
+            SetAllLevels();
+            SetAllLayers();
+        }
+    };
+
+    struct TextureBarrier
+    {
+        const cTexture* Texture;
+        EImageLayout OldLayout;
+        EImageLayout NewLayout;
+        SubresourceRange Subresource;
+
+        inline void SetAllSubresources()
+        {
+            Subresource.SetAll();
+        }
+    };
+
     struct GraphicsState
     {
         ShaderProgram* Program;
@@ -101,6 +140,7 @@ namespace Mist
 
     class CommandList
     {
+        static constexpr uint32_t MaxBarriers = 16;
     public:
 
         enum ECommandListState : uint8_t
@@ -148,6 +188,8 @@ namespace Mist
 
         // TODO: resources state required to be set before draw or dispatch
         // TODO: pipeline barriers?
+        void SetTextureState(const TextureBarrier* barriers, uint32_t count);
+        void SetTextureState(const TextureBarrier& barrier);
 
         // TODO: binding resources
         void BindDescriptorSets(const VkDescriptorSet* setArray, uint32_t setCount, uint32_t firstSet = 0, const uint32_t* dynamicOffsetArray = nullptr, uint32_t dynamicOffsetCount = 0);
