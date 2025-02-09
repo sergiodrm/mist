@@ -9,6 +9,7 @@
 #include <string.h>
 #include <imgui/imgui.h>
 #include "Core/SystemMemory.h"
+#include "Application/CmdParser.h"
 
 
 
@@ -36,12 +37,12 @@
 #define ANSI_STYLE_ITALIC       "\x1b[3m"
 #define ANSI_STYLE_UNDERLINE    "\x1b[4m"
 
-#define LOG_ONLY_ON_ERROR
-
 //#define LOG_DEBUG_FLUSH
 
 namespace Mist
 {
+    CIntVar CVar_LogToConsole("s_logToConsole", 2); // 0 - never, 1 - on error, 2 - always
+
 	const char* LogLevelFormat(LogLevel level)
 	{
 		switch (level)
@@ -177,39 +178,23 @@ namespace Mist
 
 	LogHtmlFile* GLogFile = nullptr;
 
-	
-
 	void Log(LogLevel level, const char* msg)
 	{
-		switch (level)
-		{
-		case LogLevel::Debug:
 #ifndef _DEBUG
-			break;
-#endif
-#ifdef LOG_ONLY_ON_ERROR
-		case LogLevel::Error:
+		if (level == LogLevel::Debug)
+			return;
+#endif // !_DEBUG
+        if (level == LogLevel::Error && CVar_LogToConsole.Get() > 0 || CVar_LogToConsole.Get() == 2)
 			printf("%s[%7s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
-		case LogLevel::Info:
-		case LogLevel::Ok:
-		case LogLevel::Warn:
-#else
-		case LogLevel::Info:
-		case LogLevel::Ok:
-		case LogLevel::Warn:
-		case LogLevel::Error:
-			printf("%s[%7s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
-#endif // !LOG_ONLY_ON_ERROR
-			wchar_t wString[LOG_MSG_MAX_SIZE];
-			MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
-			OutputDebugString(wString);
-			if (GLogFile)
-				GLogFile->Push(level, msg);
-			ConsoleLog(level, msg);
+		wchar_t wString[LOG_MSG_MAX_SIZE];
+		MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
+		OutputDebugString(wString);
+		if (GLogFile)
+			GLogFile->Push(level, msg);
+		ConsoleLog(level, msg);
 #ifdef LOG_DEBUG_FLUSH
-			GLogFile->Flush();
+		GLogFile->Flush();
 #endif // LOG_DEBUG_FLUSH
-		}
 	}
 
 	void Logf(LogLevel level, const char* fmt, ...)
