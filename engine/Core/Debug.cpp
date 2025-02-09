@@ -156,6 +156,7 @@ bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 {
 	Mist::Debug::PrintCallstack();
 	logerror("============================================================\n\n");
+    logferror("Frame: %d\n", Mist::tApplication::GetFrame());
 	logferror("Check failed: %s\n\n", txt);
 	logferror("File: %s\n", file);
 	logferror("Function: %s\n", fn);
@@ -164,7 +165,10 @@ bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 	Mist::FlushLogToFile();
 	Mist::TerminateLog();
 
-	eDialogMessageResult res = DialogMsgErrorF(DIALOG_BUTTON_YESNO, "Check failed:\n\n%s\n\nFile: %s\nFunction: %s\n\nLine: %d\n\nDebug program?", txt, file, fn, line);
+	eDialogMessageResult res = DialogMsgErrorF(DIALOG_BUTTON_YESNO, 
+		"Frame: %d\nCheck failed:\n\n%s\n\nFile: %s\nFunction: %s\n\nLine: %d\n\nDebug program?", 
+		Mist::tApplication::GetFrame(),
+		txt, file, fn, line);
 	return res == DIALOG_MESSAGE_RESULT_YES;
 }
 
