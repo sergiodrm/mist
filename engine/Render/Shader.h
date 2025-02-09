@@ -72,6 +72,16 @@ namespace Mist
 			Macro.Set(macro);
 			Value.Set(value);
 		}
+		tCompileMacroDefinition(const char* macro, int value)
+		{
+            Macro.Set(macro);
+            Value.Set(std::to_string(value).c_str());
+		}
+		tCompileMacroDefinition(const char* macro, float value)
+		{
+            Macro.Set(macro);
+            Value.Set(std::to_string(value).c_str());
+		}
 	};
 
 	struct tCompileOptions
