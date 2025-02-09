@@ -943,8 +943,9 @@ namespace Mist
                 check(textures[i]->GetDescription().Usage & IMAGE_USAGE_STORAGE_BIT);
 			else if (texType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 check(textures[i]->GetDescription().Usage & IMAGE_USAGE_SAMPLED_BIT);
-
-			infos[i].imageLayout = tovk::GetImageLayout(textures[i]->GetImageLayout());
+            VkImageLayout layout = texType == DESCRIPTOR_TYPE_STORAGE_IMAGE ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			//infos[i].imageLayout = tovk::GetImageLayout(textures[i]->GetImageLayout());
+			infos[i].imageLayout = layout;
 			infos[i].imageView = textures[i]->GetView(0);
 			infos[i].sampler = sampler ? *sampler : textures[i]->GetSampler();
 		}
