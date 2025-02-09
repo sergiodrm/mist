@@ -9,12 +9,13 @@
 #include "Render/DebugRender.h"
 #include <imgui/imgui.h>
 #include "Utils/GenericUtils.h"
+#include "../CommandList.h"
 
 namespace Mist
 {
-	CBoolVar CVar_ShowForwardTech("r_showforwardtech", false);
+	CBoolVar CVar_ShowForwardTech("r_showforwardtech", true);
 
-	RenderTarget* g_forwardRt = nullptr;;
+	RenderTarget* g_forwardRt = nullptr;
 
 	ForwardLighting::ForwardLighting()
 		: m_shader(nullptr)
@@ -92,10 +93,15 @@ namespace Mist
 			m_skyboxModel = _new cModel();
 			m_skyboxModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
 		}
+
+		m_computeBloom = _new ComputeBloom(&renderContext);
+		m_computeBloom->Init();
 	}
 
 	void ForwardLighting::Destroy(const RenderContext& renderContext)
 	{
+		m_computeBloom->Destroy();
+		delete m_computeBloom;
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
@@ -169,48 +175,23 @@ namespace Mist
 			m_skyboxShader->BindSampledTexture(renderContext, "u_cubemap", *cubemapTexture);
 			commandList->BindProgramDescriptorSets();
             commandList->DrawIndexed(mesh.IndexCount, 1, 0, 0);
-
+			
 			commandList->EndMarker();
+
+			DebugRender::DrawScreenQuad({}, { m_rt.GetWidth(), m_rt.GetHeight() }, *m_rt.GetTexture());
+
+            // Bloom
+			m_bloomInputConfig.Input = m_rt.GetTexture();
+			m_computeBloom->Compute(m_bloomInputConfig);
 		}
-#if 0
-		cTexture* lightingTex = const_cast<cTexture*>(m_rt.GetTexture());
-		VkImageMemoryBarrier barrier = {};
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.pNext = nullptr;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-		barrier.srcQueueFamilyIndex = renderContext.GraphicsQueueFamily;
-		barrier.dstQueueFamilyIndex = renderContext.ComputeQueueFamily;
-		barrier.image = lightingTex->GetNativeImage();
-		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS };
-		vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_DEPENDENCY_BY_REGION_BIT,
-			0, nullptr, 0, nullptr, 1, &barrier);
-		lightingTex->SetImageLayout(IMAGE_LAYOUT_GENERAL);
-#endif // 0
-
-
-        //if (CVar_ShowForwardTech.Get())
-        //{
-        //	float width = (float)renderContext.Window->Width;
-        //	float height = (float)renderContext.Window->Height;
-        //	DebugRender::DrawScreenQuad({ 0.f, 0.f }, { width, height }, *m_rt.GetTexture());
-        //}
-
-#if 0
-		ComputeBloom::InputConfig bloomConfig;
-		bloomConfig.Input = m_rt.GetTexture();
-		bloomConfig.Threshold = 1.f;
-		m_computeBloom.Compute(renderContext, bloomConfig);
-#endif // 0
-
 	}
 
 	void ForwardLighting::ImGuiDraw()
 	{
 		ImGui::Begin("Forward tech");
 		ImGuiUtils::CheckboxCBoolVar(CVar_ShowForwardTech);
+        ImGui::DragFloat("Bloom threshold", &m_bloomInputConfig.Threshold, 0.01f, 0.f, 10.f);
+        ImGui::DragFloat("Bloom knee", &m_bloomInputConfig.Knee, 0.01f, 0.f, 10.f);
 		ImGui::End();
 	}
 

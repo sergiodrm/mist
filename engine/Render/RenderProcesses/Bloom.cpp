@@ -14,10 +14,34 @@
 #include "ShadowMap.h"
 #include "Render/RendererBase.h"
 #include "Render/DebugRender.h"
+#include "../CommandList.h"
+
+#define BLOOM_NAME_INVOCATION_X "BLOOM_INVOCATIONS_X"
+#define BLOOM_NAME_INVOCATION_Y "BLOOM_INVOCATIONS_Y"
+#define BLOOM_INVOCATIONS_X 8
+#define BLOOM_INVOCATIONS_Y 8
 
 namespace Mist
 {
 	CBoolVar CVar_BloomTex("BloomTex", false);
+
+    CIntVar CVar_ShowBloomTex("r_showbloomtex", 0);
+
+	struct WorkgroupSize
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    };
+	WorkgroupSize CalculateImageWorkgroupSize(uint32_t width, uint32_t height, uint32_t invocationsX, uint32_t invocationsY)
+	{
+		return
+		{
+			.x = (uint32_t)ceilf((float)width / (float)invocationsX),
+			.y = (uint32_t)ceilf((float)height / (float)invocationsY),
+			.z = 1
+		};
+	}
 
 	BloomEffect::BloomEffect()
 	{
@@ -136,11 +160,10 @@ namespace Mist
 	void BloomEffect::Draw(const RenderContext& context)
 	{
 		CPU_PROFILE_SCOPE(Bloom);
-		RenderFrameContext& frameContext = context.GetFrameContext();
-		//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
 		CommandList* commandList = context.CmdList;
 
-		//BeginGPUEvent(context, cmd, "Bloom Downsample");
+		commandList->BeginMarker("BloomFragment");
+
 		commandList->BeginMarker("Bloom Downsample");
 		GpuProf_Begin(context, "Bloom Downsample");
 		check(m_inputTarget);
@@ -149,17 +172,12 @@ namespace Mist
 		state.Program = m_downsampleShader;
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 		{
-			//RenderTarget& rt = m_renderTargetArray[i];
 			state.Rt = &m_renderTargetArray[i];
 
 			commandList->SetGraphicsState(state);
 
-			//rt.BeginPass(context, cmd);
 			if (m_config.BloomMode)
 			{
-				//m_downsampleShader->UseProgram(context);
-				//RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
-				//RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
                 commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
                 commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
 
@@ -177,8 +195,6 @@ namespace Mist
 				CmdDrawFullscreenQuad(commandList);
 			}
 
-			//rt.EndPass(cmd);
-
 			if (CVar_BloomTex.Get() || m_config.BloomMode == tBloomConfig::BLOOM_DEBUG_DOWNSCALE_PASS)
 			{
 				float x = (float)context.Window->Width * 0.75f;
@@ -189,57 +205,45 @@ namespace Mist
 			}
 		}
 		GpuProf_End(context);
-		///EndGPUEvent(context, cmd);
 		commandList->EndMarker();
 
-		//BeginGPUEvent(context, cmd, "Bloom Upsample");
 		commandList->BeginMarker("Bloom Upsample");
 		GpuProf_Begin(context, "Bloom Upsample");
         state = {};
 		for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
 		{
-			//RenderTarget& rt = m_renderTargetArray[i];
 			ShaderProgram* shader = m_upsampleShader;
             state.Rt = &m_renderTargetArray[i];
 			state.Program = shader;
 			commandList->SetGraphicsState(state);
 
-			//rt.BeginPass(context, cmd);
 			if (m_config.BloomMode)
 			{
-				//shader->UseProgram(context);
-				//RenderAPI::CmdSetViewport(cmd, (float)rt.GetWidth(), (float)rt.GetHeight());
-				//RenderAPI::CmdSetScissor(cmd, rt.GetWidth(), rt.GetHeight());
+                commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
+                commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
 				shader->SetSampler(context, FILTER_LINEAR, FILTER_LINEAR,
 					SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 				shader->BindSampledTexture(context, "u_tex", *m_renderTargetArray[i + 1].GetAttachment(0).Tex);
 				shader->SetBufferData(context, "u_BloomUpsampleParams", &m_config.UpscaleFilterRadius, sizeof(m_config.UpscaleFilterRadius));
-				//shader->FlushDescriptors(context);
 				commandList->BindProgramDescriptorSets();
 				CmdDrawFullscreenQuad(commandList);
 			}
-			//rt.EndPass(cmd);
 		}
 		GpuProf_End(context);
-		//EndGPUEvent(context, cmd);
 		commandList->EndMarker();
 
 		check(m_composeTarget);
-		//BeginGPUEvent(context, cmd, "Bloom mix");
         commandList->BeginMarker("Bloom mix");
 		GpuProf_Begin(context, "Bloom mix");
-		//m_composeTarget->BeginPass(context, cmd);
-		//m_composeShader->UseProgram(context);
         commandList->SetGraphicsState({ .Program = m_composeShader, .Rt = m_composeTarget });
 		m_composeShader->BindSampledTexture(context, "u_tex0", m_blendTexture ? *m_blendTexture : *GetTextureCheckerboard4x4(context));
 		m_composeShader->BindSampledTexture(context, "u_tex1", *m_renderTargetArray[0].GetAttachment(0).Tex);
-		//m_composeShader->FlushDescriptors(context);
 		commandList->BindProgramDescriptorSets();
 		CmdDrawFullscreenQuad(commandList);
-		//m_composeTarget->EndPass(cmd);
 		GpuProf_End(context);
-		//EndGPUEvent(context, cmd);
         commandList->EndMarker();
+
+		commandList->EndMarker();
 	}
 
 	void BloomEffect::Destroy(const RenderContext& context)
@@ -268,5 +272,252 @@ namespace Mist
 		ImGui::DragFloat("Composite mix alpha", &m_config.MixCompositeAlpha, 0.02f, 0.f, 1.f);
 		ImGui::DragFloat("Upscale filter radius", &m_config.UpscaleFilterRadius, 0.001f, 0.f, 0.5f);
 		ImGui::End();
+	}
+
+	void ComputeBloom::Init()
+	{
+        const RenderContext& context = *m_context;
+        uint32_t width = context.Window->Width;
+        uint32_t height = context.Window->Height;
+
+		tImageDescription imageDesc;
+		imageDesc.Width = width;
+		imageDesc.Height = height;
+		imageDesc.Depth = 1;
+        imageDesc.Format = FORMAT_R16G16B16A16_SFLOAT;
+        imageDesc.Layers = 1;
+        imageDesc.Usage = IMAGE_USAGE_STORAGE_BIT | IMAGE_USAGE_SAMPLED_BIT;
+		imageDesc.InitialLayout = IMAGE_LAYOUT_GENERAL;
+        imageDesc.DebugName.Fmt("BloomFiltered");
+		m_filteredImage = cTexture::Create(context, imageDesc);
+		m_filteredImage->CreateView(context, tViewDescription());
+
+        width >>= 1;
+        height >>= 1;
+		for (uint32_t i = 0; i < (uint32_t)m_rtImages.size(); ++i)
+		{
+			// Create target image
+			tImageDescription imageDesc;
+			imageDesc.DebugName.Fmt("BloomImage_%d", i);
+			imageDesc.Width = width;
+			imageDesc.Height = height;
+			imageDesc.Depth = 1;
+			imageDesc.Format = FORMAT_R16G16B16A16_SFLOAT;
+			imageDesc.Layers = 1;
+			imageDesc.Usage = IMAGE_USAGE_STORAGE_BIT | IMAGE_USAGE_SAMPLED_BIT;
+			cTexture* image = cTexture::Create(context, imageDesc);
+			check(image);
+			tViewDescription viewDesc;
+			image->CreateView(context, viewDesc);
+			m_rtImages[i] = image;
+            m_rtImages[i]->TransferImageLayout(context, IMAGE_LAYOUT_GENERAL, VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
+			width >>= 1;
+			height >>= 1;
+		}
+
+		auto pushMacros = [&](tShaderProgramDescription& desc, const char* phase) 
+			{
+				desc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.reserve(3);
+                desc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ BLOOM_NAME_INVOCATION_X, BLOOM_INVOCATIONS_X });
+                desc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ BLOOM_NAME_INVOCATION_Y, BLOOM_INVOCATIONS_Y });
+                desc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ phase });
+			};
+
+		// Filter shader
+        tShaderProgramDescription filterDesc{ .Type = tShaderType::Compute, .ComputeShaderFile = SHADER_FILEPATH("bloom.comp") };
+		pushMacros(filterDesc, "BLOOM_FILTER");
+        m_filterShader = ShaderProgram::Create(context, filterDesc);
+		// Downsample shader
+        tShaderProgramDescription downsampleDesc{ .Type = tShaderType::Compute, .ComputeShaderFile = SHADER_FILEPATH("bloom.comp") };
+        pushMacros(downsampleDesc, "BLOOM_DOWNSCALE");
+        m_downsampleShader = ShaderProgram::Create(context, downsampleDesc);
+        // Upsample shader
+        tShaderProgramDescription upsampleDesc{ .Type = tShaderType::Compute, .ComputeShaderFile = SHADER_FILEPATH("bloom.comp") };
+        pushMacros(upsampleDesc, "BLOOM_UPSCALE");
+		m_upsampleShader = ShaderProgram::Create(context, upsampleDesc);
+		// Mix shader
+        tShaderProgramDescription mixDesc{ .Type = tShaderType::Compute, .ComputeShaderFile = SHADER_FILEPATH("bloom.comp") };
+        pushMacros(mixDesc, "BLOOM_MIX");
+        m_mixShader = ShaderProgram::Create(context, mixDesc);
+	}
+
+	void ComputeBloom::Destroy()
+	{
+		const RenderContext& context = *m_context;
+        cTexture::Destroy(context, m_filteredImage);
+		for (uint32_t i = 0; i < m_rtImages.size(); ++i)
+			cTexture::Destroy(context, m_rtImages[i]);
+	}
+
+	void ComputeBloom::Compute(const InputConfig& config)
+	{
+		check(config.Input);
+		const RenderContext& context = *m_context;
+
+        CommandList* commandList = context.CmdList;
+		commandList->ClearState();
+
+		static bool f = false;
+		if (!f && 1)
+		{
+            commandList->SetTextureState({ m_filteredImage, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL });
+			f = true;
+		}
+
+        commandList->BeginMarker("BloomCompute");
+        commandList->BeginMarker("BloomFilter");
+		FilterImage(config.Input, config.Threshold, config.Knee);
+        commandList->EndMarker();
+        commandList->BeginMarker("BloomDownscale");
+        DownsampleImage(m_filteredImage);
+        commandList->EndMarker();
+        commandList->BeginMarker("BloomUpscale");
+		UpsampleImage();
+        commandList->EndMarker();
+        commandList->BeginMarker("BloomMix");
+		Mix(config.Input);
+        commandList->EndMarker();
+        commandList->EndMarker();
+
+		// Debug
+		if (CVar_ShowBloomTex.Get() > 0)
+		{
+#define DrawDebugTexture(_tex) DebugRender::DrawScreenQuad({x, y}, {w, h}, *_tex); y += h
+			float x = 0.f;
+			float y = 0.f;
+			float aspectRatio = (float)context.Window->Width / (float)context.Window->Height;
+			float h = (float)m_context->Window->Height / (float)(m_rtImages.size() + 1);
+			float w = h * aspectRatio;
+			DrawDebugTexture(m_filteredImage);
+			for (uint32_t i = 0; i < m_rtImages.size(); ++i)
+			{
+                DrawDebugTexture(m_rtImages[i]);
+			}
+			//tex = m_rtImages[math::Clamp(CVar_ShowBloomTex.Get() - 1, 0, BLOOM_MIPMAP_LEVELS - 1)];
+		}
+#undef DrawDebugTexture
+
+		// Let the input image prepared to be readed in graphics passes.
+        //commandList->SetTextureState({ inputImage, IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	}
+
+	void ComputeBloom::FilterImage(const cTexture* inputTexture, float threshold, float knee)
+	{
+		const RenderContext& context = *m_context;
+        CommandList* commandList = context.CmdList;
+
+        struct
+        {
+			float threshold;
+			float curve[3];
+        } filterParams;
+
+        commandList->SetComputeState({ .Program = m_filterShader });
+
+        // Prepare textures
+        //commandList->SetTextureState({ inputTexture, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+        //commandList->SetTextureState({ m_filteredImage, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_GENERAL });
+		const cTexture* outputImage = m_rtImages[0];
+
+        // First prefilter input image with threshold and store result into the first image.
+        m_filterShader->BindStorageTexture(context, "outputTex", *outputImage);
+		m_filterShader->SetSampler(*m_context, FILTER_LINEAR, FILTER_LINEAR,
+            SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+        m_filterShader->BindSampledTexture(context, "inputTex", *inputTexture);
+
+        filterParams.threshold = threshold;
+        filterParams.curve[0] = threshold - knee;
+        filterParams.curve[1] = knee * 2.f;
+        filterParams.curve[2] = 0.25f / knee;
+        m_filterShader->SetBufferData(context, "u_filter", &filterParams, sizeof(filterParams));
+        commandList->BindProgramDescriptorSets();
+
+		const uint32_t width = outputImage->GetDescription().Width;
+        const uint32_t height = outputImage->GetDescription().Height;
+        const WorkgroupSize workgroup = CalculateImageWorkgroupSize(width, height, BLOOM_INVOCATIONS_X, BLOOM_INVOCATIONS_Y);
+        commandList->Dispatch(workgroup.x, workgroup.y, workgroup.z);
+
+		//commandList->SetTextureState({ m_filteredImage, IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+	}
+
+	void ComputeBloom::DownsampleImage(const cTexture* filteredTexture)
+	{
+		CommandList* commandList = m_context->CmdList;
+        commandList->SetComputeState({ .Program = m_downsampleShader });
+
+        commandList->SetTextureState({ filteredTexture, IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+
+		for (uint32_t i = 1; i < m_rtImages.size(); ++i)
+		{
+			// Output image
+            const cTexture* outputImage = m_rtImages[i];
+			m_downsampleShader->BindStorageTexture(*m_context, "outputTex", *outputImage);
+			// Input image
+            const cTexture* inputTexture = i == 0 ? filteredTexture : m_rtImages[i - 1];
+			if (i != 0)
+				commandList->SetTextureState({ inputTexture, IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+            m_downsampleShader->SetSampler(*m_context, FILTER_LINEAR, FILTER_LINEAR,
+                SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+			m_downsampleShader->BindSampledTexture(*m_context, "inputTex", *inputTexture);
+			commandList->BindProgramDescriptorSets();
+
+            // Dispatch
+            const uint32_t width = outputImage->GetDescription().Width;
+            const uint32_t height = outputImage->GetDescription().Height;
+			const WorkgroupSize workgroup = CalculateImageWorkgroupSize(width, height, BLOOM_INVOCATIONS_X, BLOOM_INVOCATIONS_Y);
+			commandList->Dispatch(workgroup.x, workgroup.y, workgroup.z);
+
+			if (i != 0)
+                commandList->SetTextureState({ inputTexture, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+		}
+
+        commandList->SetTextureState({ filteredTexture, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+	}
+
+	void ComputeBloom::UpsampleImage()
+	{
+		CommandList* commandList = m_context->CmdList;
+		commandList->SetComputeState({ .Program = m_upsampleShader });
+        //const cTexture* outputImage = m_rtImages[0];
+		for (uint32_t i = m_rtImages.size() - 2; i < m_rtImages.size(); --i)
+		{
+			// Output image
+			const cTexture* outputImage = m_rtImages[i];
+			m_upsampleShader->BindStorageTexture(*m_context, "outputTex", *outputImage);
+
+			// Input image
+			const cTexture* inputTexture = m_rtImages[i + 1];
+			commandList->SetTextureState({ inputTexture, IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+			m_upsampleShader->SetSampler(*m_context, FILTER_LINEAR, FILTER_LINEAR,
+				SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+			m_upsampleShader->BindSampledTexture(*m_context, "inputTex", *inputTexture);
+			commandList->BindProgramDescriptorSets();
+
+			// Dispatch
+            const uint32_t width = outputImage->GetDescription().Width;
+            const uint32_t height = outputImage->GetDescription().Height;
+            const WorkgroupSize workgroup = CalculateImageWorkgroupSize(width, height, BLOOM_INVOCATIONS_X, BLOOM_INVOCATIONS_Y);
+            commandList->Dispatch(workgroup.x, workgroup.y, workgroup.z);
+
+			commandList->SetTextureState({ inputTexture, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+		}
+	}
+
+	void ComputeBloom::Mix(const cTexture* outputImage)
+	{
+		CommandList* commandList = m_context->CmdList;
+        commandList->SetComputeState({ .Program = m_mixShader });
+		commandList->SetTextureState({ outputImage, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+        commandList->SetTextureState({ m_rtImages[0], IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        m_mixShader->BindStorageTexture(*m_context, "outputTex", *outputImage);
+        m_mixShader->BindSampledTexture(*m_context, "inputTex", *m_rtImages[0]);
+        commandList->BindProgramDescriptorSets();
+        const uint32_t width = outputImage->GetDescription().Width;
+        const uint32_t height = outputImage->GetDescription().Height;
+        const WorkgroupSize workgroup = CalculateImageWorkgroupSize(width, height, BLOOM_INVOCATIONS_X, BLOOM_INVOCATIONS_Y);
+        commandList->Dispatch(workgroup.x, workgroup.y, workgroup.z);
+		commandList->SetTextureState({ outputImage, IMAGE_LAYOUT_GENERAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+        commandList->SetTextureState({ m_rtImages[0], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL});
 	}
 }

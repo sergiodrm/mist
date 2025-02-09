@@ -126,21 +126,19 @@ void main()
         discard;
 
 #ifndef UNLIT
-#ifndef EMISSIVE
     vec3 normal = ComputeNormalMapping(inNormal);
     vec4 metallicRoughness = texture(u_Textures[TEXTURE_METALLIC_ROUGHNESS], inTexCoords);
     float metallic = metallicRoughness.b;
     float roughness = metallicRoughness.g;
     outColor = DoLighting(inFragPosWS.xyz, normal, albedo, metallic, roughness);
-#endif // !EMISSIVE
 #else
     outColor = albedo;
 #endif // !UNLIT
 
+	outColor += u_material.data.Emissive.w * vec4(u_material.data.Emissive.xyz, 1.f);
 #ifdef EMISSIVE
-	outColor = u_material.data.Emissive.w * vec4(u_material.data.Emissive.xyz, 1.f) + albedo;
-    outEmissive = vec4(u_material.data.Emissive.xyz * u_material.data.Emissive.w, 1.f);
+    //outEmissive = vec4(u_material.data.Emissive.xyz * u_material.data.Emissive.w, 1.f);
 #else
-    outEmissive = vec4(0.f);
+    //outEmissive = vec4(0.f);
 #endif // EMISSIVE
 }
