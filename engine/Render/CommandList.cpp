@@ -173,6 +173,7 @@ namespace Mist
             }
         }
         check(queueFamilyIndex != UINT32_MAX && "Queue family not found.");
+        delete[] queueProperties;
 
         m_queue = VK_NULL_HANDLE;
         vkGetDeviceQueue(context->Device, queueFamilyIndex, 0, &m_queue);
