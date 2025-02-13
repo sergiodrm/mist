@@ -10,6 +10,7 @@
 #include "Core/SystemMemory.h"
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
+#include "Utils/TimeUtils.h"
 
 
 namespace Mist
@@ -148,6 +149,7 @@ namespace Mist
 	{
 		if (!*cmd)
 			return;
+		PROFILE_SCOPE_LOGF(ExecCommand, "Console command: %s", cmd);
 		logfinfo("Command: %s\n", m_inputCommand);
 		InsertCommandHistory(cmd);
 		if (!ExecInternalCommand(cmd))
