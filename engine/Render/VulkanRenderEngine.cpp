@@ -34,12 +34,8 @@
 #include "Render/CommandList.h"
 #include "Render/UI.h"
 
-
-#define MIST_CRASH_ON_VALIDATION_LAYER
-
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
-
 
 namespace Mist
 {
@@ -66,13 +62,9 @@ namespace Mist
 			Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
 			if (level == Mist::LogLevel::Error)
 			{
-#if defined(_DEBUG)
 				if (!CVar_ExitValidationLayer.Get())
 					PrintCallstack();
-#endif
-#ifdef MIST_CRASH_ON_VALIDATION_LAYER
 				check(!CVar_ExitValidationLayer.Get() && "Validation layer error");
-#endif
 			}
 			return VK_FALSE;
 		}
@@ -414,6 +406,7 @@ namespace Mist
 
 	void VulkanRenderEngine::ReloadShaders()
 	{
+		PROFILE_SCOPE_LOG(ReloadShaders, "reload shaders");
 		RenderContext_ForceFrameSync(m_renderContext);
 		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
 		{
