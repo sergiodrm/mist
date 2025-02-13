@@ -146,7 +146,7 @@ namespace Mist
 					Textures.Push(texture);
 				}
 				else
-					logferror("DebugRender Quad overflow. Increase QuadBatch (Current %u).\n", MaxQuads);
+					logferror("[tQuadBatch::SubmitQuadTexture] Max textures reached per quad batch (MaxTextures: %d)\n", MaxViews);
 				return index;
 			}
 
