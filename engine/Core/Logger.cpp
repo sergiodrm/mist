@@ -10,6 +10,7 @@
 #include <imgui/imgui.h>
 #include "Core/SystemMemory.h"
 #include "Application/CmdParser.h"
+#include "Application/Application.h"
 
 
 
@@ -184,8 +185,9 @@ namespace Mist
 		if (level == LogLevel::Debug)
 			return;
 #endif // !_DEBUG
+		uint64_t frame = tApplication::GetFrame();
         if (level == LogLevel::Error && CVar_LogToConsole.Get() > 0 || CVar_LogToConsole.Get() == 2)
-			printf("%s[%7s]%s %s%s", ANSI_COLOR_CYAN, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
+			printf("%s[%6lld][%7s]%s %s%s", ANSI_COLOR_CYAN, frame, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
 		wchar_t wString[LOG_MSG_MAX_SIZE];
 		MultiByteToWideChar(CP_ACP, 0, msg, -1, wString, 4096);
 		OutputDebugString(wString);
