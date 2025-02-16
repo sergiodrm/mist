@@ -10,6 +10,7 @@ namespace Mist
 	namespace FileSystem
 	{
 		bool IsFileNewerThanOther(const char* file, const char* other);
+        bool FileExists(const char* filename);
 
 		bool ReadFile(const char* filename, tDynArray<uint32_t>& data);
 		// Dynamic memory allocated, ownership by caller.

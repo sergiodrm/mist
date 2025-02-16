@@ -19,6 +19,18 @@ namespace Mist
 		return statsFile.st_mtime > statsOther.st_mtime;
 	}
 
+	bool FileSystem::FileExists(const char* filename)
+	{
+		FILE* f = nullptr;
+		if (!fopen_s(&f, filename, "r"))
+        {
+			check(f);
+			fclose(f);
+			return true;
+        }
+		return false;
+	}
+
 	bool FileSystem::ReadFile(const char* filename, tDynArray<uint32_t>& data)
 	{
 		data.clear();
