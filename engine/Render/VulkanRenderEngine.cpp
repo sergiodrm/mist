@@ -410,7 +410,7 @@ namespace Mist
 		RenderContext_ForceFrameSync(m_renderContext);
 		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
 		{
-			m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
+			//m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
 			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
 	}
