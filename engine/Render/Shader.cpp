@@ -426,7 +426,6 @@ namespace Mist
 			}
 		}
 
-#ifdef SHADER_RUNTIME_COMPILATION
 		shader_compiler::tCompilationResult bin;
 		if (!recompileShaderSource)
 		{
@@ -441,17 +440,34 @@ namespace Mist
 			else
 				logfwarn("Compiled binary not found or shader source is newer (%s)\n", filepath);
 			bin = shader_compiler::Compile(filepath, shaderStage, &compileOptions);
-			check(bin.IsCompilationSucceed());
-			GenerateCompiledFile(binaryFilepath, bin.binary, bin.binaryCount);
+			if (!bin.IsCompilationSucceed())
+			{
+                logferror("Shader compilation failed (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+				if (FileSystem::FileExists(binaryFilepath))
+				{
+                    // Try to load the last compiled binary.
+                    logferror("Loading last compiled binary: %s\n", binaryFilepath);
+					if (!GetSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount))
+					{
+                        logferror("Failed to load last compiled binary: %s\n", binaryFilepath);
+                        return false;
+					}
+                }
+				else
+				{
+					logferror("Compiled binary not found: %s\n", binaryFilepath);
+					return false;
+				}
+			}
+			else
+			{
+                // if compilation is succeeded, generate a compiled file.
+				GenerateCompiledFile(binaryFilepath, bin.binary, bin.binaryCount);
+			}
 		}
-#else
-		// Read shader source and convert it to spirv binary
-		ShaderFileContent bin;
-		check(CacheSourceFromFile(filepath, content));
-		check(AssembleShaderSource(content.Raw, content.RawSize, shaderStage, &content.Assembled, &content.AssembledSize));
-		// Create reflection info
-		ProcessReflection(shaderStage, content.Assembled, content.AssembledSize);
-#endif // SHADER_RUNTIME_COMPILATION
+
+        // At this point we must have a valid binary.
+		check(bin.IsCompilationSucceed());
 
 		// Create vk module
 		CompiledShaderModule data;
@@ -459,10 +475,8 @@ namespace Mist
 		data.CompiledModule = CompileShaderModule(m_renderContext, bin.binary, bin.binaryCount, data.ShaderStage);
 		m_modules.push_back(data);
 		ProcessReflection(shaderStage, bin.binary, bin.binaryCount);
-#ifdef SHADER_RUNTIME_COMPILATION
 		// release resources  
 		shader_compiler::FreeBinary(bin);
-#endif // SHADER_RUNTIME_COMPILATION
 
 		char buff[256];
 		sprintf_s(buff, "ShaderModule_(%s)", binaryFilepath);
@@ -1267,44 +1281,48 @@ namespace Mist
 	{
 		check(!m_description.VertexShaderFile.Filepath.empty() || !m_description.FragmentShaderFile.Filepath.empty());
 		check(m_description.RenderTarget);
-		RenderPipelineBuilder builder(context);
-		// Input configuration
-		builder.InputDescription = m_description.InputLayout;
-		builder.SubpassIndex = m_description.SubpassIndex;
-		builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
-		builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
-		builder.Rasterizer.frontFace = tovk::GetFrontFace(m_description.FrontFaceMode);
-		builder.DepthStencil.depthWriteEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_WRITE ? VK_TRUE : VK_FALSE;
-		builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
-		builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
-		builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
-		builder.DepthStencil.front = GetStencilOpState(m_description.FrontStencil);
-		builder.DepthStencil.back = GetStencilOpState(m_description.BackStencil);
-		builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
-		builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
-		builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
-		builder.Scissor.offset = { 0, 0 };
-		if (!m_description.DynamicStates.empty())
+		
+		// Generate shader module stages
+		ShaderCompiler compiler(context);
+		if (!GenerateShaderModules(compiler))
 		{
-			builder.DynamicStates.resize(m_description.DynamicStates.size());
-			for (uint32_t i = 0; i < (uint32_t)m_description.DynamicStates.size(); ++i)
-				builder.DynamicStates[i] = tovk::GetDynamicState(m_description.DynamicStates[i]);
+            logferror("Failed to generate shader modules for graphics pipeline\n");
+			compiler.ClearCachedData();
+            return false;
 		}
 
-		// Generate shader module stages
-		tArray<ShaderFileDescription*, 2> descs = { &m_description.VertexShaderFile, &m_description.FragmentShaderFile };
-		tArray<VkShaderStageFlagBits, 2> stages = { VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT };
-		tArray<const char*, 2> entryPoints = { m_description.VertexShaderFile.CompileOptions.EntryPointName, m_description.FragmentShaderFile.CompileOptions.EntryPointName };
-		ShaderCompiler compiler(context);
-		for (uint32_t i = 0; i < (uint32_t)descs.size(); ++i)
-		{
-			if (!descs[i]->Filepath.empty())
-			{
-				compiler.ProcessShaderFile(descs[i]->Filepath.c_str(), stages[i], descs[i]->CompileOptions);
-				VkShaderModule compiled = compiler.GetCompiledModule(stages[i]);
-				builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(stages[i], compiled, entryPoints[i]));
-			}
-		}
+		// Prepare pipeline builder
+        // Input configuration
+        RenderPipelineBuilder builder(context);
+        builder.InputDescription = m_description.InputLayout;
+        builder.SubpassIndex = m_description.SubpassIndex;
+        builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
+        builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
+        builder.Rasterizer.frontFace = tovk::GetFrontFace(m_description.FrontFaceMode);
+        builder.DepthStencil.depthWriteEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_WRITE ? VK_TRUE : VK_FALSE;
+        builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
+        builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
+        builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
+        builder.DepthStencil.front = GetStencilOpState(m_description.FrontStencil);
+        builder.DepthStencil.back = GetStencilOpState(m_description.BackStencil);
+        builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
+        builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
+        builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
+        builder.Scissor.offset = { 0, 0 };
+        if (!m_description.DynamicStates.empty())
+        {
+            builder.DynamicStates.resize(m_description.DynamicStates.size());
+            for (uint32_t i = 0; i < (uint32_t)m_description.DynamicStates.size(); ++i)
+                builder.DynamicStates[i] = tovk::GetDynamicState(m_description.DynamicStates[i]);
+        }
+		VkShaderModule vertexModule = compiler.GetCompiledModule(VK_SHADER_STAGE_VERTEX_BIT);
+        VkShaderModule fragmentModule = compiler.GetCompiledModule(VK_SHADER_STAGE_FRAGMENT_BIT);
+		if (vertexModule != VK_NULL_HANDLE)
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexModule, m_description.VertexShaderFile.CompileOptions.EntryPointName));
+        if (fragmentModule != VK_NULL_HANDLE)
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentModule, m_description.FragmentShaderFile.CompileOptions.EntryPointName));
+
+
 		// Generate shader reflection data
 		// Override with external info
 		for (const tShaderDynamicBufferDescription& dynBuffer : m_description.DynamicBuffers)
@@ -1339,6 +1357,10 @@ namespace Mist
 			builder.LayoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
 		}
 
+        // destroy previous resources once we know that we have new valid sources compiled.
+        if (IsLoaded())
+            Destroy(context);
+
 		// Build the new pipeline
 		builder.Build(m_description.RenderTarget->GetRenderPass(), m_pipeline, m_pipelineLayout);
 
@@ -1366,8 +1388,14 @@ namespace Mist
 		check(!m_description.ComputeShaderFile.Filepath.empty());
 
 		VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
-		ShaderCompiler compiler(context);
-		compiler.ProcessShaderFile(m_description.ComputeShaderFile.Filepath.c_str(), stage, m_description.ComputeShaderFile.CompileOptions);
+        // Generate shader module stages
+        ShaderCompiler compiler(context);
+        if (!GenerateShaderModules(compiler))
+        {
+            logferror("Failed to generate shader modules for compute pipeline\n");
+            compiler.ClearCachedData();
+            return false;
+        }
 
 		for (uint32_t i = 0; i < (uint32_t)m_description.DynamicBuffers.size(); ++i)
 			compiler.SetUniformBufferAsDynamic(m_description.DynamicBuffers[i].Name.c_str());
@@ -1397,6 +1425,10 @@ namespace Mist
 			layoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
 		}
 
+		// destroy previous resources once we know that we have new valid sources compiled.
+        if (IsLoaded())
+            Destroy(context);
+
 		vkcheck(vkCreatePipelineLayout(context.Device, &layoutInfo, nullptr, &m_pipelineLayout));
 		check(m_pipelineLayout != VK_NULL_HANDLE);
 
@@ -1417,6 +1449,30 @@ namespace Mist
 		return true;
 	}
 
+	bool ShaderProgram::GenerateShaderModules(ShaderCompiler& compiler)
+	{
+		bool result;
+		switch (m_description.Type)
+		{
+        case tShaderType::Graphics:
+		{
+            if (!m_description.VertexShaderFile.Filepath.empty())
+				result = compiler.ProcessShaderFile(m_description.VertexShaderFile.Filepath.c_str(), VK_SHADER_STAGE_VERTEX_BIT, m_description.VertexShaderFile.CompileOptions);
+            if (!m_description.FragmentShaderFile.Filepath.empty())
+				result = compiler.ProcessShaderFile(m_description.FragmentShaderFile.Filepath.c_str(), VK_SHADER_STAGE_FRAGMENT_BIT, m_description.FragmentShaderFile.CompileOptions)
+					&& result;
+		}
+        break;
+		case tShaderType::Compute:
+        {
+            check(!m_description.ComputeShaderFile.Filepath.empty());
+            result = compiler.ProcessShaderFile(m_description.ComputeShaderFile.Filepath.c_str(), VK_SHADER_STAGE_COMPUTE_BIT, m_description.ComputeShaderFile.CompileOptions);
+        }
+        break;
+		}
+		return result;
+	}
+
 	void ShaderProgram::Destroy(const RenderContext& context)
 	{
 		check(IsLoaded());
@@ -1428,21 +1484,23 @@ namespace Mist
 
 	bool ShaderProgram::Reload(const RenderContext& context)
 	{
-		check(m_pipeline == VK_NULL_HANDLE && m_pipelineLayout == VK_NULL_HANDLE);
+        // try to reload pipeline from files.
+		// if failed, then we must have previously loaded pipeline. Throw exception otherwise.
 		switch (m_description.Type)
 		{
 		case tShaderType::Graphics:
 			m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-			return _ReloadGraphics(context);
+			_ReloadGraphics(context);
 			break;
 		case tShaderType::Compute:
 			m_bindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
-			return _ReloadCompute(context);
+			_ReloadCompute(context);
 			break;
 		default:
 			check(false);
 		}
-		return false;
+		check(IsLoaded());
+		return true;
 	}
 
 	uint32_t ShaderProgram::FindTextureSlot(const char* textureName, EDescriptorType type) const

@@ -308,6 +308,7 @@ namespace Mist
 		bool _Create(const RenderContext& context, const tShaderProgramDescription& description);
 		bool _ReloadGraphics(const RenderContext& context);
 		bool _ReloadCompute(const RenderContext& context);
+        bool GenerateShaderModules(ShaderCompiler& compiler);
 		tShaderProgramDescription m_description;
 		ShaderReflectionProperties m_reflectionProperties;
 		VkPipeline m_pipeline;
