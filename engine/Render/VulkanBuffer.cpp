@@ -198,6 +198,8 @@ namespace Mist
 	void GPUBuffer::Destroy(const RenderContext& renderContext)
 	{
 		MemFreeBuffer(renderContext.Allocator, m_buffer);
+		m_buffer.Alloc = nullptr;
+		m_buffer.Buffer = VK_NULL_HANDLE;
 		m_size = 0;
 	}
 
