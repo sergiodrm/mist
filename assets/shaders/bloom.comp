@@ -88,10 +88,10 @@ vec4 Upscale(ivec2 pixel, vec2 filterSize)
     // g - h - i
     // === ('e' is the current texel) ===
     vec3 a = texture(inputTex, vec2(texCoords.x - x, texCoords.y + y)).rgb;
-    vec3 b = vec3(0.f);//texture(inputTex, vec2(texCoords.x,     texCoords.y + y)).rgb;
+    vec3 b = texture(inputTex, vec2(texCoords.x,     texCoords.y + y)).rgb;
     vec3 c = texture(inputTex, vec2(texCoords.x + x, texCoords.y + y)).rgb;
 
-    vec3 d = vec3(0.f);//texture(inputTex, vec2(texCoords.x - x, texCoords.y)).rgb;
+    vec3 d = texture(inputTex, vec2(texCoords.x - x, texCoords.y)).rgb;
     vec3 e = texture(inputTex, vec2(texCoords.x,     texCoords.y)).rgb;
     vec3 f = texture(inputTex, vec2(texCoords.x + x, texCoords.y)).rgb;
 
@@ -107,17 +107,6 @@ vec4 Upscale(ivec2 pixel, vec2 filterSize)
     upsample += (b+d+f+h)*2.0;
     upsample += (a+c+g+i);
     upsample *= 1.0 / 16.0;
-
-
-    // if (texCoords.y - y <= 0.f)
-    // {
-    //     return vec4(1.f, 0.f, 0.f, 1.f);
-    // }
-    // else
-    // {
-    //     return vec4(0.f);
-    // }
-
     return vec4(upsample, 1.f);
 }
 #endif
@@ -159,7 +148,6 @@ void main()
         return;
 
 #ifdef BLOOM_FILTER
-    // TODO: pass threshold by uniform
     vec4 color = FilterImage(pixel, u_filter.threshold, u_filter.filterCurve);
     imageStore(outputTex, pixel, color);
 #else 
@@ -170,7 +158,8 @@ void main()
 #ifdef BLOOM_UPSCALE
     vec4 color = Upscale(pixel, vec2(1.f));
     vec4 base = imageLoad(outputTex, pixel);
-    imageStore(outputTex, pixel, color + base);
+    vec4 res = vec4(color.rgb + base.rgb, base.a);
+    imageStore(outputTex, pixel, base + color);
 #else
 #ifdef BLOOM_MIX
     vec2 texCoords = vec2(pixel) / vec2(texSize);
