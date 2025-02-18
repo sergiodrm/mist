@@ -14,6 +14,7 @@
 #include "Render/InitVulkanTypes.h"
 #include "Core/SystemMemory.h"
 #include "../CommandList.h"
+#include "../VulkanRenderEngine.h"
 
 #define PARTICLE_COUNT 512 * 256
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
@@ -282,4 +283,234 @@ namespace Mist
 
 		delete[] particles;
 	}
+
+
+
+
+
+
+
+#define GOL_INVOCATIONS_X 8
+#define GOL_INVOCATIONS_Y 8
+
+    void Gol::Init(uint32_t width, uint32_t height)
+    {
+        const RenderContext& context = *m_context;
+
+        tShaderProgramDescription shaderDesc{ .Type = tShaderType::Compute };
+        shaderDesc.ComputeShaderFile.Filepath = SHADER_FILEPATH("gol.comp");
+        shaderDesc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "GOL_INVOCATIONS_X", GOL_INVOCATIONS_X });
+        shaderDesc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "GOL_INVOCATIONS_Y", GOL_INVOCATIONS_Y });
+        m_computeShader = ShaderProgram::Create(context, shaderDesc);
+
+		RenderTargetDescription desc;
+		desc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {0.f, 0.f, 0.f, 0.f});
+		desc.RenderArea.extent = {context.Window->Width, context.Window->Height};
+		desc.RenderArea.offset = {0,0};
+        desc.ResourceName = "GOL_RT";
+        m_rt.Create(context, desc);
+
+		tShaderProgramDescription drawDesc;
+        drawDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
+        drawDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("gol.frag");
+		drawDesc.RenderTarget = &m_rt;
+        drawDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+        m_drawShader = ShaderProgram::Create(context, drawDesc);
+
+
+        m_counter = 0;
+        m_period = 30;
+		m_drawScale = 0.75f;
+        m_paused = false;
+        m_width = width;
+        m_height = height;
+		m_modifiedWidth = m_width;
+        m_modifiedHeight = m_height;
+		m_dirtyState = false;
+
+		InitBuffers(m_width, m_height);
+		CreateDescriptorBuffers();
+        Reset();
+    }
+
+    void Gol::Destroy()
+    {
+        const RenderContext& context = *m_context;
+		for (uint32_t i = 0; i < CountOf(m_buffers); ++i)
+			m_buffers[i].Destroy(context);
+		m_rt.Destroy(context);
+    }
+
+    CBoolVar CVar_ShowGol("r_showgol", true);
+
+    void Gol::Compute()
+    {
+        const RenderContext& context = *m_context;
+
+		uint64_t frame = tApplication::GetFrame();
+		bool update = false;
+		if (frame % m_period == 0 && !m_paused)
+		{
+			m_counter = (m_counter + 1) % 2;
+			update = true;
+		}
+
+        uint64_t bindingIndex = m_counter;
+        CommandList* commandList = context.CmdList;
+
+		if (update)
+		{
+			commandList->SetComputeState({ .Program = m_computeShader });
+			commandList->BindDescriptorSets(&m_bufferBinding[bindingIndex], 1);
+
+			struct
+			{
+				uint32_t width;
+				uint32_t height;
+				glm::vec2 cursorTexCoords;
+			} params = { m_width, m_height };
+			uint32_t cursorPos[2];
+			GetMousePosition(&cursorPos[0], &cursorPos[1]);
+			params.cursorTexCoords = CalculateTexCoordsFromPixel(cursorPos[0], cursorPos[1]);
+
+			m_computeShader->SetBufferData(context, "u_params", &params, sizeof(params));
+			commandList->BindProgramDescriptorSets();
+
+			uint32_t groupsX = (uint32_t)(ceilf((float)m_width / (float)GOL_INVOCATIONS_X));
+			uint32_t groupsY = (uint32_t)(ceilf((float)m_height / (float)GOL_INVOCATIONS_Y));
+			commandList->Dispatch(groupsX, groupsY, 1);
+			//commandList->SetTextureState({ m_textures[0], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+			//commandList->SetTextureState({ m_textures[1], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+		}
+
+		commandList->SetGraphicsState({.Program = m_drawShader, .Rt = &m_rt});
+
+        commandList->BindDescriptorSets(&m_drawBinding[bindingIndex], 1, 1);
+
+		struct
+		{
+			int width;
+			int height;
+			glm::vec2 resolution;
+			float gridSize = 1.f;
+			glm::vec3 padding;
+		} drawParams{ m_width, m_height, {m_rt.GetWidth(), m_rt.GetHeight()}};
+		m_drawShader->SetBufferData(context, "u_params", &drawParams, sizeof(drawParams));
+		commandList->BindProgramDescriptorSets();
+		CmdDrawFullscreenQuad(commandList);
+		commandList->ClearState();
+
+		if (CVar_ShowGol.Get())
+		{
+			DebugRender::DrawScreenQuad({ 0.f, 0.f }, drawParams.resolution * m_drawScale, * m_rt.GetTexture());
+		}
+    }
+
+	void Gol::ImGuiDraw()
+	{
+        ImGui::Begin("GOL");
+		ImGui::SeparatorText("Info");
+		if (m_dirtyState)
+			ImGui::Text("Cells: %d (%d x %d) | Pending to reload", m_width * m_height, m_width, m_height);
+		else
+			ImGui::Text("Cells: %d (%d x %d)", m_width * m_height, m_width, m_height);
+        ImGui::Text("Total size: %4.3f KB", float(m_width * m_height * sizeof(int)) / 1024.f);
+		uint32_t cursorPos[2];
+        GetMousePosition(&cursorPos[0], &cursorPos[1]);
+        glm::vec2 cursorTexCoords = CalculateTexCoordsFromPixel(cursorPos[0], cursorPos[1]);
+        ImGui::Text("Cursor tex coords: %.3f, %.3f", cursorTexCoords[0], cursorTexCoords.y);
+		ImGui::SeparatorText("Controls");
+		ImGui::DragFloat("Draw scale", &m_drawScale, 0.05f, 0.f, 1.f);
+		ImGui::Checkbox("Paused", &m_paused);
+        ImGui::DragInt("Frame period", (int*)&m_period, 1.f, 1, 1000);
+		if (ImGui::Button("Reset grid"))
+			Reset();
+        int dims[] = { m_modifiedWidth, m_modifiedHeight };
+		if (ImGui::DragInt2("Dimensions", dims, 1.f, 0, 2048))
+		{
+			m_modifiedWidth = dims[0];
+            m_modifiedHeight = dims[1];
+			m_dirtyState = true;
+		}
+		if (m_dirtyState && ImGui::Button("Apply changes"))
+		{
+            m_width = m_modifiedWidth;
+			m_height = m_modifiedHeight;
+			InitBuffers(m_width, m_height);
+			CreateDescriptorBuffers();
+			Reset();
+			m_dirtyState = false;
+		}
+        ImGui::End();
+	}
+
+	void Gol::Reset()
+	{
+		RenderContext_ForceFrameSync(*const_cast<RenderContext*>(m_context));
+        std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
+        std::default_random_engine generator;
+		generator.seed(tApplication::GetFrame());
+        int* data = _new int[m_width * m_height];
+        for (uint32_t i = 0; i < m_width * m_height; ++i)
+            data[i] = randomFloat(generator) > 0.5f ? 1 : 0;
+
+		GPUBuffer::SubmitBufferToGpu(m_buffers[0], data, m_width * m_height * sizeof(int));
+		GPUBuffer::SubmitBufferToGpu(m_buffers[1], data, m_width * m_height * sizeof(int));
+
+        delete[] data;
+	}
+
+	void Gol::InitBuffers(uint32_t width, uint32_t height)
+	{
+		RenderContext_ForceFrameSync(*const_cast<RenderContext*>(m_context));
+        const uint32_t bufferSize = width * height * sizeof(int); // 4 byte per cell
+        BufferCreateInfo info;
+        info.Data = nullptr;
+        info.Size = bufferSize;
+        info.Usage = BUFFER_USAGE_STORAGE | BUFFER_USAGE_VERTEX;
+		for (uint32_t i = 0; i < CountOf(m_buffers); ++i)
+		{
+			if (m_buffers[i].IsAllocated())
+                m_buffers[i].Destroy(*m_context);
+            m_buffers[i].Init(*m_context, info);
+		}
+	}
+
+	void Gol::CreateDescriptorBuffers()
+	{
+        const RenderContext& context = *m_context;
+        const uint32_t bufferSize = m_width * m_height * sizeof(int);
+        VkDescriptorBufferInfo bufferInfo[2];
+        bufferInfo[0].buffer = m_buffers[0].GetBuffer().Buffer;
+        bufferInfo[0].offset = 0;
+        bufferInfo[0].range = bufferSize;
+        bufferInfo[1].buffer = m_buffers[1].GetBuffer().Buffer;
+        bufferInfo[1].offset = 0;
+        bufferInfo[1].range = bufferSize;
+
+		// Compute bindings
+        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+            .BindBuffer(0, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+            .BindBuffer(1, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+            .Build(context, m_bufferBinding[0]);
+        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+            .BindBuffer(0, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+            .BindBuffer(1, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+            .Build(context, m_bufferBinding[1]);
+
+		// Graphics bindings
+        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+            .BindBuffer(0, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .Build(context, m_drawBinding[0]);
+        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+            .BindBuffer(0, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+            .Build(context, m_drawBinding[1]);
+	}
+
+	glm::vec2 Gol::CalculateTexCoordsFromPixel(uint32_t x, uint32_t y) const
+	{
+        if (m_width == 0 || m_height == 0)
+			return {};
+        return glm::vec2((float)x / ((float)m_context->Window->Width), (float)y / ((float)m_context->Window->Height));
+	} 
 }

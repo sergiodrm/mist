@@ -1,0 +1,109 @@
+#version 460
+
+struct Cell
+{
+    int state;
+};
+
+layout (set = 0, binding = 0) buffer CellWrite
+{
+    Cell data[];
+} u_writeCells;
+
+layout(set = 0, binding = 1) readonly buffer CellRead
+{
+    Cell data[];
+} u_readCells;
+
+layout(set=1, binding = 0) uniform Params
+{
+    ivec2 dims;
+    vec2 cursorTexCoords;
+} u_params;
+
+#ifdef GOL_DRAW
+layout (set=2, binding = 0) uniform image2D u_tex;
+#endif
+
+int FromCoordsToIndex(int x, int y, ivec2 dims)
+{
+    return dims.x * y + x;
+}
+
+int LoopCoord(int index, int edge)
+{
+    if (index < 0 || index >= edge)
+        return abs(index-edge);
+    return index;
+}
+
+ivec2 LoopCoords(ivec2 c, ivec2 d)
+{
+    return ivec2(LoopCoord(c.x, d.x), LoopCoord(c.y, d.y));
+}
+
+int ComputeGol(ivec2 coords, ivec2 dims)
+{
+    int index = FromCoordsToIndex(coords.x, coords.y, dims);
+    int state = u_readCells.data[index].state;
+    if (state == 2)
+        return state;
+    int neighbourCount = 0;
+
+    for (int x = -1; x < 2; ++x)
+    {
+        for (int y = -1; y < 2; ++y)
+        {
+            if (x != 0 && y != 0)
+            {
+                ivec2 c = LoopCoords(coords + ivec2(x,y), dims);
+                int i = FromCoordsToIndex(c.x, c.y, dims);
+                neighbourCount += u_readCells.data[i].state;
+            }
+        }
+    }
+
+    int result = state;
+    // dead cell
+    if (state == 0)
+    {
+        if (neighbourCount == 3)
+            result = 1;
+    }
+    else // cell alive
+    {
+        if (neighbourCount > 3 || neighbourCount < 2)
+            result = 0;
+    }
+
+    // insert live
+    //ivec2 godCell = ivec2(2,1);
+    //if (coords == godCell)
+    //    result = 1;
+
+
+    return result;
+}
+
+layout (local_size_x = GOL_INVOCATIONS_X, local_size_y = GOL_INVOCATIONS_Y, local_size_z = 1) in;
+void main()
+{
+    ivec2 cellCoords = ivec2(gl_GlobalInvocationID.xy);
+    if (cellCoords.x >= u_params.dims.x || cellCoords.y >= u_params.dims.y) return;
+
+    int state = 0;
+    int index = FromCoordsToIndex(cellCoords.x, cellCoords.y, u_params.dims);
+    ivec2 cursorCellCoords = ivec2(floor(u_params.cursorTexCoords * vec2(u_params.dims)));
+    if (cursorCellCoords == cellCoords)
+    {
+        state = 2;
+    }
+    else
+    {
+        state = ComputeGol(cellCoords, u_params.dims);
+        if (state == 2)
+            state = 1;
+    }
+
+    u_writeCells.data[index].state = state;
+}

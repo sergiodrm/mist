@@ -69,4 +69,44 @@ namespace Mist
 		int32_t m_flags;
 		uint32_t m_particleCount;
 	};
+
+
+    class Gol
+    {
+    public:
+        Gol(const RenderContext* context)
+            : m_context(context) {
+        }
+
+        void Init(uint32_t width, uint32_t height);
+        void Destroy();
+
+        void Compute();
+		void ImGuiDraw();
+		void Reset();
+    private:
+
+		void InitBuffers(uint32_t width, uint32_t height);
+		void CreateDescriptorBuffers();
+
+		glm::vec2 CalculateTexCoordsFromPixel(uint32_t x, uint32_t y) const;
+
+        const RenderContext* m_context;
+		uint32_t m_width;
+		uint32_t m_height;
+		VertexBuffer m_buffers[2];
+		VkDescriptorSet m_bufferBinding[2];
+		VkDescriptorSet m_drawBinding[2];
+		RenderTarget m_rt;
+        ShaderProgram* m_computeShader;
+		ShaderProgram* m_drawShader;
+
+		uint64_t m_counter;
+		uint64_t m_period;
+		bool m_paused;
+		bool m_dirtyState;
+		uint32_t m_modifiedWidth;
+        uint32_t m_modifiedHeight;
+		float m_drawScale;
+    };
 }
