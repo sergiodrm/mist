@@ -43,6 +43,8 @@ namespace Mist
 	CBoolVar CVar_ExitValidationLayer("ExitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
 
+	extern CIntVar CVar_ShowCpuProf;
+
 	namespace Debug
 	{
 		uint32_t GVulkanLayerValidationErrors = 0;
@@ -82,6 +84,14 @@ namespace Mist
 	{
 		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		eng->DumpShadersInfo();
+	}
+
+	void ExecCommand_ActiveCpuProf(const char* cmd)
+	{
+		if (CVar_ShowCpuProf.Get() == 0)
+			CVar_ShowCpuProf.Set(3);
+		if (CVar_ShowCpuProf.Get() == 1)
+			CVar_ShowCpuProf.Set(2);
 	}
 
 	struct Quad
@@ -274,6 +284,7 @@ namespace Mist
 		//AddConsoleCommand(ExecCommand_CVar);
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
+		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
 
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
 
@@ -410,7 +421,6 @@ namespace Mist
 		RenderContext_ForceFrameSync(m_renderContext);
 		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
 		{
-			//m_shaderDb.GetShaderArray()[i]->Destroy(m_renderContext);
 			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
 	}
@@ -592,7 +602,8 @@ namespace Mist
 		for (uint32_t i = 0; i < count; ++i)
 		{
 			CVar* cvar = cvarArray[i];
-			ImGuiUtils::EditCVar(*cvar);
+			if (!(cvar->GetFlags() & CVarFlag_Private))
+				ImGuiUtils::EditCVar(*cvar);
 		}
 		ImGui::End();
 	}

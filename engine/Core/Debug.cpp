@@ -254,7 +254,8 @@ namespace Mist::Debug
 namespace Mist
 {
 	CIntVar CVar_ShowStats("ShowStats", 1);
-	CBoolVar CVar_ShowCpuProf("r_ShowCpuProf", 0);
+	// 0: inactive. 1: active. 2: pending deactive. 3: pending active.
+	CIntVar CVar_ShowCpuProf("r_ShowCpuProf", 0, CVarFlag_Private);
 	CIntVar CVar_ShowCpuProfRatio("r_ShowCpuProfRatio", 30);
 
 	namespace Profiling
@@ -584,9 +585,21 @@ namespace Mist
 			}
 		}
 
+		bool CpuProfSlotThisFrame() { return !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()); }
+
+		bool IsCpuProfActive()
+		{
+			return CpuProfSlotThisFrame() && (CVar_ShowCpuProf.Get() == 1 || CVar_ShowCpuProf.Get() == 2);
+		}
+
+		bool IsCpuProfPendingActive() { return CVar_ShowCpuProf.Get() == 3 && CpuProfSlotThisFrame(); }
+		bool IsCpuProfPendingDeactive() { return CVar_ShowCpuProf.Get() == 2 && CpuProfSlotThisFrame(); }
+
+		void CpuProfSetActive(bool active) { CVar_ShowCpuProf.Set(active ? 1 : 0); }
+
 		void CpuProf_Begin(const char* label)
 		{
-			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
+			if (IsCpuProfActive())
 			{
 				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Push({ label, 0.0 });
 			}
@@ -594,7 +607,7 @@ namespace Mist
 
 		void CpuProf_End(float ms)
 		{
-			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
+			if (IsCpuProfActive())
 			{
 				GProfiler.CpuProfStack[GProfiler.CurrentFrame].GetCurrent().Value = ms;
 				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Pop();
@@ -603,16 +616,21 @@ namespace Mist
 
 		void CpuProf_Reset()
 		{
-			if (CVar_ShowCpuProf.Get() && !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()))
+			if (IsCpuProfPendingActive())
+				CpuProfSetActive(1);
+			if (IsCpuProfActive())
 			{
 				GProfiler.CurrentFrame = (GProfiler.CurrentFrame + 1) % 2;
 				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Reset();
+
+				if (IsCpuProfPendingDeactive())
+					CpuProfSetActive(0);
 			}
 		}
 
 		void CpuProf_ImGuiDraw()
 		{
-			if (CVar_ShowCpuProf.Get())
+			if (CVar_ShowCpuProf.Get() == 1)
 				GProfiler.ImGuiDraw();
 		}
 	}
