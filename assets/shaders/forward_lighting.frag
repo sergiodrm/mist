@@ -48,7 +48,7 @@ vec3 ComputeNormalMapping(vec3 normal)
 {
     if (bool(u_material.data.Flags & MATERIAL_FLAG_HAS_NORMAL_MAP))
     {
-        vec3 normalValue = texture(u_Textures[TEXTURE_NORMAL], inTexCoords).rgb;
+        vec3 normalValue = texture(u_Textures[MATERIAL_TEXTURE_NORMAL], inTexCoords).rgb;
         normalValue = normalize(normalValue*2.f - vec3(1.f));
         return normalize(inTBN * normalValue);
     }
@@ -121,13 +121,13 @@ vec4 DoLighting(vec3 fragPos, vec3 normal, vec4 albedo, float metallic, float ro
 
 void main()
 {
-    vec4 albedo = texture(u_Textures[TEXTURE_ALBEDO], inTexCoords);
+    vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inTexCoords);
     if (albedo.a <= 0.1f)
         discard;
 
 #ifndef UNLIT
     vec3 normal = ComputeNormalMapping(inNormal);
-    vec4 metallicRoughness = texture(u_Textures[TEXTURE_METALLIC_ROUGHNESS], inTexCoords);
+    vec4 metallicRoughness = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inTexCoords);
     float metallic = metallicRoughness.b;
     float roughness = metallicRoughness.g;
     outColor = DoLighting(inFragPosWS.xyz, normal, albedo, metallic, roughness);

@@ -13,22 +13,24 @@ layout (set = 1, binding = 0) uniform UBO
 {
     float FilterRadius;
 } u_BloomUpsampleParams;
-
+#else
+#ifdef BLOOM_FILTER
+layout (set = 1, binding = 0) uniform UBO
+{
+    vec2 resolution;
+    vec2 padding;
+    vec3 filterCurve;
+    float threshold;
+} u_filterParams;
 #else
 #error
 #endif
-#endif
-
-#ifndef BLOOM_DOWNSAMPLE
-#ifndef BLOOM_UPSAMPLE
-#error Shader must be configured to downsample or upsample
 #endif
 #endif
 
 layout(location = 0) out vec4 FragColor;
 layout(location = 0) in vec2 InTexCoords;
 
-#ifdef BLOOM_DOWNSAMPLE
 vec4 Downscale(vec2 TexCoords, vec2 TexResolution)
 {
     vec2 texelSize = 1.f / TexResolution;
@@ -80,9 +82,7 @@ vec4 Downscale(vec2 TexCoords, vec2 TexResolution)
     //color = vec4(texelSize, 0.f, 1.f);
     return color;
 }
-#endif
 
-#ifdef BLOOM_UPSAMPLE
 vec4 Upscale(vec2 TexCoords, float FilterRadius)
 {
     // The filter kernel is applied with a radius, specified in texture
@@ -117,6 +117,34 @@ vec4 Upscale(vec2 TexCoords, float FilterRadius)
     upsample *= 1.0 / 16.0;
     return vec4(upsample, 1.f);
 }
+
+#ifdef BLOOM_FILTER
+vec4 QuadraticThreshold(vec4 color, float threshold, vec3 curve)
+{
+    // max pixel brightness
+    float brightness = max(max(color.r, color.g), color.b);
+    float rq = clamp(brightness - curve.x, 0.f, curve.y);
+    rq = (rq * rq) * curve.z;
+    const float epsilon = 0.0001;
+    color *= max(rq, brightness - threshold) / max(brightness, epsilon);
+    return color;
+}
+
+vec4 FilterImage(vec2 texCoords, vec2 resolution, float threshold, vec3 curve)
+{
+    //vec2 texCoords = vec2(pixel) / textureSize(inputTex, 0);
+    //vec4 color = texture(inputTex, texCoords);
+
+    const float clampValue = 20.f;
+    vec4 color = Downscale(texCoords, resolution);
+    //return color;
+    color = clamp(color, vec4(0.f), vec4(clampValue));
+    color = QuadraticThreshold(color, threshold, curve);
+
+    if (!(color.r > threshold || color.g > threshold || color.b > threshold))
+        color = vec4(0.f);
+    return color;
+}
 #endif
 
 void main()
@@ -129,7 +157,11 @@ void main()
     float filterRadius = u_BloomUpsampleParams.FilterRadius;
     FragColor = Upscale(InTexCoords, filterRadius);
 #else
+#ifdef BLOOM_FILTER
+    FragColor = FilterImage(InTexCoords, u_filterParams.resolution, u_filterParams.threshold, u_filterParams.filterCurve);
+#else
 #error
+#endif
 #endif
 #endif
 }

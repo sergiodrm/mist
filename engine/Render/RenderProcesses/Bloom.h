@@ -51,47 +51,13 @@ namespace Mist
 		const cTexture* m_blendTexture = nullptr;
 
 	private:
+		ShaderProgram* m_filterShader;
 		ShaderProgram* m_downsampleShader;
 		ShaderProgram* m_upsampleShader;
 		ShaderProgram* m_composeShader;
 		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
-	};
 
-	class ComputeBloom
-	{
-	public:
-
-		ComputeBloom(const RenderContext* context)
-			: m_context(context) { }
-
-		struct InputConfig 
-		{
-			const cTexture* Input;
-			float Threshold = 1.f;
-			float Knee = 0.1f;
-		};
-
-		void Init();
-		void Destroy();
-
-		void Compute(const InputConfig& config);
-
-
-	protected:
-
-		void FilterImage(const cTexture* inputTexture, float threshold, float knee);
-		void DownsampleImage(const cTexture* filteredTexture);
-		void UpsampleImage();
-		void Mix(const cTexture* outputImage);
-
-	public:
-		const RenderContext* m_context;
-		ShaderProgram* m_filterShader;
-        ShaderProgram* m_downsampleShader;
-        ShaderProgram* m_upsampleShader;
-        ShaderProgram* m_mixShader;
-		//tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> m_rts;
-		tArray<cTexture*, BLOOM_MIPMAP_LEVELS> m_rtImages;
-		cTexture* m_filteredImage;
+		float m_threshold = 1.f;
+		float m_knee = 0.1f;
 	};
 }
