@@ -126,6 +126,7 @@ namespace Mist
 	private:
 		void ParseVars(char* data);
 		void ParseLine(const char* line);
+		bool FindValue(const char* key, const char*& valueOut) const;
 
 		void InsertValue(const char* key, const char* value);
 	private:

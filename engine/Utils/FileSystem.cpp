@@ -255,10 +255,10 @@ namespace Mist
 
 	bool cCfgFile::GetInt(const char* key, int& value, int defaultValue) const
 	{
-		if (m_keyValueMap.contains(key))
+		const char* v = nullptr;
+		if (FindValue(key, v))
 		{
-			const tString& str = m_values.at(m_keyValueMap.at(key));
-			value = atoi(str.c_str());
+			value = atoi(v);
 			return true;
 		}
 		value = defaultValue;
@@ -267,10 +267,15 @@ namespace Mist
 
 	bool cCfgFile::GetBool(const char* key, bool& value, bool defaultValue) const
 	{
-		int v;
-		if (GetInt(key, v, defaultValue ? 1 : 0))
+		const char* v = nullptr;
+		if (FindValue(key, v))
 		{
-			value = v != 0;
+			if (!stricmp(v, "true"))
+				value = true;
+			else if (!stricmp(v, "false"))
+				value = false;
+			else
+				value = atoi(v) != 0;
 			return true;
 		}
 		value = defaultValue;
@@ -279,7 +284,14 @@ namespace Mist
 
 	bool cCfgFile::GetFloat(const char* key, float& value, float defaultValue) const
 	{
-		return false;
+        const char* v = nullptr;
+        if (FindValue(key, v))
+        {
+            value = atof(v);
+            return true;
+        }
+        value = defaultValue;
+        return false;
 	}
 
 	void cCfgFile::ParseVars(char* data)
@@ -327,10 +339,22 @@ namespace Mist
 		InsertValue(var, value);
 	}
 
+	bool cCfgFile::FindValue(const char* key, const char*& valueOut) const
+	{
+		if (m_keyValueMap.contains(key))
+		{
+			index_t index = m_keyValueMap.at(key);
+			valueOut = m_values[index].c_str();
+			return true;
+		}
+		return false;
+	}
+
 	void cCfgFile::InsertValue(const char* key, const char* value)
 	{
 		if (m_keyValueMap.contains(key))
 		{
+			logfwarn("Override value in cfg file [%s, %s]\n", key, value);
 			index_t index = m_keyValueMap.at(key);
 			m_values[index] = value;
 		}
