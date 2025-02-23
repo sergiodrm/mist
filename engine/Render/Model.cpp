@@ -307,6 +307,7 @@ namespace gltf_api
 
 	void LoadMaterial(Mist::cMaterial& material, const Mist::RenderContext& context, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
+		material.m_flags = Mist::MATERIAL_FLAG_NONE;
 		// Emissive
 		if (cgltfmtl.has_emissive_strength)
 		{
@@ -344,7 +345,8 @@ namespace gltf_api
 		}
 		// Albedo
 		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
-		LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO]);
+		if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO]))
+			material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 	}
 
 }
