@@ -32,8 +32,8 @@ namespace Mist
 		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return &m_hdrOutput; }
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
-	private:
 		RenderTarget m_lightingOutput;
+	private:
 		ShaderProgram* m_lightingShader;
 		ShaderProgram* m_lightingFogShader;
 		ShaderProgram* m_skyboxShader;

@@ -158,7 +158,7 @@ namespace Mist
 		}
 
 		m_bloomEffect.m_composeTarget = &m_lightingOutput;
-		m_bloomEffect.m_inputTarget = m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_EMISSIVE).Tex;
+		m_bloomEffect.m_inputTarget = m_lightingOutput.GetTexture();
 		m_bloomEffect.Draw(renderContext);
 
 		{
