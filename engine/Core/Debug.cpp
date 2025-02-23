@@ -256,7 +256,7 @@ namespace Mist
 	CIntVar CVar_ShowStats("ShowStats", 1);
 	// 0: inactive. 1: active. 2: pending deactive. 3: pending active.
 	CIntVar CVar_ShowCpuProf("r_ShowCpuProf", 0, CVarFlag_Private);
-	CIntVar CVar_ShowCpuProfRatio("r_ShowCpuProfRatio", 30);
+	CIntVar CVar_ShowCpuProfRatio("r_ShowCpuProfRatio", 5);
 
 	namespace Profiling
 	{
@@ -464,6 +464,7 @@ namespace Mist
 
 		void ImGuiDraw()
 		{
+			const RenderContext& context = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext();
 			CpuProf_ImGuiDraw();
 
 
@@ -514,9 +515,9 @@ namespace Mist
 #endif
 				);
 				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
+				ImGui::Text("%ux%u", context.Window->Width, context.Window->Height);
 				if (CVar_ShowStats.Get() > 1)
 				{
-
 					ImGui::Columns(3, nullptr, false);
 					auto utilLamb = [&](const char* label, float ms)
 						{
@@ -564,7 +565,7 @@ namespace Mist
 							};
 
 						const tSystemMemStats& systemStats = GetMemoryStats();
-						const RenderContext& context = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext();
+						
 						const tMemStats& bufferStats = context.Allocator->BufferStats;
 						const tMemStats& texStats = context.Allocator->TextureStats;
 						ImGui::Text("Memory");
