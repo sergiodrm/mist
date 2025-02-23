@@ -23,6 +23,25 @@ namespace Mist
         return nullptr;
     }
 
+    const char* MaterialFlagToStr(tMaterialFlags flag)
+    {
+        switch (flag)
+        {
+            case MATERIAL_FLAG_NONE: return "MATERIAL_FLAG_NONE";
+            case MATERIAL_FLAG_HAS_ALBEDO_MAP: return "MATERIAL_FLAG_HAS_ALBEDO_MAP";
+            case MATERIAL_FLAG_HAS_NORMAL_MAP: return "MATERIAL_FLAG_HAS_NORMAL_MAP";
+            case MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP: return "MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP";
+            case MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP: return "MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP";
+            case MATERIAL_FLAG_HAS_EMISSIVE_MAP: return "MATERIAL_FLAG_HAS_EMISSIVE_MAP";
+            case MATERIAL_FLAG_EMISSIVE: return "MATERIAL_FLAG_EMISSIVE";
+            case MATERIAL_FLAG_UNLIT: return "MATERIAL_FLAG_UNLIT";
+            case MATERIAL_FLAG_NO_PROJECT_SHADOWS: return "MATERIAL_FLAG_NO_PROJECT_SHADOWS";
+            case MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: return "MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS";
+        }
+        unreachable_code();
+        return nullptr;
+    }
+
     cMaterial::cMaterial()
         : m_shader(nullptr), m_flags(MATERIAL_FLAG_NONE), 
         m_emissiveFactor{0.f}, m_emissiveStrength(0.f),
@@ -38,6 +57,25 @@ namespace Mist
         tShaderProgramDescription desc;
         desc.VertexShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.vert");
         desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.frag");
+#define DECLARE_MACRO_ENUM(_flag) desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({#_flag, _flag})
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+#undef DECLARE_MACRO_ENUM
         desc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
         tShaderDynamicBufferDescription modelDynamicBuffer;
         modelDynamicBuffer.ElemCount = globals::MaxRenderObjects;
