@@ -10,10 +10,11 @@
 #include <imgui/imgui.h>
 #include "Utils/GenericUtils.h"
 #include "../CommandList.h"
+#include "../Material.h"
 
 namespace Mist
 {
-	CBoolVar CVar_ShowForwardTech("r_showforwardtech", true);
+	CBoolVar CVar_ShowForwardTech("r_showforwardtech", false);
 
 	RenderTarget* g_forwardRt = nullptr;
 
@@ -44,6 +45,25 @@ namespace Mist
 			desc.VertexShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.vert");
 			desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.frag");
 			desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "MAX_SHADOW_MAPS", "3" });
+#define DECLARE_MACRO_ENUM(_flag) desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({#_flag, _flag})
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+#undef DECLARE_MACRO_ENUM
 			desc.RenderTarget = &m_rt;
 			desc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			desc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
@@ -93,15 +113,10 @@ namespace Mist
 			m_skyboxModel = _new cModel();
 			m_skyboxModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
 		}
-
-		m_computeBloom = _new ComputeBloom(&renderContext);
-		m_computeBloom->Init();
 	}
 
 	void ForwardLighting::Destroy(const RenderContext& renderContext)
 	{
-		m_computeBloom->Destroy();
-		delete m_computeBloom;
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
@@ -179,10 +194,6 @@ namespace Mist
 			commandList->EndMarker();
 
 			DebugRender::DrawScreenQuad({}, { m_rt.GetWidth(), m_rt.GetHeight() }, *m_rt.GetTexture());
-
-            // Bloom
-			m_bloomInputConfig.Input = m_rt.GetTexture();
-			m_computeBloom->Compute(m_bloomInputConfig);
 		}
 	}
 
@@ -190,8 +201,6 @@ namespace Mist
 	{
 		ImGui::Begin("Forward tech");
 		ImGuiUtils::CheckboxCBoolVar(CVar_ShowForwardTech);
-        ImGui::DragFloat("Bloom threshold", &m_bloomInputConfig.Threshold, 0.01f, 0.f, 10.f);
-        ImGui::DragFloat("Bloom knee", &m_bloomInputConfig.Knee, 0.01f, 0.f, 10.f);
 		ImGui::End();
 	}
 

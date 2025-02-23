@@ -31,8 +31,5 @@ namespace Mist
 
 		ShaderProgram* m_skyboxShader;
 		cModel* m_skyboxModel;
-
-		ComputeBloom* m_computeBloom;
-        ComputeBloom::InputConfig m_bloomInputConfig;
 	};
 }
