@@ -31,6 +31,21 @@ namespace Mist
 		return false;
 	}
 
+	bool FileSystem::DirExists(const char* directory)
+	{
+		struct stat info;
+		if (stat(directory, &info) != 0)
+			return false;
+		if (info.st_mode & S_IFDIR)
+			return true;
+		return false;
+	}
+
+	bool FileSystem::Mkdir(const char* directory)
+	{
+		return mkdir(directory) != 0;
+	}
+
 	bool FileSystem::ReadFile(const char* filename, tDynArray<uint32_t>& data)
 	{
 		data.clear();
@@ -292,6 +307,11 @@ namespace Mist
         }
         value = defaultValue;
         return false;
+	}
+
+	bool cCfgFile::GetStr(const char* key, const char*& value) const
+	{
+		return FindValue(key, value);
 	}
 
 	void cCfgFile::ParseVars(char* data)

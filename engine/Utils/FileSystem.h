@@ -11,6 +11,8 @@ namespace Mist
 	{
 		bool IsFileNewerThanOther(const char* file, const char* other);
         bool FileExists(const char* filename);
+		bool DirExists(const char* directory);
+		bool Mkdir(const char* directory);
 
 		bool ReadFile(const char* filename, tDynArray<uint32_t>& data);
 		// Dynamic memory allocated, ownership by caller.
@@ -104,6 +106,7 @@ namespace Mist
 		bool GetInt(const char* key, int& value, int defaultValue = 0) const;
 		bool GetBool(const char* key, bool& value, bool defaultValue = false) const;
 		bool GetFloat(const char* key, float& value, float defaultValue = 0.f) const;
+		bool GetStr(const char* key, const char*& value) const;
 
 		template <index_t N>
 		bool GetStr(const char* key, char(&value)[N]) const
