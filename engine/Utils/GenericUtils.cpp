@@ -175,3 +175,22 @@ bool Mist::ImGuiUtils::EditCVar(CVar& cvar)
 	}
 	return false;
 }
+
+bool Mist::ImGuiUtils::ComboBox(const char* title, int* currentSelection, const char** values, int valueCount)
+{
+	check(currentSelection && *currentSelection >= 0 && *currentSelection < valueCount);
+	bool res = false;
+	if (ImGui::BeginCombo(title, values[*currentSelection]))
+	{
+		for (int i = 0; i < valueCount; ++i)
+		{
+			if (ImGui::Selectable(values[i], *currentSelection == i))
+			{
+				*currentSelection = i;
+				res = true;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	return res;
+}

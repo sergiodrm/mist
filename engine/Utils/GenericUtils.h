@@ -40,5 +40,7 @@ namespace Mist
 		bool EditCFloatVar(CFloatVar& var);
 		bool EditCStrVar(CStrVar& var);
 		bool EditCVar(CVar& cvar);
+
+		bool ComboBox(const char* title, int* currentSelection, const char** values, int valueCount);
 	}
 }
