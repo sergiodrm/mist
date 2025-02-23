@@ -26,7 +26,8 @@
 //#define MIST_SHADER_REFLECTION_LOG
 //#define SHADER_FORCE_COMPILATION
 //#define SHADER_DUMP_PREPROCESS_RESULT
-#define SHADER_BINARY_FILE_EXTENSION ".spv"
+#define SHADER_BINARY_FILE_DIRECTORY "shaderbin"
+#define SHADER_BINARY_FILE_EXTENSION ".mist.spv"
 #define SHADER_MAX_TEXTURES 8
 
 
@@ -238,7 +239,12 @@ namespace shader_compiler
 			}
 			strcat_s(outFilepath, Size, "]");
 		}
-		strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
+
+		size_t h = std::hash<std::string>()(outFilepath);
+		Mist::FileSystem::GetDirectoryFromFilepath(srcFile, outFilepath, Size);
+		sprintf_s(outFilepath, "%s%s/%llu%s", outFilepath, SHADER_BINARY_FILE_DIRECTORY, h, SHADER_BINARY_FILE_EXTENSION);
+
+		//strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
 	}
 
 	shaderc_include_result* tShaderIncluder::GetInclude(const char* requestedSource, shaderc_include_type type, const char* requestingSource, size_t includeDepth)
@@ -345,12 +351,14 @@ namespace Mist
 			strcat_s(key, temp);
 		}
 
+#if 0
 		char* i = key;
 		while (*i)
 		{
 			*i = tolower(*i);
 			++i;
 		}
+#endif // 0
 	}
 
 	template <size_t _KeySize>
@@ -715,8 +723,11 @@ namespace Mist
 
 	bool ShaderCompiler::GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount)
 	{
-		PROFILE_SCOPE_LOG(WriteShader, "Write file with binary spv shader");
+		PROFILE_SCOPE_LOGF(WriteShader, "Write file with binary spv shader %s", shaderFilepath);
 		check(shaderFilepath && *shaderFilepath && binaryData && binaryCount);
+		char dir[256];
+		FileSystem::GetDirectoryFromFilepath(shaderFilepath, dir, CountOf(dir));
+		FileSystem::Mkdir(dir);
 		FILE* f;
 		errno_t err = fopen_s(&f, shaderFilepath, "wb");
 		check(!err && f && "Failed to write shader compiled file");
