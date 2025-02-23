@@ -52,7 +52,7 @@ namespace Mist
 			SDL_Rect rect;
 			SDL_GetDisplayBounds(i, &rect);
 			const char* displayName = SDL_GetDisplayName(i);
-			logfinfo("#%d %s (%dx%d | %d,%d)\n", i, displayName, rect.w, rect.h, rect.x, rect.y);
+			logfinfo("#%02d %16s (%4dx%4d | %5d,%5d)\n", i, displayName, rect.w, rect.h, rect.x, rect.y);
 		}
 
 		SDL_WindowFlags windowFlags = (SDL_WindowFlags)(uint32_t(WindowFlagsToSDL(flags)) | SDL_WINDOW_VULKAN);
@@ -101,7 +101,7 @@ namespace Mist
 	{
 		check(!m_engine);
 
-		logfinfo("Cmd line: %s", argv[0]);
+		logfinfo("Cmd line: %s\n", argv[0]);
 		for (int i = 1; i < argc; ++i)
 		{
 			logfinfo(" %s", argv[i]);
