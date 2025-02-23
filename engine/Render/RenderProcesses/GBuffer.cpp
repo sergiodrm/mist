@@ -22,7 +22,6 @@ namespace Mist
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_POSITION, GBUFFER_RT_LAYOUT_POSITION, SAMPLE_COUNT_1_BIT, clearValue);
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_NORMAL, GBUFFER_RT_LAYOUT_NORMAL, SAMPLE_COUNT_1_BIT, clearValue);
 		description.AddColorAttachment(GBUFFER_RT_FORMAT_ALBEDO, GBUFFER_RT_LAYOUT_ALBEDO, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_EMISSIVE, GBUFFER_RT_LAYOUT_EMISSIVE, SAMPLE_COUNT_1_BIT, {0.f, 0.f, 0.f, 1.f});
 		description.DepthAttachmentDescription.Format = GBUFFER_RT_FORMAT_DEPTH;
 		description.DepthAttachmentDescription.Layout = GBUFFER_RT_LAYOUT_DEPTH;
 		description.DepthAttachmentDescription.MultisampledBit = SAMPLE_COUNT_1_BIT;
@@ -155,12 +154,8 @@ namespace Mist
 		case DEBUG_DEPTH:
 			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetDepthTexture());
 			break;
-		case DEBUG_EMISSIVE:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_EMISSIVE));
-			break;
 		default:
 			break;
-
 		}
 	}
 
@@ -184,6 +179,26 @@ namespace Mist
 			shaderDesc.DynamicBuffers.push_back(materialDynDesc);
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("mrt.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mrt.frag");
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({#_flag, _flag})
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
+            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
+            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+#undef DECLARE_MACRO_ENUM
+
 			shaderDesc.RenderTarget = &m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
