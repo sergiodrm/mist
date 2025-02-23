@@ -9,7 +9,7 @@ temporaldir = "%{wks.location}/temp/%{cfg.buildcfg}_%{cfg.architecture}"
 libdir = "%{wks.location}/lib/%{cfg.buildcfg}"
 
 newaction {
-    trigger = "clean",
+    trigger = "clear",
     description = "clear project files",
     execute = function()
         os.execute("del /q /s *.vcxproj*")
@@ -18,6 +18,14 @@ newaction {
         os.execute("del /q /s temp")
         os.execute("rmdir bin")
         os.execute("rmdir temp")
+    end
+}
+
+newaction {
+    trigger = "clearshaders",
+    description = "clear compiled shader binaries",
+    execute = function()
+        os.execute("del /q /s assets\\shaders\\*.mist.spv")
     end
 }
 
