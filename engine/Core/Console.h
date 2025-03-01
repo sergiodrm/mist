@@ -28,6 +28,17 @@ namespace Mist
 			ConsoleMode_History,
 		};
 
+		enum eFilterLevel
+		{
+			FilterNone = 0,
+			FilterInfo = 1 << (uint32_t)LogLevel::Info,
+			FilterOk = 1 << (uint32_t)LogLevel::Ok,
+			FilterDebug = 1 << (uint32_t)LogLevel::Debug,
+			FilterError = 1 << (uint32_t)LogLevel::Error,
+			FilterWarn = 1 << (uint32_t)LogLevel::Warn,
+			FilterAll = 0xffffffff
+		};
+
 		struct tLogEntry
 		{
 			LogLevel Level;
@@ -55,6 +66,8 @@ namespace Mist
 		void ResetHistoryMode();
 	private:
 		tCircularBuffer<tLogEntry, CONSOLE_LOG_COUNT> m_logs;
+		int32_t m_filters = FilterAll;
+		uint32_t m_counters[(uint32_t)LogLevel::Count];
 		bool m_newEntry;
 		uint32_t m_historyIndex;
 		tCircularBuffer<tInputString, CONSOLE_HISTORY_SIZE> m_history;

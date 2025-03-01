@@ -11,6 +11,7 @@
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
 #include "Utils/TimeUtils.h"
+#include "Utils/GenericUtils.h"
 
 
 namespace Mist
@@ -51,6 +52,8 @@ namespace Mist
 
 	void Console::Log(LogLevel level, const char* msg)
 	{
+		check((uint32_t)level < (uint32_t)LogLevel::Count);
+		++m_counters[(uint32_t)level];
 		tLogEntry entry;
 		sprintf_s(entry.Msg, "[%lld] %s", tApplication::GetFrame(), msg);
 		entry.Level = level;
@@ -90,22 +93,43 @@ namespace Mist
 		}
 		ImGui::Begin("Console", nullptr, flags);
 		// ImGui::Checkbox("AutoMove", &m_autoMove);
-		bool goend = ImGui::Button("Go end") || m_newEntry;
+		bool goend = m_newEntry;
+		ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.55f, 1.f), 
+			"Error: %4d | Warn: %4d | Info: %4d | Ok: %4d | Debug: %4d",
+			m_counters[(uint32_t)LogLevel::Error],
+			m_counters[(uint32_t)LogLevel::Warn],
+			m_counters[(uint32_t)LogLevel::Info],
+			m_counters[(uint32_t)LogLevel::Ok],
+			m_counters[(uint32_t)LogLevel::Debug]
+			);
 		m_newEntry = false;
 		float footerHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+        if (ImGui::BeginPopupContextItem("filters_popup"))
+        {
+            ImGuiUtils::CheckboxBitField("Info", &m_filters, FilterInfo);
+            ImGuiUtils::CheckboxBitField("Debug", &m_filters, FilterDebug);
+            ImGuiUtils::CheckboxBitField("Ok", &m_filters, FilterOk);
+            ImGuiUtils::CheckboxBitField("Warning", &m_filters, FilterWarn);
+            ImGuiUtils::CheckboxBitField("Error", &m_filters, FilterError);
+			if (ImGui::Button("Go end"))
+				goend = true;
+            ImGui::EndPopup();
+        }
 		if (ImGui::BeginChild("Scrollable", ImVec2(0.f, -footerHeight), false))
 		{
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
+
 			for (uint32_t i = 0; i < m_logs.GetCount(); ++i)
 			{
 				const tLogEntry& entry = m_logs.GetFromOldest(i);
-				if (*entry.Msg)
+				if (*entry.Msg && ((1<<(int32_t)entry.Level)&m_filters))
 					ImGui::TextColored(LogLevelImGuiColor(entry.Level), entry.Msg);
 			}
 			if (goend)
 				ImGui::SetScrollHereY(1.f);
 			ImGui::PopStyleVar();
 			ImGui::EndChild();
+			ImGui::OpenPopupOnItemClick("filters_popup", ImGuiPopupFlags_MouseButtonRight);
 		}
 
 		flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_EscapeClearsAll 

@@ -10,7 +10,9 @@ namespace Mist
 		Debug,
 		Ok,
 		Warn,
-		Error
+		Error,
+
+		Count
 	};
 	const char* LogLevelToStr(LogLevel level);
 
