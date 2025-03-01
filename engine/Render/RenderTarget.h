@@ -97,7 +97,8 @@ namespace Mist
 				.Layout = depthLayout,
 				.Attachment = texture->GetView(viewIndex)
 			};
-			AddColorAttachment(desc);
+			//AddColorAttachment(desc);
+			SetDepthAttachment(desc);
 		}
 
 		inline bool operator==(const RenderTargetDescription& desc) const
@@ -176,7 +177,7 @@ namespace Mist
 #ifdef MIST_VULKAN
 		VkRenderPass m_renderPass;
 		VkFramebuffer m_framebuffer;
-		tArray<tClearValue, MAX_RENDER_TARGET_ATTACHMENTS> m_clearValues;
+		tStaticArray<tClearValue, MAX_RENDER_TARGET_ATTACHMENTS> m_clearValues;
 #endif // MIST_VULKAN
 		RenderTargetDescription m_description;
 		tStaticArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;

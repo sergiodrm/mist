@@ -17,7 +17,7 @@ namespace Mist
 			.samples = VK_SAMPLE_COUNT_1_BIT,
 			.loadOp = clearOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.stencilLoadOp = clearOnLoad ? VK_ATTACHMENT_LOAD_OP_CLEAR : VK_ATTACHMENT_LOAD_OP_LOAD,
 			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 			.initialLayout = clearOnLoad ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 			.finalLayout = tovk::GetImageLayout(finalLayout),
@@ -62,9 +62,9 @@ namespace Mist
 			SetName(desc.ResourceName.CStr());
 		m_description = desc;
 		for (uint32_t i = 0; i < desc.ColorAttachmentDescriptions.GetSize(); ++i)
-			m_clearValues[i] = desc.ColorAttachmentDescriptions[i].ClearValue;
+			m_clearValues.Push(desc.ColorAttachmentDescriptions[i].ClearValue);
 		if (desc.DepthAttachmentDescription.IsValidAttachment())
-			m_clearValues[desc.ColorAttachmentDescriptions.GetSize()] = desc.DepthAttachmentDescription.ClearValue;
+			m_clearValues.Push(desc.DepthAttachmentDescription.ClearValue);
 		CreateResources(renderContext);
 	}
 
@@ -118,8 +118,8 @@ namespace Mist
 		renderPassInfo.renderPass = m_renderPass;
 		renderPassInfo.renderArea = m_description.RenderArea;
 		renderPassInfo.framebuffer = m_framebuffer;
-		renderPassInfo.clearValueCount = (uint32_t)m_clearValues.size();
-		renderPassInfo.pClearValues = m_clearValues.data();
+		renderPassInfo.clearValueCount = m_description.ClearOnLoad ? m_clearValues.GetSize() : 0;
+		renderPassInfo.pClearValues = m_description.ClearOnLoad ? m_clearValues.GetData() : nullptr;
 		vkCmdBeginRenderPass(cmd, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 	}
 
