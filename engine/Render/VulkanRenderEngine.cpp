@@ -280,6 +280,8 @@ namespace Mist
 #endif // defined(MIST_CUBEMAP)
 		m_gpuParticleSystem.Init(m_renderContext);
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
+		m_gol = _new Gol(&m_renderContext);
+        m_gol->Init(256, 256);
 
 		//AddConsoleCommand(ExecCommand_CVar);
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
@@ -329,6 +331,8 @@ namespace Mist
 			m_scene = nullptr;
 		}
 
+		m_gol->Destroy();
+		delete m_gol;
 		m_gpuParticleSystem.Destroy(m_renderContext);
 
 		ui::Destroy(m_renderContext);
@@ -497,6 +501,9 @@ namespace Mist
 		commandList->BeginMarker("DrawParticles");
 		m_gpuParticleSystem.Draw(m_renderContext, frameContext);
 		commandList->EndMarker();
+		commandList->BeginMarker("Gol");
+		m_gol->Compute();
+		commandList->EndMarker();
 
 		DebugRender::Draw(m_renderContext);
 		ui::End(m_renderContext);
@@ -558,6 +565,7 @@ namespace Mist
 			m_renderer.ImGuiDraw();
 			GpuProf_ImGuiDraw(m_renderContext);
 			m_gpuParticleSystem.ImGuiDraw();
+			m_gol->ImGuiDraw();
 			if (m_scene)
 				m_scene->ImGuiDraw();
 

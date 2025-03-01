@@ -20,6 +20,7 @@ namespace Mist
 	CStrVar GIniFile("IniFile", "default.cfg");
 
 	uint64_t GFrame = 0;
+	tApplication* GApp = nullptr;
 
 	SDL_WindowFlags WindowFlagsToSDL(eWindowFlags f)
 	{
@@ -81,15 +82,19 @@ namespace Mist
 
 	tApplication* tApplication::CreateApplication(int argc, char** argv)
 	{
+		check(!GApp);
 		tApplication* app = CreateGameApplication();
 		app->Init(argc, argv);
+		GApp = app;
 		return app;
 	}
 
 	void tApplication::DestroyApplication(tApplication* app)
 	{
+		check(GApp && GApp == app);
 		app->Destroy();
 		DestroyGameApplication(app);
+		GApp = nullptr;
 	}
 
 	tApplication::tApplication()
@@ -178,6 +183,12 @@ namespace Mist
 	uint64_t tApplication::GetFrame()
 	{
 		return GFrame;
+	}
+
+	void tApplication::ImGuiDraw()
+	{
+		check(GApp);
+		GApp->ProcessImGui();
 	}
 
 	void tApplication::ProcessAppEvents()

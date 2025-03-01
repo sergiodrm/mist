@@ -46,10 +46,12 @@ namespace Mist
 		int Run();
 		class IRenderEngine* GetEngineInstance() const { return m_engine; }
 		static uint64_t GetFrame();
+		static void ImGuiDraw();
 	protected:
 		virtual void LogicProcess(float deltaTime) {}
 		void ProcessAppEvents();
 		virtual void ProcessEvent(void* e);
+		virtual void ProcessImGui() {}
 
 	private:
 		class IRenderEngine* m_engine = nullptr;

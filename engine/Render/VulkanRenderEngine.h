@@ -105,6 +105,7 @@ namespace Mist
 		CameraData m_cameraData;
 
 		GPUParticleSystem m_gpuParticleSystem;
+		Gol* m_gol;
 	};
 
 	extern void CmdDrawFullscreenQuad(CommandList* commandList);

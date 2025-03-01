@@ -21,6 +21,12 @@
 
 namespace Mist
 {
+
+    CBoolVar CVar_ShowGol("r_showgol", false);
+    CBoolVar CVar_ComputeGol("r_computegol", false);
+
+
+
 	GPUParticleSystem::GPUParticleSystem()
 		: m_flags(GPU_PARTICLES_ACTIVE), m_particleCount(PARTICLE_COUNT) {}
 
@@ -341,73 +347,79 @@ namespace Mist
 		m_rt.Destroy(context);
     }
 
-    CBoolVar CVar_ShowGol("r_showgol", true);
-
     void Gol::Compute()
     {
         const RenderContext& context = *m_context;
 
-		uint64_t frame = tApplication::GetFrame();
-		bool update = false;
-		if (frame % m_period == 0 && !m_paused)
+		if (CVar_ComputeGol.Get())
 		{
-			m_counter = (m_counter + 1) % 2;
-			update = true;
-		}
-
-        uint64_t bindingIndex = m_counter;
-        CommandList* commandList = context.CmdList;
-
-		if (update)
-		{
-			commandList->SetComputeState({ .Program = m_computeShader });
-			commandList->BindDescriptorSets(&m_bufferBinding[bindingIndex], 1);
-
-			struct
+			uint64_t frame = tApplication::GetFrame();
+			bool update = false;
+			if (frame % m_period == 0 && !m_paused)
 			{
-				uint32_t width;
-				uint32_t height;
-				glm::vec2 cursorTexCoords;
-			} params = { m_width, m_height };
-			uint32_t cursorPos[2];
-			GetMousePosition(&cursorPos[0], &cursorPos[1]);
-			params.cursorTexCoords = CalculateTexCoordsFromPixel(cursorPos[0], cursorPos[1]);
+				m_counter = (m_counter + 1) % 2;
+				update = true;
+			}
 
-			m_computeShader->SetBufferData(context, "u_params", &params, sizeof(params));
-			commandList->BindProgramDescriptorSets();
+			uint64_t bindingIndex = m_counter;
+			CommandList* commandList = context.CmdList;
 
-			uint32_t groupsX = (uint32_t)(ceilf((float)m_width / (float)GOL_INVOCATIONS_X));
-			uint32_t groupsY = (uint32_t)(ceilf((float)m_height / (float)GOL_INVOCATIONS_Y));
-			commandList->Dispatch(groupsX, groupsY, 1);
-			//commandList->SetTextureState({ m_textures[0], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
-			//commandList->SetTextureState({ m_textures[1], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+			if (update)
+			{
+				commandList->SetComputeState({ .Program = m_computeShader });
+				commandList->BindDescriptorSets(&m_bufferBinding[bindingIndex], 1);
+
+				struct
+				{
+					uint32_t width;
+					uint32_t height;
+					glm::vec2 cursorTexCoords;
+				} params = { m_width, m_height };
+				uint32_t cursorPos[2];
+				GetMousePosition(&cursorPos[0], &cursorPos[1]);
+				params.cursorTexCoords = CalculateTexCoordsFromPixel(cursorPos[0], cursorPos[1]);
+
+				m_computeShader->SetBufferData(context, "u_params", &params, sizeof(params));
+				commandList->BindProgramDescriptorSets();
+
+				uint32_t groupsX = (uint32_t)(ceilf((float)m_width / (float)GOL_INVOCATIONS_X));
+				uint32_t groupsY = (uint32_t)(ceilf((float)m_height / (float)GOL_INVOCATIONS_Y));
+				commandList->Dispatch(groupsX, groupsY, 1);
+				//commandList->SetTextureState({ m_textures[0], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+				//commandList->SetTextureState({ m_textures[1], IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_GENERAL });
+			}
 		}
-
-		commandList->SetGraphicsState({.Program = m_drawShader, .Rt = &m_rt});
-
-        commandList->BindDescriptorSets(&m_drawBinding[bindingIndex], 1, 1);
-
-		struct
-		{
-			int width;
-			int height;
-			glm::vec2 resolution;
-			float gridSize = 1.f;
-			glm::vec3 padding;
-		} drawParams{ m_width, m_height, {m_rt.GetWidth(), m_rt.GetHeight()}};
-		m_drawShader->SetBufferData(context, "u_params", &drawParams, sizeof(drawParams));
-		commandList->BindProgramDescriptorSets();
-		CmdDrawFullscreenQuad(commandList);
-		commandList->ClearState();
 
 		if (CVar_ShowGol.Get())
 		{
+            CommandList* commandList = context.CmdList;
+            uint32_t bindingIndex = m_counter;
+			commandList->SetGraphicsState({.Program = m_drawShader, .Rt = &m_rt});
+
+			commandList->BindDescriptorSets(&m_drawBinding[bindingIndex], 1, 1);
+
+			struct
+			{
+				int width;
+				int height;
+				glm::vec2 resolution;
+				float gridSize = 1.f;
+				glm::vec3 padding;
+			} drawParams{ m_width, m_height, {m_rt.GetWidth(), m_rt.GetHeight()}};
+			m_drawShader->SetBufferData(context, "u_params", &drawParams, sizeof(drawParams));
+			commandList->BindProgramDescriptorSets();
+			CmdDrawFullscreenQuad(commandList);
+			commandList->ClearState();
+
 			DebugRender::DrawScreenQuad({ 0.f, 0.f }, drawParams.resolution * m_drawScale, * m_rt.GetTexture());
 		}
     }
 
 	void Gol::ImGuiDraw()
 	{
+		if (!CVar_ShowGol.Get())
+			return;
+
         ImGui::Begin("GOL");
 		ImGui::SeparatorText("Info");
 		if (m_dirtyState)
