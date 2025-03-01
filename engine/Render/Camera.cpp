@@ -17,7 +17,7 @@ namespace Mist
 	Camera::Camera()
 		: m_position(0.f, 0.f, 0.f),
 		m_rotation(0.f),
-		m_fov(45.f),
+		m_fov(75.f),
 		m_aspectRatio(16.f / 9.f),
 		m_nearClip(0.1f),
 		m_farClip(1000000.f),
@@ -149,26 +149,17 @@ namespace Mist
 			ImGui::Begin("Camera projection");
 		static const char* projTypes[] = { "Perspective", "Ortho" };
 		static int projIndex = 0;
-		if (ImGui::BeginCombo("Proj type", projTypes[projIndex]))
+		if (ImGuiUtils::ComboBox("Projection type", &projIndex, projTypes, CountOf(projTypes)))
 		{
-			for (int i = 0; i < (int)ECameraProjectionType::Count; ++i)
-			{
-				bool selected = i == projIndex;
-				if (ImGui::Selectable(projTypes[i], &selected))
-				{
-					projIndex = i;
-					SetProjectionType((ECameraProjectionType)i);
-				}
-			}
-			ImGui::EndCombo();
+			SetProjectionType((ECameraProjectionType)projIndex);
 		}
 		bool updateProjection = false;
 		switch (GetProjectionType())
 		{
 		case ECameraProjectionType::Perspective:
-			updateProjection = ImGui::DragFloat("FOV (degrees)", &m_fov, 0.f, 90.f);
+			updateProjection = ImGui::DragFloat("FOV (degrees)", &m_fov, 1.f, 0.f, 90.f);
 			updateProjection |= ImGui::DragFloat("Aspect ratio", &m_aspectRatio);
-			updateProjection |= ImGui::DragFloat("Near clip", &m_nearClip);
+			updateProjection |= ImGui::DragFloat("Near clip", &m_nearClip, 0.01f);
 			updateProjection |= ImGui::DragFloat("Far clip", &m_farClip);
 			break;
 		case ECameraProjectionType::Othographic:
@@ -315,7 +306,7 @@ namespace Mist
 	{
 		ImGui::Begin("Camera");
 		if (ImGui::CollapsingHeader("View"))
-		{
+		{ 
 			ImGui::Checkbox("auto move camera", &m_scriptActive);
 			if (ImGui::Button("Reset position"))
 				m_camera.SetPosition({ 0.f, 0.f, 0.f });
