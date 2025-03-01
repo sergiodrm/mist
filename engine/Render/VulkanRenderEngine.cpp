@@ -572,6 +572,8 @@ namespace Mist
 			// Demo imgui
 			if (CVar_ShowImGuiDemo.Get())
 				ImGui::ShowDemoWindow();
+
+			tApplication::ImGuiDraw();
 		}
 	}
 
