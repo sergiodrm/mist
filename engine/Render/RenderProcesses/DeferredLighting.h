@@ -13,6 +13,7 @@ namespace Mist
 {
 	struct RenderContext;
 	class ShaderProgram;
+	class cModel;
 
 	struct HDRParams
 	{
@@ -37,6 +38,7 @@ namespace Mist
 		ShaderProgram* m_lightingShader;
 		ShaderProgram* m_lightingFogShader;
 		ShaderProgram* m_skyboxShader;
+		cModel* m_skyModel;
 
 		ShaderProgram* m_hdrShader;
 		RenderTarget m_hdrOutput;
