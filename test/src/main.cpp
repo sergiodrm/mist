@@ -228,6 +228,10 @@ protected:
 		Mist::tApplication::ProcessEvent(e);
 		m_camera.ProcessEvent(e);
 	}
+	virtual void ProcessImGui() override
+	{
+		m_camera.ImGuiDraw();
+	}
 private:
 	Mist::CameraController m_camera;
 };
