@@ -44,6 +44,9 @@ One powerfull feature is hot shader reloading. To reload shaders in runtime we c
 To see all the CVars introduce this command in the console: `cvarlist`
 To see all the command functions, run this: `cmdlist`.
 
+## Render frame graph
+![img](/docs/Frame.jpg)
+
 ## Future work
 Here are some features that I will develop from now on:
 * Forward lighting+
