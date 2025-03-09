@@ -100,7 +100,7 @@ namespace Mist
         else
             desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "MAX_SHADOW_MAPS", MAX_SHADOW_MAPS_STR });
 
-        m_shader = ShaderProgram::Create(context, desc);
+        //m_shader = ShaderProgram::Create(context, desc);
     }
 
     void cMaterial::Destroy(const RenderContext& context)
