@@ -72,6 +72,7 @@ namespace Mist
 	bool BindDescriptorTexture(const RenderContext& context, cTexture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 	bool IsDepthFormat(EFormat format);
 	bool IsStencilFormat(EFormat format);
+	bool IsUsageCorrect(EImageUsage usage);
 
 
 	namespace io
@@ -107,6 +108,8 @@ namespace Mist
 		Sampler GetSampler() const { return m_sampler; }
 		void SetSampler(Sampler sampler) { m_sampler = sampler; }
 		const tImageDescription& GetDescription() const { return m_description; }
+		inline uint32_t GetWidth() const { return m_description.Width; }
+		inline uint32_t GetHeight() const { return m_description.Height; }
 
 		inline EImageLayout GetImageLayout() const { return m_layout; }
 		// used for render target for update layout after using texture as attachment. Must not be use to change layout tracking.

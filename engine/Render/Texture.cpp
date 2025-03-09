@@ -410,6 +410,7 @@ namespace Mist
 	bool CreateImage(const RenderContext& context, const tImageDescription& createInfo, AllocatedImage& imageOut)
 	{
 		check(!imageOut.IsAllocated());
+		check(IsUsageCorrect(createInfo.Usage));
 
 		// Prepare image creation
 		VkExtent3D extent;
@@ -685,6 +686,13 @@ namespace Mist
 		return format == FORMAT_D16_UNORM_S8_UINT
 			|| format == FORMAT_D24_UNORM_S8_UINT
 			|| format == FORMAT_D32_SFLOAT_S8_UINT;
+	}
+
+	bool IsUsageCorrect(EImageUsage usage)
+	{
+		if (usage & IMAGE_USAGE_COLOR_ATTACHMENT_BIT && usage & IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+			return false;
+		return true;
 	}
 
 	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format)

@@ -440,7 +440,7 @@ namespace Mist
 			imageDesc.Width = m_description.RenderArea.extent.width;
 			imageDesc.Height = m_description.RenderArea.extent.height;
 			imageDesc.Format = description.Format;
-			imageDesc.Usage = imageUsage;
+			imageDesc.Usage = imageUsage | description.AdditionalUsage;
 			//if (!m_description.ClearOnLoad)
 			//	imageDesc.Usage |= IMAGE_USAGE_TRANSFER_DST_BIT;
 			imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;

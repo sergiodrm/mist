@@ -20,6 +20,7 @@ namespace Mist
 		EFormat Format = FORMAT_UNDEFINED;
 		EImageLayout Layout = IMAGE_LAYOUT_UNDEFINED;
 		tClearValue ClearValue = { 0.f, 0.f, 0.f, 1.f };
+		EImageUsage AdditionalUsage = 0;
 
 		// Use for external attachments
 		VkImageView Attachment = VK_NULL_HANDLE;
@@ -49,9 +50,9 @@ namespace Mist
 			ColorAttachmentDescriptions.Push(desc);
 		}
 
-		inline void AddColorAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
+		inline void AddColorAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue, EImageUsage additionalUsage = 0)
 		{
-			AddColorAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
+			AddColorAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue, .AdditionalUsage = additionalUsage });
 		}
 
 		inline void AddColorAttachment(const cTexture* texture, uint32_t viewIndex = 0)
@@ -76,9 +77,9 @@ namespace Mist
 			DepthAttachmentDescription = desc;
 		}
 
-		inline void SetDepthAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue)
+		inline void SetDepthAttachment(EFormat format, EImageLayout layout, ESampleCount sampleCount, tClearValue clearValue, EImageUsage additionalUsage = 0)
 		{
-			SetDepthAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue });
+			SetDepthAttachment({ .MultisampledBit = sampleCount, .Format = format, .Layout = layout, .ClearValue = clearValue, .AdditionalUsage = additionalUsage });
 		}
 
 		inline void SetDepthAttachment(const cTexture* texture, uint32_t viewIndex = 0)
