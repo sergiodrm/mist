@@ -136,12 +136,22 @@ namespace Mist
 
 	class RenderTarget : cRenderResource<RenderResource_RenderTarget>
 	{
-	public:
 		RenderTarget();
+		void CreateInternal(const RenderContext& renderContext, const RenderTargetDescription& desc);
+		void DestroyInternal(const RenderContext& renderContext);
+	public:
+		RenderTarget(const RenderTarget&) = delete;
+		RenderTarget(RenderTarget&&) = delete;
+		RenderTarget& operator=(const RenderTarget&) = delete;
+		RenderTarget& operator=(RenderTarget&&) = delete;
 		~RenderTarget();
 
-		void Create(const RenderContext& renderContext, const RenderTargetDescription& desc);
-		void Destroy(const RenderContext& renderContext);
+		static RenderTarget* Create(const RenderContext& context, const RenderTargetDescription& desc);
+		static void Destroy(const RenderContext& context, RenderTarget* rt);
+		static void ImGuiRenderTargets();
+		static void DumpInfo();
+		static void DestroyAll(const RenderContext& context);
+
 		void Invalidate(const RenderContext& renderContext);
 
 		void BeginPass(const RenderContext& context, VkCommandBuffer cmd);
@@ -183,6 +193,8 @@ namespace Mist
 		RenderTargetDescription m_description;
 		tStaticArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;
 	};
+
+	typedef tDynArray<RenderTarget*> RenderTargetList;
 }
 
 template <>

@@ -5,9 +5,12 @@
 #include "Core/Logger.h"
 #include "VulkanRenderEngine.h"
 #include <type_traits>
+#include <imgui.h>
 
 namespace Mist
 {
+	RenderTargetList g_renderTargets;
+
 	VkAttachmentDescription BuildAttachmentDescription(EFormat format, EImageLayout finalLayout, bool clearOnLoad)
 	{
 		VkAttachmentDescription desc
@@ -55,7 +58,7 @@ namespace Mist
 		check(m_framebuffer == VK_NULL_HANDLE);
 	}
 
-	void RenderTarget::Create(const RenderContext& renderContext, const RenderTargetDescription& desc)
+	void RenderTarget::CreateInternal(const RenderContext& renderContext, const RenderTargetDescription& desc)
 	{
 		check(ExecuteFormatValidation(renderContext, desc));
 		if (!desc.ResourceName.IsEmpty())
@@ -68,7 +71,7 @@ namespace Mist
 		CreateResources(renderContext);
 	}
 
-	void RenderTarget::Destroy(const RenderContext& renderContext)
+	void RenderTarget::DestroyInternal(const RenderContext& renderContext)
 	{
 		check(m_renderPass != VK_NULL_HANDLE);
 		check(m_framebuffer != VK_NULL_HANDLE);
@@ -87,9 +90,109 @@ namespace Mist
 		m_renderPass = VK_NULL_HANDLE;
 	}
 
+	RenderTarget* RenderTarget::Create(const RenderContext& context, const RenderTargetDescription& desc)
+	{
+		RenderTarget* rt = _new RenderTarget();
+		rt->CreateInternal(context, desc);
+		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+		{
+			if (!g_renderTargets[i])
+			{
+				g_renderTargets[i] = rt;
+				return rt;
+			}
+		}
+		g_renderTargets.push_back(rt);
+		return rt;
+	}
+
+	void RenderTarget::Destroy(const RenderContext& context, RenderTarget* rt)
+	{
+		if (rt)
+		{
+			for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+			{
+				if (g_renderTargets[i] == rt)
+					g_renderTargets[i] = nullptr;
+			}
+			rt->DestroyInternal(context);
+			delete rt;
+		}
+	}
+
+	void RenderTarget::ImGuiRenderTargets()
+	{
+		ImGui::Begin("RenderTargets");
+		size_t size = 0;
+		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+		{
+			const RenderTarget* rt = g_renderTargets[i];
+			uint32_t width = rt->GetWidth();
+			uint32_t height = rt->GetHeight();
+			ImGui::Text("%s ( %4d x %4d )", rt->GetName(), width, height);
+			for (uint32_t j = 0; j < rt->GetAttachmentCount(); ++j)
+			{
+				if (rt->GetTexture(j))
+				{
+					EFormat format = rt->GetTexture(j)->GetDescription().Format;
+					size_t rtSize = (size_t)width * (size_t)height * (size_t)utils::GetPixelSizeFromFormat(format);
+					ImGui::BulletText("%s [%s](%6llu Kb)", rt->GetTexture(j)->GetName(), FormatToStr(format), rtSize / 1024l);
+					size += rtSize;
+				}
+				else
+					ImGui::BulletText("Not owned texture");
+			}
+		}
+		ImGui::SeparatorText("Stats");
+		ImGui::Text("Total RTs: %d", (uint32_t)g_renderTargets.size());
+		ImGui::Text("Memory: %6llu Kb", size / 1024l);
+		if (ImGui::Button("Dump info"))
+			DumpInfo();
+		ImGui::End();
+	}
+
+	void RenderTarget::DumpInfo()
+	{
+		loginfo("=================== Render target dump info ==========================\n");
+		size_t size = 0;
+        for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+        {
+            const RenderTarget* rt = g_renderTargets[i];
+            uint32_t width = rt->GetWidth();
+            uint32_t height = rt->GetHeight();
+			logfinfo("%s ( %4d x %4d )\n", rt->GetName(), width, height);
+            for (uint32_t j = 0; j < rt->GetAttachmentCount(); ++j)
+            {
+                if (rt->GetTexture(j))
+                {
+                    EFormat format = rt->GetTexture(j)->GetDescription().Format;
+                    size_t rtSize = (size_t)width * (size_t)height * (size_t)utils::GetPixelSizeFromFormat(format);
+                    logfinfo("\t* %s [%s](%6llu Kb)\n", rt->GetTexture(j)->GetName(), FormatToStr(format), rtSize / 1024l);
+                    size += rtSize;
+                }
+                else
+                    loginfo("\t* Not owned texture\n");
+            }
+        }
+        logfinfo("Total RTs: %d\n", (uint32_t)g_renderTargets.size());
+        logfinfo("Memory: %6llu Kb\n", size / 1024l);
+		loginfo("===================================================\n");
+	}
+
+	void RenderTarget::DestroyAll(const RenderContext& context)
+	{
+		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+		{
+			if (g_renderTargets[i])
+				RenderTarget::Destroy(context, g_renderTargets[i]);
+		}
+		g_renderTargets.clear();
+		g_renderTargets.shrink_to_fit();
+	}
+
 	void RenderTarget::Invalidate(const RenderContext& renderContext)
 	{
-		Destroy(renderContext);
+		DestroyInternal(renderContext);
 		CreateResources(renderContext);
 	}
 
