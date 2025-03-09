@@ -13,11 +13,12 @@ layout(location = 0) in vec2 InTexCoords;
 void main()
 {
     const float gammaCorrection = u_HdrParams.GammaCorrection;
+    const float exposure = u_HdrParams.Exposure;
     vec4 hdrColor = texture(u_hdrtex, InTexCoords);
 
     // reinhard tone mapping
     //vec3 mapped = hdrColor.xyz / (hdrColor.xyz + vec3(1.f));
-    vec3 mapped = vec3(1.f) - exp(-hdrColor.rgb * u_HdrParams.Exposure);
+    vec3 mapped = /*hdrColor.rgb;//*/vec3(1.f) - exp(-hdrColor.rgb * exposure);
     // gamme correction
     mapped = pow(mapped, vec3(1.f / gammaCorrection));
 

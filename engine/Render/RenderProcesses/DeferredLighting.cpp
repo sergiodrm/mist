@@ -21,6 +21,9 @@ namespace Mist
 {
 	CBoolVar CVar_FogEnabled("r_fogenabled", false);
 
+	CFloatVar CVar_GammaCorrection("r_gammacorrection", 1.7f);
+	CFloatVar CVar_Exposure("r_exposure", 2.f);
+
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
 		const GBuffer* gbuffer = (const GBuffer*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_GBUFFER);
@@ -224,11 +227,16 @@ namespace Mist
 		{
 			CPU_PROFILE_SCOPE(CpuHDR);
 			// HDR and tone mapping
+			struct
+			{
+				float gamma;
+				float exposure;
+			} params{ CVar_GammaCorrection.Get(), CVar_Exposure.Get() };
             commandList->BeginMarker("HDR");
 			RenderTarget& rt = renderContext.Renderer->GetLDRTarget();
 			commandList->SetGraphicsState({ .Program = m_hdrShader, .Rt = &rt });
-			m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &m_hdrParams, sizeof(m_hdrParams));
-			m_hdrShader->BindSampledTexture(renderContext, "u_hdrtex", *m_lightingOutput.GetAttachment(0).Tex);
+			m_hdrShader->SetBufferData(renderContext, "u_HdrParams", &params, sizeof(params));
+			m_hdrShader->BindSampledTexture(renderContext, "u_hdrtex", *m_lightingOutput->GetTexture());
 			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 			commandList->EndMarker();

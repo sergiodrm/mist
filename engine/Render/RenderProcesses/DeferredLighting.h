@@ -15,12 +15,6 @@ namespace Mist
 	class ShaderProgram;
 	class cModel;
 
-	struct HDRParams
-	{
-		float GammaCorrection = 1.f;
-		float Exposure = 1.f;
-	};
-
 	class DeferredLighting : public RenderProcess
 	{
 	public:
@@ -41,7 +35,6 @@ namespace Mist
 		cModel* m_skyModel;
 
 		ShaderProgram* m_hdrShader;
-		HDRParams m_hdrParams;
 		RenderTarget* m_hdrOutput;
 
 		const RenderTarget* m_gbufferRenderTarget;
