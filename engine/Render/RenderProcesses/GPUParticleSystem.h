@@ -63,7 +63,7 @@ namespace Mist
 		cTexture* m_circleGradientTexture;
 
 		ShaderProgram* m_graphicsShader;
-		RenderTarget m_renderTarget;
+		RenderTarget* m_renderTarget;
 
 		ParameterUBO m_params;
 		int32_t m_flags;
@@ -75,7 +75,7 @@ namespace Mist
     {
     public:
         Gol(const RenderContext* context)
-            : m_context(context) {
+            : m_context(context), m_rt(nullptr) {
         }
 
         void Init(uint32_t width, uint32_t height);
@@ -97,7 +97,7 @@ namespace Mist
 		VertexBuffer m_buffers[2];
 		VkDescriptorSet m_bufferBinding[2];
 		VkDescriptorSet m_drawBinding[2];
-		RenderTarget m_rt;
+		RenderTarget* m_rt;
         ShaderProgram* m_computeShader;
 		ShaderProgram* m_drawShader;
 
