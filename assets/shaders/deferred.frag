@@ -39,39 +39,8 @@ vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float 
     shadowInfo.LightViewMatrices[1] = u_ShadowMapInfo.LightViewMat[1];
     shadowInfo.LightViewMatrices[2] = u_ShadowMapInfo.LightViewMat[2];
     
-#if 0
-    // Point lights
-    int numPointLights = int(u_Env.ViewPos.w);
-    for (int i = 0; i < numPointLights; ++i)
-    {
-        LightData Light = u_Env.Lights[i];
-        Lo += ProcessPointLight(FragViewPos, Normal, Light, Albedo, Metallic, Roughness);
-    }
-
-    // Spot lights
-    int numSpotLights = int(u_Env.AmbientColor.w);
-    vec3 spotLightColor = vec3(0.f);
-    for (int i = 0; i < numSpotLights; ++i)
-    {
-        spotLightColor += ProcessSpotLight(FragViewPos, N, u_Env.SpotLights[i], Albedo, Metallic, Roughness, shadowInfo);
-    }
-    Lo += spotLightColor;
-    //return vec4(spotLightColor, 1.f);
-
-    // Directional light
-    vec3 directionalLightColor = ProcessDirectionalLight(FragViewPos, N, u_Env.DirectionalLight, Albedo, Metallic, Roughness, shadowInfo);
-    Lo += directionalLightColor;
-
-    vec3 Ambient = vec3(u_Env.AmbientColor) * Albedo * AO;
-    vec3 Color = Ambient + Lo;
-    //Color = Color / (Color + vec3(1.f));
-    //Color = pow(Color, vec3(1.f/2.2f));
-    return vec4(Color, 1.f);
-#else
-    vec3 color = DoEnvironmentLighting(FragViewPos, Normal, Albedo, Metallic, Roughness, shadowInfo);
-
+    vec3 color = DoEnvironmentLighting(FragViewPos, Normal, Albedo, Metallic, Roughness, AO, shadowInfo);
     return vec4(color, 1.f);
-#endif
 }
 
 #if defined(DEFERRED_APPLY_FOG)

@@ -104,7 +104,7 @@ vec4 DoLighting(vec3 fragPos, vec3 normal, vec4 albedo, float metallic, float ro
     // Mix
     vec4 color = vec4(lightColor, 1.f) + albedo*vec4(ambientColor, 1.f);
 #else
-    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, albedo.rgb, metallic, roughness, shadowInfo);
+    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, albedo.rgb, metallic, roughness, 0.f, shadowInfo);
     vec4 color = vec4(lightColor, 1.f);
 #endif
 
