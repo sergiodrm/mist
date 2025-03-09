@@ -12,6 +12,8 @@
 #include "../CommandList.h"
 #include "../Material.h"
 
+#define MIST_DISABLE_FORWARD
+
 namespace Mist
 {
 	CBoolVar CVar_ShowForwardTech("r_showforwardtech", false);
@@ -25,12 +27,16 @@ namespace Mist
 
 	void ForwardLighting::Init(const RenderContext& renderContext)
 	{
+#ifdef MIST_DISABLE_FORWARD
+		return;
+#endif
 		// Create render target
 		{
 			RenderTargetDescription desc;
 			desc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 			// Color attachment
-			desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
+			//desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
+			desc.AddColorAttachment(FORMAT_R16G16B16A16_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
 			// Emissive attachment
 			//desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
 			desc.SetDepthAttachment(FORMAT_D24_UNORM_S8_UINT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 0.f });
@@ -117,6 +123,9 @@ namespace Mist
 
 	void ForwardLighting::Destroy(const RenderContext& renderContext)
 	{
+#ifdef MIST_DISABLE_FORWARD
+        return;
+#endif
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
@@ -125,14 +134,23 @@ namespace Mist
 
 	void ForwardLighting::InitFrameData(const RenderContext& context, const Renderer& renderFrame, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
 	{
+#ifdef MIST_DISABLE_FORWARD
+        return;
+#endif
 	}
 
 	void ForwardLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
+#ifdef MIST_DISABLE_FORWARD
+        return;
+#endif
 	}
 
 	void ForwardLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
+#ifdef MIST_DISABLE_FORWARD
+        return;
+#endif
 		CPU_PROFILE_SCOPE(ForwardLighting);
         CommandList* commandList = renderContext.CmdList;
 
@@ -199,6 +217,9 @@ namespace Mist
 
 	void ForwardLighting::ImGuiDraw()
 	{
+#ifdef MIST_DISABLE_FORWARD
+        return;
+#endif
 		ImGui::Begin("Forward tech");
 		ImGuiUtils::CheckboxCBoolVar(CVar_ShowForwardTech);
 		ImGui::End();
@@ -206,6 +227,9 @@ namespace Mist
 
 	const RenderTarget* ForwardLighting::GetRenderTarget(uint32_t index) const
 	{
+#ifdef MIST_DISABLE_FORWARD
+        return nullptr;
+#endif
 		return m_rt;
 	}
 }
