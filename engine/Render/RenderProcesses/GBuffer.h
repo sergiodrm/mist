@@ -65,7 +65,7 @@ namespace Mist
 		void InitPipeline(const RenderContext& renderContext);
 		virtual void DebugDraw(const RenderContext& context) override;
 	public:
-		RenderTarget m_renderTarget;
+		RenderTarget* m_renderTarget;
 		ShaderProgram* m_gbufferShader;
 		ShaderProgram* m_skyboxShader;
 		cModel* m_skyboxModel;

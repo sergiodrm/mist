@@ -54,16 +54,16 @@ namespace Mist
 		virtual void Draw(const RenderContext& context, const RenderFrameContext& frameContext) override;
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override { return &m_blurRT; }
+		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override { return m_blurRT; }
 	private:
 		ShaderProgram* m_ssaoShader;
-		RenderTarget m_rt;
+		RenderTarget* m_rt;
 		SSAOUBO m_uboData;
 		cTexture* m_noiseTexture;
 		const Renderer* m_renderer;
 
 		ShaderProgram* m_blurShader;
-		RenderTarget m_blurRT;
+		RenderTarget* m_blurRT;
 
 		eSSAOMode m_mode;
 	};

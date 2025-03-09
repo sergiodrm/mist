@@ -27,7 +27,7 @@ namespace Mist
 	protected:
 		// Render State
 		ShaderProgram* m_shader;
-		RenderTarget m_rt;
+		RenderTarget* m_rt;
 
 		ShaderProgram* m_skyboxShader;
 		cModel* m_skyboxModel;

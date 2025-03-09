@@ -19,7 +19,7 @@ namespace Mist
 	RenderTarget* g_forwardRt = nullptr;
 
 	ForwardLighting::ForwardLighting()
-		: m_shader(nullptr)
+		: m_shader(nullptr), m_rt(nullptr)
 	{
 	}
 
@@ -35,8 +35,8 @@ namespace Mist
 			//desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
 			desc.SetDepthAttachment(FORMAT_D24_UNORM_S8_UINT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 0.f });
 			desc.ResourceName = "RT_ForwardLighting";
-			m_rt.Create(renderContext, desc);
-			g_forwardRt = &m_rt;
+			m_rt = RenderTarget::Create(renderContext, desc);
+			g_forwardRt = m_rt;
 		}
 
 		// Create shader program
@@ -64,7 +64,7 @@ namespace Mist
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-			desc.RenderTarget = &m_rt;
+			desc.RenderTarget = m_rt;
 			desc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			desc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
 			desc.FrontStencil.CompareMask = 0x1;
@@ -93,7 +93,7 @@ namespace Mist
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 			//shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "SKYBOX_GBUFFER" });
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.RenderTarget = &m_rt;
+			shaderDesc.RenderTarget = m_rt;
 			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
 			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
@@ -120,7 +120,7 @@ namespace Mist
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
-		m_rt.Destroy(renderContext);
+		RenderTarget::Destroy(renderContext, m_rt);
 	}
 
 	void ForwardLighting::InitFrameData(const RenderContext& context, const Renderer& renderFrame, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -142,7 +142,7 @@ namespace Mist
 		{
             GraphicsState state = {};
 			state.Program = m_shader;
-			state.Rt = &m_rt;
+			state.Rt = m_rt;
 			commandList->BeginMarker("ForwardTech");
 			commandList->SetGraphicsState(state);
 #if 0
@@ -193,7 +193,7 @@ namespace Mist
 			
 			commandList->EndMarker();
 
-			DebugRender::DrawScreenQuad({}, { m_rt.GetWidth(), m_rt.GetHeight() }, *m_rt.GetTexture());
+			DebugRender::DrawScreenQuad({}, { m_rt->GetWidth(), m_rt->GetHeight() }, *m_rt->GetTexture());
 		}
 	}
 
@@ -206,6 +206,6 @@ namespace Mist
 
 	const RenderTarget* ForwardLighting::GetRenderTarget(uint32_t index) const
 	{
-		return &m_rt;
+		return m_rt;
 	}
 }

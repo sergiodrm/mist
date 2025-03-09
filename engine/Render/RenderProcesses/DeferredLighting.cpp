@@ -25,7 +25,7 @@ namespace Mist
 	{
 		const GBuffer* gbuffer = (const GBuffer*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_GBUFFER);
 		check(gbuffer);
-		const cTexture* depthTexture = gbuffer->m_renderTarget.GetDepthTexture();
+		const cTexture* depthTexture = gbuffer->m_renderTarget->GetDepthTexture();
 
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
 		RenderTargetDescription description;
@@ -35,14 +35,14 @@ namespace Mist
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		description.ResourceName = "DeferredLighting_RT";
 		description.ClearOnLoad = false;
-		m_lightingOutput.Create(renderContext, description);
+		m_lightingOutput = RenderTarget::Create(renderContext, description);
 
 		{
 			// Deferred pipeline
 			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
-			shaderDesc.RenderTarget = &m_lightingOutput;
+			shaderDesc.RenderTarget = m_lightingOutput;
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
 			//shaderDesc.DepthCompareOp = COMPARE_OP_NEVER;
@@ -68,7 +68,7 @@ namespace Mist
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.RenderTarget = &m_lightingOutput;
+			shaderDesc.RenderTarget = m_lightingOutput;
 			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
 			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_STENCIL_TEST;
@@ -92,18 +92,18 @@ namespace Mist
 			ldrRtDesc.RenderArea.offset = { .x = 0, .y = 0 };
 			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
 			ldrRtDesc.ResourceName = "HDR_RT";
-			m_hdrOutput.Create(renderContext, ldrRtDesc);
+			m_hdrOutput = RenderTarget::Create(renderContext, ldrRtDesc);
 
 			tShaderProgramDescription hdrShaderDesc;
 			hdrShaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			hdrShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("hdr.frag");
 			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			hdrShaderDesc.RenderTarget = &m_hdrOutput;
+			hdrShaderDesc.RenderTarget = m_hdrOutput;
 			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
 		}
 
 		// ComposeTarget needs to be != nullptr on create shaders
-		m_bloomEffect.m_composeTarget = &m_lightingOutput;
+		m_bloomEffect.m_composeTarget = m_lightingOutput;
 		m_bloomEffect.Init(renderContext);
 
         m_skyModel = _new cModel();
@@ -116,8 +116,8 @@ namespace Mist
 		delete m_skyModel;
 		m_skyModel = nullptr;
 		m_bloomEffect.Destroy(renderContext);
-		m_hdrOutput.Destroy(renderContext);
-		m_lightingOutput.Destroy(renderContext);
+		RenderTarget::Destroy(renderContext, m_hdrOutput);
+		RenderTarget::Destroy(renderContext, m_lightingOutput);
 	}
 
 	void DeferredLighting::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -153,7 +153,7 @@ namespace Mist
 		GraphicsState graphicsState;
         const GBuffer* gbuffer = (const GBuffer*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_GBUFFER);
         check(gbuffer);
-        const cTexture* depthTexture = gbuffer->m_renderTarget.GetDepthTexture();
+        const cTexture* depthTexture = gbuffer->m_renderTarget->GetDepthTexture();
 		{
 			CPU_PROFILE_SCOPE(DeferredLighting);
 			ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
@@ -167,8 +167,8 @@ namespace Mist
 			commandList->ClearState();
 			commandList->SetTextureState({ depthTexture, IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
 			graphicsState.Program = shader;
-			graphicsState.Rt = &m_lightingOutput;
-			commandList->SetGraphicsState({.Program = shader, .Rt = &m_lightingOutput});
+			graphicsState.Rt = m_lightingOutput;
+			commandList->SetGraphicsState({.Program = shader, .Rt = m_lightingOutput});
 			commandList->ClearColor();
 
 			shader->BindSampledTexture(renderContext, "u_GBufferPosition", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
@@ -217,8 +217,8 @@ namespace Mist
 			commandList->EndMarker();
 		}
 
-		m_bloomEffect.m_composeTarget = &m_lightingOutput;
-		m_bloomEffect.m_inputTarget = m_lightingOutput.GetTexture();
+		m_bloomEffect.m_composeTarget = m_lightingOutput;
+		m_bloomEffect.m_inputTarget = m_lightingOutput->GetTexture();
 		m_bloomEffect.Draw(renderContext);
 
 		{

@@ -28,7 +28,7 @@ namespace Mist
 
 
 	GPUParticleSystem::GPUParticleSystem()
-		: m_flags(GPU_PARTICLES_ACTIVE), m_particleCount(PARTICLE_COUNT) {}
+		: m_flags(GPU_PARTICLES_ACTIVE), m_particleCount(PARTICLE_COUNT), m_renderTarget(nullptr) {}
 
 	void GPUParticleSystem::Init(const RenderContext& context)
 	{
@@ -40,7 +40,7 @@ namespace Mist
 			description.RenderArea.extent = { context.Window->Width, context.Window->Height };
 			description.RenderArea.offset = { 0,0 };
 			description.ResourceName = "GPUParticles_RT";
-			m_renderTarget.Create(context, description);
+			m_renderTarget = RenderTarget::Create(context, description);
 		}
 
 		// Create shader
@@ -54,7 +54,7 @@ namespace Mist
 			description.FragmentShaderFile.Filepath = SHADER_FILEPATH("particles.frag");
 			description.Topology = PRIMITIVE_TOPOLOGY_POINT_LIST;
 			description.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Float4 });
-			description.RenderTarget = &m_renderTarget;
+			description.RenderTarget = m_renderTarget;
 			description.DepthStencilMode = DEPTH_STENCIL_NONE;
 			description.CullMode = CULL_MODE_NONE;
 			description.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
@@ -193,7 +193,7 @@ namespace Mist
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
 			GraphicsState state = {};
-			state.Rt = &m_renderTarget;
+			state.Rt = m_renderTarget;
 			state.Program = m_graphicsShader;
             state.Vbo = m_particlesBuffer;
 			commandList->SetGraphicsState(state);
@@ -217,7 +217,7 @@ namespace Mist
 			float wprop = 0.f;
 			float hprop = 0.f;
 			DebugRender::DrawScreenQuad(glm::vec2{ width * wprop, height * hprop }, glm::vec2{ width * (1.f-wprop), height * (1.f-hprop)}, 
-				*m_renderTarget.GetTexture());
+				*m_renderTarget->GetTexture());
 		}
 	}
 
@@ -226,7 +226,8 @@ namespace Mist
 		cTexture::Destroy(context, m_circleGradientTexture);
 		//MemFreeBuffer(context.Allocator, m_particlesBuffer);
 		m_particlesBuffer.Destroy(context);
-		m_renderTarget.Destroy(context);
+		RenderTarget::Destroy(context, m_renderTarget);
+		m_renderTarget = nullptr;
 	}
 
 	void GPUParticleSystem::ImGuiDraw()
@@ -314,12 +315,12 @@ namespace Mist
 		desc.RenderArea.extent = {context.Window->Width, context.Window->Height};
 		desc.RenderArea.offset = {0,0};
         desc.ResourceName = "GOL_RT";
-        m_rt.Create(context, desc);
+        m_rt = RenderTarget::Create(context, desc);
 
 		tShaderProgramDescription drawDesc;
         drawDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
         drawDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("gol.frag");
-		drawDesc.RenderTarget = &m_rt;
+		drawDesc.RenderTarget = m_rt;
         drawDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
         m_drawShader = ShaderProgram::Create(context, drawDesc);
 
@@ -344,7 +345,8 @@ namespace Mist
         const RenderContext& context = *m_context;
 		for (uint32_t i = 0; i < CountOf(m_buffers); ++i)
 			m_buffers[i].Destroy(context);
-		m_rt.Destroy(context);
+		RenderTarget::Destroy(context, m_rt);
+		m_rt = nullptr;
     }
 
     void Gol::Compute()
@@ -394,7 +396,7 @@ namespace Mist
 		{
             CommandList* commandList = context.CmdList;
             uint32_t bindingIndex = m_counter;
-			commandList->SetGraphicsState({.Program = m_drawShader, .Rt = &m_rt});
+			commandList->SetGraphicsState({.Program = m_drawShader, .Rt = m_rt});
 
 			commandList->BindDescriptorSets(&m_drawBinding[bindingIndex], 1, 1);
 
@@ -405,13 +407,13 @@ namespace Mist
 				glm::vec2 resolution;
 				float gridSize = 1.f;
 				glm::vec3 padding;
-			} drawParams{ m_width, m_height, {m_rt.GetWidth(), m_rt.GetHeight()}};
+			} drawParams{ m_width, m_height, {m_rt->GetWidth(), m_rt->GetHeight()}};
 			m_drawShader->SetBufferData(context, "u_params", &drawParams, sizeof(drawParams));
 			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
 			commandList->ClearState();
 
-			DebugRender::DrawScreenQuad({ 0.f, 0.f }, drawParams.resolution * m_drawScale, * m_rt.GetTexture());
+			DebugRender::DrawScreenQuad({ 0.f, 0.f }, drawParams.resolution * m_drawScale, *m_rt->GetTexture());
 		}
     }
 

@@ -30,10 +30,10 @@ namespace Mist
 		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return &m_hdrOutput; }
+		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput; }
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
-		RenderTarget m_lightingOutput;
+		RenderTarget* m_lightingOutput;
 	private:
 		ShaderProgram* m_lightingShader;
 		ShaderProgram* m_lightingFogShader;
@@ -41,8 +41,8 @@ namespace Mist
 		cModel* m_skyModel;
 
 		ShaderProgram* m_hdrShader;
-		RenderTarget m_hdrOutput;
 		HDRParams m_hdrParams;
+		RenderTarget* m_hdrOutput;
 
 		const RenderTarget* m_gbufferRenderTarget;
 		tArray<const RenderTarget*, globals::MaxShadowMapAttachments> m_shadowMapRenderTargetArray;

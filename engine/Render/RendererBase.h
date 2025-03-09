@@ -60,16 +60,16 @@ namespace Mist
 		const RenderTarget& GetPresentRenderTarget(uint32_t index) const;
 		RenderTarget& GetPresentRenderTarget(uint32_t index);
 
-		const RenderTarget& GetLDRTarget() const { return m_ldr; }
-		RenderTarget& GetLDRTarget() { return m_ldr; }
+		const RenderTarget& GetLDRTarget() const { return *m_ldr; }
+		RenderTarget& GetLDRTarget() { return *m_ldr; }
 		void CopyRenderTarget(const tCopyParams& params);
 
 	private:
 		class RenderProcess* m_processArray[RENDERPROCESS_COUNT];
-		tStaticArray<RenderTarget, globals::MaxOverlappedFrames> m_presentRenderTargets;
+		tStaticArray<RenderTarget*, globals::MaxOverlappedFrames> m_presentRenderTargets;
 		ShaderProgram* m_copyProgram;
 		tMap<tCopyShaderKey, ShaderProgram*> m_copyPrograms;
-		RenderTarget m_ldr;
+		RenderTarget* m_ldr;
 	};
 }
 

@@ -30,13 +30,13 @@ namespace Mist
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		description.ResourceName = "Gbuffer_RT";
-		m_renderTarget.Create(renderContext, description);
+		m_renderTarget = RenderTarget::Create(renderContext, description);
 		InitPipeline(renderContext);
 	}
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
-		m_renderTarget.Destroy(renderContext);
+		RenderTarget::Destroy(renderContext, m_renderTarget);
 #if 0
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
@@ -59,7 +59,7 @@ namespace Mist
 
 		// MRT
         commandList->BeginMarker("GBuffer_MRT");
-		commandList->SetGraphicsState({.Program = m_gbufferShader, .Rt = &m_renderTarget});
+		commandList->SetGraphicsState({.Program = m_gbufferShader, .Rt = m_renderTarget});
 		commandList->ClearDepthStencil();
 		m_gbufferShader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
 
@@ -113,7 +113,7 @@ namespace Mist
 
 	const RenderTarget* GBuffer::GetRenderTarget(uint32_t index) const
 	{
-		return &m_renderTarget;
+		return m_renderTarget;
 	}
 
 	void GBuffer::DebugDraw(const RenderContext& context)
@@ -137,22 +137,22 @@ namespace Mist
 			static_assert(RT_COUNT > 0);
 			for (uint32_t i = RT_POSITION; i < RT_COUNT; ++i)
 			{
-				DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(i));
+				DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(i));
 				pos.y += ydiff;
 			}
 		}
 			break;
 		case DEBUG_POSITION:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_POSITION));
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(RT_POSITION));
 			break;
 		case DEBUG_NORMAL:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_NORMAL));
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(RT_NORMAL));
 			break;
 		case DEBUG_ALBEDO:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetTexture(RT_ALBEDO));
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(RT_ALBEDO));
 			break;
 		case DEBUG_DEPTH:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget.GetDepthTexture());
+			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetDepthTexture());
 			break;
 		default:
 			break;
@@ -199,7 +199,7 @@ namespace Mist
 			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
 
-			shaderDesc.RenderTarget = &m_renderTarget;
+			shaderDesc.RenderTarget = m_renderTarget;
 			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
 			shaderDesc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
 			shaderDesc.FrontStencil.CompareMask = 0x1;

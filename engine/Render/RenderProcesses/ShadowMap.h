@@ -95,7 +95,7 @@ namespace Mist
 	private:
 		virtual void DebugDraw(const RenderContext& context) override;
 	private:
-		tArray<RenderTarget, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
+		tArray<RenderTarget*, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;

@@ -29,20 +29,20 @@ namespace Mist
 			RenderTargetDescription rtDesc;
 			rtDesc.RenderArea = renderArea;
 			//rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
-			RenderTargetAttachmentDescription attachmentDesc{ SAMPLE_COUNT_1_BIT, swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, {0.2f, 0.4f, 0.1f, 0.f}, swapchain.GetImageViewAt(i) };
+			RenderTargetAttachmentDescription attachmentDesc{ SAMPLE_COUNT_1_BIT, swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, {0.2f, 0.4f, 0.1f, 0.f}, 0, swapchain.GetImageViewAt(i) };
 			rtDesc.AddColorAttachment(attachmentDesc);
 			//rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
 			rtDesc.ResourceName.Fmt("Swapchaing_%d_RT", i);
-			m_presentRenderTargets[i].Create(context, rtDesc);
+			m_presentRenderTargets[i] = RenderTarget::Create(context, rtDesc);
 		}
 
 		{
 			RenderTargetDescription desc;
 			desc.RenderArea = renderArea;
-			desc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {});
+			desc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {}, IMAGE_USAGE_TRANSFER_SRC_BIT);
 			desc.ResourceName = "RT_LDR";
 			desc.ClearOnLoad = false;
-			m_ldr.Create(context, desc);
+			m_ldr = RenderTarget::Create(context, desc);
 		}
 
 		m_processArray[RENDERPROCESS_SSAO] = _new SSAO();
@@ -63,10 +63,10 @@ namespace Mist
 
 	void Renderer::Destroy(const RenderContext& context)
 	{
-		m_ldr.Destroy(context);
+		RenderTarget::Destroy(context, m_ldr);
 
 		for (uint32_t i = 0; i < m_presentRenderTargets.GetSize(); ++i)
-			m_presentRenderTargets[i].Destroy(context);
+			RenderTarget::Destroy(context, m_presentRenderTargets[i]);
 
 		// reverse order
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
@@ -118,12 +118,12 @@ namespace Mist
 
 	const RenderTarget& Renderer::GetPresentRenderTarget(uint32_t index) const
 	{
-		return m_presentRenderTargets[index];
+		return *m_presentRenderTargets[index];
 	}
 
 	RenderTarget& Renderer::GetPresentRenderTarget(uint32_t index)
 	{
-		return m_presentRenderTargets[index];
+		return *m_presentRenderTargets[index];
 	}
 
 	void Renderer::CopyRenderTarget(const tCopyParams& params)

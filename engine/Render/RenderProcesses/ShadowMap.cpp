@@ -307,11 +307,11 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
 		{
 			rtDesc.ResourceName.Fmt("ShadowMap_RT_%d", i);
-			m_shadowMapTargetArray[i].Create(context, rtDesc);
+			m_shadowMapTargetArray[i] = RenderTarget::Create(context, rtDesc);
 		}
 
 		// Init shadow map pipeline when render target is created
-		m_shadowMapPipeline.Init(context, &m_shadowMapTargetArray[0]);
+		m_shadowMapPipeline.Init(context, m_shadowMapTargetArray[0]);
 	}
 
 	void ShadowMapProcess::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -321,7 +321,7 @@ namespace Mist
 	void ShadowMapProcess::Destroy(const RenderContext& renderContext)
 	{
 		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-			m_shadowMapTargetArray[j].Destroy(renderContext);
+			RenderTarget::Destroy(renderContext, m_shadowMapTargetArray[j]);
 		m_shadowMapPipeline.Destroy(renderContext);
 	}
 
@@ -414,7 +414,7 @@ namespace Mist
 		state.Program = m_shadowMapPipeline.GetShader();
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-            state.Rt = &m_shadowMapTargetArray[i];
+            state.Rt = m_shadowMapTargetArray[i];
             commandList->SetGraphicsState(state);
 			if (i < m_lightCount)
 				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
@@ -461,7 +461,7 @@ namespace Mist
 	const RenderTarget* ShadowMapProcess::GetRenderTarget(uint32_t index) const
 	{
 		check(index < globals::MaxShadowMapAttachments);
-		return &m_shadowMapTargetArray[index];
+		return m_shadowMapTargetArray[index];
 	}
 
 	void ShadowMapProcess::DebugDraw(const RenderContext& context)
@@ -475,7 +475,7 @@ namespace Mist
 		case DEBUG_SINGLE_RT:
 			{	
 				float f = 0.33f;
-				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, *m_shadowMapTargetArray[m_debugIndex].GetDepthTexture());
+				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, *m_shadowMapTargetArray[m_debugIndex]->GetDepthTexture());
 			}
 			break;
 		case DEBUG_ALL:
@@ -486,7 +486,7 @@ namespace Mist
 				glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };
 				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 				{
-					DebugRender::DrawScreenQuad(pos, size, *m_shadowMapTargetArray[i].GetDepthTexture());
+					DebugRender::DrawScreenQuad(pos, size, *m_shadowMapTargetArray[i]->GetDepthTexture());
 					pos.y += size.y;
 				}
 			}

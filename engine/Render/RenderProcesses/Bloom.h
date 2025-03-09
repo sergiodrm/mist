@@ -55,7 +55,7 @@ namespace Mist
 		ShaderProgram* m_downsampleShader;
 		ShaderProgram* m_upsampleShader;
 		ShaderProgram* m_composeShader;
-		tArray<RenderTarget, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
+		tArray<RenderTarget*, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
 
 		float m_threshold = 1.f;
 		float m_knee = 0.1f;

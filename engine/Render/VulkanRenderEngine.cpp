@@ -375,6 +375,7 @@ namespace Mist
 			m_descriptorAllocators[i].Destroy();
 		m_descriptorLayoutCache.Destroy();
 
+		RenderTarget::DestroyAll(m_renderContext);
 		Memory::Destroy(m_renderContext.Allocator);
 		vkDestroyDevice(m_renderContext.Device, nullptr);
 		vkDestroySurfaceKHR(m_renderContext.Instance, m_renderContext.Surface, nullptr);
@@ -574,6 +575,7 @@ namespace Mist
 				ImGui::ShowDemoWindow();
 
 			tApplication::ImGuiDraw();
+			RenderTarget::ImGuiRenderTargets();
 		}
 	}
 
