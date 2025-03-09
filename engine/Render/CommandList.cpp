@@ -24,6 +24,92 @@ namespace Mist
         return flags;
     }
 
+
+
+    FamilyQueueIndexFinder::FamilyQueueIndexFinder(const RenderContext& context)
+        : m_context(&context)
+    {
+        check(context.GPUDevice != VK_NULL_HANDLE);
+
+        // Find the family queue that supports the requested type
+        uint32_t numFamilyQueues = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(context.GPUDevice, &numFamilyQueues, nullptr);
+        check(numFamilyQueues);
+        m_properties.Allocate(numFamilyQueues);
+        m_properties.Resize(numFamilyQueues);
+        vkGetPhysicalDeviceQueueFamilyProperties(context.GPUDevice, &numFamilyQueues, m_properties.GetData());
+    }
+
+    FamilyQueueIndexFinder::~FamilyQueueIndexFinder()
+    {
+        m_properties.Delete();
+        m_properties.Clear();
+        m_context = nullptr;
+    }
+
+    uint32_t FamilyQueueIndexFinder::FindFamilyQueueIndex(EQueueType type)
+    {
+        VkQueueFlags flags = GetVkQueueFlags(type);
+        for (uint32_t i = 0; i < m_properties.GetSize(); ++i)
+        {
+            if ((m_properties[i].queueFlags & flags) == flags)
+                return i;
+        }
+        return InvalidFamilyQueueIndex;
+    }
+
+    void FamilyQueueIndexFinder::DumpInfo() const
+    {
+        for (uint32_t i = 0; i < m_properties.GetSize(); ++i)
+        {
+            logfok("Queue family (Index:%d;Count:%d) with flags (GRAPHICS:%d;COMPUTE:%d;TRANSFER:%d;SPARSE_BINDING:%d).\n",
+                i, m_properties[i].queueCount,
+                m_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 1 : 0,
+                m_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT ? 1 : 0,
+                m_properties[i].queueFlags & VK_QUEUE_TRANSFER_BIT ? 1 : 0,
+                m_properties[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT ? 1 : 0);
+        }
+    }
+
+    uint32_t FamilyQueueIndexFinder::FindFamilyQueueIndex(const RenderContext& context, EQueueType type)
+    {
+        FamilyQueueIndexFinder finder(context);
+        return finder.FindFamilyQueueIndex(type);
+    }
+
+    VkImageSubresourceRange ConvertImageSubresourceRange(const cTexture* texture, const SubresourceRange& range)
+    {
+        VkImageSubresourceRange res;
+        if (range.LayerCount == SubresourceRange::RemainingRange)
+        {
+            res.baseArrayLayer = 0;
+            res.layerCount = VK_REMAINING_ARRAY_LAYERS;
+        }
+        else
+        {
+            res.baseArrayLayer = range.BaseArrayLayer;
+            res.layerCount = range.LayerCount;
+        }
+        if (range.LevelCount == SubresourceRange::RemainingRange)
+        {
+            res.baseMipLevel = 0;
+            res.levelCount = VK_REMAINING_MIP_LEVELS;
+        }
+        else
+        {
+            res.baseMipLevel = range.BaseMipLevel;
+            res.levelCount = range.LevelCount;
+        }
+        res.aspectMask = 0;
+        if (texture->HasDepth())
+            res.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (texture->HasStencil())
+            res.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        if (!res.aspectMask)
+            res.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        return res;
+    }
+
     struct ImageLayoutState
     {
         VkImageLayout Layout;
@@ -101,33 +187,7 @@ namespace Mist
         imageBarrier.newLayout = newState.Layout;
         imageBarrier.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | oldState.StageFlags;
         imageBarrier.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | newState.StageFlags;
-        if (barrier.Subresource.LayerCount == SubresourceRange::RemainingRange)
-        {
-            imageBarrier.subresourceRange.baseArrayLayer = 0;
-            imageBarrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-        }
-        else
-        {
-            imageBarrier.subresourceRange.baseArrayLayer = barrier.Subresource.BaseArrayLayer;
-            imageBarrier.subresourceRange.layerCount = barrier.Subresource.LayerCount;
-        }
-        if (barrier.Subresource.LevelCount == SubresourceRange::RemainingRange)
-        {
-            imageBarrier.subresourceRange.baseMipLevel = 0;
-            imageBarrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-        }
-        else
-        {
-            imageBarrier.subresourceRange.baseMipLevel = barrier.Subresource.BaseMipLevel;
-            imageBarrier.subresourceRange.levelCount = barrier.Subresource.LevelCount;
-        }
-        imageBarrier.subresourceRange.aspectMask = 0;
-        if (barrier.Texture->HasDepth())
-            imageBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-        if (barrier.Texture->HasStencil())
-            imageBarrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
-        if (!imageBarrier.subresourceRange.aspectMask)
-            imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageBarrier.subresourceRange = ConvertImageSubresourceRange(barrier.Texture, barrier.Subresource);
         return imageBarrier;
     }
 
@@ -149,32 +209,8 @@ namespace Mist
         m_lastFinishedId(0)
     {
         check(m_context && type != QUEUE_NONE);
-        // Find the family queue that supports the requested type
-        uint32_t numFamilyQueues = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(context->GPUDevice, &numFamilyQueues, nullptr);
-        check(numFamilyQueues);
-        VkQueueFamilyProperties* queueProperties = _new VkQueueFamilyProperties[numFamilyQueues];
-        vkGetPhysicalDeviceQueueFamilyProperties(context->GPUDevice, &numFamilyQueues, queueProperties);
 
-        VkQueueFlags flags = GetVkQueueFlags(type);
-        uint32_t queueFamilyIndex = UINT32_MAX;
-        for (uint32_t i = 0; i < numFamilyQueues; ++i)
-        {
-            if ((queueProperties[i].queueFlags & flags) == flags)
-            {
-                logfok("Queue family found (Index:%d;Count:%d) with flags (GRAPHICS:%d;COMPUTE:%d;TRANSFER:%d;SPARSE_BINDING:%d).\n",
-                    i, queueProperties[i].queueCount,
-                    queueProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 1 : 0,
-                    queueProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT ? 1 : 0,
-                    queueProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT ? 1 : 0,
-                    queueProperties[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT ? 1 : 0);
-                queueFamilyIndex = i;
-                break;
-            }
-        }
-        check(queueFamilyIndex != UINT32_MAX && "Queue family not found.");
-        delete[] queueProperties;
-
+        uint32_t queueFamilyIndex = FamilyQueueIndexFinder::FindFamilyQueueIndex(*context, m_type);
         m_queue = VK_NULL_HANDLE;
         vkGetDeviceQueue(context->Device, queueFamilyIndex, 0, &m_queue);
         check(m_queue != VK_NULL_HANDLE);

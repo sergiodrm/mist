@@ -18,6 +18,26 @@ namespace Mist
     };
     typedef uint8_t EQueueType;
 
+    class FamilyQueueIndexFinder
+    {
+    public:
+        static constexpr uint32_t InvalidFamilyQueueIndex = UINT32_MAX;
+
+        FamilyQueueIndexFinder(const RenderContext& context);
+        ~FamilyQueueIndexFinder();
+
+        // Returns InvalidFamilyQueueIndex if failed.
+        uint32_t FindFamilyQueueIndex(EQueueType type);
+        void DumpInfo() const;
+
+        // Returns InvalidFamilyQueueIndex if failed.
+        static uint32_t FindFamilyQueueIndex(const RenderContext& context, EQueueType type);
+
+    private:
+        const RenderContext* m_context = nullptr;
+        tFixedHeapArray<VkQueueFamilyProperties> m_properties;
+    };
+
     struct CommandBuffer
     {
         VkCommandBuffer CmdBuffer;
