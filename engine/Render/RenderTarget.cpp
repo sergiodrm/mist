@@ -198,6 +198,7 @@ namespace Mist
 
 	void RenderTarget::PreparePass(const RenderContext& context)
 	{
+		return;
 		// transfer image layout to ensure they are in the correct layout
 		if (!m_description.ClearOnLoad)
 		{
@@ -230,6 +231,7 @@ namespace Mist
 	{
 		vkCmdEndRenderPass(cmd);
 
+#if 0
 		// update attachment image layouts after end pass
 		uint32_t colorAttachments = m_attachments.GetSize();
 		if (HasDepthBufferAttachment())
@@ -243,6 +245,8 @@ namespace Mist
 			if (GetAttachment(i).Tex)
 				GetAttachment(i).Tex->SetImageLayout(m_description.ColorAttachmentDescriptions[i].Layout);
 		}
+#endif // 0
+
 	}
 
 	void RenderTarget::ClearColor(VkCommandBuffer cmd, float r, float g, float b, float a)
@@ -544,8 +548,6 @@ namespace Mist
 			imageDesc.Height = m_description.RenderArea.extent.height;
 			imageDesc.Format = description.Format;
 			imageDesc.Usage = imageUsage | description.AdditionalUsage;
-			//if (!m_description.ClearOnLoad)
-			//	imageDesc.Usage |= IMAGE_USAGE_TRANSFER_DST_BIT;
 			imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
 			imageDesc.DebugName.Fmt("%s_%s_AttachmentTexture_%d", GetName(), IsDepthFormat(description.Format) ? "Depth" : "Color", 0);
 			attachment.Tex = cTexture::Create(renderContext, imageDesc);
