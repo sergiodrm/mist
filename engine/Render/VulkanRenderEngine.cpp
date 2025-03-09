@@ -243,7 +243,10 @@ namespace Mist
 		m_renderContext.FrameIndex = 0;
 
 		// Swapchain
-		check(m_swapchain.Init(m_renderContext, { window.Width, window.Height }));
+		SwapchainInitializationSpec swapchainSpec;
+		swapchainSpec.ImageWidth = window.Width;
+		swapchainSpec.ImageHeight = window.Height;
+		check(m_swapchain.Init(m_renderContext, swapchainSpec));
 
 		// Commands
 		check(InitCommands());

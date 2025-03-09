@@ -9,6 +9,8 @@ namespace Mist
 
 	struct SwapchainInitializationSpec
 	{
+		EFormat Format = FORMAT_R8G8B8A8_UNORM;
+		EPresentMode PresentMode = PRESENT_MODE_IMMEDIATE_KHR;
 		uint32_t ImageWidth;
 		uint32_t ImageHeight;
 	};
@@ -23,14 +25,14 @@ namespace Mist
 
 		inline EFormat GetImageFormat() const { return m_imageFormat; }
 		inline VkImage GetImageAt(uint32_t index) const { return m_images[index]; }
-		inline uint32_t GetImageCount() const { return (uint32_t)m_images.size(); }
+		inline uint32_t GetImageCount() const { return (uint32_t)m_images.GetSize(); }
 		inline VkImageView GetImageViewAt(uint32_t index) const { return m_imageViews[index]; }
-		inline uint32_t GetImageViewCount() const { return (uint32_t)m_imageViews.size(); }
+		inline uint32_t GetImageViewCount() const { return (uint32_t)m_imageViews.GetSize(); }
 
 	private:
 		VkSwapchainKHR m_swapchain;
 		EFormat m_imageFormat;
-		tDynArray<VkImage> m_images;
-		tDynArray<VkImageView> m_imageViews;
+		tFixedHeapArray<VkImage> m_images;
+		tFixedHeapArray<VkImageView> m_imageViews;
 	};
 }
