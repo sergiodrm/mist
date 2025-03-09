@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.0235294122, 0.0235294122, 0.0235294122]
+  Ambient: [0.01, 0.01, 0.01]
   Skybox:
     Front: textures/yokohama/posz.jpg
     Back: textures/yokohama/negz.jpg
