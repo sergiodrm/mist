@@ -234,7 +234,7 @@ namespace Mist
 
 	void TerminateLog()
 	{
-		loginfo("Close log.");
+		loginfo("Close log.\n");
 		if (GLogFile)
 		{
 			delete GLogFile;
