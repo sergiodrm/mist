@@ -120,6 +120,20 @@ namespace Mist
 
 	namespace tovk
 	{
+		VkPresentModeKHR GetPresentMode(EPresentMode mode)
+		{
+			switch (mode)
+			{
+			case PRESENT_MODE_IMMEDIATE_KHR: return VK_PRESENT_MODE_IMMEDIATE_KHR;
+			case PRESENT_MODE_MAILBOX_KHR: return VK_PRESENT_MODE_MAILBOX_KHR;
+			case PRESENT_MODE_FIFO_KHR: return VK_PRESENT_MODE_FIFO_KHR;
+			case PRESENT_MODE_FIFO_RELAXED_KHR: return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+			case PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR: return VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR;
+			case PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR: return VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR;
+			}
+			return VK_PRESENT_MODE_MAX_ENUM_KHR;
+		}
+
 		VkImageLayout GetImageLayout(EImageLayout layout)
 		{
 			switch (layout)
@@ -693,6 +707,19 @@ namespace Mist
 
 	namespace fromvk
 	{
+		EPresentMode GetPresentMode(VkPresentModeKHR mode)
+		{
+			switch (mode)
+			{
+            case VK_PRESENT_MODE_IMMEDIATE_KHR: return PRESENT_MODE_IMMEDIATE_KHR;
+            case VK_PRESENT_MODE_MAILBOX_KHR: return PRESENT_MODE_MAILBOX_KHR;
+            case VK_PRESENT_MODE_FIFO_KHR: return PRESENT_MODE_FIFO_KHR;
+            case VK_PRESENT_MODE_FIFO_RELAXED_KHR: return PRESENT_MODE_FIFO_RELAXED_KHR;
+            case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR: return PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR;
+            case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR: return PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR;
+            }
+            return PRESENT_MODE_MAX_ENUM_KHR;
+		}
 		EImageLayout GetImageLayout(VkImageLayout layout)
 		{
 			switch (layout)
