@@ -251,6 +251,7 @@ namespace Mist
 			//renderer->GetLDRTarget().BeginPass(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
             commandList->BeginMarker("ImGui");
 			ImGuiInstance.Draw(context, commandList->GetCurrentCommandBuffer()->CmdBuffer);
+			commandList->ClearState();
 			commandList->EndMarker();
 			//renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
 		}
