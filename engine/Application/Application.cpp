@@ -35,10 +35,6 @@ namespace Mist
 
 	Window Window::Create(uint32_t width, uint32_t height, uint32_t posx, uint32_t posy, const char* title, eWindowFlags flags)
 	{
-		Window newWindow;
-		newWindow.Width = width;
-		newWindow.Height = height;
-		strcpy_s(newWindow.Title, title);
 
 		if (SDL_Init(SDL_INIT_VIDEO) != 0)
 		{
@@ -46,20 +42,57 @@ namespace Mist
 			logferror("Error initializating SDL. Error msg:\n%s\n", sdlError);
 			check(false && "Failed initializating SDL.");
 		}
+
+		// Take the first one as main monitor.
+		int selectedDisplay = 0;
+		SDL_Rect displayRect;
+		const char* displayName = nullptr;
+
+		// Enumerate available displays
 		int numDisplays = SDL_GetNumVideoDisplays();
 		logfinfo("Num displays detected: %d\n", numDisplays);
+		check(numDisplays && "No display detected.");
 		for (int i = 0; i < numDisplays; ++i)
 		{
 			SDL_Rect rect;
 			SDL_GetDisplayBounds(i, &rect);
-			const char* displayName = SDL_GetDisplayName(i);
-			logfinfo("#%02d %16s (%4dx%4d | %5d,%5d)\n", i, displayName, rect.w, rect.h, rect.x, rect.y);
+			const char* name = SDL_GetDisplayName(i);
+			if (i == selectedDisplay)
+			{
+				displayRect = rect;
+				displayName = name;
+			}
+			logfinfo("#%02d %16s (%4dx%4d | %5d,%5d)\n", i, name, rect.w, rect.h, rect.x, rect.y);
+		}
+		logfok("Display selected: #%d %s (%4dx%4d | %5d,%5d)\n", selectedDisplay, displayName, displayRect.w, displayRect.h, displayRect.x, displayRect.y);
+
+		if (width > (uint32_t)displayRect.w || height > (uint32_t)displayRect.h)
+		{
+			logferror("Requested window size out of limits of current display. ( %4dx%4d > %4dx%4d ). Fixing resolution to max of the window.\n",
+				width, height, displayRect.w, displayRect.h);
+			width = displayRect.w;
+			height = displayRect.h;
+		}
+		else if (width == 0 || height == 0)
+		{
+			width = displayRect.w;
+			height = displayRect.h;
+			posx = 0;
+			posy = 0;
+			flags |= WindowFlags_Borderless;
 		}
 
+		Window newWindow;
+		newWindow.Width = width;
+		newWindow.Height = height;
+		strcpy_s(newWindow.Title, title);
 		SDL_WindowFlags windowFlags = (SDL_WindowFlags)(uint32_t(WindowFlagsToSDL(flags)) | SDL_WINDOW_VULKAN);
 		newWindow.WindowInstance = SDL_CreateWindow(
 			title, posx, posy,
 			width, height, windowFlags);
+		check(newWindow.WindowInstance);
+		logfok("Window created [%4dx%4d | %4d,%4d | %1.4f]\n", newWindow.Width, newWindow.Height, posx, posy, 
+			(float)newWindow.Width/(float)newWindow.Height);
 		return newWindow;
 	}
 
@@ -132,8 +165,8 @@ namespace Mist
 		int y;
 		bool fullscreen;
 		iniFile.GetBool("Fullscreen", fullscreen, false);
-		iniFile.GetInt("WindowWidth", w, 1920);
-		iniFile.GetInt("WindowHeight", h, 1080);
+		iniFile.GetInt("WindowWidth", w, 0);
+		iniFile.GetInt("WindowHeight", h, 0);
 		iniFile.GetInt("WindowX", x, 0);
 		iniFile.GetInt("WindowY", y, 0);
 
