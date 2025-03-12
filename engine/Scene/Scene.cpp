@@ -795,31 +795,6 @@ namespace Mist
 					}
 				}
 				++renderTransformOffset;
-#if 0
-				// Bind vertex/index buffers just if needed
-				if (lastMesh != mesh)
-				{
-					lastMesh = mesh;
-					mesh->BindBuffers(cmd);
-				}
-				// Iterate primitives of current mesh
-				for (uint32_t j = 0; j < (uint32_t)mesh->PrimitiveArray.size(); ++j)
-				{
-					const PrimitiveMeshData& drawData = mesh->PrimitiveArray[j];
-					if (drawData.RenderFlags & renderFlags)
-					{
-						// TODO: material by default if there is no material.
-						if (lastMaterial != drawData.Material && !(renderFlags & RenderFlags_NoTextures))
-						{
-							lastMaterial = drawData.Material;
-							drawData.Material->BindTextures(context, *shader, materialSetIndex);
-						}
-						shader->FlushDescriptors(context);
-						RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					}
-				}
-#endif // 0
-
 			}
 		}
 	}
