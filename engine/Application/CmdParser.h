@@ -9,10 +9,12 @@ namespace Mist
 	{
 		CVarFlag_None = 0x00,
 		CVarFlag_Const = 0x01,
-		CVarFlag_SetOnlyByCmd = 0x02,
-		CVarFlag_Private = 0x04 // will not be shown in imgui window
+		CVarFlag_Private = 0x02, // will not be shown in imgui window
+		CVarFlag_SetOnlyByCmd = 0x04 | CVarFlag_Private, // can't be set by imgui window nor console. Only set by cmd args.
 	};
+
 	typedef uint8_t tCVarFlags;
+
 	class CVar
 	{
 	public:
