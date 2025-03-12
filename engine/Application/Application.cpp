@@ -168,8 +168,22 @@ namespace Mist
 		{
 			Profiling::CpuProf_Reset();
 			CPU_PROFILE_SCOPE(CpuTime);
+
+			// Tick time
+			m_tickTimer.ProcessTimePoint();
+			Profiling::AddCPUTime(m_tickTimer.GetLastDiffTime());
+
+			// Poll window/SO events
 			ProcessAppEvents();
-			LogicProcess(0.033f);
+
+			// Logic tick
+			if (m_tickTimer.CanTickAgain())
+			{
+				m_tickTimer.AdvanceTime();
+				LogicProcess(m_tickTimer.GetFixStepMs());
+			}
+
+			// Render if needed
 			if (!m_windowMinimized)
 			{
 				if (!m_engine->RenderProcess())

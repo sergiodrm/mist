@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "Utils/TimeUtils.h"
 
 namespace Mist
 {
@@ -58,5 +59,6 @@ namespace Mist
 		Window m_window;
 		uint8_t m_windowClosed : 1;
 		uint8_t m_windowMinimized : 1;
+		FixTickTimer m_tickTimer;
 	};
 }

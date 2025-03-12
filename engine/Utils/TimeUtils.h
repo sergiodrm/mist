@@ -20,4 +20,29 @@ namespace Mist
 		tTimePoint m_start;
 		tFixedString<128> m_msg;
 	};
+
+	class FixTickTimer
+	{
+	public:
+		FixTickTimer(float fixStepMs = 0.016f);
+
+		void SetFixStep(float fixStepMs);
+		inline float GetFixStepMs() const { return m_fixStep; }
+		inline float GetTotalTime() const { return m_totalTime; }
+		inline float GetFrameTime() const { return m_frameTime; }
+		inline float GetLastDiffTime() const { return m_lastDiffTime; }
+
+		void ProcessTimePoint();
+
+		bool CanTickAgain() const;
+		void AdvanceTime();
+
+
+	private:
+		tTimePoint m_point;
+		float m_fixStep;
+		float m_totalTime;
+		float m_frameTime;
+		float m_lastDiffTime;
+	};
 }

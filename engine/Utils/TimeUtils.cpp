@@ -11,6 +11,7 @@
 #error SO not supported
 #endif
 #include "Core/Logger.h"
+#include "GenericUtils.h"
 
 
 namespace Mist
@@ -57,5 +58,38 @@ namespace Mist
 	{
 		float ms = GetMiliseconds(GetTimePoint() - m_start);
 		logfinfo("%s [time lapsed: %f ms]\n", m_msg, ms);
+	}
+
+	FixTickTimer::FixTickTimer(float fixStepMs)
+		: m_fixStep(0.f),
+		m_totalTime(0.f),
+		m_frameTime(0.f)
+	{
+		SetFixStep(fixStepMs);
+		m_point = GetTimePoint();
+	}
+
+	void FixTickTimer::SetFixStep(float fixStepMs)
+	{
+		m_fixStep = math::Clamp(fixStepMs, 0.001f, FLT_MAX);
+	}
+
+	void FixTickTimer::ProcessTimePoint()
+	{
+		tTimePoint now = GetTimePoint();
+		m_lastDiffTime = GetMiliseconds(now - m_point);
+		m_point = now;
+		m_frameTime += m_lastDiffTime;
+		m_totalTime += m_lastDiffTime;
+	}
+
+	bool FixTickTimer::CanTickAgain() const
+	{
+		return m_frameTime >= m_fixStep;
+	}
+
+	void FixTickTimer::AdvanceTime()
+	{
+		m_frameTime = __max(0.f, m_frameTime - m_fixStep);
 	}
 }
