@@ -1084,6 +1084,15 @@ namespace Mist
 			}
 			ImGui::TreePop();
 		}
+		if (ImGui::TreeNode("Render passes"))
+		{
+			for (uint32_t i = 0; i < m_drawListArray.GetSize(); ++i)
+			{
+				const tDrawList& list = m_drawListArray[i];
+				ImGui::Text("Render flags: %4d | Render items: %4d/%4d", list.RenderFlags, list.Items.GetSize(), list.Items.GetReservedSize());
+			}
+			ImGui::TreePop();
+		}
 		ImGui::End();
 	}
 
