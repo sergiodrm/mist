@@ -20,6 +20,7 @@ layout(set = 0, binding = 0) uniform SSAOUniform
 
 #define ssao_radius u_ssao.Params.x
 #define ssao_bias   u_ssao.Params.y
+#define ssao_bypass (u_ssao.Params.z == 0.f)
 
 //layout(set=1, binding=0) uniform sampler2D u_textures[5];
 //layout(set = 0, binding = 1) uniform sampler2D u_GBufferPosition;
@@ -50,6 +51,12 @@ float linearDepth(float depth, float near, float far)
 
 void main()
 {
+    if (ssao_bypass)
+    {
+        fragColor = 1.f;
+        return;
+    }
+
     // Current fragment 
 	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).xyz;
     vec3 normal = normalize(texture(u_GBufferNormal, inTexCoords).xyz);

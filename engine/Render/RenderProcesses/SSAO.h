@@ -39,7 +39,8 @@ namespace Mist
 		{
 			float Radius;
 			float Bias;
-			float __padding[2];
+			float Bypass;
+			float __padding;
 			glm::mat4 Projection;
 			glm::mat4 InverseProjection;
 			glm::vec4 KernelSamples[SSAO_KERNEL_SAMPLES];
@@ -54,7 +55,7 @@ namespace Mist
 		virtual void Draw(const RenderContext& context, const RenderFrameContext& frameContext) override;
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override { return m_blurRT; }
+		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override;
 	private:
 		ShaderProgram* m_ssaoShader;
 		RenderTarget* m_rt;

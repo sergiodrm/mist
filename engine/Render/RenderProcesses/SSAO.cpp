@@ -122,33 +122,30 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(CpuSSAO);
         CommandList* commandList = renderContext.CmdList;
-        commandList->BeginMarker("SSAO");
 		GpuProf_Begin(renderContext, "SSAO");
-		if (m_mode != SSAO_Disabled)
-		{
-			commandList->SetGraphicsState({.Program = m_ssaoShader, .Rt = m_rt });
-			m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
+        commandList->BeginMarker("SSAO");
+		commandList->SetGraphicsState({.Program = m_ssaoShader, .Rt = m_rt });
+		m_uboData.Bypass = m_mode == SSAO_Disabled ? 0.f : 1.f;
+		m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
 
-			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
-			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferPosition", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
-			m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferNormal", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
-			m_ssaoShader->BindSampledTexture(renderContext, "u_SSAONoise", *m_noiseTexture);
-			commandList->BindProgramDescriptorSets();
-			CmdDrawFullscreenQuad(commandList);
-		}
+		const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
+		m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferPosition", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
+		m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferNormal", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
+		m_ssaoShader->BindSampledTexture(renderContext, "u_SSAONoise", *m_noiseTexture);
+		commandList->BindProgramDescriptorSets();
+		CmdDrawFullscreenQuad(commandList);
+		commandList->ClearState();
 		GpuProf_End(renderContext);
 		commandList->EndMarker();
 
         commandList->BeginMarker("SSAOBlur");
 		GpuProf_Begin(renderContext, "SSAO Blur");
-		if (m_mode != SSAO_Disabled && m_mode != SSAO_NoBlur)
-		{
-            commandList->SetGraphicsState({ .Program = m_blurShader, .Rt = m_blurRT });
-			const cTexture* tex = m_rt->GetTexture();
-			m_blurShader->BindSampledTexture(renderContext, "u_ssaoTex", *tex);
-			commandList->BindProgramDescriptorSets();
-			CmdDrawFullscreenQuad(commandList);
-		}
+        commandList->SetGraphicsState({ .Program = m_blurShader, .Rt = m_blurRT });
+		const cTexture* tex = m_rt->GetTexture();
+		m_blurShader->BindSampledTexture(renderContext, "u_ssaoTex", *tex);
+		commandList->BindProgramDescriptorSets();
+		CmdDrawFullscreenQuad(commandList);
+		commandList->ClearState();
 		GpuProf_End(renderContext);
         commandList->EndMarker();
 	}
@@ -193,6 +190,13 @@ namespace Mist
 		}
 		DebugRender::DrawScreenQuad({ 0.f, 0.f },
 			{ scale * (float)tex->GetDescription().Width, scale * (float)tex->GetDescription().Height }, *tex);
+	}
+
+	const RenderTarget* SSAO::GetRenderTarget(uint32_t index) const
+	{
+		if (m_mode == SSAO_NoBlur || m_mode == SSAO_Disabled)
+			return m_rt;
+		return m_blurRT;
 	}
 
 }
