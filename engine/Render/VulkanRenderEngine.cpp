@@ -39,8 +39,8 @@
 
 namespace Mist
 {
-	CBoolVar CVar_EnableValidationLayer("EnableValidationLayer", true);
-	CBoolVar CVar_ExitValidationLayer("ExitValidationLayer", true);
+	CBoolVar CVar_EnableValidationLayer("r_enableValidationLayer", true);
+	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
 
 	extern CIntVar CVar_ShowCpuProf;
@@ -218,10 +218,8 @@ namespace Mist
 		Log(LogLevel::Info, "Running app in RELEASE mode.\n");
 #endif // _DEBUG
 
-		Log(LogLevel::Info, "Initialize render engine.\n");
 		m_renderContext.Window = &window;
 		SDL_Init(SDL_INIT_VIDEO);
-		Log(LogLevel::Ok, "Window created successfully!\n");
 
 		// Init vulkan context
 		check(InitVulkan());
@@ -258,12 +256,6 @@ namespace Mist
         m_renderContext.Queue = _new CommandQueue(&m_renderContext, QUEUE_GRAPHICS | QUEUE_COMPUTE | QUEUE_TRANSFER);
         m_renderContext.CmdList = _new CommandList(&m_renderContext);
 
-
-
-
-
-		//const RenderTarget& gbufferRT = *m_renderer.GetRenderProcess(RENDERPROCESS_GBUFFER)->GetRenderTarget();
-		//const RenderTarget& lightingRT = *m_renderer.GetRenderProcess(RENDERPROCESS_LIGHTING)->GetRenderTarget();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Init(m_renderContext.Device, 40);
@@ -286,7 +278,6 @@ namespace Mist
 		m_gol = _new Gol(&m_renderContext);
         m_gol->Init(256, 256);
 
-		//AddConsoleCommand(ExecCommand_CVar);
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
 		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
@@ -299,11 +290,6 @@ namespace Mist
 	bool VulkanRenderEngine::RenderProcess()
 	{
 		CPU_PROFILE_SCOPE(Process);
-		static tTimePoint point = GetTimePoint();
-		tTimePoint now = GetTimePoint();
-		float ms = GetMiliseconds(now - point);
-		point = now;
-		Profiling::AddCPUTime(ms);
 
 		ui::Begin(m_renderContext);
 		{

@@ -175,7 +175,7 @@ namespace Mist
 
 	void Swapchain::Destroy(const RenderContext& renderContext)
 	{
-		Log(LogLevel::Info, "Destroying swapchain data.\n");
+		loginfo("Destroying swapchain data.\n");
 
 		for (size_t i = 0; i < m_imageViews.GetSize(); ++i)
 			vkDestroyImageView(renderContext.Device, m_imageViews[i], nullptr);
