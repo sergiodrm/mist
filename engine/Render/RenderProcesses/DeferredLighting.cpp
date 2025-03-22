@@ -21,8 +21,8 @@ namespace Mist
 {
 	CBoolVar CVar_FogEnabled("r_fogenabled", false);
 
-	CFloatVar CVar_GammaCorrection("r_gammacorrection", 1.7f);
-	CFloatVar CVar_Exposure("r_exposure", 2.f);
+	CFloatVar CVar_GammaCorrection("r_gammacorrection", 2.2f);
+	CFloatVar CVar_Exposure("r_exposure", 2.5f);
 
 	void DeferredLighting::Init(const RenderContext& renderContext)
 	{
