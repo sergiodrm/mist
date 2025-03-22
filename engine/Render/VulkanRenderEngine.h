@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include "Render/RenderEngine.h"
@@ -35,15 +34,6 @@ namespace Mist
 	{
 		float DeltaTime;
 		float TotalTime;
-	};
-
-	struct CubemapPipeline
-	{
-		ShaderProgram* Shader = nullptr;
-		cModel* Cube = nullptr;
-
-		void Init(const RenderContext& context, const RenderTarget* rt);
-		void Destroy(const RenderContext& context);
 	};
 	
 	class VulkanRenderEngine : public IRenderEngine
@@ -86,10 +76,6 @@ namespace Mist
 
 		RenderContext m_renderContext;
 		Swapchain m_swapchain;
-
-#if defined(MIST_CUBEMAP)
-		CubemapPipeline m_cubemapPipeline;
-#endif // 0
 
 		Renderer m_renderer;
 

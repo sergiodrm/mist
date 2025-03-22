@@ -183,32 +183,6 @@ namespace Mist
 		return DefaultMaterial;
 	}
 	
-
-	void CubemapPipeline::Init(const RenderContext& context, const RenderTarget* rt)
-	{
-		check(!Cube && !Shader);
-		tShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
-		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
-		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-		shaderDesc.RenderTarget = rt;
-		shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
-		shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
-		shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
-		Shader = ShaderProgram::Create(context, shaderDesc);
-
-		Cube = _new cModel();
-		Cube->LoadModel(context, ASSET_PATH("models/cube.gltf"));
-	}
-
-	void CubemapPipeline::Destroy(const RenderContext& context)
-	{
-		check(Cube);
-		Cube->Destroy(context);
-		delete Cube;
-		Cube = nullptr;
-	}
-
 	bool VulkanRenderEngine::Init(const Window& window)
 	{
 		CPU_PROFILE_SCOPE(Init);
