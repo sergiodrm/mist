@@ -18,6 +18,20 @@
 namespace Mist
 {
 
+	typedef tFixedHeapArray<cTexture*> TextureList;
+
+	TextureList g_textures;
+
+	uint32_t FindCachedTexture(const char* name)
+	{
+		for (uint32_t i = 0; i < g_textures.GetSize(); ++i)
+		{
+			if (!stricmp(name, g_textures[i]->GetName()))
+				return i;
+		}
+		return UINT32_MAX;
+	}
+
 	bool io::LoadTexture(const char* path, TextureRaw& out, bool flipVertical)
 	{
 		if (!path || !*path)
@@ -49,7 +63,6 @@ namespace Mist
 		stbi_image_free(data);
 	}
 
-#if 1
 
 	void cTexture::TransferImageLayout(const RenderContext& context, EImageLayout dstLayout, VkAccessFlags srcAccess, VkAccessFlags dstAccess, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage)
 	{
@@ -142,6 +155,9 @@ namespace Mist
 
 	void cTexture::Destroy(const RenderContext& context, cTexture* texture)
 	{
+		uint32_t texIndex = FindCachedTexture(texture->GetName());
+		if (texIndex != UINT32_MAX)
+			g_textures[texIndex] = nullptr;
 		texture->Destroy(context);
 		delete texture;
 	}
@@ -198,192 +214,6 @@ namespace Mist
 	{
 		return (uint32_t)m_views.size();
 	}
-
-
-#else
-	void cTexture::Init(const RenderContext& renderContext, const TextureCreateInfo& textureInfo)
-	{
-		check(!m_image.IsAllocated());
-		check(textureInfo.Pixels && textureInfo.Width && textureInfo.Height && textureInfo.Depth);
-		//check(textureRaw.Channels == 4 || textureRaw.Channels == 3);
-
-		// Format requirement check
-		{
-			VkImageFormatProperties imageFormatProperties;
-			vkcheck(vkGetPhysicalDeviceImageFormatProperties(renderContext.GPUDevice, tovk::GetFormat(textureInfo.Format),
-				VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-				0, &imageFormatProperties));
-		}
-
-		// Prepare image creation
-		tImageDescription desc;
-		desc.Width = textureInfo.Width;
-		desc.Height = textureInfo.Height;
-		desc.Depth = 1;
-		desc.Format = textureInfo.Format;
-		desc.Layers = 1;
-		desc.SampleCount = SAMPLE_COUNT_1_BIT;
-		desc.MipLevels = textureInfo.Mipmaps ? CalculateMipLevels(desc.Width, desc.Height) : 1;
-		desc.Flags = 0;
-		check(CreateImage(renderContext, desc, m_image));
-		VkExtent3D extent;
-		extent.width = textureInfo.Width;
-		extent.height = textureInfo.Height;
-		extent.depth = textureInfo.Depth;
-#if 0
-		VkImageCreateInfo imageInfo = vkinit::ImageCreateInfo(textureInfo.Format, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, extent);
-		m_image = Memory::CreateImage(renderContext.Allocator, imageInfo, MEMORY_USAGE_GPU);
-#endif // 0
-
-
-		// Create transit buffer
-		VkDeviceSize size = utils::GetPixelSizeFromFormat(textureInfo.Format) * (VkDeviceSize)textureInfo.PixelCount;
-		//check(size == textureInfo.PixelCount);
-		AllocatedBuffer stageBuffer = Memory::CreateBuffer(renderContext.Allocator, size,
-			VK_BUFFER_USAGE_TRANSFER_SRC_BIT, MEMORY_USAGE_CPU);
-		Memory::MemCopy(renderContext.Allocator, stageBuffer, textureInfo.Pixels, size);
-		Logf(LogLevel::Info, "Created texture %s size %u bytes.\n", FormatToStr(textureInfo.Format), size);
-
-		utils::CmdSubmitTransfer(renderContext,
-			[=](VkCommandBuffer cmd)
-			{
-				VkBufferImageCopy copyRegion
-				{
-					.bufferOffset = 0,
-					.bufferRowLength = 0,
-					.bufferImageHeight = 0
-				};
-				copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				copyRegion.imageSubresource.mipLevel = 0;
-				copyRegion.imageSubresource.baseArrayLayer = 0;
-				copyRegion.imageSubresource.layerCount = 1;
-				copyRegion.imageExtent = extent;
-				VkImageSubresourceRange range{};
-				range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				range.baseMipLevel = 0;
-				range.levelCount = 1;
-				range.baseArrayLayer = 0;
-				range.layerCount = 1;
-				VkImageMemoryBarrier transferBarrier
-				{
-					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-					.pNext = nullptr,
-					.srcAccessMask = 0,
-					.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-					.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-					.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					.image = m_image.Image,
-					.subresourceRange = range,
-				};
-
-				// Prepare image to be transfered
-				vkCmdPipelineBarrier(cmd,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-					VK_PIPELINE_STAGE_TRANSFER_BIT,
-					0, 0, nullptr, 0, nullptr, 1, &transferBarrier);
-				// Copy from temporal stage buffer to image
-				vkCmdCopyBufferToImage(cmd, stageBuffer.Buffer, m_image.Image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-					1, &copyRegion);
-
-				if (!textureInfo.Mipmaps)
-				{
-					// Restore image layout to be used.
-					VkImageMemoryBarrier imageBarrier = transferBarrier;
-					imageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-					imageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-					imageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-					imageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-					vkCmdPipelineBarrier(cmd,
-						VK_PIPELINE_STAGE_TRANSFER_BIT,
-						VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-						0, 0, nullptr, 0, nullptr, 1, &imageBarrier);
-				}
-			});
-
-		// Destroy transfer buffer.
-		Memory::DestroyBuffer(renderContext.Allocator, stageBuffer);
-
-		if (textureInfo.Mipmaps)
-		{
-			//TransitionImageLayout(renderContext, m_image, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0);
-			for (uint32_t i = 1; i <= desc.MipLevels; ++i)
-				TransitionImageLayout(renderContext, m_image, IMAGE_LAYOUT_UNDEFINED, IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, i);
-			GenerateImageMipmaps(renderContext, m_image, desc);
-		}
-
-		static int c = 0;
-		char buff[32];
-		sprintf_s(buff, "Image_%d", c++);
-		SetVkObjectName(renderContext, &m_image.Image, VK_OBJECT_TYPE_IMAGE, buff);
-
-		// Create Image view
-		VkImageViewCreateInfo viewInfo
-		{
-			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-			.pNext = nullptr,
-			.image = m_image.Image,
-			.viewType = VK_IMAGE_VIEW_TYPE_2D,
-			.format = tovk::GetFormat(textureInfo.Format),
-		};
-		viewInfo.subresourceRange.baseMipLevel = 0;
-		viewInfo.subresourceRange.levelCount = desc.MipLevels;
-		viewInfo.subresourceRange.baseArrayLayer = 0;
-		viewInfo.subresourceRange.layerCount = 1;
-		viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-		vkcheck(vkCreateImageView(renderContext.Device, &viewInfo, nullptr, &m_imageView));
-
-		// Sampler
-		//m_sampler = CreateSampler(renderContext);
-		VkSamplerCreateInfo samplerCreateInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR, SAMPLER_ADDRESS_MODE_REPEAT);
-		samplerCreateInfo.minFilter = VK_FILTER_NEAREST;
-		samplerCreateInfo.magFilter = VK_FILTER_NEAREST;
-		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerCreateInfo.anisotropyEnable = VK_FALSE;
-		samplerCreateInfo.minLod = 0.f;
-		samplerCreateInfo.maxLod = (float)desc.MipLevels;
-		samplerCreateInfo.mipLodBias = 0.f;
-		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerCreateInfo.compareEnable = VK_FALSE;
-		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		vkcheck(vkCreateSampler(renderContext.Device, &samplerCreateInfo, nullptr, &m_sampler));
-	}
-
-	void cTexture::Destroy(const RenderContext& renderContext)
-	{
-		Memory::DestroyImage(renderContext.Allocator, m_image);
-		vkDestroyImageView(renderContext.Device, m_imageView, nullptr);
-		vkDestroySampler(renderContext.Device, m_sampler, nullptr);
-	}
-
-	void cTexture::Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex) const
-	{
-		//check(set != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
-		VkDescriptorImageInfo imageInfo
-		{
-			.sampler = m_sampler,
-			.imageView = m_imageView,
-			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		};
-		VkWriteDescriptorSet writeSet
-		{
-			.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			.pNext = nullptr,
-			.dstSet = set,
-			.dstBinding = binding,
-			.dstArrayElement = arrayIndex,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-			.pImageInfo = &imageInfo
-		};
-		vkUpdateDescriptorSets(renderContext.Device, 1, &writeSet, 0, nullptr);
-	}
-#endif // 0
-
 
 	bool CreateImage(const RenderContext& context, const tImageDescription& createInfo, AllocatedImage& imageOut)
 	{
@@ -677,6 +507,15 @@ namespace Mist
 	{
 		PROFILE_SCOPE_LOGF(LoadTextureFromFile, "Load texture from file (%s)", filepath);
 		check(texture);
+		if (g_textures.IsEmpty())
+			g_textures.Allocate(512);
+		uint32_t texIndex = FindCachedTexture(filepath);
+		if (texIndex != UINT32_MAX)
+		{
+			logfwarn("Trying to load cached texture: %s\n", filepath);
+			*texture = g_textures[texIndex];
+			return true;
+		}
 		// Load texture from file
 		io::TextureRaw texData;
 		if (!io::LoadTexture(filepath, texData))
@@ -704,7 +543,21 @@ namespace Mist
 
 		// Free raw texture data
 		io::FreeTexture(texData.Pixels);
+		g_textures.Push(*texture);
 		return true;
+	}
+
+	void DestroyCachedTextures(const RenderContext& context)
+	{
+		for (uint32_t i = 0; i < g_textures.GetSize(); ++i)
+		{
+			if (g_textures[i])
+			{
+				cTexture::Destroy(context, g_textures[i]);
+				g_textures[i] = nullptr;
+			}
+		}
+		g_textures.Delete();
 	}
 
 

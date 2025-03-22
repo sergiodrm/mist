@@ -72,7 +72,9 @@ namespace Mist
 	bool BindDescriptorTexture(const RenderContext& context, cTexture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 	bool IsDepthFormat(EFormat format);
 	bool IsStencilFormat(EFormat format);
-	bool IsUsageCorrect(EImageUsage usage);
+    bool IsUsageCorrect(EImageUsage usage);
+    bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format);
+	void DestroyCachedTextures(const RenderContext& context);
 
 
 	namespace io
@@ -143,37 +145,6 @@ namespace Mist
 		EImageLayout Layout;
 		Sampler Sampler;
 	};
-#if 0
 
-	struct TextureCreateInfo
-	{
-		EFormat Format;
-		uint32_t Width = 0;
-		uint32_t Height = 0;
-		uint32_t Depth = 1;
-		bool Mipmaps = true;
-
-		void* Pixels = nullptr;
-		uint32_t PixelCount = 0;
-	};
-
-
-	class Texture
-	{
-	public:
-		void Init(const RenderContext& renderContext, const TextureCreateInfo& textureInfo);
-		void Destroy(const RenderContext& renderContext);
-
-		VkImageView GetImageView() const { return m_imageView; }
-		void Bind(const RenderContext& renderContext, VkDescriptorSet set, VkSampler sampler, uint32_t binding, uint32_t arrayIndex = 0) const;
-	private:
-		AllocatedImage m_image;
-		ImageView m_imageView;
-		Sampler m_sampler;
-	};
-#endif // 0
-
-
-	bool LoadTextureFromFile(const RenderContext& context, const char* filepath, cTexture** texture, EFormat format);
 
 }
