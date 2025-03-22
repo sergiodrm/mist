@@ -194,7 +194,7 @@ namespace Mist
 		tStaticArray<RenderTargetAttachment, MAX_RENDER_TARGET_ATTACHMENTS> m_attachments;
 	};
 
-	typedef tDynArray<RenderTarget*> RenderTargetList;
+	typedef tFixedHeapArray<RenderTarget*> RenderTargetList;
 }
 
 template <>

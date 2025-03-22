@@ -94,7 +94,7 @@ namespace Mist
 	{
 		RenderTarget* rt = _new RenderTarget();
 		rt->CreateInternal(context, desc);
-		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.GetSize(); ++i)
 		{
 			if (!g_renderTargets[i])
 			{
@@ -102,7 +102,9 @@ namespace Mist
 				return rt;
 			}
 		}
-		g_renderTargets.push_back(rt);
+		if (g_renderTargets.IsEmpty())
+			g_renderTargets.Allocate(64);
+		g_renderTargets.Push(rt);
 		return rt;
 	}
 
@@ -110,7 +112,7 @@ namespace Mist
 	{
 		if (rt)
 		{
-			for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+			for (uint32_t i = 0; i < (uint32_t)g_renderTargets.GetSize(); ++i)
 			{
 				if (g_renderTargets[i] == rt)
 					g_renderTargets[i] = nullptr;
@@ -124,7 +126,7 @@ namespace Mist
 	{
 		ImGui::Begin("RenderTargets");
 		size_t size = 0;
-		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.GetSize(); ++i)
 		{
 			const RenderTarget* rt = g_renderTargets[i];
 			uint32_t width = rt->GetWidth();
@@ -144,7 +146,7 @@ namespace Mist
 			}
 		}
 		ImGui::SeparatorText("Stats");
-		ImGui::Text("Total RTs: %d", (uint32_t)g_renderTargets.size());
+		ImGui::Text("Total RTs: %d/", (uint32_t)g_renderTargets.GetSize(), g_renderTargets.GetReservedSize());
 		ImGui::Text("Memory: %6llu Kb", size / 1024l);
 		if (ImGui::Button("Dump info"))
 			DumpInfo();
@@ -155,7 +157,7 @@ namespace Mist
 	{
 		loginfo("=================== Render target dump info ==========================\n");
 		size_t size = 0;
-        for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+        for (uint32_t i = 0; i < (uint32_t)g_renderTargets.GetSize(); ++i)
         {
             const RenderTarget* rt = g_renderTargets[i];
             uint32_t width = rt->GetWidth();
@@ -174,20 +176,20 @@ namespace Mist
                     loginfo("\t* Not owned texture\n");
             }
         }
-        logfinfo("Total RTs: %d\n", (uint32_t)g_renderTargets.size());
+        logfinfo("Total RTs: %d/%d\n", (uint32_t)g_renderTargets.GetSize(), g_renderTargets.GetReservedSize());
         logfinfo("Memory: %6llu Kb\n", size / 1024l);
 		loginfo("===================================================\n");
 	}
 
 	void RenderTarget::DestroyAll(const RenderContext& context)
 	{
-		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.size(); ++i)
+		for (uint32_t i = 0; i < (uint32_t)g_renderTargets.GetSize(); ++i)
 		{
 			if (g_renderTargets[i])
 				RenderTarget::Destroy(context, g_renderTargets[i]);
 		}
-		g_renderTargets.clear();
-		g_renderTargets.shrink_to_fit();
+		g_renderTargets.Clear();
+		g_renderTargets.Delete();
 	}
 
 	void RenderTarget::Invalidate(const RenderContext& renderContext)
