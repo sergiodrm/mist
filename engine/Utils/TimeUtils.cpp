@@ -12,10 +12,13 @@
 #endif
 #include "Core/Logger.h"
 #include "GenericUtils.h"
+#include "Application/CmdParser.h"
 
 
 namespace Mist
 {
+	CIntVar CVar_LogProfileScopes("s_logprofilescopes", 0);
+
 	int64_t cpufreq(bool force = false)
 	{
 #if defined(_WIN32)
@@ -57,7 +60,8 @@ namespace Mist
 	tScopeProfiler::~tScopeProfiler()
 	{
 		float ms = GetMiliseconds(GetTimePoint() - m_start);
-		logfinfo("%s [time lapsed: %f ms]\n", m_msg, ms);
+		if (CVar_LogProfileScopes.Get())
+			logfinfo("%s [time lapsed: %f ms]\n", m_msg, ms);
 	}
 
 	FixTickTimer::FixTickTimer(float fixStepMs)
