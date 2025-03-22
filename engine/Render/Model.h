@@ -48,7 +48,7 @@ namespace Mist
 		index_t m_root = index_invalid;
 	public:
 		tFixedHeapArray<sNode> m_nodes;
-		tFixedHeapArray<tFixedString<32>> m_nodeNames;
+		tFixedHeapArray<tFixedString<64>> m_nodeNames;
 		tFixedHeapArray<cMesh> m_meshes;
 		tFixedHeapArray<cMaterial> m_materials;
 		tFixedHeapArray<glm::mat4> m_transforms;
