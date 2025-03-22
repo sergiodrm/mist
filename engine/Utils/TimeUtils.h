@@ -18,7 +18,7 @@ namespace Mist
 		tScopeProfiler(const char* msg);
 		~tScopeProfiler();
 		tTimePoint m_start;
-		tFixedString<128> m_msg;
+		tFixedString<256> m_msg;
 	};
 
 	class FixTickTimer
