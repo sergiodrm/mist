@@ -400,4 +400,13 @@ namespace Mist
 	{
 		GetWorkspacePath(m_path, path);
 	}
+
+	const char* cAssetPath::GetAssetPath() const
+	{
+		size_t l = strlen(CVar_Workspace.Get())-1;
+		check(!strnicmp(CVar_Workspace.Get(), m_path, l));
+		const char* s = &m_path[l+1];
+		check(*s);
+		return s;
+	}
 }
