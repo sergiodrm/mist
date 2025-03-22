@@ -129,30 +129,8 @@ namespace Mist
 		m_layout = IMAGE_LAYOUT_UNDEFINED;
 		if (!desc.DebugName.IsEmpty())
 			SetName(desc.DebugName.CStr());
-
 		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, GetName());
-
 		m_sampler = CreateSampler(context, desc.SamplerDesc);
-#if 0
-		VkSamplerCreateInfo samplerCreateInfo = vkinit::SamplerCreateInfo(FILTER_LINEAR, SAMPLER_ADDRESS_MODE_REPEAT);
-		samplerCreateInfo.minFilter = VK_FILTER_LINEAR;
-		samplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-		samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-		samplerCreateInfo.anisotropyEnable = VK_FALSE;
-		samplerCreateInfo.minLod = 0.f;
-		samplerCreateInfo.maxLod = VK_LOD_CLAMP_NONE;// (float)desc.MipLevels;
-		samplerCreateInfo.mipLodBias = 0.f;
-		samplerCreateInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-		samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-		samplerCreateInfo.compareEnable = VK_FALSE;
-		samplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-		vkcheck(vkCreateSampler(context.Device, &samplerCreateInfo, nullptr, &m_sampler));
-#endif // 0
-
-		SetVkObjectName(context, &m_sampler, VK_OBJECT_TYPE_SAMPLER, GetName());
 	}
 
 	cTexture* cTexture::Create(const RenderContext& context, const tImageDescription& description)
