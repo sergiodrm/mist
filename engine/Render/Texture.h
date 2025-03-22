@@ -40,7 +40,7 @@ namespace Mist
 		EImageLayout InitialLayout = IMAGE_LAYOUT_UNDEFINED;
 		VkImageCreateFlags Flags = 0;
 		SamplerDescription SamplerDesc;
-		tFixedString<128> DebugName;
+		tFixedString<256> DebugName;
 	};
 
 	struct tViewDescription
