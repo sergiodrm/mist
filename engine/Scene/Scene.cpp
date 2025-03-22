@@ -1185,6 +1185,7 @@ namespace Mist
 
 	void Scene::RenderPipelineDraw(const RenderContext& context, uint32_t pipelineFlags, index_t materialSetIndex, ShaderProgram* program)
 	{
+		CPU_PROFILE_SCOPE(RenderPipelineDraw);
 		const tDrawList* drawList = FindRenderPipeline(pipelineFlags);
 		if (!drawList)
 			return;
@@ -1200,13 +1201,13 @@ namespace Mist
         const uint32_t shadowMapTexturesSlot = 2;
 		tShadowMapData depthViewInfo;
 		const cTexture* shadowMapTextures[globals::MaxShadowMapAttachments];
-        for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-        {
-            // Shadow map matrices from shadow map process
-            depthViewInfo.LightViewMatrices[i] = shadowMapping->m_shadowMapPipeline.GetLightVP(i);
-            // Shadow map textures from shadow map process
-            shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->GetDepthTexture();
-        }
+        //for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+        //{
+        //    // Shadow map matrices from shadow map process
+        //    depthViewInfo.LightViewMatrices[i] = shadowMapping->m_shadowMapPipeline.GetLightVP(i);
+        //    // Shadow map textures from shadow map process
+        //    shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->GetDepthTexture();
+        //}
 
 		const cMesh* mesh = nullptr;
 		const cMaterial* material = nullptr;
@@ -1240,13 +1241,13 @@ namespace Mist
 					shader = material->m_shader;
 					state.Program = shader;
                     commandList->SetGraphicsState(state);
-                    shader->SetBufferData(context, "u_Camera", &cameraData, sizeof(CameraData));
-                    shader->SetBufferData(context, "u_depthInfo", &depthViewInfo, sizeof(tShadowMapData));
-                    shader->SetBufferData(context, "u_env", &m_environmentData, sizeof(EnvironmentData));
-					shader->BindSampledTextureArray(context, "u_ShadowMap", shadowMapTextures, CountOf(shadowMapTextures));
-					shader->BindSampledTexture(context, "u_cubemap", *m_skybox.Tex);
+                    shader->SetBufferData(context, "u_camera", &cameraData, sizeof(CameraData));
+                    //shader->SetBufferData(context, "u_depthInfo", &depthViewInfo, sizeof(tShadowMapData));
+                    //shader->SetBufferData(context, "u_env", &m_environmentData, sizeof(EnvironmentData));
+					//shader->BindSampledTextureArray(context, "u_ShadowMap", shadowMapTextures, CountOf(shadowMapTextures));
+					//shader->BindSampledTexture(context, "u_cubemap", *m_skybox.Tex);
                 }
-				if (materialSetIndex != index_invalid)
+				//if (materialSetIndex != index_invalid)
 				{
 					material->BindTextures(context, *shader, materialSetIndex);
 					shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), data.MaterialIndex);
