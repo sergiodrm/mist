@@ -32,7 +32,7 @@ namespace Mist
 
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
 		RenderTargetDescription description;
-		description.AddColorAttachment(HDR_FORMAT, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
 		description.SetDepthAttachment(depthTexture);
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
@@ -93,7 +93,7 @@ namespace Mist
 			RenderTargetDescription ldrRtDesc;
 			ldrRtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 			ldrRtDesc.RenderArea.offset = { .x = 0, .y = 0 };
-			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, GBUFFER_COMPOSITION_LAYOUT, SAMPLE_COUNT_1_BIT, clearValue);
+			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
 			ldrRtDesc.ResourceName = "HDR_RT";
 			m_hdrOutput = RenderTarget::Create(renderContext, ldrRtDesc);
 
@@ -177,9 +177,9 @@ namespace Mist
 			shader->BindSampledTexture(renderContext, "u_GBufferPosition", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_POSITION).Tex);
 			shader->BindSampledTexture(renderContext, "u_GBufferNormal", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_NORMAL).Tex);
 			shader->BindSampledTexture(renderContext, "u_GBufferAlbedo", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_ALBEDO).Tex);
-			shader->BindSampledTexture(renderContext, "u_ssao", *m_ssaoRenderTarget->GetAttachment(0).Tex);
+			shader->BindSampledTexture(renderContext, "u_ssao", *m_ssaoRenderTarget->GetTexture());
 			shader->BindSampledTextureArray(renderContext, "u_ShadowMap", shadowMapTextures.data(), (uint32_t)shadowMapTextures.size());
-			shader->BindSampledTexture(renderContext, "u_GBufferDepth", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_DEPTH).Tex);
+			shader->BindSampledTexture(renderContext, "u_GBufferDepth", *m_gbufferRenderTarget->GetAttachment(GBuffer::EGBufferTarget::RT_DEPTH_STENCIL).Tex);
 
 			// Use shared buffer for avoiding doing this here (?)
 			const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
