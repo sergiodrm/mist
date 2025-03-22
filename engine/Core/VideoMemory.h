@@ -33,8 +33,8 @@ namespace Mist
 
 	struct tMemStats
 	{
-		uint32_t Allocated = 0;
-		uint32_t MaxAllocated = 0;
+		size_t Allocated = 0;
+		size_t MaxAllocated = 0;
 	};
 
 	struct AllocInfo
@@ -42,7 +42,7 @@ namespace Mist
 		Alloc_t Alloc = nullptr;
 		uint16_t Line = UINT16_MAX;
 		char File[512];
-		uint32_t Size = 0;
+		size_t Size = 0;
 		bool IsBuffer = false;
 	};
 
@@ -56,6 +56,7 @@ namespace Mist
 #endif
 		AllocInfo* AllocInfoArray = nullptr;
 		uint16_t AllocInfoIndex = UINT16_MAX;
+		uint16_t AllocInfoSize = UINT16_MAX;
 		tMemStats BufferStats;
 		tMemStats TextureStats;
 	};

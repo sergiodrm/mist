@@ -13,7 +13,8 @@
 
 //#define MIST_MEMORY_VERBOSE
 
-#define MEM_ALLOC_INFO_ARRAY_COUNT 1024
+#define MEM_ALLOC_INFO_ARRAY_COUNT 2048
+#define MEM_ALLOC_INFO_ARRAY_INCREMENT 512
 
 namespace memapi
 {
@@ -96,10 +97,27 @@ namespace Mist
 		stats.Allocated -= size;
 	}
 
+	void ReallocAllocSystem(Allocator* allocator, uint16_t count)
+	{
+		if (allocator->AllocInfoArray)
+		{
+			logfwarn("Reallocating video memory alloc tracking system: %d->%d\n", allocator->AllocInfoSize, count);
+			AllocInfo* p = (AllocInfo*)_realloc(allocator->AllocInfoArray, count * sizeof(AllocInfo));
+			allocator->AllocInfoArray = p;
+		}
+		else
+		{
+			allocator->AllocInfoArray = _new AllocInfo[count];
+			allocator->AllocInfoIndex = 0;
+			logfok("Video memory alloc tracking system: %d\n", count);
+		}
+		allocator->AllocInfoSize = count;
+	}
+
 	uint16_t FindAllocation(Allocator* allocator, Alloc_t alloc)
 	{
 		uint16_t index = UINT16_MAX;
-		for (uint16_t i = 0; i < MEM_ALLOC_INFO_ARRAY_COUNT; ++i)
+		for (uint16_t i = 0; i < allocator->AllocInfoSize; ++i)
 		{
 			if (allocator->AllocInfoArray[i].Alloc == alloc)
 			{
@@ -122,20 +140,45 @@ namespace Mist
 	void RegisterAllocation(Allocator* allocator, Alloc_t alloc, uint32_t size, bool isBuffer, const char* file, uint16_t line)
 	{
 		uint16_t allocIndex = UINT16_MAX;
-		if (allocator->AllocInfoIndex < MEM_ALLOC_INFO_ARRAY_COUNT)
+		if (allocator->AllocInfoIndex < allocator->AllocInfoSize)
 			allocIndex = allocator->AllocInfoIndex++;
 		else
 			allocIndex = FindAllocation(allocator, nullptr);
-		check(allocIndex < MEM_ALLOC_INFO_ARRAY_COUNT);
+		if (allocIndex == UINT16_MAX)
+		{
+			ReallocAllocSystem(allocator, allocator->AllocInfoSize + MEM_ALLOC_INFO_ARRAY_INCREMENT);
+			check(allocator->AllocInfoIndex < allocator->AllocInfoSize);
+			allocIndex = allocator->AllocInfoIndex++;
+		}
+		check(allocIndex < allocator->AllocInfoSize);
 		SetAllocInfo(allocator->AllocInfoArray[allocIndex], alloc, file, line, size, isBuffer);
+#ifdef MIST_MEMORY_VERBOSE
+		logfinfo("[%10s][%s] %p (%d): %d -> %d\n", "gpualloc", isBuffer ? "b" : "t", allocator->AllocInfoArray[allocIndex].Alloc,
+			allocator->AllocInfoArray[allocIndex].Size,
+			isBuffer ? allocator->BufferStats.Allocated : allocator->TextureStats.Allocated,
+			(isBuffer ? allocator->BufferStats.Allocated : allocator->TextureStats.Allocated) + size);
+#endif // MIST_MEMORY_VERBOSE
 		UpdateMemStatsAlloc(isBuffer ? allocator->BufferStats : allocator->TextureStats, size);
 	}
 
 	void ReleaseAllocation(Allocator* allocator, Alloc_t alloc)
 	{
 		uint16_t index = FindAllocation(allocator, alloc);
-		check(index < MEM_ALLOC_INFO_ARRAY_COUNT);
+		check(index < allocator->AllocInfoIndex);
 		AllocInfo& info = allocator->AllocInfoArray[index];
+
+		for (uint32_t i = 0; i < allocator->AllocInfoIndex; ++i)
+		{
+			check(allocator->AllocInfoArray[i].Alloc != info.Alloc || index == i);
+		}
+
+#ifdef MIST_MEMORY_VERBOSE
+        logfinfo("[%10s][%s] %p (%d): %d -> %d\n", "gpurelease",
+			info.IsBuffer ? "b" : "t", info.Alloc,
+			info.Size,
+            info.IsBuffer ? allocator->BufferStats.Allocated : allocator->TextureStats.Allocated,
+            (info.IsBuffer ? allocator->BufferStats.Allocated : allocator->TextureStats.Allocated) - info.Size);
+#endif // MIST_MEMORY_VERBOSE
 		UpdateMemStatsRelease(info.IsBuffer ? allocator->BufferStats : allocator->TextureStats, info.Size);
 		SetAllocInfo(info, nullptr, "\0", UINT16_MAX, 0, false);
 	}
@@ -303,8 +346,7 @@ namespace Mist
 		allocator->PhysicalDevice = vkPhysicalDevice;
 #endif // !MIST_MEM_MANAGEMENT
 
-		allocator->AllocInfoArray = _new AllocInfo[MEM_ALLOC_INFO_ARRAY_COUNT];
-		allocator->AllocInfoIndex = 0;
+		ReallocAllocSystem(allocator, MEM_ALLOC_INFO_ARRAY_COUNT);
 	}
 
 	void Memory::Destroy(Allocator*& allocator)
