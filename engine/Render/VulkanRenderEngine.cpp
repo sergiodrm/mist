@@ -391,6 +391,7 @@ namespace Mist
 		{
 			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
+		logok("Shader reloaded.\n");
 	}
 
 	void VulkanRenderEngine::DumpShadersInfo()
