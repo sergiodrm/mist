@@ -420,10 +420,12 @@ namespace Mist
 		}
 		SetName(assetPath);
 
+		loadmeshlog("=== Begin loading model ===\n");
 		loadmeshlogf("Loading model from file: %s\n", assetPath);
-		loadmeshlogf("* nodes: %d\n", data->nodes_count);
-		loadmeshlogf("* materials: %d\n", data->materials_count);
-		loadmeshlogf("* meshes: %d\n", data->meshes_count);
+		loadmeshlogf("* nodes:		%4d\n", data->nodes_count);
+		loadmeshlogf("* materials:	%4d\n", data->materials_count);
+		loadmeshlogf("* meshes:		%4d\n", data->meshes_count);
+		loadmeshlogf("* textures:	%4d\n", data->textures_count);
 
 		if (data->materials_count)
 		{
@@ -459,8 +461,8 @@ namespace Mist
 			gltf_api::ReadNodeLocalTransform(node, m_transforms[i]);
 			glm::vec3 pos, rot, scl;
 			math::DecomposeMatrix(m_transforms[i], pos, rot, scl);
-			loadmeshlogf("node %d %s child of %d\n", i, m_nodeNames[i].CStr(), parentIndex);
-			loadmeshlogf("node %d %s [pos %.3f, %.3f, %.3f][rot %.3f, %.3f, %.3f][scl %.3f, %.3f, %.3f]\n", i, m_nodeNames[i].CStr(),
+			loadmeshlogf("node %4d %s child of %4d\n", i, m_nodeNames[i].CStr(), parentIndex);
+			loadmeshlogf("node %4d %s [pos %4.3f, %4.3f, %4.3f][rot %2.3f, %2.3f, %2.3f][scl %2.3f, %2.3f, %2.3f]\n", i, m_nodeNames[i].CStr(),
 				pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, scl.x, scl.y, scl.z);
 
 			// Process mesh
@@ -492,7 +494,7 @@ namespace Mist
 					tempIndices.resize(indexOffset + indexCount);
 					tempVertices.resize(vertexOffset + vertexCount);
 
-					loadmeshlogf("** primitive %d: [vertices %d | %d bytes][indices %d | %d bytes]\n", j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
+					loadmeshlogf("** primitive %2d: [vertices %6d | %6d bytes][indices %4d | %6d bytes]\n", j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
 
 					primitive.FirstIndex = indexOffset;
 					primitive.Count = indexCount;
@@ -628,6 +630,7 @@ namespace Mist
 
 	void cModel::InitNodes(index_t n)
 	{
+		// Add model root node
 		++n;
 		check(m_nodes.IsEmpty());
 		m_nodes.Allocate(n);
