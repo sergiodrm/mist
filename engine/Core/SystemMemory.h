@@ -12,6 +12,7 @@ void operator delete[](void* p, const char* file, int lin);
 
 #define _new ::new(__FILE__ " " __FUNCTION__, __LINE__)
 #define _malloc(size) Mist::Malloc(size, __FILE__, __LINE__)
+#define _realloc(_p, _size) Mist::Realloc(_p, _size, __FILE__, __LINE__)
 
 namespace Mist
 {
@@ -27,8 +28,8 @@ namespace Mist
 	{
 		unsigned int Allocated = 0;
 		unsigned int MaxAllocated = 0;
-		static constexpr size_t MemTraceSize = 2048;
-		tSystemAllocTrace MemTrace[MemTraceSize];
+		static constexpr size_t MemTraceSize = 2048 * 2;
+		tSystemAllocTrace* MemTraceArray;
 		unsigned int MemTraceIndex = 0;
 		unsigned int FreeIndices[MemTraceSize];
 		unsigned int FreeIndicesIndex = 0;
@@ -37,8 +38,10 @@ namespace Mist
 	void InitSytemMemory();
 	void TerminateSystemMemory();
 	const tSystemMemStats& GetMemoryStats();
+	void SysMem_IntegrityCheck();
 
 	[[nodiscard]] void* Malloc(size_t size, const char* file, int line);
+	[[nodiscard]] void* Realloc(void* p, size_t size, const char* file, int line);
 	void Free(void* p);
 
 	template <typename T>
