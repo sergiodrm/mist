@@ -12,6 +12,7 @@
 #include "Core/Types.h"
 #include <glm/glm.hpp>
 #include "Utils/Angles.h"
+#include "Utils/FileSystem.h"
 
 #define MIST_MAX_MODELS 128
 
@@ -154,8 +155,8 @@ namespace Mist
 	
 	struct tDrawList
 	{
-		tFixedHeapArray<tDrawListItem> Items;
 		uint32_t RenderFlags;
+		tFixedHeapArray<tDrawListItem> Items;
 
 		void SubmitRenderPrimitive(const cMesh* mesh, index_t primitiveIndex, index_t transformOffset, index_t materialIndex);
 	};
@@ -258,6 +259,7 @@ namespace Mist
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr index_t MaxNodeLevel = 16;
+		cAssetPath m_sceneFile;
 		tDynArray<tString> m_names;
 		tDynArray<Hierarchy> m_hierarchy;
 		tDynArray<TransformComponent> m_transformComponents;

@@ -306,6 +306,9 @@ namespace Mist
 	void Scene::LoadScene(const RenderContext& context, const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadScene, "Load scene (%s)", filepath);
+
+		m_sceneFile = filepath;
+
 		cFile file;
 		check(file.OpenText(filepath, cFile::FileMode_Read) == cFile::Result_Ok);
 		uint32_t size = file.GetContentSize();
@@ -575,8 +578,10 @@ namespace Mist
 			{
 				index_t meshIndex = m_meshComponentMap[i].MeshIndex;
 				cModel& model = m_models[meshIndex];
+				uint32_t count = model.GetTransformsCount();
+				check(offset + count < m_renderTransforms.size());
 				model.UpdateRenderTransforms(m_renderTransforms.data() + offset, m_globalTransforms[i]);
-				offset += model.GetTransformsCount();
+				offset += count;
 			}
 		}
 
@@ -910,22 +915,19 @@ namespace Mist
 		float rotStep = 0.1f;
 		float sclStep = 0.5f;
 
-		static char sceneFile[256];
-		static bool _b = false;
-		if (!_b)
-		{
-			strcpy_s(sceneFile, "scenes/Scene.yaml");
-			_b = !false;
-		}
+		char tempSceneFile[256];
+		strcpy_s(tempSceneFile, m_sceneFile.GetAssetPath());
+
 		const RenderContext& context = m_engine->GetContext();
 		ImGui::Columns(3);
 		if (ImGui::Button("Save"))
-			SaveScene(context, sceneFile);
+			SaveScene(context, tempSceneFile);
 		ImGui::NextColumn();
 		if (ImGui::Button("Load"))
-			LoadScene(context, sceneFile);
+			LoadScene(context, tempSceneFile);
 		ImGui::NextColumn();
-		ImGui::InputText("Scene file", sceneFile, 256);
+		if (ImGui::InputText("Scene file", tempSceneFile, 256))
+			m_sceneFile = tempSceneFile;
 		ImGui::Columns();
 
 		ImGui::Separator();
