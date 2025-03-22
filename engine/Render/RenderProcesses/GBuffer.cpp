@@ -15,18 +15,19 @@
 
 namespace Mist
 {
+	GBuffer* g_gbuffer = nullptr;
+
 	void GBuffer::Init(const RenderContext& renderContext)
 	{
+		check(g_gbuffer == nullptr);
+		g_gbuffer = this;
+
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
 		RenderTargetDescription description;
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_POSITION, GBUFFER_RT_LAYOUT_POSITION, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_NORMAL, GBUFFER_RT_LAYOUT_NORMAL, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GBUFFER_RT_FORMAT_ALBEDO, GBUFFER_RT_LAYOUT_ALBEDO, SAMPLE_COUNT_1_BIT, clearValue);
-		description.DepthAttachmentDescription.Format = GBUFFER_RT_FORMAT_DEPTH;
-		description.DepthAttachmentDescription.Layout = GBUFFER_RT_LAYOUT_DEPTH;
-		description.DepthAttachmentDescription.MultisampledBit = SAMPLE_COUNT_1_BIT;
-		clearValue.depthStencil.depth = 1.f;
-		description.DepthAttachmentDescription.ClearValue = clearValue;
+		description.AddColorAttachment(GetGBufferFormat(RT_POSITION), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(GetGBufferFormat(RT_NORMAL), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+		description.AddColorAttachment(GetGBufferFormat(RT_ALBEDO), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
+		description.SetDepthAttachment(GetGBufferFormat(RT_DEPTH_STENCIL), IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {});
 		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
 		description.RenderArea.offset = { .x = 0, .y = 0 };
 		description.ResourceName = "Gbuffer_RT";
@@ -36,12 +37,10 @@ namespace Mist
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
+		check(g_gbuffer == this);
 		RenderTarget::Destroy(renderContext, m_renderTarget);
-#if 0
-		m_skyboxModel->Destroy(renderContext);
-		delete m_skyboxModel;
-		m_skyboxModel = nullptr;
-#endif // 0
+
+		g_gbuffer = nullptr;
 	}
 
 	void GBuffer::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -52,6 +51,8 @@ namespace Mist
 	{
 	}
 
+	CIntVar CVar_GBufferDraw("r_gbufferdraw", 0);
+
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
@@ -59,35 +60,19 @@ namespace Mist
 
 		// MRT
         commandList->BeginMarker("GBuffer_MRT");
-		commandList->SetGraphicsState({.Program = m_gbufferShader, .Rt = m_renderTarget});
+		GraphicsState state{ .Rt = m_renderTarget };
+		if (CVar_GBufferDraw.Get())
+			state.Program = m_gbufferShader;
+		commandList->SetGraphicsState(state);
 		commandList->ClearDepthStencil();
-		m_gbufferShader->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
-
-		//vkCmdSetStencilOp(cmd, VK_STENCIL_FACE_FRONT_AND_BACK, VK_STENCIL_OP_KEEP, VK_STENCIL_OP_REPLACE, VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
-		//vkCmdSetStencilWriteMask(cmd, VK_STENCIL_FACE_FRONT_AND_BACK, 0xffffffff);
-		//vkCmdSetStencilCompareMask(cmd, VK_STENCIL_FACE_FRONT_AND_BACK, 0x00000000);
-		//vkCmdSetStencilReference(cmd, VK_STENCIL_FACE_FRONT_AND_BACK, 0x00000000);
-		//vkCmdSetStencilTestEnable(cmd, VK_TRUE);
-
-		frameContext.Scene->Draw(renderContext, m_gbufferShader, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
-#if 0
-
-		m_skyboxShader->UseProgram(renderContext);
-		const cTexture* texture = frameContext.Scene->GetSkyboxTexture();
-		glm::mat4 viewRot = frameContext.CameraData->InvView;
-		viewRot[3] = { 0.f,0.f,0.f,1.f };
-		glm::mat4 ubo[2];
-		ubo[0] = viewRot;
-		ubo[1] = frameContext.CameraData->Projection * viewRot;
-		m_skyboxShader->SetBufferData(renderContext, "u_ubo", ubo, sizeof(glm::mat4) * 2);
-		m_skyboxShader->BindTextureSlot(renderContext, 1, *texture);
-		m_skyboxShader->FlushDescriptors(renderContext);
-		check(m_skyboxModel->m_meshes.GetSize() == 1);
-		const cMesh& mesh = m_skyboxModel->m_meshes[0];
-		mesh.BindBuffers(cmd);
-		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
-#endif // 0
-
+		if (CVar_GBufferDraw.Get())
+		{
+			state.Program->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
+			frameContext.Scene->Draw(renderContext, state.Program, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
+		}
+		else
+			frameContext.Scene->RenderPipelineDraw(renderContext, RenderFlags_Fixed);
+		commandList->ClearState();
 		commandList->EndMarker();
 	}
 
@@ -114,6 +99,12 @@ namespace Mist
 	const RenderTarget* GBuffer::GetRenderTarget(uint32_t index) const
 	{
 		return m_renderTarget;
+	}
+
+	const RenderTarget* GBuffer::GetGBuffer()
+	{
+		check(g_gbuffer);
+		return g_gbuffer->GetRenderTarget();
 	}
 
 	void GBuffer::DebugDraw(const RenderContext& context)
@@ -210,43 +201,19 @@ namespace Mist
 			shaderDesc.FrontStencil.PassOp = STENCIL_OP_REPLACE;
 			shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_REPLACE;
 			shaderDesc.BackStencil = shaderDesc.FrontStencil;
-
-			//shaderDesc.DynamicStates.reserve(4);
-			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_STENCIL_COMPARE_MASK);
-			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_STENCIL_REFERENCE);
-			//shaderDesc.DynamicStates.push_back(DYNAMIC_STATE_STENCIL_WRITE_MASK);
 			m_gbufferShader = ShaderProgram::Create(renderContext, shaderDesc);
 		}
+	}
 
-#if 0
+	EFormat GBuffer::GetGBufferFormat(EGBufferTarget target)
+	{
+		switch (target)
 		{
-			// Skybox
-			tShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
-			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
-			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "SKYBOX_GBUFFER" });
-			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.RenderTarget = &m_renderTarget;
-			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
-			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
-			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
-
-			shaderDesc.DepthStencilMode = /*DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST |*/ DEPTH_STENCIL_STENCIL_TEST;
-			shaderDesc.FrontStencil.CompareMask = 0x1;
-			shaderDesc.FrontStencil.Reference = 0x1;
-			shaderDesc.FrontStencil.WriteMask = 0x1;
-			shaderDesc.FrontStencil.CompareOp = COMPARE_OP_NOT_EQUAL;
-			shaderDesc.FrontStencil.FailOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.PassOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_KEEP;
-			shaderDesc.BackStencil = shaderDesc.FrontStencil;
-
-			m_skyboxShader = ShaderProgram::Create(renderContext, shaderDesc);
-
-			m_skyboxModel = _new cModel();
-			m_skyboxModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
+		case RT_POSITION:
+		case RT_NORMAL: return FORMAT_R32G32B32A32_SFLOAT;
+		case RT_ALBEDO: return FORMAT_R8G8B8A8_UNORM;
+		case RT_DEPTH_STENCIL: return FORMAT_D24_UNORM_S8_UINT;
 		}
-#endif // 0
-
+		return FORMAT_UNDEFINED;
 	}
 }
