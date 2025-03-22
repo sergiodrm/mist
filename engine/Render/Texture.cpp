@@ -181,7 +181,7 @@ namespace Mist
 		vkcheck(vkCreateImageView(context.Device, &viewInfo, nullptr, &view));
 		m_views.push_back(view);
 
-		char buff[128];
+		char buff[256];
 		sprintf_s(buff, "%s_ImageView_%d", GetName(), (uint32_t)m_views.size()-1);
 		SetVkObjectName(context, &view, VK_OBJECT_TYPE_IMAGE_VIEW, buff);
 
