@@ -317,7 +317,7 @@ namespace Mist
 			DefaultMaterial = nullptr;
 		}
 
-
+		DestroyCachedTextures(m_renderContext);
 		DestroySamplers(m_renderContext);
 		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
 		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
