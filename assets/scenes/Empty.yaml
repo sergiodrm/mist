@@ -8,3 +8,10 @@ Environment:
     Left: textures/yokohama/posx.jpg
     Right: textures/yokohama/negx.jpg
 RenderObjects:
+  - RenderObject: 0
+    Name: Root
+    Parent: 65535
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
