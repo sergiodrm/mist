@@ -26,7 +26,7 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < g_textures.GetSize(); ++i)
 		{
-			if (!stricmp(name, g_textures[i]->GetName()))
+			if (g_textures[i] && !stricmp(name, g_textures[i]->GetName()))
 				return i;
 		}
 		return UINT32_MAX;
