@@ -1278,10 +1278,11 @@ namespace Mist
 			index_t offset = 0;
 			for (index_t i = 0; i < m_models.GetSize(); ++i)
 			{
-				check(offset < globals::MaxMaterials);
-				m_models[i].UpdateMaterials(m_materials.data() + offset);
+				index_t count = m_models[i].GetMaterialCount();
+				check(offset+count < globals::MaxMaterials);
+				m_models[i].UpdateMaterials(m_materials.GetData() + offset);
 				m_modelMaterialMap[i] = offset;
-				offset += m_models[i].GetMaterialCount();
+				offset += count;
 			}
 
 			InitRenderPass();
