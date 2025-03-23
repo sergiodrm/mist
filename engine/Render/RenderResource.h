@@ -20,7 +20,7 @@ namespace Mist
 	class cRenderResource
 	{
 	public:
-		static constexpr uint32_t ResourceNameLength = 64;
+		static constexpr uint32_t ResourceNameLength = 256;
 
 		cRenderResource() : m_name{ 0 } 
 		{
@@ -35,6 +35,7 @@ namespace Mist
 		void SetName(const char* str) 
 		{ 
 			check(*str); 
+			check(strlen(str) <= ResourceNameLength);
 			strcpy_s(m_name, str); 
 		}
 		inline constexpr eResourceType GetType() const { return RType; }
