@@ -29,9 +29,9 @@ namespace Mist
 		unsigned int Allocated = 0;
 		unsigned int MaxAllocated = 0;
 		static constexpr size_t MemTraceSize = 2048 * 2;
-		tSystemAllocTrace* MemTraceArray;
+		tSystemAllocTrace* MemTraceArray = nullptr;
 		unsigned int MemTraceIndex = 0;
-		unsigned int FreeIndices[MemTraceSize];
+		unsigned int* FreeIndicesArray = nullptr;
 		unsigned int FreeIndicesIndex = 0;
 	};
 

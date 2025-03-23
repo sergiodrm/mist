@@ -71,8 +71,8 @@ namespace Mist
 		tSystemAllocTrace* trace = nullptr;
 		if (stats.FreeIndicesIndex)
 		{
-			unsigned int i = stats.FreeIndices[stats.FreeIndicesIndex-1];
-			stats.FreeIndices[stats.FreeIndicesIndex-1] = UINT32_MAX;
+			unsigned int i = stats.FreeIndicesArray[stats.FreeIndicesIndex-1];
+			stats.FreeIndicesArray[stats.FreeIndicesIndex-1] = UINT32_MAX;
 			--stats.FreeIndicesIndex;
 			trace = &stats.MemTraceArray[i];
 		}
@@ -99,7 +99,7 @@ namespace Mist
 				check(stats.Allocated - stats.MemTraceArray[i].Size < stats.Allocated);
 				check(stats.FreeIndicesIndex < stats.MemTraceSize);
 
-				stats.FreeIndices[stats.FreeIndicesIndex++] = i;
+				stats.FreeIndicesArray[stats.FreeIndicesIndex++] = i;
 				stats.Allocated -= stats.MemTraceArray[i].Size;
 				stats.MemTraceArray[i].Data = nullptr;
 				stats.MemTraceArray[i].Size = 0;
@@ -133,6 +133,9 @@ namespace Mist
 	void InitSytemMemory()
 	{
 		SystemMemStats.MemTraceArray = new tSystemAllocTrace[tSystemMemStats::MemTraceSize];
+		SystemMemStats.FreeIndicesArray = new unsigned int[tSystemMemStats::MemTraceSize];
+		SystemMemStats.MemTraceIndex = 0;
+		SystemMemStats.FreeIndicesIndex = 0;
 		AddConsoleCommand("c_memorydump", &ExecCommand_DumpMemoryTrace);
 	}
 
@@ -140,8 +143,12 @@ namespace Mist
 	{
 		DumpMemoryTrace(SystemMemStats);
 		//assert(SystemMemStats.Allocated == 0);
+		SystemMemStats.MemTraceIndex = 0;
 		delete[] SystemMemStats.MemTraceArray;
 		SystemMemStats.MemTraceArray = nullptr;
+		SystemMemStats.FreeIndicesIndex = 0;
+		delete[] SystemMemStats.FreeIndicesArray;
+		SystemMemStats.FreeIndicesArray = nullptr;
 	}
 
 	const tSystemMemStats& GetMemoryStats()
