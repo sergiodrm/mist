@@ -260,22 +260,22 @@ namespace Mist
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr index_t MaxNodeLevel = 16;
 		cAssetPath m_sceneFile;
-		tDynArray<tString> m_names;
-		tDynArray<Hierarchy> m_hierarchy;
-		tDynArray<TransformComponent> m_transformComponents;
+		tFixedHeapArray<tString> m_names;
+		tFixedHeapArray<Hierarchy> m_hierarchy;
+		tFixedHeapArray<TransformComponent> m_transformComponents;
 		tMap<index_t, MeshComponent> m_meshComponentMap;
 		tMap<index_t, LightComponent> m_lightComponentMap;
 
 		tStaticArray<cModel, MIST_MAX_MODELS> m_models;
 
-		tDynArray<glm::mat4> m_localTransforms;
-		tDynArray<glm::mat4> m_globalTransforms;
-		tDynArray<glm::mat4> m_renderTransforms;
-		tDynArray<sMaterialRenderData> m_materials;
+		tFixedHeapArray<glm::mat4> m_localTransforms;
+		tFixedHeapArray<glm::mat4> m_globalTransforms;
+		tFixedHeapArray<glm::mat4> m_renderTransforms;
+		tFixedHeapArray<sMaterialRenderData> m_materials;
 		tMap<index_t, index_t> m_modelMaterialMap;
 		index_t m_editingModel = index_invalid;
 		
-		tDynArray<index_t> m_dirtyNodes[MaxNodeLevel];
+		tFixedHeapArray<index_t> m_dirtyNodes[MaxNodeLevel];
 
 		glm::vec3 m_ambientColor = {0.05f, 0.05f, 0.05f};
 

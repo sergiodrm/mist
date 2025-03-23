@@ -207,11 +207,15 @@ namespace Mist
 
 	void Scene::Init()
 	{
-		m_globalTransforms.resize(globals::MaxRenderObjects);
-		m_localTransforms.resize(globals::MaxRenderObjects);
-		m_renderTransforms.resize(globals::MaxRenderObjects);
-		m_transformComponents.resize(globals::MaxRenderObjects);
-		m_materials.resize(globals::MaxMaterials);
+		m_globalTransforms.AllocateAndResize(globals::MaxRenderObjects);
+		m_localTransforms.AllocateAndResize(globals::MaxRenderObjects);
+		m_renderTransforms.AllocateAndResize(globals::MaxRenderObjects);
+		m_transformComponents.AllocateAndResize(globals::MaxRenderObjects);
+		m_materials.AllocateAndResize(globals::MaxMaterials);
+		m_names.Allocate(globals::MaxRenderObjects);
+		m_hierarchy.Allocate(globals::MaxRenderObjects);
+		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
+			m_dirtyNodes[i].Allocate(globals::MaxRenderObjects);
 
 		PushRenderPipeline(RenderFlags_Fixed);
 		PushRenderPipeline(RenderFlags_ShadowMap);
@@ -233,13 +237,13 @@ namespace Mist
 		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
 			m_models[i].Destroy(renderContext);
 		m_models.Clear();
-		m_localTransforms.clear();
-		m_globalTransforms.clear();
-		m_hierarchy.clear();
-		m_names.clear();
-		m_materials.clear();
+		m_localTransforms.Delete();
+		m_globalTransforms.Delete();
+		m_hierarchy.Delete();
+		m_names.Delete();
+		m_materials.Delete();
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
-			m_dirtyNodes[i].clear();
+			m_dirtyNodes[i].Delete();
 	}
 
 	void Scene::InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext)
@@ -257,19 +261,19 @@ namespace Mist
 	sRenderObject Scene::CreateRenderObject(sRenderObject parent)
 	{
 		// Generate new node in all basics structures
-		sRenderObject node = (uint32_t)m_hierarchy.size();
+		sRenderObject node = m_hierarchy.GetSize();
 		m_localTransforms[node] = glm::mat4(1.f);
 		m_globalTransforms[node] = glm::mat4(1.f);
 		m_transformComponents[node] = { .Position = glm::vec3(0.f), .Rotation = tAngles(0.f), .Scale = glm::vec3(1.f) };
 		char buff[64];
 		sprintf_s(buff, "RenderObject_%u", node.Id);
-		m_names.push_back(buff);
-		m_hierarchy.push_back({ .Parent = parent });
+		m_names.Push(buff);
+		m_hierarchy.Push({ .Parent = parent });
 
 		// Connect siblings
 		if (parent.IsValid())
 		{
-			check(parent.Id < (uint32_t)m_hierarchy.size());
+			check(parent.Id < m_hierarchy.GetSize());
 			sRenderObject firstSibling = m_hierarchy[parent].Child;
 			if (firstSibling.IsValid())
 			{
@@ -484,12 +488,12 @@ namespace Mist
 
 	bool Scene::IsValid(sRenderObject object) const
 	{
-		return object.Id < (uint32_t)m_hierarchy.size();
+		return object.Id < GetRenderObjectCount();
 	}
 
 	uint32_t Scene::GetRenderObjectCount() const
 	{
-		return (uint32_t)m_hierarchy.size();
+		return m_hierarchy.GetSize();
 	}
 
 	sRenderObject Scene::GetRoot() const
@@ -537,7 +541,7 @@ namespace Mist
 	{
 		check(IsValid(renderObject));
 		int32_t level = m_hierarchy[renderObject].Level;
-		m_dirtyNodes[level].push_back(renderObject);
+		m_dirtyNodes[level].Push(renderObject);
 		for (sRenderObject child = m_hierarchy[renderObject].Child; child.IsValid(); child = m_hierarchy[child].Sibling)
 			MarkAsDirty(child);
 	}
@@ -546,41 +550,41 @@ namespace Mist
 	void Scene::RecalculateTransforms()
 	{
 		CPU_PROFILE_SCOPE(RecalculateTransforms);
-		check(m_localTransforms.size() == m_transformComponents.size());
-		check(m_globalTransforms.size() == m_transformComponents.size());
-		TransformComponentToMatrix(m_transformComponents.data(), m_localTransforms.data(), (uint32_t)m_transformComponents.size());
+		check(m_localTransforms.GetSize() == m_transformComponents.GetSize());
+		check(m_globalTransforms.GetSize() == m_transformComponents.GetSize());
+		TransformComponentToMatrix(m_transformComponents.GetData(), m_localTransforms.GetData(), m_transformComponents.GetSize());
 		// Process root level first
-		if (!m_dirtyNodes[0].empty())
+		if (!m_dirtyNodes[0].IsEmpty())
 		{
-			for (uint32_t i = 0; i < m_dirtyNodes[0].size(); ++i)
+			for (uint32_t i = 0; i < m_dirtyNodes[0].GetSize(); ++i)
 			{
 				uint32_t nodeIndex = m_dirtyNodes[0][i];
 				m_globalTransforms[nodeIndex] = m_localTransforms[nodeIndex];
 			}
-			m_dirtyNodes[0].clear();
+			m_dirtyNodes[0].Clear();
 		}
 		// Iterate over the deeper levels
 		for (uint32_t level = 1; level < MaxNodeLevel; ++level)
 		{
-			for (uint32_t nodeIndex = 0; nodeIndex < m_dirtyNodes[level].size(); ++nodeIndex)
+			for (uint32_t nodeIndex = 0; nodeIndex < m_dirtyNodes[level].GetSize(); ++nodeIndex)
 			{
 				int32_t node = m_dirtyNodes[level][nodeIndex];
 				int32_t parentNode = m_hierarchy[node].Parent;
 				m_globalTransforms[node] = m_globalTransforms[parentNode] * m_localTransforms[node];
 			}
-			m_dirtyNodes[level].clear();
+			m_dirtyNodes[level].Clear();
 		}
 
 		index_t offset = 0;
-		for (index_t i = 0; i < m_hierarchy.size(); ++i)
+		for (index_t i = 0; i < m_hierarchy.GetSize(); ++i)
 		{
 			if (m_meshComponentMap.contains(i))
 			{
 				index_t meshIndex = m_meshComponentMap[i].MeshIndex;
 				cModel& model = m_models[meshIndex];
 				uint32_t count = model.GetTransformsCount();
-				check(offset + count < m_renderTransforms.size());
-				model.UpdateRenderTransforms(m_renderTransforms.data() + offset, m_globalTransforms[i]);
+				check(offset + count < m_renderTransforms.GetSize());
+				model.UpdateRenderTransforms(m_renderTransforms.GetData() + offset, m_globalTransforms[i]);
 				offset += count;
 			}
 		}
@@ -681,7 +685,7 @@ namespace Mist
 
 	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
-		PROFILE_SCOPE_LOG(LoadSkybox);
+		PROFILE_SCOPE_LOG(LoadSkybox, "LoadSkybox");
 		// descriptors generator
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 
@@ -790,9 +794,10 @@ namespace Mist
 							{
 								check(primitive.Material);
 								primitive.Material->BindTextures(context, *shader, materialSetIndex);
-								index_t matIndex = primitive.Material - model.m_materials.GetData();
+								size_t matIndex = (size_t)primitive.Material - (size_t)model.m_materials.GetData();
+								check(matIndex < UINT16_MAX);
 								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
-								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
+								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + (index_t)matIndex);
 							}
 							commandList->BindProgramDescriptorSets();
 							commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
@@ -1078,7 +1083,7 @@ namespace Mist
 		}
 		if (ImGui::TreeNode("Render transforms"))
 		{
-			for (uint32_t i = 0; i < m_renderTransforms.size(); ++i)
+			for (uint32_t i = 0; i < m_renderTransforms.GetSize(); ++i)
 			{
 				ImGui::Text("%3d", i);
 				for (uint32_t row = 0; row < 4; ++row)
@@ -1102,7 +1107,7 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 		{
-			if (!m_dirtyNodes[i].empty())
+			if (!m_dirtyNodes[i].IsEmpty())
 				return true;
 		}
 		return false;
@@ -1285,8 +1290,8 @@ namespace Mist
 			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
 			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 			//check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
-			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, m_renderTransforms.data(), (uint32_t)m_renderTransforms.size(), sizeof(glm::mat4), 0));
-			check(buffer->SetDynamicUniform(renderContext, "u_material", m_materials.data(), (uint32_t)m_materials.size(), sizeof(sMaterialRenderData), 0));
+			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, m_renderTransforms.GetData(), m_renderTransforms.GetSize(), sizeof(glm::mat4), 0));
+			check(buffer->SetDynamicUniform(renderContext, "u_material", m_materials.GetData(), m_materials.GetSize(), sizeof(sMaterialRenderData), 0));
 #if 0
 			// Update materials
 			tArray<MaterialUniform, MIST_MAX_MATERIALS> materialUniformBuffer;
@@ -1345,7 +1350,7 @@ namespace Mist
 	const glm::mat4* Scene::GetRawGlobalTransforms() const
 	{
 		check(!IsDirty());
-		return m_globalTransforms.data();
+		return m_globalTransforms.GetData();
 	}
 
 
