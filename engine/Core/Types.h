@@ -34,6 +34,7 @@ namespace Mist
 
 	enum {index_invalid = UINT16_MAX};
 
+
 	template <typename T>
 	void CopyDynArray(tDynArray<T>& dst, const std::vector<T>& src)
 	{
@@ -264,6 +265,12 @@ namespace Mist
 			m_data = (DataType*)_malloc(count * sizeof(DataType));
 		}
 
+		inline void AllocateAndResize(IndexType count)
+		{
+			Allocate(count);
+			Resize(count);
+		}
+
 		void Delete()
 		{
 			Clear();
@@ -292,7 +299,8 @@ namespace Mist
 		void Push(const DataType& value)
 		{
 			check(m_data && m_index < m_count);
-			m_data[m_index++] = value;
+			new (&m_data[m_index++]) DataType(value);
+			//m_data[m_index++] = value;
 		}
 
 		void Pop()
