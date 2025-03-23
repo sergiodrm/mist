@@ -12,12 +12,14 @@ newaction {
     trigger = "clear",
     description = "clear project files",
     execute = function()
+        os.execute("del /q /s /f /a:h .vs")
         os.execute("del /q /s *.vcxproj*")
         os.execute("del /q /s *.sln")
         os.execute("del /q /s bin")
         os.execute("del /q /s temp")
-        os.execute("rmdir bin")
-        os.execute("rmdir temp")
+        os.execute("rmdir /q /s bin")
+        os.execute("rmdir /q /s temp")
+        os.execute("rmdir /q /s .vs")
     end
 }
 
