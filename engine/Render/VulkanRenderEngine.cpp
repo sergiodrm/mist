@@ -146,13 +146,14 @@ namespace Mist
 	{
 		if (!DefaultTexture)
 		{
+#if 0
 			constexpr EFormat f = FORMAT_R8G8B8A8_SRGB;
 			constexpr uint32_t w = 2;
 			constexpr uint32_t h = 2;
 			constexpr uint32_t d = 1;
-			constexpr uint8_t pixels[] = { 
-				0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff, 
-				0x00, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff 
+			constexpr uint8_t pixels[] = {
+				0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff,
+				0x00, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff
 			};
 			static_assert(utils::GetPixelSizeFromFormat(f) * w * h * d == sizeof(pixels));
 			tImageDescription desc
@@ -166,6 +167,10 @@ namespace Mist
 			const uint8_t* layer = (uint8_t*)pixels;
 			DefaultTexture->SetImageLayers(context, &layer, 1);
 			DefaultTexture->CreateView(context, tViewDescription());
+#else
+			check(LoadTextureFromFile(context, "textures/checkerboard.jpg", &DefaultTexture, FORMAT_R8G8B8A8_UNORM));
+			DefaultTexture->CreateView(context, tViewDescription());
+#endif // 0
 		}
 		return DefaultTexture;
 	}
@@ -235,8 +240,8 @@ namespace Mist
 			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Init(m_renderContext.Device, 40);
 			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Init(m_renderContext.Device, 40);
 
-			// 3 stage buffer per frame with 20 MB each one.
-			m_renderContext.FrameContextArray[i].TempStageBuffer.Init(m_renderContext, 20 * 1024 * 1024, 3);
+			// 3 stage buffer per frame with 100 MB each one.
+			m_renderContext.FrameContextArray[i].TempStageBuffer.Init(m_renderContext, 100 * 1024 * 1024, 3);
 		}
 
 		// Initialize render processes after instantiate render context

@@ -51,7 +51,7 @@ namespace Mist
 	{
 	}
 
-	CIntVar CVar_GBufferDraw("r_gbufferdraw", 0);
+	CIntVar CVar_GBufferDraw("r_gbufferdraw", 1);
 
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{

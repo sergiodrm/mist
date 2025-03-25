@@ -5,6 +5,8 @@
 #include "VulkanRenderEngine.h"
 #include "Shader.h"
 #include <string>
+#include "RenderProcesses/GBuffer.h"
+#include "Core/Logger.h"
 
 namespace Mist
 {
@@ -54,6 +56,7 @@ namespace Mist
     void cMaterial::SetupShader(const RenderContext& context)
     {
         check(!m_shader);
+#if 0
         tShaderProgramDescription desc;
         desc.VertexShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.vert");
         desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.frag");
@@ -100,7 +103,79 @@ namespace Mist
         else
             desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "MAX_SHADOW_MAPS", MAX_SHADOW_MAPS_STR });
 
-        //m_shader = ShaderProgram::Create(context, desc);
+        m_shader = ShaderProgram::Create(context, desc); 
+#else
+        tShaderProgramDescription shaderDesc;
+
+        tShaderDynamicBufferDescription modelDynDesc;
+        modelDynDesc.Name = "u_model";
+        modelDynDesc.ElemCount = globals::MaxRenderObjects;
+        modelDynDesc.IsShared = true;
+
+        tShaderDynamicBufferDescription materialDynDesc = modelDynDesc;
+        materialDynDesc.Name = "u_material";
+        materialDynDesc.ElemCount = globals::MaxMaterials;
+        materialDynDesc.IsShared = true;
+
+        shaderDesc.DynamicBuffers.push_back(modelDynDesc);
+        shaderDesc.DynamicBuffers.push_back(materialDynDesc);
+        shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("mrt.vert");
+        shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mrt.frag");
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({#_flag, _flag})
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
+        DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
+        DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+#undef DECLARE_MACRO_ENUM
+
+        shaderDesc.RenderTarget = GBuffer::GetGBuffer();
+        shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
+        shaderDesc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
+        shaderDesc.FrontStencil.CompareMask = 0x1;
+        shaderDesc.FrontStencil.Reference = 0x1;
+        shaderDesc.FrontStencil.WriteMask = 0x1;
+        shaderDesc.FrontStencil.CompareOp = COMPARE_OP_ALWAYS;
+        shaderDesc.FrontStencil.FailOp = STENCIL_OP_REPLACE;
+        shaderDesc.FrontStencil.PassOp = STENCIL_OP_REPLACE;
+        shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_REPLACE;
+        shaderDesc.BackStencil = shaderDesc.FrontStencil;
+        m_shader = ShaderProgram::Create(context, shaderDesc);
+#endif // 0
+
+        SetupDescriptors(context);
+    }
+
+    void cMaterial::SetupDescriptors(const RenderContext& context)
+    {
+        tStaticArray<VkDescriptorImageInfo, MATERIAL_TEXTURE_COUNT> imageInfoList;
+        for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
+        {
+            cTexture* tex = m_textures[i];
+            if (!tex)
+                tex = GetTextureCheckerboard4x4(context);
+            check(tex);
+            VkDescriptorImageInfo info{ .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+            info.sampler = tex->GetSampler();
+            info.imageView = tex->GetView(0);
+            imageInfoList.Push(info);
+        }
+        check(imageInfoList.GetSize() == MATERIAL_TEXTURE_COUNT);
+        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+            .BindImage(0, imageInfoList.GetData(), MATERIAL_TEXTURE_COUNT, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0)
+            .Build(context, m_textureSet);
     }
 
     void cMaterial::Destroy(const RenderContext& context)

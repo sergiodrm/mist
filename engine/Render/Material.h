@@ -56,6 +56,7 @@ namespace Mist
 	public:
 		cMaterial();
 		void SetupShader(const RenderContext& context);
+		void SetupDescriptors(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 
 		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot) const;
@@ -66,6 +67,7 @@ namespace Mist
 		tMaterialFlags m_flags;
 		// Texture maps
 		cTexture* m_textures[MATERIAL_TEXTURE_COUNT];
+		VkDescriptorSet m_textureSet;
 
 		// Emissive
 		glm::vec3 m_emissiveFactor;
