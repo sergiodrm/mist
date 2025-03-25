@@ -217,23 +217,8 @@ public:
 		scene->LoadScene(engine->GetContext(), CVar_LoadScene.Get());
 	}
 
-	virtual void LogicProcess(float deltaTime) override 
-	{
-		m_camera.Tick(deltaTime);
-		GetEngineInstance()->UpdateSceneView(m_camera.GetCamera().GetView(), m_camera.GetCamera().GetProjection());
-	}
 protected:
-	virtual void ProcessEvent(void* e) override
-	{
-		Mist::tApplication::ProcessEvent(e);
-		m_camera.ProcessEvent(e);
-	}
-	virtual void ProcessImGui() override
-	{
-		m_camera.ImGuiDraw();
-	}
 private:
-	Mist::CameraController m_camera;
 };
 
 Mist::tApplication* CreateGameApplication()

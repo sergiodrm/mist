@@ -49,7 +49,7 @@ namespace Mist
 		static uint64_t GetFrame();
 		static void ImGuiDraw();
 	protected:
-		virtual void LogicProcess(float deltaTime) {}
+		virtual void LogicProcess(float deltaTime);
 		void ProcessAppEvents();
 		virtual void ProcessEvent(void* e);
 		virtual void ProcessImGui() {}

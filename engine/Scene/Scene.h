@@ -13,8 +13,10 @@
 #include <glm/glm.hpp>
 #include "Utils/Angles.h"
 #include "Utils/FileSystem.h"
+#include "Render/Camera.h"
 
 #define MIST_MAX_MODELS 128
+#define MIST_MAX_CAMERAS 4
 
 namespace Mist
 {
@@ -64,6 +66,15 @@ namespace Mist
 		uint32_t MeshIndex;
 
 		MeshComponent() : MeshIndex(UINT32_MAX) { *MeshAssetPath = 0; }
+	};
+
+	struct CameraComponent
+	{
+		bool Main;
+		index_t CameraIndex;
+
+		CameraComponent() : Main(false), CameraIndex(index_invalid) {}
+		CameraComponent(index_t i) : Main(false), CameraIndex(i) {}
 	};
 
 	struct Hierarchy
@@ -199,6 +210,10 @@ namespace Mist
 		void Destroy();
 
 		void InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext);
+		void Tick(float deltaTime);
+
+		const CameraController& GetCamera() const;
+		CameraController& GetCamera();
 
 		void LoadScene(const RenderContext& context, const char* filepath);
 		void SaveScene(const RenderContext& context, const char* filepath);
@@ -248,13 +263,14 @@ namespace Mist
 	protected:
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
-		bool LoadMeshesFromFile(const RenderContext& context, const char* filepath);
 		bool LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
 
 		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
 		cModel* GetModel(const char* modelName);
 		index_t LoadModel(const RenderContext& context, const char* filepath);
 
+		index_t NewCamera();
+		void SetCamera(sRenderObject r, const CameraComponent& cameraIndex);
 
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
@@ -265,8 +281,10 @@ namespace Mist
 		tFixedHeapArray<TransformComponent> m_transformComponents;
 		tMap<index_t, MeshComponent> m_meshComponentMap;
 		tMap<index_t, LightComponent> m_lightComponentMap;
+		tMap<index_t, CameraComponent> m_cameraComponentMap;
 
 		tStaticArray<cModel, MIST_MAX_MODELS> m_models;
+		tStaticArray<CameraController, MIST_MAX_CAMERAS> m_cameras;
 
 		tFixedHeapArray<glm::mat4> m_localTransforms;
 		tFixedHeapArray<glm::mat4> m_globalTransforms;
@@ -282,5 +300,7 @@ namespace Mist
 		Skybox m_skybox;
 		EnvironmentData m_environmentData;
 		tStaticArray<tDrawList, 4> m_drawListArray;
+
+		index_t m_cameraIndex = index_invalid;
 	};
 }

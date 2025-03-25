@@ -238,6 +238,12 @@ namespace Mist
 		GApp->ProcessImGui();
 	}
 
+	void tApplication::LogicProcess(float deltaTime)
+	{
+		if (m_engine->GetScene())
+			m_engine->GetScene()->Tick(deltaTime);
+	}
+
 	void tApplication::ProcessAppEvents()
 	{
 		auto processEventLambda = [](void* e, void* userData)
@@ -281,5 +287,7 @@ namespace Mist
 
 	void tApplication::ProcessEvent(void* e)
 	{
+		if (m_engine->GetScene())
+			m_engine->GetScene()->GetCamera().ProcessEvent(e);
 	}
 }

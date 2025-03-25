@@ -258,6 +258,26 @@ namespace Mist
 		//frameContext.GlobalBuffer->AllocDynamicUniform(renderContext, "u_materials", sizeof(sMaterialRenderData), globals::MaxRenderObjects);
 	}
 
+	void Scene::Tick(float deltaTime)
+	{
+		check(m_cameraIndex <m_cameras.GetSize());
+		CameraController& c = GetCamera();
+		c.Tick(deltaTime);
+		m_engine->UpdateSceneView(c.GetCamera().GetView(), c.GetCamera().GetProjection());
+	}
+
+	const CameraController& Scene::GetCamera() const
+	{
+		check(m_cameraIndex <m_cameras.GetSize());
+		return m_cameras[m_cameraIndex];
+	}
+
+	CameraController& Scene::GetCamera()
+	{
+		check(m_cameraIndex <m_cameras.GetSize());
+		return m_cameras[m_cameraIndex];
+	}
+
 	sRenderObject Scene::CreateRenderObject(sRenderObject parent)
 	{
 		// Generate new node in all basics structures
@@ -305,6 +325,22 @@ namespace Mist
 		}
 		check(model);
 		return (index_t)(model-m_models.GetData());
+	}
+
+	index_t Scene::NewCamera()
+	{
+		index_t cameraIndex = m_cameras.GetSize();
+		m_cameras.Push();
+		return cameraIndex;
+	}
+
+	void Scene::SetCamera(sRenderObject r, const CameraComponent& cc)
+	{
+		check(IsValid(r));
+		check(cc.CameraIndex < m_cameras.GetSize());
+		m_cameraComponentMap[r] = cc;
+		if (cc.Main)
+			m_cameraIndex = cc.CameraIndex;
 	}
 
 	void Scene::LoadScene(const RenderContext& context, const char* filepath)
@@ -382,6 +418,24 @@ namespace Mist
 				m.MeshIndex = LoadModel(context, m.MeshAssetPath);
 				SetMesh(rb, m);
 			}
+
+			YAML::Node cameraNode = it["CameraComponent"];
+			if (cameraNode)
+			{
+				CameraComponent cc = { NewCamera() };
+				cc.Main = cameraNode["Main"].as<bool>();
+				SetCamera(rb, cc);
+			}
+		}
+
+		if (m_cameraIndex == index_invalid)
+		{
+			logwarn("Scene without main camara enabled. Creating one by default.\n");
+			sRenderObject rb = CreateRenderObject(GetRoot());
+			SetRenderObjectName(rb, "DefaultMainCamera");
+			CameraComponent cc = { NewCamera() };
+			cc.Main = true;
+			SetCamera(rb, cc);
 		}
 		delete[] content;
 	}
@@ -441,6 +495,14 @@ namespace Mist
 				emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
 				const MeshComponent& mesh = m_meshComponentMap[i];
 				emitter << YAML::Key << "MeshAssetPath" << YAML::Value << mesh.MeshAssetPath;
+				emitter << YAML::EndMap;
+			}
+
+			if (m_cameraComponentMap.contains(i))
+			{
+				const CameraComponent& cc = m_cameraComponentMap.at(i);
+				emitter << YAML::Key << "CameraComponent" << YAML::BeginMap;
+				emitter << YAML::Key << "Main" << YAML::Value << cc.Main;
 				emitter << YAML::EndMap;
 			}
 
