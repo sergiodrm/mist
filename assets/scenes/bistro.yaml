@@ -1,0 +1,80 @@
+Environment:
+  Ambient: [0, 0, 0]
+  Skybox:
+    Front: textures/yokohama/posz.jpg
+    Back: textures/yokohama/negz.jpg
+    Top: textures/yokohama/posy.jpg
+    Bottom: textures/yokohama/negy.jpg
+    Left: textures/yokohama/posx.jpg
+    Right: textures/yokohama/negx.jpg
+RenderObjects:
+  - RenderObject: 0
+    Name: Root
+    Parent: 65535
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - RenderObject: 1
+    Name: Light
+    Parent: 0
+    TransformComponent:
+      Position: [58.5, 18, -1.5]
+      Rotation: [0, -91.5, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Point
+      Color: [0, 0, 0]
+      Radius: 10000
+      Compression: 10000
+      OuterCutoff: 26.5
+      Cutoff: 0
+      ProjectShadows: true
+  - RenderObject: 2
+    Name: Light_2
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [46.5, 0, -92]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Directional
+      Color: [0.228187919, 0.228187919, 0.228187919]
+      Radius: 1000
+      Compression: 1000
+      OuterCutoff: 0.800000012
+      Cutoff: 1
+      ProjectShadows: true
+  - RenderObject: 3
+    Name: Light_3
+    Parent: 0
+    TransformComponent:
+      Position: [-18.5, 5, 0]
+      Rotation: [0, -76, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Spot
+      Color: [1, 1, 1]
+      Radius: 410
+      Compression: 410
+      OuterCutoff: 46.9000015
+      Cutoff: 32.7999992
+      ProjectShadows: true
+  - RenderObject: 4
+    Name: Bistro
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: models/bistro_v5_2/bistro_v5_2/bistro_exterior.gltf
+  - RenderObject: 5
+    Name: DefaultMainCamera
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Main: true
