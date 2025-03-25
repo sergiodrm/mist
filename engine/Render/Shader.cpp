@@ -828,12 +828,12 @@ namespace Mist
 								NewShaderParam(binding.Name.c_str(), dynamicDesc.IsShared, setInfo.SetIndex, binding.Binding);
 								const tShaderParam& param = GetParam(binding.Name.c_str());
 								const UniformBufferMemoryPool::ItemMapInfo mapInfo = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
-								if (!mapInfo.Size)
+								if (!mapInfo.TotalSize)
 									memoryPoolArray[frameContextIndex]->AllocDynamicUniform(context, param.Name.CStr(), binding.Size, dynamicDesc.ElemCount);
 								else
 								{
 									uint32_t totalSize = dynamicDesc.ElemCount * RenderContext_PadUniformMemoryOffsetAlignment(context, binding.Size);
-									check(totalSize == mapInfo.Size);
+									check(totalSize == mapInfo.TotalSize);
 								}
 								break;
 							}
@@ -855,7 +855,7 @@ namespace Mist
 						const tShaderParam& param = GetParam(binding.Name.c_str());
 						check(binding.Size > 0);
 						const UniformBufferMemoryPool::ItemMapInfo info = memoryPoolArray[frameContextIndex]->GetLocationInfo(param.Name.CStr());
-						check(info.Size == 0);
+						check(info.TotalSize == 0);
 						memoryPoolArray[frameContextIndex]->AllocUniform(context, param.Name.CStr(), binding.Size);
 						bufferInfoArray[j] = memoryPoolArray[frameContextIndex]->GenerateDescriptorBufferInfo(param.Name.CStr());
 						builders[frameContextIndex].BindBuffer(binding.Binding, &bufferInfoArray[j], 1, binding.Type, binding.Stage);
