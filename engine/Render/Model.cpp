@@ -224,6 +224,47 @@ namespace gltf_api
 	void ReadAttributeArray(Mist::Vertex* vertices, const cgltf_attribute& attribute)
 	{
 		const cgltf_accessor* accessor = attribute.data;
+        switch (attribute.type)
+        {
+        case cgltf_attribute_type_position:
+            check(accessor->has_min && accessor->has_max);
+            check(accessor->component_type == cgltf_component_type_r_32f);
+            check(accessor->type == cgltf_type_vec3);
+            check(!strcmp(attribute.name, "POSITION"));
+            break;
+        case cgltf_attribute_type_texcoord:
+			check(accessor->component_type == cgltf_component_type_r_32f);
+			check(accessor->type == cgltf_type_vec2);
+			check(!strcmp(attribute.name, "TEXCOORD_0")
+				|| !strcmp(attribute.name, "TEXCOORD_1"));
+			if (!strcmp(attribute.name, "TEXCOORD_1"))
+			{
+				logerror("TEXCOORD_1 not supported\n");
+				return;
+			}
+            break;
+        case cgltf_attribute_type_normal:
+            check(accessor->component_type == cgltf_component_type_r_32f);
+            check(accessor->type == cgltf_type_vec3);
+            check(!strcmp(attribute.name, "NORMAL"));
+            break;
+        case cgltf_attribute_type_color:
+			check(accessor->component_type == cgltf_component_type_r_32f);
+			check(accessor->type == cgltf_type_vec3);
+            check(!strcmp(attribute.name, "COLOR_0"));
+            break;
+        case cgltf_attribute_type_tangent:
+			check(accessor->type == cgltf_type_vec4);
+            check(!strcmp(attribute.name, "TANGENT"));
+            break;
+        case cgltf_attribute_type_invalid:
+        case cgltf_attribute_type_custom:
+        case cgltf_attribute_type_max_enum:
+            check(false && "Invalid attribute type to read.");
+        default:
+            break;
+        }
+		
 		uint32_t accessorCount = (uint32_t)accessor->count;
 		// Get how many values has current attribute
 		uint32_t elementCount = GetElementCountFromType(accessor->type);
@@ -274,10 +315,13 @@ namespace gltf_api
 	void LoadVertices(const cgltf_primitive& primitive, Mist::Vertex* verticesOut, uint32_t vertexCount)
 	{
 		uint32_t attributeCount = (uint32_t)primitive.attributes_count;
+		check(primitive.attributes[0].data->count < UINT32_MAX);
+		uint32_t accessorCount = (uint32_t)primitive.attributes[0].data->count;
 		for (uint32_t i = 0; i < attributeCount; ++i)
 		{
 			const cgltf_attribute& attribute = primitive.attributes[i];
 			check(attribute.data->count <= vertexCount);
+			check(attribute.data->count == accessorCount);
 			ReadAttributeArray(verticesOut, attribute);
 		}
 	}
@@ -285,6 +329,7 @@ namespace gltf_api
 	void LoadIndices(const cgltf_primitive& primitive, uint32_t* indicesOut, uint32_t offset)
 	{
 		check(primitive.indices && primitive.type == cgltf_primitive_type_triangles);
+		check(primitive.indices->count < UINT32_MAX);
 		uint32_t indexCount = (uint32_t)primitive.indices->count;
 		for (uint32_t i = 0; i < indexCount; ++i)
 			indicesOut[i] = (uint32_t)cgltf_accessor_read_index(primitive.indices, i) + offset;
@@ -294,6 +339,8 @@ namespace gltf_api
 	{
 		if (!texView.texture)
 			return false;
+		check(texView.texcoord == 0);
+		check(texView.scale == 1.f && !texView.has_transform);
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
 		check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
