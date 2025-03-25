@@ -653,98 +653,6 @@ namespace Mist
 
 	}
 
-	bool Scene::LoadMeshesFromFile(const RenderContext& context, const char* filepath)
-	{
-#if 1
-		check(false);
-		return true;
-#else
-
-		PROFILE_SCOPE_LOG(LoadMeshes, __FUNCTION__);
-		cgltf_data* data = gltf_api::ParseFile(filepath);
-		char rootAssetPath[512];
-		io::GetDirectoryFromFilepath(filepath, rootAssetPath, 512);
-		if (!data)
-		{
-			Logf(LogLevel::Error, "Cannot open file to load scene model: %s.\n", filepath);
-			return false;
-		}
-
-		for (uint32_t i = 0; i < data->materials_count; ++i)
-		{
-			cMaterial* m = CreateMaterial(data->materials[i].name);
-			gltf_api::LoadMaterial(*m, context, data->materials[i], rootAssetPath);
-		}
-
-		uint32_t nodesCount = (uint32_t)data->nodes_count;
-		uint32_t renderObjectOffset = GetRenderObjectCount();
-
-		tDynArray<Vertex> tempVertices;
-		tDynArray<uint32_t> tempIndices;
-		for (uint32_t i = 0; i < nodesCount; ++i)
-		{
-			const cgltf_node& node = data->nodes[i];
-
-			// Process mesh
-			if (node.mesh)
-			{
-				m_meshes.push_back(cMesh());
-				cMesh& mesh = m_meshes.back();
-				mesh.SetName(node.mesh->name);
-				tDynArray<PrimitiveMeshData>& primitives = mesh.PrimitiveArray;
-				tempVertices.clear();
-				tempIndices.clear();
-				primitives.resize(node.mesh->primitives_count);
-				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
-				{
-					const cgltf_primitive& cgltfprimitive = node.mesh->primitives[j];
-					PrimitiveMeshData& primitive = primitives[j];
-					check(cgltfprimitive.type == cgltf_primitive_type_triangles);
-					check(cgltfprimitive.indices && cgltfprimitive.indices->type == cgltf_type_scalar && cgltfprimitive.indices->count % 3 == 0);
-					check(cgltfprimitive.attributes && cgltfprimitive.attributes->data);
-
-					uint32_t indexCount = cgltfprimitive.indices->count;
-					uint32_t vertexCount = cgltfprimitive.attributes[0].data->count;
-					uint32_t vertexOffset = (uint32_t)tempVertices.size();
-					uint32_t indexOffset = (uint32_t)tempIndices.size();
-					tempIndices.resize(indexOffset + cgltfprimitive.indices->count);
-					tempVertices.resize(vertexOffset + vertexCount);
-
-					primitive.FirstIndex = indexOffset;
-					primitive.Count = indexCount;
-
-					gltf_api::LoadIndices(cgltfprimitive, tempIndices.data() + indexOffset, vertexOffset);
-					gltf_api::LoadVertices(cgltfprimitive, tempVertices.data() + vertexOffset, vertexCount);
-
-					cMaterial* material = GetMaterial(cgltfprimitive.material->name);
-					check(material);
-					primitive.Material = material;
-					primitive.RenderFlags = RenderFlags_Fixed | RenderFlags_ShadowMap;
-					if (primitive.Material->m_emissiveFactor.x || primitive.Material->m_emissiveFactor.y || primitive.Material->m_emissiveFactor.z)
-						primitive.RenderFlags |= RenderFlags_Emissive;
-
-					check(cgltfprimitive.indices->count == primitive.Count);
-				}
-
-				mesh.SetupVertexBuffer(context, tempVertices.data(), sizeof(Vertex) * (uint32_t)tempVertices.size());
-				mesh.SetupIndexBuffer(context, tempIndices.data(), (uint32_t)tempIndices.size());
-
-				char buff[256];
-				GetResourceFileId(filepath, node.mesh->name, buff);
-				check(!m_meshNameIndexMap.contains(buff));
-				m_meshNameIndexMap[buff] = m_meshes.size() - 1;
-			}
-		}
-		tempVertices.clear();
-		tempVertices.shrink_to_fit();
-		tempIndices.clear();
-		tempIndices.shrink_to_fit();
-		gltf_api::FreeData(data);
-		return true;
-
-#endif // 1
-	}
-
 	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
 		PROFILE_SCOPE_LOG(LoadSkybox, "LoadSkybox");
@@ -791,19 +699,6 @@ namespace Mist
 		cubemapTex->CreateView(context, {.ViewType = VK_IMAGE_VIEW_TYPE_CUBE });
 		//SubmitTexture(cubemapTex);
 		skybox.Tex = cubemapTex;
-
-#if 0
-		tViewDescription viewDesc;
-		viewDesc.BaseArrayLayer = 0;
-		viewDesc.LayerCount = Skybox::COUNT;
-		viewDesc.ViewType = VK_IMAGE_VIEW_TYPE_CUBE;
-		VkDescriptorImageInfo info;
-		info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		info.imageView = cubemapTex->CreateView(context, viewDesc);
-		info.sampler = cubemapTex->GetSampler();
-		builder.BindImage(0, &info, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT);
-		check(builder.Build(context, skybox.CubemapSet));
-#endif // 0
 
 		return true;
 	}
