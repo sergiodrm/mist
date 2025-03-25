@@ -275,7 +275,8 @@ namespace Mist
 		if (!m_infoMap.contains(name))
 		{
 			ItemMapInfo info;
-			info.Size = size;
+			info.TotalSize = size;
+			info.ElementSize = size;
 			info.Offset = m_freeMemoryOffset;
 			m_infoMap[name] = info;
 			// TODO: padding already has size accumulated... (?)
@@ -289,7 +290,10 @@ namespace Mist
 	{
 		uint32_t elemSizeWithPadding = Memory::PadOffsetAlignment((uint32_t)renderContext.GPUProperties.limits.minUniformBufferOffsetAlignment, elemSize);
 		uint32_t chunkSize = elemSizeWithPadding * elemCount;
-		return AllocUniform(renderContext, name, chunkSize);
+		uint32_t ret = AllocUniform(renderContext, name, chunkSize);
+		ItemMapInfo& item = m_infoMap[name];
+		item.ElementSize = elemSizeWithPadding;
+		return ret;
 	}
 
 	void UniformBufferMemoryPool::DestroyUniform(const char* name)
@@ -305,7 +309,7 @@ namespace Mist
 		if (m_infoMap.contains(name))
 		{
 			const ItemMapInfo& info = m_infoMap[name];
-			check(size <= dstOffset + info.Size);
+			check(size <= dstOffset + info.TotalSize);
 			MemoryCopy(renderContext, info, source, size, dstOffset);
 			return true;
 		}
@@ -323,7 +327,7 @@ namespace Mist
 			if (m_infoMap.contains(name))
 			{
 				const ItemMapInfo& info = m_infoMap[name];
-				const uint32_t& chunkSize = info.Size;
+				const uint32_t& chunkSize = info.TotalSize;
 				uint32_t chunkSizeToCopy = elemSizeWithPadding * elemCount;
 				check(chunkSizeToCopy <= chunkSize);
 
@@ -358,7 +362,7 @@ namespace Mist
 		ItemMapInfo locationInfo = GetLocationInfo(name);
 		descInfo.buffer = GetBuffer();
 		descInfo.offset = locationInfo.Offset;
-		descInfo.range = locationInfo.Size;
+		descInfo.range = locationInfo.ElementSize;
 		return descInfo;
 	}
 
@@ -378,7 +382,7 @@ namespace Mist
             m_storageBuffers.reserve(index + growSize);
 		}
 		m_storageBuffers.emplace_back(buffer);
-        m_storageBufferMap[name] = { .Size = size, .Index = index };
+        m_storageBufferMap[name] = { .ElementSize = size, .TotalSize = size, .Index = index };
 		return index;
 	}
 
@@ -388,7 +392,7 @@ namespace Mist
         if (m_storageBufferMap.contains(name))
         {
             const ItemMapInfo& info = m_storageBufferMap[name];
-            check(size + offset <= info.Size);
+            check(size + offset <= info.TotalSize);
 			check(info.Index < m_storageBuffers.size());
             Memory::MemCopy(m_context->Allocator, m_storageBuffers[info.Index], data, size, offset);
             return true;
@@ -401,7 +405,7 @@ namespace Mist
 		check(m_storageBufferMap.contains(name));
         const ItemMapInfo& info = m_storageBufferMap.at(name);
         check(info.Index < m_storageBuffers.size());
-        return VkDescriptorBufferInfo{ .buffer = m_storageBuffers[info.Index].Buffer, .offset = 0, .range = info.Size };
+        return VkDescriptorBufferInfo{ .buffer = m_storageBuffers[info.Index].Buffer, .offset = 0, .range = info.TotalSize };
 	}
 
 	AllocatedBuffer UniformBufferMemoryPool::GetStorageBuffer(uint32_t index) const
@@ -419,7 +423,7 @@ namespace Mist
 
 	void UniformBufferMemoryPool::MemoryCopy(const RenderContext& context, const ItemMapInfo& itemInfo, const void* source, uint32_t size, uint32_t offset) const
 	{
-		check(size + offset <= itemInfo.Size);
+		check(size + offset <= itemInfo.TotalSize);
 		Memory::MemCopy(context.Allocator, m_buffer, source, size, itemInfo.Offset + offset);
 	}
 

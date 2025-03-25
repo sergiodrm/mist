@@ -101,7 +101,8 @@ namespace Mist
 	public:
 		struct ItemMapInfo
 		{
-			uint32_t Size = 0;
+			uint32_t ElementSize = 0;
+			uint32_t TotalSize = 0;
 			union
 			{
 				uint32_t Offset = 0;
