@@ -735,8 +735,7 @@ namespace Mist
 				// BaseOffset in buffer is already setted when descriptor was created.
 				for (index_t j = 0; j < model.m_meshes.GetSize(); ++j)
 				{
-					uint32_t meshDynamicOffset = (renderTransformOffset+j) * RenderContext_PadUniformMemoryOffsetAlignment(context, sizeof(glm::mat4));
-					shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset++);
+					shader->SetDynamicBufferOffset(context, "u_model", sizeof(glm::mat4), renderTransformOffset);
 
 					const cMesh& mesh = model.m_meshes[j];
 					commandList->BindVertexBuffer(mesh.VertexBuffer);
@@ -750,8 +749,9 @@ namespace Mist
 							if (!(renderFlags & RenderFlags_NoTextures))
 							{
 								check(primitive.Material);
-								primitive.Material->BindTextures(context, *shader, materialSetIndex);
-								size_t matIndex = (size_t)primitive.Material - (size_t)model.m_materials.GetData();
+								//primitive.Material->BindTextures(context, *shader, materialSetIndex);
+								commandList->BindDescriptorSets(&primitive.Material->m_textureSet, 1, shader->GetParam("u_Textures").SetIndex);
+								size_t matIndex = primitive.Material - model.m_materials.GetData();
 								check(matIndex < UINT16_MAX);
 								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
 								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + (index_t)matIndex);
@@ -760,8 +760,8 @@ namespace Mist
 							commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
 						}
 					}
+					++renderTransformOffset;
 				}
-				++renderTransformOffset;
 			}
 		}
 	}
