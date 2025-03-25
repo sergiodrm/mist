@@ -48,8 +48,8 @@ namespace Mist
 		extern const char* QuadFragmentShader;
 		extern const char* DepthQuadFragmentShader;
 		inline constexpr unsigned int MaxOverlappedFrames = 3;
-		inline constexpr unsigned int MaxRenderObjects = 1000;
-		inline constexpr unsigned int MaxMaterials = 128;
+		inline constexpr unsigned int MaxRenderObjects = 1500;
+		inline constexpr unsigned int MaxMaterials = 256;
 		inline constexpr unsigned int MaxShadowMapAttachments = MAX_SHADOW_MAPS;
 	}
 }
