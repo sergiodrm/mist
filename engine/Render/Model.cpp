@@ -41,6 +41,13 @@
 #define loadmeshlog(fmt, ...) DUMMY_MACRO
 #endif
 
+#define LOAD_MESH_CHECK_READ_ACCESSOR
+#ifdef LOAD_MESH_CHECK_READ_ACCESSOR
+#define check_accessor(_f_) check((_f_))
+#else
+#define check_accessor(_f_) DUMMY_MACRO
+#endif
+
 namespace gltf_api
 {
 	void HandleError(cgltf_result result, const char* filepath)
@@ -161,123 +168,79 @@ namespace gltf_api
 		}
 	}
 
-	void ReadValues(Mist::tDynArray<float>& values, const cgltf_accessor& accessor)
-	{
-		uint32_t elementCount = GetElementCountFromType(accessor.type);
-		values.resize(accessor.count * elementCount);
-		for (uint32_t i = 0; i < accessor.count; ++i)
-			cgltf_accessor_read_float(&accessor, i, &values[i * elementCount], elementCount);
-	}
-
-	void ReadAttribute(Mist::Vertex& vertex, const float* source, uint32_t index, cgltf_attribute_type type)
-	{
-		const char* attributeName = nullptr;
-		const float* data = &source[index];
-		switch (type)
-		{
-		case cgltf_attribute_type_position:
-			ToVec3(vertex.Position, data);
-			break;
-		case cgltf_attribute_type_texcoord:
-			ToVec2(vertex.TexCoords, data);
-			break;
-		case cgltf_attribute_type_normal:
-			ToVec3(vertex.Normal, data);
-			if (Length2(vertex.Normal) < 1e-5f)
-				vertex.Normal = glm::vec3{ 0.f, 1.f, 0.f };
-			else
-				vertex.Normal = glm::normalize(vertex.Normal);
-			break;
-		case cgltf_attribute_type_color:
-			ToVec3(vertex.Color, data);
-			break;
-		case cgltf_attribute_type_tangent:
-			ToVec3(vertex.Tangent, data);
-			break;
-		case cgltf_attribute_type_joints:
-#ifdef MIST_ENABLE_LOADER_LOG
-			attributeName = "joints";
-#endif // MIST_ENABLE_LOADER_LOG
-
-			break;
-		case cgltf_attribute_type_weights:
-#ifdef MIST_ENABLE_LOADER_LOG
-			attributeName = "weights";
-#endif // MIST_ENABLE_LOADER_LOG
-			break;
-		case cgltf_attribute_type_invalid:
-		case cgltf_attribute_type_custom:
-		case cgltf_attribute_type_max_enum:
-			check(false && "Invalid attribute type to read.");
-		default:
-			break;
-		}
-#ifdef MIST_ENABLE_LOADER_LOG
-		if (attributeName)
-			Mist::Logf(Mist::LogLevel::Error, "gltf loader: Attribute type not suported yet [%s].\n", attributeName);
-#endif // MIST_ENABLE_LOADER_LOG
-
-	}
-
 	// Attributes are an continuous array of positions, normals, uvs...
-	// We have to map from struct of arrays to our format, array of structs (tDynArray<Mist::Vertex>)
 	void ReadAttributeArray(Mist::Vertex* vertices, const cgltf_attribute& attribute)
 	{
 		const cgltf_accessor* accessor = attribute.data;
+		check(accessor->count < UINT32_MAX);
+		uint32_t count = (uint32_t)accessor->count;
+		// Get how many values has current attribute
+		cgltf_size numComponents = cgltf_num_components(accessor->type);
+		check_accessor(accessor->component_type == cgltf_component_type_r_32f);
         switch (attribute.type)
         {
         case cgltf_attribute_type_position:
-            check(accessor->has_min && accessor->has_max);
-            check(accessor->component_type == cgltf_component_type_r_32f);
-            check(accessor->type == cgltf_type_vec3);
-            check(!strcmp(attribute.name, "POSITION"));
+		{
+			check_accessor(accessor->has_min && accessor->has_max);
+			check_accessor(accessor->type == cgltf_type_vec3 && numComponents == 3);
+			check_accessor(!strcmp(attribute.name, "POSITION"));
+
+			for (uint32_t i = 0; i < count; ++i)
+				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Position[0], numComponents));
+			
             break;
+		}
         case cgltf_attribute_type_texcoord:
-			check(accessor->component_type == cgltf_component_type_r_32f);
-			check(accessor->type == cgltf_type_vec2);
-			check(!strcmp(attribute.name, "TEXCOORD_0")
-				|| !strcmp(attribute.name, "TEXCOORD_1"));
-			if (!strcmp(attribute.name, "TEXCOORD_1"))
+			check_accessor(accessor->type == cgltf_type_vec2 && numComponents == 2);
+			if (!strcmp(attribute.name, "TEXCOORD_0"))
 			{
-				logerror("TEXCOORD_1 not supported\n");
-				return;
+				for (uint32_t i = 0; i < count; ++i)
+					check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].TexCoords0[0], numComponents));
 			}
+			else if (!strcmp(attribute.name, "TEXCOORD_1"))
+			{
+				for (uint32_t i = 0; i < count; ++i)
+					check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].TexCoords1[0], numComponents));
+			}
+			else
+				unreachable_code();
             break;
         case cgltf_attribute_type_normal:
-            check(accessor->component_type == cgltf_component_type_r_32f);
-            check(accessor->type == cgltf_type_vec3);
-            check(!strcmp(attribute.name, "NORMAL"));
+			check_accessor(accessor->type == cgltf_type_vec3 && numComponents == 3);
+			check_accessor(!strcmp(attribute.name, "NORMAL"));
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Normal[0], numComponents));
+				check_accessor(Length2(vertices[i].Normal) > 1e-5f);
+			}
             break;
         case cgltf_attribute_type_color:
-			check(accessor->component_type == cgltf_component_type_r_32f);
-			check(accessor->type == cgltf_type_vec3);
-            check(!strcmp(attribute.name, "COLOR_0"));
+			check_accessor(accessor->type == cgltf_type_vec3 && numComponents == 3);
+			check_accessor(!strcmp(attribute.name, "COLOR_0"));
+            for (uint32_t i = 0; i < count; ++i)
+            {
+				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Color[0], numComponents));
+                check_accessor(vertices[i].Color.x >= 0.f && vertices[i].Color.x <= 1.f);
+                check_accessor(vertices[i].Color.y >= 0.f && vertices[i].Color.y <= 1.f);
+                check_accessor(vertices[i].Color.z >= 0.f && vertices[i].Color.z <= 1.f);
+            }
             break;
         case cgltf_attribute_type_tangent:
-			check(accessor->type == cgltf_type_vec4);
-            check(!strcmp(attribute.name, "TANGENT"));
+			check_accessor(accessor->type == cgltf_type_vec4 && numComponents == 4);
+			check_accessor(!strcmp(attribute.name, "TANGENT"));
+            for (uint32_t i = 0; i < count; ++i)
+            {
+				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Tangent[0], numComponents));
+				check_accessor(vertices[i].Tangent.w == -1.f || vertices[i].Tangent.w == 1.f);
+            }
             break;
         case cgltf_attribute_type_invalid:
         case cgltf_attribute_type_custom:
         case cgltf_attribute_type_max_enum:
-            check(false && "Invalid attribute type to read.");
         default:
+            check(false && "Invalid attribute type to read.");
             break;
         }
-		
-		uint32_t accessorCount = (uint32_t)accessor->count;
-		// Get how many values has current attribute
-		uint32_t elementCount = GetElementCountFromType(accessor->type);
-		// Read data from accessor
-		Mist::tDynArray<float> values;
-		ReadValues(values, *accessor);
-		// Map to internal format
-		for (uint32_t i = 0; i < accessorCount; ++i)
-		{
-			Mist::Vertex& vertex = vertices[i];
-			uint32_t indexValue = i * elementCount;
-			ReadAttribute(vertex, values.data(), indexValue, attribute.type);
-		}
 	}
 
 	void FreeData(cgltf_data* data)
@@ -400,7 +363,7 @@ namespace gltf_api
 
 namespace Mist
 {
-	void CalculateTangent(glm::vec3& t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2)
+	void CalculateTangent(glm::vec4& t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2)
 	{
 		glm::vec3 e0 = p1 - p0;
 		glm::vec3 e1 = p2 - p0;
@@ -411,6 +374,7 @@ namespace Mist
 		t.x = f * (duv1.y * e0.x - duv0.y * e1.x);
 		t.y = f * (duv1.y * e0.y - duv0.y * e1.y);
 		t.z = f * (duv1.y * e0.z - duv0.y * e1.z);
+		t.w = 1.f;
 	}
 
 	void BuildTangents(Vertex* vertices, lindex_t vertexCount, lindex_t* indices, lindex_t indexCount)
@@ -422,8 +386,8 @@ namespace Mist
 			Vertex& v0 = vertices[indices[i]];
 			Vertex& v1 = vertices[indices[i+1]];
 			Vertex& v2 = vertices[indices[i+2]];
-			glm::vec3 t(0.f);
-			CalculateTangent(t, v0.Position, v1.Position, v2.Position, v0.TexCoords, v1.TexCoords, v2.TexCoords);
+			glm::vec4 t(0.f);
+			CalculateTangent(t, v0.Position, v1.Position, v2.Position, v0.TexCoords0, v1.TexCoords0, v2.TexCoords0);
 			t = glm::normalize(t);
 			v0.Tangent = t;
 			v1.Tangent = t;
