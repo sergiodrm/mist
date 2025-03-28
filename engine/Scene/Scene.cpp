@@ -1111,7 +1111,7 @@ namespace Mist
 	{
 		m_drawListArray.Push();
 		m_drawListArray.GetBack().RenderFlags = pipelineFlags;
-		m_drawListArray.GetBack().Items.Allocate(200);
+		m_drawListArray.GetBack().Items.Allocate(1500);
 	}
 
 	const tDrawList* Scene::FindRenderPipeline(uint32_t pipelineFlags) const
@@ -1250,58 +1250,6 @@ namespace Mist
 			//check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
 			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, m_renderTransforms.GetData(), m_renderTransforms.GetSize(), sizeof(glm::mat4), 0));
 			check(buffer->SetDynamicUniform(renderContext, "u_material", m_materials.GetData(), m_materials.GetSize(), sizeof(sMaterialRenderData), 0));
-#if 0
-			// Update materials
-			tArray<MaterialUniform, MIST_MAX_MATERIALS> materialUniformBuffer;
-			check((uint32_t)m_materialArray.size() <= MIST_MAX_MATERIALS);
-			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
-			{
-				//check(m_dirtyMaterials[i] < (uint32_t)m_materialArray.size());
-				Material& material = m_materialArray[i];
-				//if (material.IsDirty())
-				{
-					RenderHandle h = material.GetHandle();
-					MaterialRenderData& mrd = m_materialRenderDataArray[h];
-					//if (material.IsDirty())
-					{
-						auto submitTexture = [&](RenderHandle texHandle, uint32_t binding, uint32_t arrayIndex)
-							{
-								Texture* texture;
-								if (texHandle.IsValid())
-								{
-									texture = m_renderData.Textures[texHandle];
-								}
-								else
-								{
-									RenderHandle defTex = m_engine->GetDefaultTexture();
-									texture = m_renderData.Textures[defTex];
-								}
-								BindDescriptorTexture(m_engine->GetContext(), texture, mrd.MaterialSets[frameContext.FrameIndex].TextureSet, binding, arrayIndex);
-								mrd.Textures[arrayIndex] = texture;
-							};
-						submitTexture(material.GetAlbedoTexture(), 0, 0);
-						submitTexture(material.GetNormalTexture(), 0, 1);
-						submitTexture(material.GetSpecularTexture(), 0, 2);
-						submitTexture(material.GetOcclusionTexture(), 0, 3);
-						submitTexture(material.GetMetallicTexture(), 0, 4);
-						submitTexture(material.GetRoughnessTexture(), 0, 5);
-					}
-
-					check(i < MIST_MAX_MATERIALS);
-					materialUniformBuffer[i].Metallic = material.GetMetallic();
-					materialUniformBuffer[i].Roughness = material.GetRoughness();
-					
-					material.SetDirty(false);
-				}
-			}
-			buffer->SetDynamicUniform(renderContext, "Material", materialUniformBuffer.data(), MIST_MAX_MATERIALS, sizeof(MaterialUniform), 0);
-
-			// Integrity check
-			for (uint32_t i = 0; i < (uint32_t)m_materialArray.size(); ++i)
-			{
-				check(!m_materialArray[i].IsDirty());
-			}
-#endif
 		}
 	}
 
