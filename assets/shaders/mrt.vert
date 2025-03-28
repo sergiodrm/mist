@@ -3,12 +3,14 @@
 #include <shaders/includes/model.glsl>
 #include <shaders/includes/camera.glsl>
 
+#include <shaders/includes/vertex_mesh.glsl>
+
 // Vertex input
-layout (location = 0) in vec3 inPos;
-layout (location = 1) in vec3 inNormal;
-layout (location = 2) in vec3 inColor;
-layout (location = 3) in vec3 inTangent;
-layout (location = 4) in vec2 inUV;
+//layout (location = 0) in vec3 inPosition;
+//layout (location = 1) in vec3 inNormal;
+//layout (location = 2) in vec3 inColor;
+//layout (location = 3) in vec3 inTangent;
+//layout (location = 4) in vec2 inUV;
 
 // Vertex output
 layout (location = 0) out vec3 outNormal;
@@ -33,8 +35,8 @@ layout (set = 1, binding = 0) uniform ModelBlock
 void main() 
 {
 	// Vertex position in world space
-	vec3 worldPos = vec3(u_model.data.worldTransform * vec4(inPos,1.f));
-	//vec3 worldPos = vec3(u_model.Model * inPos);
+	vec3 worldPos = vec3(u_model.data.worldTransform * vec4(inPosition,1.f));
+	//vec3 worldPos = vec3(u_model.Model * inPosition);
 	gl_Position = u_camera.data.invViewProjection * vec4(worldPos, 1.f);
 #define VIEW_SPACE_TRANSFORMS
 #ifdef VIEW_SPACE_TRANSFORMS
@@ -49,12 +51,12 @@ void main()
 	
 	// Normal in world space
 	outNormal = normalize(normalTransform * normalize(inNormal));	
-	outTangent = normalize(normalTransform * normalize(inTangent));
-	vec3 B = cross(outNormal, outTangent);
+	outTangent = normalize(normalTransform * normalize(inTangent.xyz));
+	vec3 B = cross(outNormal, outTangent) * inTangent.w;
 	outTBN = mat3(outTangent, B, outNormal);
 	
 	// Currently just vertex color
 	outColor = inColor;
 	// uvs
-	outUV = inUV;
+	outUV = inUV0;
 }

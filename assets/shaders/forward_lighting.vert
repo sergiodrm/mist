@@ -1,11 +1,12 @@
 #version 460
 
+#include <shaders/includes/vertex_mesh.glsl>
 
-layout (location = 0) in vec3 LSPosition;
-layout (location = 1) in vec3 LSNormal;
-layout (location = 2) in vec3 VIColor;
-layout (location = 3) in vec3 Tangent;
-layout (location = 4) in vec2 TexCoords;
+//layout (location = 0) in vec3 LSPosition;
+//layout (location = 1) in vec3 LSNormal;
+//layout (location = 2) in vec3 VIColor;
+//layout (location = 3) in vec3 Tangent;
+//layout (location = 4) in vec2 TexCoords;
 
 layout (location = 0) out vec4 outFragPos;
 layout (location = 1) out vec3 outColor;
@@ -37,21 +38,21 @@ layout (std140, set = 1, binding = 0) uniform Object
 
 void main()
 {
-    vec4 wsPos = u_model.ModelMatrix * vec4(LSPosition, 1.0f);
+    vec4 wsPos = u_model.ModelMatrix * vec4(inPosition, 1.0f);
     gl_Position = u_Camera.ViewProjection * wsPos;
 
     // Frag position in view space
     outFragPos = u_Camera.View * wsPos;
     // Normal dir in view space
     mat3 normalTransform = mat3(u_Camera.View * u_model.ModelMatrix);
-    outNormal = normalize(normalTransform * normalize(LSNormal));
-    vec3 tangent = normalize(normalTransform * normalize(Tangent));
+    outNormal = normalize(normalTransform * normalize(inNormal));
+    vec3 tangent = normalize(normalTransform * normalize(inTangent.xyz));
     // Calculate TBN matrix with View Space
-    vec3 B = cross(outNormal, tangent);
+    vec3 B = cross(outNormal, tangent) * inTangent.w;
     outTBN = mat3(tangent, B, outNormal);
 
-    outColor = VIColor;
-    outTexCoords = TexCoords;
+    outColor = inColor;
+    outTexCoords = inUV0;
 
     // Precalculate shadow coordinates
     outLightSpaceFragPos_0 = u_depthInfo.LightMatrix[0] * outFragPos;
