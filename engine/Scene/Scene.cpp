@@ -684,7 +684,7 @@ namespace Mist
 		pixelsArray[Skybox::BOTTOM] = textureData[Skybox::BOTTOM].Pixels;
 
 		// Create texture
-		tImageDescription imageDesc;
+		ImageDescription imageDesc;
 		imageDesc.Format = FORMAT_R8G8B8A8_SRGB;
 		imageDesc.Layers = Skybox::COUNT;
 		imageDesc.Width = textureData[0].Width;
@@ -693,6 +693,7 @@ namespace Mist
 		imageDesc.Flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 		imageDesc.MipLevels = 1; // needs cubemap?
 		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
+		imageDesc.DebugName = "cubemaptex";
 		cTexture* cubemapTex = cTexture::Create(context, imageDesc);
 		// Set image layers with each cubemap texture
 		cubemapTex->SetImageLayers(context, pixelsArray, Skybox::COUNT);
@@ -723,6 +724,7 @@ namespace Mist
 		const cMesh* lastMesh = nullptr;
 		uint32_t nodeCount = GetRenderObjectCount();
 		index_t renderTransformOffset = 0;
+		index_t materialOffset = 0;
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			sRenderObject renderObject = i;
@@ -749,12 +751,10 @@ namespace Mist
 							if (!(renderFlags & RenderFlags_NoTextures))
 							{
 								check(primitive.Material);
-								//primitive.Material->BindTextures(context, *shader, materialSetIndex);
-								commandList->BindDescriptorSets(&primitive.Material->m_textureSet, 1, shader->GetParam("u_Textures").SetIndex);
-								size_t matIndex = primitive.Material - model.m_materials.GetData();
-								check(matIndex < UINT16_MAX);
-								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
-								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + (index_t)matIndex);
+								index_t offset = limits_cast<index_t>(primitive.Material - model.m_materials.GetData());
+								check(materialOffset + offset < m_materials.GetSize());
+								primitive.Material->BindTextures(context, *shader, materialSetIndex);
+								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), materialOffset + (index_t)offset);
 							}
 							commandList->BindProgramDescriptorSets();
 							commandList->DrawIndexed(primitive.Count, 1, primitive.FirstIndex, 0);
@@ -762,6 +762,8 @@ namespace Mist
 					}
 					++renderTransformOffset;
 				}
+				materialOffset += model.GetMaterialCount();
+				check(materialOffset < m_materials.GetSize());
 			}
 		}
 	}
@@ -771,13 +773,14 @@ namespace Mist
 		CPU_PROFILE_SCOPE(Scene_DrawWithMaterials);
 		CommandList* commandList = context.CmdList;
 
-		cMaterial* currentMaterial = nullptr;
+		const cMaterial* currentMaterial = nullptr;
 		ShaderProgram* currentShader = nullptr;
 		index_t currentTransformOffset = index_invalid;
 
 		// Iterate scene graph to render models.
 		uint32_t nodeCount = GetRenderObjectCount();
 		index_t renderTransformOffset = 0;
+		index_t materialOffset = 0;
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			sRenderObject renderObject = i;
@@ -797,14 +800,14 @@ namespace Mist
 					for (index_t k = 0; k < mesh.PrimitiveArray.GetSize(); ++k)
 					{
 						const PrimitiveMeshData& primitive = mesh.PrimitiveArray[k];
-						check(primitive.Material && primitive.Material->m_shader);
+						const cMaterial* mat = primitive.Material;
+						check(mat && mat->m_shader);
 						if (primitive.RenderFlags & viewRenderInfo.flags)
 						{
-							ShaderProgram* shader = primitive.Material->m_shader;
-							if (!(viewRenderInfo.flags & RenderFlags_NoTextures) && primitive.Material != currentMaterial)
+							ShaderProgram* shader = mat->m_shader;
+							if (!(viewRenderInfo.flags & RenderFlags_NoTextures) && mat != currentMaterial)
 							{
-								check(primitive.Material);
-								currentMaterial = primitive.Material;
+								currentMaterial = mat;
 								if (shader != currentShader)
 								{
 									GraphicsState state = commandList->GetGraphicsState();
@@ -818,9 +821,9 @@ namespace Mist
 									currentShader = shader;
 								}
 								currentMaterial->BindTextures(context, *shader, textureSlot);
-								index_t matIndex = primitive.Material - model.m_materials.GetData();
-								index_t matIndexBase = m_modelMaterialMap.at(meshComponent->MeshIndex);
-								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), matIndexBase + matIndex);
+								index_t offset = limits_cast<index_t>(mat - model.m_materials.GetData());
+								check(materialOffset + offset < m_materials.GetSize());
+								shader->SetDynamicBufferOffset(context, "u_material", sizeof(sMaterialRenderData), materialOffset + offset);
 							}
 
 							if (currentTransformOffset != renderTransformOffset)
@@ -834,32 +837,9 @@ namespace Mist
 					}
 					++renderTransformOffset;
 				}
-				++renderTransformOffset;
-#if 0
-				// Bind vertex/index buffers just if needed
-				if (lastMesh != mesh)
-				{
-					lastMesh = mesh;
-					mesh->BindBuffers(cmd);
-				}
-				// Iterate primitives of current mesh
-				for (uint32_t j = 0; j < (uint32_t)mesh->PrimitiveArray.size(); ++j)
-				{
-					const PrimitiveMeshData& drawData = mesh->PrimitiveArray[j];
-					if (drawData.RenderFlags & renderFlags)
-					{
-						// TODO: material by default if there is no material.
-						if (lastMaterial != drawData.Material && !(renderFlags & RenderFlags_NoTextures))
-						{
-							lastMaterial = drawData.Material;
-							drawData.Material->BindTextures(context, *shader, materialSetIndex);
-						}
-						shader->FlushDescriptors(context);
-						RenderAPI::CmdDrawIndexed(cmd, drawData.Count, 1, drawData.FirstIndex, 0, 0);
-					}
-				}
-#endif // 0
-
+				materialOffset += model.GetMaterialCount();
+				check(materialOffset < m_materials.GetSize());
+				//++renderTransformOffset;
 			}
 		}
 	}
@@ -1031,7 +1011,7 @@ namespace Mist
 			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
 			if (ImGui::BeginChild("EditingModelChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
 			{
-				ImGui::Text("Editing model %s", m_models[m_editingModel]);
+				ImGui::Text("Editing model %s", m_models[m_editingModel].GetName());
 				ImGui::Separator();
 				m_models[m_editingModel].ImGuiDraw();
 			}
@@ -1112,7 +1092,7 @@ namespace Mist
 	{
 		m_drawListArray.Push();
 		m_drawListArray.GetBack().RenderFlags = pipelineFlags;
-		m_drawListArray.GetBack().Items.Allocate(1500);
+		m_drawListArray.GetBack().Items.Allocate(1600);
 	}
 
 	const tDrawList* Scene::FindRenderPipeline(uint32_t pipelineFlags) const
