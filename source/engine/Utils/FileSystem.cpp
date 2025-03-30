@@ -6,7 +6,7 @@
 
 namespace Mist
 {
-	CStrVar CVar_Workspace("Workspace", "../assets/", CVarFlag_SetOnlyByCmd);
+	CStrVar CVar_Workspace("Workspace", "../../assets/", CVarFlag_SetOnlyByCmd);
 
 	bool FileSystem::IsFileNewerThanOther(const char* file, const char* other)
 	{

@@ -156,6 +156,7 @@ namespace Mist
 			}
 		}
 		loginfo("\n");
+		logfinfo("Workspace: %s\n", CVar_Workspace.Get());
 
 		cCfgFile iniFile(GIniFile.Get());
 

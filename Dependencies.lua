@@ -4,16 +4,18 @@
 VulkanSdk = os.getenv("VULKAN_SDK") -- from PATH
 
 includes = {}
-includes["generic"] = "%{wks.location}/thirdparty"
-includes["glm"] = "%{wks.location}/thirdparty/glm"
-includes["gltf"] = "%{wks.location}/thirdparty/gltf"
-includes["imgui"] = "%{wks.location}/thirdparty/imgui"
+includes["generic"] = "%{wks.location}/source/thirdparty"
+includes["glm"] = "%{wks.location}/source/thirdparty/glm"
+includes["gltf"] = "%{wks.location}/source/thirdparty/gltf"
+includes["imgui"] = "%{wks.location}/source/thirdparty/imgui"
 includes["sdl"] = "%{VulkanSdk}/Include/SDL2"
-includes["stbimage"] = "%{wks.location}/thirdparty/stb_image"
-includes["vkbootstrap"] = "%{wks.location}/thirdparty/vkbootstrap"
-includes["vma"] = "%{wks.location}/thirdparty/vma"
+includes["stbimage"] = "%{wks.location}/source/thirdparty/stb_image"
+includes["vkbootstrap"] = "%{wks.location}/source/thirdparty/vkbootstrap"
+includes["vma"] = "%{wks.location}/source/thirdparty/vma"
 includes["vulkan"] = "%{VulkanSdk}/Include"
-includes["yaml"] = "%{wks.location}/thirdparty/yaml-cpp/include"
+includes["yaml"] = "%{wks.location}/source/thirdparty/yaml-cpp/include"
+
+includes["mist"] = "%{wks.location}/source/engine"
 
 libdirs = {}
 libdirs["vulkan"] = "%{VulkanSdk}/lib"
