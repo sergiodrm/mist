@@ -34,6 +34,8 @@ namespace Mist
 
 	enum {index_invalid = UINT16_MAX};
 
+	template <typename T, typename U>
+	T limits_cast(U v) { check(v>= std::numeric_limits<T>::min() && v <= std::numeric_limits<T>::max()); return static_cast<T>(v); }
 
 	template <typename T>
 	void CopyDynArray(tDynArray<T>& dst, const std::vector<T>& src)
