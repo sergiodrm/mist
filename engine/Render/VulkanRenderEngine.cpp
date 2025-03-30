@@ -591,9 +591,10 @@ namespace Mist
 	{
 		// Get Vulkan version
         uint32_t instanceVersion = VK_API_VERSION_1_0;
-        auto FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
-		if (vkEnumerateInstanceVersion) {
-			vkEnumerateInstanceVersion(&instanceVersion);
+		PFN_vkEnumerateInstanceVersion FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+		if (FN_vkEnumerateInstanceVersion) 
+		{
+			vkcheck(FN_vkEnumerateInstanceVersion(&instanceVersion));
 		}
 		else
 			logerror("Fail to get Vulkan API version. Using base api version.\n");
