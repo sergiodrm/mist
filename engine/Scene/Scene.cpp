@@ -1103,6 +1103,7 @@ namespace Mist
 				}
 				transformGlobalIndex += model.GetTransformsCount();
 				materialGlobalIndex += model.GetMaterialCount();
+				check(materialGlobalIndex < m_materials.GetSize() && transformGlobalIndex < m_renderTransforms.GetSize());
 			}
 		}
 	}
