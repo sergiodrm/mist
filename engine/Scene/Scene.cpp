@@ -232,8 +232,6 @@ namespace Mist
 
 		const RenderContext& renderContext = m_engine->GetContext();
 
-		if (m_skybox.Tex)
-			cTexture::Destroy(renderContext, m_skybox.Tex);
 		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
 			m_models[i].Destroy(renderContext);
 		m_models.Clear();

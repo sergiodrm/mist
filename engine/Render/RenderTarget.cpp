@@ -30,16 +30,6 @@ namespace Mist
 
 	void RenderTargetAttachment::Destroy(const RenderContext& renderContext)
 	{
-		// Destroy resources only if there is an image allocated. Otherwise is external framebuffer.
-#if 0
-		if (Image.IsAllocated())
-		{
-			vkDestroyImageView(renderContext.Device, View, nullptr);
-			MemFreeImage(renderContext.Allocator, Image);
-		}
-#endif // 0
-		if (Tex)
-			cTexture::Destroy(renderContext, Tex);
 		Tex = nullptr;
 	}
 
@@ -545,13 +535,13 @@ namespace Mist
 	{
 		if (!description.Attachment)
 		{
-			tImageDescription imageDesc;
+			ImageDescription imageDesc;
 			imageDesc.Width = m_description.RenderArea.extent.width;
 			imageDesc.Height = m_description.RenderArea.extent.height;
 			imageDesc.Format = description.Format;
 			imageDesc.Usage = imageUsage | description.AdditionalUsage;
 			imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-			imageDesc.DebugName.Fmt("%s_%s_AttachmentTexture_%d", GetName(), IsDepthFormat(description.Format) ? "Depth" : "Color", 0);
+			imageDesc.DebugName = std::format("%s_%s_AttachmentTexture_%d", GetName(), IsDepthFormat(description.Format) ? "Depth" : "Color", 0);
 			attachment.Tex = cTexture::Create(renderContext, imageDesc);
 
 			if (!m_description.ClearOnLoad)

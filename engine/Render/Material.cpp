@@ -183,8 +183,6 @@ namespace Mist
     {
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
-            if (m_textures[i])
-                cTexture::Destroy(context, m_textures[i]);
             m_textures[i] = nullptr;
         }
     }

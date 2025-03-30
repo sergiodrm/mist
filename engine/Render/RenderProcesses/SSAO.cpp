@@ -41,7 +41,7 @@ namespace Mist
 		{
 			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
 		}
-		tImageDescription imageDesc;
+		ImageDescription imageDesc;
 		imageDesc.Width = 4;
 		imageDesc.Height = 4;
 		imageDesc.Depth = 1;
@@ -55,6 +55,7 @@ namespace Mist
 		imageDesc.SamplerDesc.AddressModeU = SAMPLER_ADDRESS_MODE_REPEAT;
 		imageDesc.SamplerDesc.AddressModeV = SAMPLER_ADDRESS_MODE_REPEAT;
 		imageDesc.SamplerDesc.AddressModeW = SAMPLER_ADDRESS_MODE_REPEAT;
+		imageDesc.DebugName = "ssaoNoiseTexture";
 		m_noiseTexture = cTexture::Create(renderContext, imageDesc);
 		const uint8_t* pixels = (uint8_t*)ssaoNoise;
 		m_noiseTexture->SetImageLayers(renderContext, &pixels, 1);
@@ -102,7 +103,6 @@ namespace Mist
 
 	void SSAO::Destroy(const RenderContext& renderContext)
 	{
-		cTexture::Destroy(renderContext, m_noiseTexture);
 		RenderTarget::Destroy(renderContext, m_rt);
 		RenderTarget::Destroy(renderContext, m_blurRT);
 	}

@@ -26,7 +26,7 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < g_textures.GetSize(); ++i)
 		{
-			if (g_textures[i] && !stricmp(name, g_textures[i]->GetName()))
+			if (g_textures[i] && !_stricmp(name, g_textures[i]->GetName()))
 				return i;
 		}
 		return UINT32_MAX;
@@ -134,22 +134,25 @@ namespace Mist
 		MemFreeImage(context.Allocator, m_image);
 	}
 
-	void cTexture::AllocateImage(const RenderContext& context, const tImageDescription& desc)
+	void cTexture::AllocateImage(const RenderContext& context, const ImageDescription& desc)
 	{
 		check(!m_image.IsAllocated());
 		m_description = desc;
 		check(CreateImage(context, desc, m_image));
 		m_layout = IMAGE_LAYOUT_UNDEFINED;
-		if (!desc.DebugName.IsEmpty())
-			SetName(desc.DebugName.CStr());
+		check(!desc.DebugName.empty());
+		SetName(desc.DebugName.c_str());
 		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, GetName());
 		m_sampler = CreateSampler(context, desc.SamplerDesc);
 	}
 
-	cTexture* cTexture::Create(const RenderContext& context, const tImageDescription& description)
-	{
+	cTexture* cTexture::Create(const RenderContext& context, const ImageDescription& description)
+    {
 		cTexture* texture = _new cTexture();
 		texture->AllocateImage(context, description);
+        if (g_textures.IsEmpty())
+            g_textures.Allocate(512);
+		g_textures.Push(texture);
 		return texture;
 	}
 
@@ -215,7 +218,7 @@ namespace Mist
 		return (uint32_t)m_views.size();
 	}
 
-	bool CreateImage(const RenderContext& context, const tImageDescription& createInfo, AllocatedImage& imageOut)
+	bool CreateImage(const RenderContext& context, const ImageDescription& createInfo, AllocatedImage& imageOut)
 	{
 		check(!imageOut.IsAllocated());
 		check(IsUsageCorrect(createInfo.Usage));
@@ -257,7 +260,7 @@ namespace Mist
 		return (uint32_t)floorf(log2f((float)__max(width, height))) + 1;
 	}
 
-	bool TransferImage(const RenderContext& context, const tImageDescription& imageDesc, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut)
+	bool TransferImage(const RenderContext& context, const ImageDescription& imageDesc, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut)
 	{
 		// Create transit buffer
 		VkDeviceSize size = utils::GetPixelSizeFromFormat(imageDesc.Format) * (VkDeviceSize)(imageDesc.Width * imageDesc.Height * imageDesc.Depth);
@@ -380,7 +383,7 @@ namespace Mist
 		return true;
 	}
 
-	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const tImageDescription& imageDesc)
+	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const ImageDescription& imageDesc)
 	{
 		// Check if image format supports linear filtering.
 		VkFormatProperties props;
@@ -507,8 +510,6 @@ namespace Mist
 	{
 		PROFILE_SCOPE_LOGF(LoadTextureFromFile, "Load texture from file (%s)", filepath);
 		check(texture);
-		if (g_textures.IsEmpty())
-			g_textures.Allocate(512);
 		uint32_t texIndex = FindCachedTexture(filepath);
 		if (texIndex != UINT32_MAX)
 		{
@@ -522,7 +523,7 @@ namespace Mist
 			return false;
 
 		// Create gpu buffer with texture specifications
-		tImageDescription texInfo;
+		ImageDescription texInfo;
 		texInfo.Width = texData.Width;
 		texInfo.Height = texData.Height;
 		texInfo.Depth = 1;
@@ -543,7 +544,7 @@ namespace Mist
 
 		// Free raw texture data
 		io::FreeTexture(texData.Pixels);
-		g_textures.Push(*texture);
+		
 		return true;
 	}
 

@@ -61,7 +61,7 @@ namespace Mist
 			// To use a texture as color attachment, it must was created with IMAGE_USAGE_COLOR_ATTACHMENT_BIT.
 			check(texture->GetDescription().Usage & IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
-			const tImageDescription& imageDesc = texture->GetDescription();
+			const ImageDescription& imageDesc = texture->GetDescription();
 			RenderTargetAttachmentDescription desc
 			{
 				.MultisampledBit = imageDesc.SampleCount,
@@ -88,7 +88,7 @@ namespace Mist
             // To use a texture as depth stencil attachment, it must was created with IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT.
             check(texture->GetDescription().Usage & IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
-			const tImageDescription& imageDesc = texture->GetDescription();
+			const ImageDescription& imageDesc = texture->GetDescription();
 			check(IsDepthFormat(imageDesc.Format));
 			EImageLayout depthLayout = IsStencilFormat(imageDesc.Format) ? IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
 			RenderTargetAttachmentDescription desc

@@ -25,9 +25,14 @@ namespace Mist
 		float MipLodBias = 0.f;
 		float MinLod = 0.f;
 		float MaxLod = -1.f;
+
+		inline bool operator==(const SamplerDescription& other) const
+		{
+			return !memcmp(this, &other, sizeof(SamplerDescription));
+		}
 	};
 
-	struct tImageDescription
+	struct ImageDescription
 	{
 		EFormat Format;
 		uint32_t Width = 0;
@@ -40,7 +45,23 @@ namespace Mist
 		EImageLayout InitialLayout = IMAGE_LAYOUT_UNDEFINED;
 		VkImageCreateFlags Flags = 0;
 		SamplerDescription SamplerDesc;
-		tFixedString<256> DebugName;
+		tString DebugName;
+
+		inline bool operator==(const ImageDescription& other) const 
+		{ 
+			return Format == other.Format
+				&& Width == other.Width
+				&& Height == other.Height
+				&& Depth == other.Depth
+				&& MipLevels == other.MipLevels
+				&& Layers == other.Layers
+				&& SampleCount == other.SampleCount
+				&& Usage == other.Usage
+				&& InitialLayout == other.InitialLayout
+				&& Flags == other.Flags
+				&& SamplerDesc == other.SamplerDesc
+				&& !_stricmp(DebugName.c_str(), other.DebugName.c_str());
+		}
 	};
 
 	struct tViewDescription
@@ -64,11 +85,11 @@ namespace Mist
 	uint32_t GetSamplerPackedDescription(const SamplerDescription& desc);
 	void DestroySamplers(const RenderContext& renderContext);
 
-	bool CreateImage(const RenderContext& context, const tImageDescription& createInfo, AllocatedImage& imageOut);
+	bool CreateImage(const RenderContext& context, const ImageDescription& createInfo, AllocatedImage& imageOut);
 	uint32_t CalculateMipLevels(uint32_t width, uint32_t height);
 	bool TransitionImageLayout(const RenderContext& context, const AllocatedImage& image, EImageLayout oldLayout, EImageLayout newLayout, uint32_t mipLevels);
-	bool TransferImage(const RenderContext& context, const tImageDescription& createInfo, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut);
-	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const tImageDescription& imageDesc);
+	bool TransferImage(const RenderContext& context, const ImageDescription& createInfo, const uint8_t** layerArray, uint32_t layerCount, AllocatedImage& imageOut);
+	bool GenerateImageMipmaps(const RenderContext& context, AllocatedImage& image, const ImageDescription& imageDesc);
 	bool BindDescriptorTexture(const RenderContext& context, cTexture* texture, VkDescriptorSet& set, uint32_t binding, uint32_t arrayIndex);
 	bool IsDepthFormat(EFormat format);
 	bool IsStencilFormat(EFormat format);
@@ -97,7 +118,7 @@ namespace Mist
 		cTexture() = default;
 	public:
 
-		static cTexture* Create(const RenderContext& context, const tImageDescription& description);
+		static cTexture* Create(const RenderContext& context, const ImageDescription& description);
 		static void Destroy(const RenderContext& context, cTexture* texture);
 
 		void SetImageLayers(const RenderContext& context, const uint8_t** layerDataArray, uint32_t layerCount);
@@ -109,7 +130,7 @@ namespace Mist
 		uint32_t GetViewCount() const;
 		Sampler GetSampler() const { return m_sampler; }
 		void SetSampler(Sampler sampler) { m_sampler = sampler; }
-		const tImageDescription& GetDescription() const { return m_description; }
+		const ImageDescription& GetDescription() const { return m_description; }
 		inline uint32_t GetWidth() const { return m_description.Width; }
 		inline uint32_t GetHeight() const { return m_description.Height; }
 
@@ -129,9 +150,9 @@ namespace Mist
 
 	private:
 		void Destroy(const RenderContext& context);
-		void AllocateImage(const RenderContext& context, const tImageDescription& desc);
+		void AllocateImage(const RenderContext& context, const ImageDescription& desc);
 
-		tImageDescription m_description;
+		ImageDescription m_description;
 		AllocatedImage m_image;
 		tDynArray<ImageView> m_views;
 		Sampler m_sampler;

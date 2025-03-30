@@ -312,8 +312,6 @@ namespace Mist
 		m_renderer.Destroy(m_renderContext);
 
 		// Destroy Default resources
-		if (DefaultTexture)
-			cTexture::Destroy(m_renderContext, DefaultTexture);
 		DefaultTexture = nullptr;
 		if (DefaultMaterial)
 		{

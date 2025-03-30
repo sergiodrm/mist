@@ -223,8 +223,6 @@ namespace Mist
 
 	void GPUParticleSystem::Destroy(const RenderContext& context)
 	{
-		cTexture::Destroy(context, m_circleGradientTexture);
-		//MemFreeBuffer(context.Allocator, m_particlesBuffer);
 		m_particlesBuffer.Destroy(context);
 		RenderTarget::Destroy(context, m_renderTarget);
 		m_renderTarget = nullptr;
@@ -395,7 +393,7 @@ namespace Mist
 		if (CVar_ShowGol.Get())
 		{
             CommandList* commandList = context.CmdList;
-            uint32_t bindingIndex = m_counter;
+            uint32_t bindingIndex = limits_cast<uint32_t>(m_counter);
 			commandList->SetGraphicsState({.Program = m_drawShader, .Rt = m_rt});
 
 			commandList->BindDescriptorSets(&m_drawBinding[bindingIndex], 1, 1);
