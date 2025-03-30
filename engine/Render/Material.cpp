@@ -7,6 +7,7 @@
 #include <string>
 #include "RenderProcesses/GBuffer.h"
 #include "Core/Logger.h"
+#include "CommandList.h"
 
 namespace Mist
 {
@@ -189,6 +190,10 @@ namespace Mist
     }
     void cMaterial::BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot) const
     {
+#if 1
+        CommandList* cmd = context.CmdList;
+        cmd->BindDescriptorSets(&m_textureSet, 1, shader.GetParam("u_Textures").SetIndex);
+#else
         cTexture* textures[MATERIAL_TEXTURE_COUNT];
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
@@ -199,6 +204,7 @@ namespace Mist
         }
         //shader.BindTextureArraySlot(context, slot, textures, MATERIAL_TEXTURE_COUNT);
         shader.BindSampledTextureArray(context, "u_Textures", textures, MATERIAL_TEXTURE_COUNT);
+#endif
     }
     sMaterialRenderData cMaterial::GetRenderData() const
     {

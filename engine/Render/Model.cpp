@@ -43,9 +43,11 @@
 
 #define LOAD_MESH_CHECK_READ_ACCESSOR
 #ifdef LOAD_MESH_CHECK_READ_ACCESSOR
-#define check_accessor(_f_) check((_f_))
+#define check_accessor(_condition) check((_condition))
+#define check_accessor_call(_f) check((_f))
 #else
 #define check_accessor(_f_) DUMMY_MACRO
+#define check_accessor_call(_f) expand(_f)
 #endif
 
 namespace gltf_api
@@ -186,7 +188,7 @@ namespace gltf_api
 			check_accessor(!strcmp(attribute.name, "POSITION"));
 
 			for (uint32_t i = 0; i < count; ++i)
-				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Position[0], numComponents));
+				check_accessor_call(cgltf_accessor_read_float(accessor, i, &vertices[i].Position[0], numComponents));
 			
             break;
 		}
@@ -195,12 +197,12 @@ namespace gltf_api
 			if (!strcmp(attribute.name, "TEXCOORD_0"))
 			{
 				for (uint32_t i = 0; i < count; ++i)
-					check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].TexCoords0[0], numComponents));
+					check_accessor_call(cgltf_accessor_read_float(accessor, i, &vertices[i].TexCoords0[0], numComponents));
 			}
 			else if (!strcmp(attribute.name, "TEXCOORD_1"))
 			{
 				for (uint32_t i = 0; i < count; ++i)
-					check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].TexCoords1[0], numComponents));
+					check_accessor_call(cgltf_accessor_read_float(accessor, i, &vertices[i].TexCoords1[0], numComponents));
 			}
 			else
 				unreachable_code();
@@ -210,7 +212,7 @@ namespace gltf_api
 			check_accessor(!strcmp(attribute.name, "NORMAL"));
 			for (uint32_t i = 0; i < count; ++i)
 			{
-				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Normal[0], numComponents));
+				check_accessor_call(cgltf_accessor_read_float(accessor, i, &vertices[i].Normal[0], numComponents));
 				check_accessor(Length2(vertices[i].Normal) > 1e-5f);
 			}
             break;
@@ -219,7 +221,7 @@ namespace gltf_api
 			check_accessor(!strcmp(attribute.name, "COLOR_0"));
             for (uint32_t i = 0; i < count; ++i)
             {
-				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Color[0], numComponents));
+				check_accessor_call(cgltf_accessor_read_float(accessor, i, &vertices[i].Color[0], numComponents));
                 check_accessor(vertices[i].Color.x >= 0.f && vertices[i].Color.x <= 1.f);
                 check_accessor(vertices[i].Color.y >= 0.f && vertices[i].Color.y <= 1.f);
                 check_accessor(vertices[i].Color.z >= 0.f && vertices[i].Color.z <= 1.f);
@@ -230,7 +232,7 @@ namespace gltf_api
 			check_accessor(!strcmp(attribute.name, "TANGENT"));
             for (uint32_t i = 0; i < count; ++i)
             {
-				check_accessor(cgltf_accessor_read_float(accessor, i, &vertices[i].Tangent[0], numComponents));
+				check_accessor_call(cgltf_accessor_read_float(accessor, i, &vertices[i].Tangent[0], numComponents));
 				check_accessor(vertices[i].Tangent.w == -1.f || vertices[i].Tangent.w == 1.f);
             }
             break;
