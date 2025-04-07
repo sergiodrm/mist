@@ -495,4 +495,103 @@ namespace Mist
 		t0 = t1;
 		t1 = t;
 	}
+
+	template <typename T>
+	class RefPtr
+	{
+	public:
+
+		typedef T* PtrType;
+		typedef RefPtr<T> ThisType;
+
+		RefPtr() : m_ptr(nullptr) {}
+
+		RefPtr(PtrType p) : m_ptr(p)
+		{
+			InternalAddRef();
+		}
+
+		RefPtr(const ThisType& other) 
+			: m_ptr(other.m_ptr)
+		{
+			InternalAddRef();
+		}
+
+		RefPtr(ThisType&& rvl)
+			: m_ptr(rvl.m_ptr)
+		{
+			InternalAddRef();
+		}
+
+		~RefPtr()
+		{
+			InternalReleaseRef();
+		}
+
+		ThisType& operator=(const ThisType& other)
+		{
+			InternalReleaseRef();
+			m_ptr = other.m_ptr;
+			InternalAddRef();
+			return *this;
+		}
+
+		ThisType& operator=(ThisType&& rvl)
+		{
+			InternalReleaseRef();
+			m_ptr = rvl.m_ptr;
+			InternalAddRef();
+		}
+
+        operator bool() const { return m_ptr != nullptr; }
+        PtrType operator*() const { return m_ptr; }
+		PtrType operator->() const { return m_ptr; }
+		PtrType GetPtr() const { return m_ptr; }
+
+	protected:
+
+		size_t InternalAddRef()
+		{
+			if (m_ptr)
+				return m_ptr->AddRef();
+			return 0;
+		}
+
+		size_t InternalReleaseRef()
+		{
+			size_t c = 0;
+			if (m_ptr)
+			{
+				c = m_ptr->ReleaseRef();
+				if (!c)
+					delete m_ptr;
+			}
+			m_ptr = nullptr;
+			return c;
+		}
+
+	private:
+		PtrType m_ptr;
+	};
+
+	template <typename T>
+	class Ref
+	{
+	public:
+
+		size_t AddRef()
+		{
+			return ++m_counter;
+		}
+
+		size_t ReleaseRef()
+		{
+			check(m_counter > 0);
+			size_t c = --m_counter;
+			return c;
+		}
+
+	private:
+		std::atomic<size_t> m_counter;
+	};
 }
