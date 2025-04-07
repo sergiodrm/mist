@@ -78,80 +78,6 @@ workspace "Mist"
     
         
     group "Engine"
-    project "RenderBackend"
-        kind "StaticLib"
-        language "C++"
-        cppdialect "C++20"
-
-        targetdir "%{outputdir}"
-        targetname "rbe"
-        objdir "%{temporaldir}"
-        location "%{wks.location}/source/renderbackend"
-
-        defines {  }
-        files { 
-            "source/renderbackend/**.h", "source/renderbackend/**.cpp",
-        }
-
-        includedirs {
-            "%{includes.mist}",
-            "%{includes.generic}",
-            "%{includes.glm}",
-            "%{includes.gltf}",
-            "%{includes.imgui}",
-            "%{includes.imgui}/backends",
-            "%{includes.sdl}",
-            "%{includes.stbimage}",
-            "%{includes.vma}",
-            "%{includes.vkbootstrap}",
-            "%{includes.vulkan}"
-        }
-        links {
-            "glm",
-            "ImGui",
-            "VkBootstrap",
-            "%{libs.vulkan}",
-            "%{libs.sdl}",
-        }
-        
-        filter "configurations:Debug"
-        links {
-                "%{libs.spirvd}",
-                "%{libs.spirvcrossd}",
-                "%{libs.spirvcrosscppd}",
-                "%{libs.spirvcrosscored}",
-                "%{libs.spirvcrossglsld}",
-                "%{libs.spirvcrossreflectd}",
-                --"%{libs.spirvcrosscsharedd}",
-                "%{libs.spirvcrosshlsld}",
-                "%{libs.spirvcrossglsld}",
-                "%{libs.spirvcrossmsld}",
-                "%{libs.spirvcrossutild}",
-                "%{libs.glslangd}",
-                "%{libs.shadercd}",
-                "%{libs.shadercutild}",
-            }
-            targetsuffix "d"
-            
-        filter "configurations:Release"
-        links {
-                "%{libs.spirv}",
-                "%{libs.spirvcross}",
-                "%{libs.spirvcrosscore}",
-                "%{libs.spirvcrosscpp}",
-                "%{libs.spirvcrossglsl}",
-                "%{libs.spirvcrossreflect}",
-                --"%{libs.spirvcrosscshared}",
-                "%{libs.spirvcrosshlsl}",
-                "%{libs.spirvcrossglsl}",
-                "%{libs.spirvcrossmsl}",
-                "%{libs.spirvcrossutil}",
-                "%{libs.glslang}",
-                "%{libs.shaderc}",
-                "%{libs.shadercutil}",
-            }
-
-
     project "MistEngine"
         kind "StaticLib"
         language "C++"
@@ -162,7 +88,7 @@ workspace "Mist"
         objdir "%{temporaldir}"
         location "%{wks.location}/source/engine"
 
-        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE" }
+        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE", "RBE_VK" }
         files { 
             "source/engine/**.h", "source/engine/**.cpp",
         }
