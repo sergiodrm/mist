@@ -192,7 +192,8 @@ namespace Mist
 		}
 		else
 			r = realloc(p, size);
-		AddMemTrace(SystemMemStats, r, size, file, line);
+		check(size < UINT32_MAX);
+		AddMemTrace(SystemMemStats, r, (uint32_t)size, file, line);
 		check(r);
 		return r;
 #else
