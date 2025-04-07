@@ -173,6 +173,26 @@ namespace Mist
 		{
 			for (uint32_t i = 0; i < other.GetSize(); ++i)
 				Data[i] = other[i];
+            PushIndex = other.PushIndex;
+		}
+		tStaticArray(uint32_t n)
+		{
+			Resize(n);
+		}
+
+        tStaticArray(tThisType&& other)
+        {
+            for (uint32_t i = 0; i < other.GetSize(); ++i)
+                Data[i] = other[i];
+            PushIndex = other.PushIndex;
+        }
+
+		tThisType& operator=(const tThisType& other)
+		{
+            for (uint32_t i = 0; i < other.GetSize(); ++i)
+                Data[i] = other[i];
+            PushIndex = other.PushIndex;
+            return *this;
 		}
 
 		const T& operator[](uint32_t index) const { check(index < PushIndex); return Data[index]; }
@@ -198,16 +218,18 @@ namespace Mist
 			Clear();
 		}
 
-		void Push(const T& value)
+		T& Push(const T& value)
 		{
 			check(PushIndex < Size);
-			Data[PushIndex++] = value;
+			new(&Data[PushIndex++])T(value);
+            return Data[PushIndex - 1];
 		}
 
-		void Push()
+		T& Push()
 		{
 			check(PushIndex < Size);
 			new(&Data[PushIndex++])T();
+            return Data[PushIndex - 1];
 		}
 
 		void Pop() { check(PushIndex > 0); --PushIndex; }
