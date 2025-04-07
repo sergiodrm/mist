@@ -34,6 +34,11 @@
 #include "Render/CommandList.h"
 #include "Render/UI.h"
 
+//#define RENDER_BACKEND_TEST
+#ifdef RENDER_BACKEND_TEST
+#include "RenderBackend/Device.h"
+#endif
+
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
 
@@ -589,6 +594,64 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitVulkan()
 	{
+#ifdef RENDER_BACKEND_TEST
+		{
+			render::DeviceDescription devdesc;
+			devdesc.enableValidationLayer = true;
+			devdesc.name = "MistEngine";
+			devdesc.windowHandle = m_renderContext.Window;
+			render::Device* device = _new render::Device(devdesc);
+
+            {
+                render::BufferDescription bufferDesc;
+                bufferDesc.bufferUsage = render::BufferUsage_UniformBuffer;
+                bufferDesc.size = sizeof(glm::mat4) * 300;
+                bufferDesc.memoryUsage = render::MemoryUsage_CpuToGpu;
+                render::BufferHandle buffer = device->CreateBuffer(bufferDesc);
+
+				render::TextureDescription texDesc;
+                texDesc.format = render::Format_R16G16B16A16_SFloat;
+				texDesc.extent = { 1920, 1080, 1 };
+				texDesc.usage = render::ImageUsage_ColorAttachment;
+				texDesc.memoryUsage = render::MemoryUsage_Gpu;
+                render::TextureHandle texture = device->CreateTexture(texDesc);
+
+				render::TextureDescription depthTexDesc;
+                depthTexDesc.format = render::Format_D24_UNorm_S8_UInt;
+                depthTexDesc.extent = { 1920, 1080, 1 };
+				depthTexDesc.usage = render::ImageUsage_DepthStencilAttachment;
+                depthTexDesc.memoryUsage = render::MemoryUsage_Gpu;
+                render::TextureHandle depthTexture = device->CreateTexture(depthTexDesc);
+
+				render::RenderTargetDescription rtDesc = render::RenderTargetDescription()
+					.AddColorAttachment(texture, render::TextureSubresourceWholeRange, render::Format_Undefined)
+					.SetDepthStencilAttachment(depthTexture, render::TextureSubresourceWholeRange, render::Format_Undefined);
+                render::RenderTargetHandle rt = device->CreateRenderTarget(rtDesc);
+
+				{
+					render::BufferHandle buffer2 = buffer;
+					render::BufferHandle buffer3 = buffer2;
+
+                    render::TextureHandle texture2 = texture;
+                    render::TextureHandle texture3 = texture2;
+
+                    render::TextureHandle depthTexture2 = depthTexture;
+                    render::TextureHandle depthTexture3 = depthTexture2;
+
+                    render::RenderTargetHandle rt2 = rt;
+                    render::RenderTargetHandle rt3 = rt2;
+				}
+            }
+
+			delete device;
+			device = nullptr;
+		}
+
+		return true;
+#endif
+
+
+
 		// Get Vulkan version
         uint32_t instanceVersion = VK_API_VERSION_1_0;
 		PFN_vkEnumerateInstanceVersion FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
