@@ -34,10 +34,12 @@
 #include "Render/CommandList.h"
 #include "Render/UI.h"
 
-//#define RENDER_BACKEND_TEST
+#define RENDER_BACKEND_TEST
 #ifdef RENDER_BACKEND_TEST
 #include "RenderBackend/Device.h"
+#include "RenderBackend/ShaderCompiler.h"
 #endif
+#include "RenderBackend/Utils.h"
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -602,46 +604,130 @@ namespace Mist
 			devdesc.windowHandle = m_renderContext.Window;
 			render::Device* device = _new render::Device(devdesc);
 
-            {
-                render::BufferDescription bufferDesc;
-                bufferDesc.bufferUsage = render::BufferUsage_UniformBuffer;
-                bufferDesc.size = sizeof(glm::mat4) * 300;
-                bufferDesc.memoryUsage = render::MemoryUsage_CpuToGpu;
-                render::BufferHandle buffer = device->CreateBuffer(bufferDesc);
-
-				render::TextureDescription texDesc;
-                texDesc.format = render::Format_R16G16B16A16_SFloat;
-				texDesc.extent = { 1920, 1080, 1 };
-				texDesc.usage = render::ImageUsage_ColorAttachment;
-				texDesc.memoryUsage = render::MemoryUsage_Gpu;
-                render::TextureHandle texture = device->CreateTexture(texDesc);
-
-				render::TextureDescription depthTexDesc;
-                depthTexDesc.format = render::Format_D24_UNorm_S8_UInt;
-                depthTexDesc.extent = { 1920, 1080, 1 };
-				depthTexDesc.usage = render::ImageUsage_DepthStencilAttachment;
-                depthTexDesc.memoryUsage = render::MemoryUsage_Gpu;
-                render::TextureHandle depthTexture = device->CreateTexture(depthTexDesc);
-
-				render::RenderTargetDescription rtDesc = render::RenderTargetDescription()
-					.AddColorAttachment(texture, render::TextureSubresourceWholeRange, render::Format_Undefined)
-					.SetDepthStencilAttachment(depthTexture, render::TextureSubresourceWholeRange, render::Format_Undefined);
-                render::RenderTargetHandle rt = device->CreateRenderTarget(rtDesc);
-
+			{
+				// Command list for transfer operations in initialization
+				render::CommandListHandle commandList = device->CreateCommandList();
+				commandList->BeginRecording();
+				float quadVertices[] =
 				{
-					render::BufferHandle buffer2 = buffer;
-					render::BufferHandle buffer3 = buffer2;
+					-0.5f, -0.5f, 0.f, 0.f, 0.f,
+					0.5f, -0.5f, 0.f, 1.f, 0.f,
+					-0.5f, 0.5f, 0.f, 0.f, 1.f,
+					0.5f, 0.5f, 0.f, 1.f, 1.f,
+				};
+				uint32_t quadIndices[] = { 0, 1, 2, 2, 1, 3 };
 
-                    render::TextureHandle texture2 = texture;
-                    render::TextureHandle texture3 = texture2;
+				// Vertex buffer
+				render::BufferDescription bufferDescription;
+				bufferDescription.size = sizeof(quadVertices);
+				bufferDescription.memoryUsage = render::MemoryUsage_Gpu;
+				bufferDescription.bufferUsage = render::BufferUsage_TransferDst | render::BufferUsage_VertexBuffer;
+				render::BufferHandle vb = device->CreateBuffer(bufferDescription);
+				commandList->WriteBuffer(vb, quadVertices, sizeof(quadVertices));
 
-                    render::TextureHandle depthTexture2 = depthTexture;
-                    render::TextureHandle depthTexture3 = depthTexture2;
+				// Index buffer
+				bufferDescription.size = sizeof(quadIndices);
+				bufferDescription.bufferUsage = render::BufferUsage_TransferDst | render::BufferUsage_IndexBuffer;
+				render::BufferHandle ib = device->CreateBuffer(bufferDescription);
+				commandList->WriteBuffer(ib, quadIndices, sizeof(quadIndices));
 
-                    render::RenderTargetHandle rt2 = rt;
-                    render::RenderTargetHandle rt3 = rt2;
+				// Input layotu
+				render::VertexInputAttribute attributes[2] = { render::Format_R32G32B32_SFloat, render::Format_R32G32_SFloat };
+				render::VertexInputLayout inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, CountOf(attributes));
+
+				// Texture
+				uint32_t width = 1920, height = 1080;
+				render::TextureDescription textureDescription;
+				textureDescription.extent = { width, height, 1 };
+				textureDescription.mipLevels = render::utils::ComputeMipLevels(width, height);
+				textureDescription.format = render::Format_R8G8B8A8_UNorm;
+				textureDescription.memoryUsage = render::MemoryUsage_Gpu;
+				textureDescription.usage = render::ImageUsage_Sampled | render::ImageUsage_TransferDst;
+				render::TextureHandle texture = device->CreateTexture(textureDescription);
+				size_t texturePixelCount = width * height;
+				uint8_t* textureData = _new uint8_t[texturePixelCount * 4];
+				for (size_t i = 0; i < texturePixelCount; ++i)
+				{
+					textureData[i + 0] = (uint8_t)(i * rand() + UINT8_MAX);
+					textureData[i + 1] = (uint8_t)(i * rand() + UINT8_MAX);
+					textureData[i + 2] = (uint8_t)(i * rand() + UINT8_MAX);
+					textureData[i + 3] = 1;
 				}
-            }
+				commandList->WriteTexture(texture, 0, 0, textureData, texturePixelCount * 4 * sizeof(uint8_t));
+				delete[] textureData;
+
+				// submit resources
+				commandList->EndRecording();
+				render::CommandList* list = commandList.GetPtr();
+				uint64_t submissionId = commandList->ExecuteCommandList();
+				render::CommandQueue* queue = device->GetCommandQueue(render::Queue_Transfer);
+				queue->WaitForCommandSubmission(submissionId);
+				commandList = nullptr;
+
+				// Sampler
+				render::SamplerHandle sampler = device->CreateSampler(render::SamplerDescription());
+
+				// Shader modules
+				render::shader_compiler::CompiledBinary vsSrc = render::shader_compiler::Compile(cAssetPath("shaders/quad.vert"), render::ShaderType_Vertex);
+				render::shader_compiler::CompiledBinary fsSrc = render::shader_compiler::Compile(cAssetPath("shaders/quad.frag"), render::ShaderType_Fragment);
+
+				render::ShaderHandle vs = device->CreateShader({ .type = render::ShaderType_Vertex }, vsSrc.binary, vsSrc.binaryCount);
+				render::ShaderHandle fs = device->CreateShader({ .type = render::ShaderType_Fragment }, fsSrc.binary, fsSrc.binaryCount);
+
+				// Bindings
+				render::BindingLayoutDescription layoutDescription;
+				layoutDescription.SetShaderType(render::ShaderType_Fragment);
+				layoutDescription.PushTextureSRV();
+				render::BindingLayoutHandle layout = device->CreateBindingLayout(layoutDescription);
+
+				render::BindingSetDescription bindingDescription;
+				bindingDescription.PushTextureSRV(0, texture.GetPtr(), sampler);
+				render::BindingSetHandle bindingSet = device->CreateBindingSet(bindingDescription, layout);
+
+				// Render target using swapchain image
+				const render::Device::Swapchain& swapchain = device->GetSwapchain();
+				render::RenderTargetDescription rtDesc;
+				rtDesc.AddColorAttachment(swapchain.images[0], render::TextureSubresourceRange::AllSubresources(), swapchain.format);
+				render::RenderTargetHandle rt = device->CreateRenderTarget(rtDesc);
+
+				// Graphics pipeline
+				render::GraphicsPipelineDescription gpDesc;
+				gpDesc.bindingLayouts.Push(layout);
+				gpDesc.vertexInputLayout = inputLayout;
+				gpDesc.vertexShader = vs;
+				gpDesc.fragmentShader = fs;
+				gpDesc.renderState.blendState.renderTargetBlendStates.Push(render::RenderTargetBlendState());
+				render::GraphicsPipelineHandle graphicsPipeline = device->CreateGraphicsPipeline(gpDesc, rt);
+
+				render::SemaphoreHandle acquireSemaphore = device->CreateRenderSemaphore();
+				render::SemaphoreHandle renderSemaphore = device->CreateRenderSemaphore();
+
+				commandList = device->CreateCommandList();
+				while (true)
+				{
+					render::CommandQueue* commandQueue = device->GetCommandQueue(render::Queue_Graphics);
+					commandQueue->ProcessInFlightCommands();
+
+					uint32_t swapchainIndex = device->AcquireSwapchainIndex(acquireSemaphore);
+					commandQueue->AddWaitSemaphore(acquireSemaphore, 0);
+					commandQueue->AddSignalSemaphore(renderSemaphore, 0);
+
+					commandList->BeginRecording();
+
+					render::GraphicsState state;
+					state.bindings.Push(bindingSet);
+					state.indexBuffer = ib;
+					state.vertexBuffer = vb;
+					state.pipeline = graphicsPipeline;
+					state.rt = rt;
+					commandList->SetGraphicsState(state);
+					commandList->DrawIndexed(6, 1, 0, 0, 0);
+
+					commandList->EndRecording();
+					commandList->ExecuteCommandList();
+					device->Present(renderSemaphore);
+				}
+			}
 
 			delete device;
 			device = nullptr;
