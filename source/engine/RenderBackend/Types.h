@@ -8,12 +8,9 @@
 
 namespace render
 {
-    class Color
+    struct Color
     {
-    public:
         float r, g, b, a;
-
-
     };
 
     struct Extent2D
@@ -105,6 +102,115 @@ namespace render
         }
     };
 
+    struct Rect
+    {
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
+
+        Rect()
+            : minX(0.f), maxX(1.f), minY(0.f), maxY(1.f)
+        { }
+
+        Rect(float minX, float maxX, float minY, float maxY)
+            : minX(minX), maxX(maxX), minY(minY), maxY(maxY)
+        { }
+
+        inline bool operator==(const Rect& other) const
+        {
+            return minX == other.minX &&
+                maxX == other.maxX &&
+                minY == other.minY &&
+                maxY == other.maxY;
+        }
+
+        inline bool operator!=(const Rect& other) const
+        {
+            return !(*this == other);
+        }
+
+        inline float GetWidth() const
+        {
+            return maxX - minX;
+        }
+
+        inline float GetHeight() const
+        {
+            return maxY - minY;
+        }
+    };
+
+    struct Viewport
+    {
+        float minX;
+        float maxX;
+        float minY;
+        float maxY;
+        float minZ;
+        float maxZ;
+
+        Viewport()
+            : minX(0.f), maxX(1.f), minY(0.f), maxY(1.f), minZ(0.f), maxZ(1.f)
+        { }
+
+        Viewport(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
+            : minX(minX), maxX(maxX), minY(minY), maxY(maxY), minZ(minZ), maxZ(maxZ)
+        { }
+
+        inline bool operator==(const Viewport& other) const
+        {
+            return minX == other.minX &&
+                maxX == other.maxX &&
+                minY == other.minY &&
+                maxY == other.maxY &&
+                minZ == other.minZ &&
+                maxZ == other.maxZ;
+        }
+
+        inline bool operator!=(const Viewport& other) const
+        {
+            return !(*this == other);
+        }
+
+        inline float GetWidth() const
+        {
+            return maxX - minX;
+        }
+
+        inline float GetHeight() const
+        {
+            return maxY - minY;
+        }
+    };
+
+    enum PresentMode
+    {
+        PresentMode_Immediate,
+        PresentMode_Mailbox,
+        PresentMode_FIFO,
+        PresentMode_FIFORelaxed,
+        PresentMode_SharedDemandRefresh,
+        PresentMode_SharedContinuousRefresh,
+        PresentMode_MaxEnum,
+    };
+
+    enum ColorSpace
+    {
+        ColorSpace_SRGB,
+        ColorSpace_MaxEnum,
+    };
+
+    enum QueueTypeFlags
+    {
+        Queue_None =0,
+        Queue_Compute = 1,
+        Queue_Graphics = 2,
+        Queue_Transfer = 4,
+        Queue_All = 0xff
+    };
+    typedef uint8_t QueueType;
+
     enum BufferUsageFlags
     {
         BufferUsage_None                        = 0x0000,
@@ -153,6 +259,17 @@ namespace render
         MemoryUsage_CpuToGpu,
         MemoryUsage_Gpu,
         MemoryUsage_GpuToCpu,
+    };
+
+    enum ResourceType
+    {
+        ResourceType_None,
+        ResourceType_TextureSRV,
+        ResourceType_TextureUAV,
+        ResourceType_ConstantBuffer,
+        ResourceType_VolatileConstantBuffer,
+        ResourceType_BufferUAV,
+        ResourceType_MaxEnum
     };
 
     enum Format
@@ -493,4 +610,99 @@ namespace render
         ShaderType_MaxEnum = 0xffff
     };
     typedef uint32_t ShaderType;
+
+    enum BlendFactor
+    {
+        BlendFactor_Zero,
+        BlendFactor_One,
+        BlendFactor_SrcColor,
+        BlendFactor_OneMinusSrcColor,
+        BlendFactor_DstColor,
+        BlendFactor_OneMinusDstColor,
+        BlendFactor_SrcAlpha,
+        BlendFactor_OneMinusSrcAlpha,
+        BlendFactor_DstAlpha,
+        BlendFactor_OneMinusDstAlpha,
+        BlendFactor_ConstantColor,
+        BlendFactor_OneMinusConstantColor,
+        BlendFactor_ConstantAlpha,
+        BlendFactor_OneMinusConstantAlpha,
+        BlendFactor_SrcAlphaSaturate,
+        BlendFactor_MaxEnum
+    };
+
+    enum BlendOp
+    {
+        BlendOp_Add,
+        BlendOp_Subtract,
+        BlendOp_ReverseSubtract,
+        BlendOp_Min,
+        BlendOp_Max,
+        BlendOp_MaxEnum
+    };
+
+    enum ColorMaskFlags
+    {
+        ColorMask_Red = 0x1,
+        ColorMask_Green = 0x2,
+        ColorMask_Blue = 0x4,
+        ColorMask_Alpha = 0x8,
+        ColorMask_All = ColorMask_Red | ColorMask_Green | ColorMask_Blue | ColorMask_Alpha
+    };
+    typedef uint32_t ColorMask;
+
+    enum CompareOp
+    {
+        CompareOp_Never,
+        CompareOp_Less,
+        CompareOp_Equal,
+        CompareOp_LessOrEqual,
+        CompareOp_Greater,
+        CompareOp_NotEqual,
+        CompareOp_GreaterOrEqual,
+        CompareOp_Always,
+        CompareOp_MaxEnum
+    };
+
+    enum StencilOp
+    {
+        StencilOp_Keep,
+        StencilOp_Zero,
+        StencilOp_Replace,
+        StencilOp_IncrementAndClamp,
+        StencilOp_DecrementAndClamp,
+        StencilOp_Invert,
+        StencilOp_IncrementAndWrap,
+        StencilOp_DecrementAndWrap,
+        StencilOp_MaxEnum
+    };
+
+    enum PrimitiveType
+    {
+        PrimitiveType_TriangleList,
+        PrimitiveType_TriangleStrip,
+        PrimitiveType_LineList,
+        PrimitiveType_LineStrip,
+        PrimitiveType_PointList,
+        PrimitiveType_TriangleFan,
+        PrimitiveType_PatchList,
+        PrimitiveType_MaxEnum
+    };
+
+    enum RasterFillMode
+    {
+        RasterFillMode_Fill,
+        RasterFillMode_Line,
+        RasterFillMode_Point,
+        RasterFillMode_MaxEnum
+    };
+
+    enum RasterCullMode
+    {
+        RasterCullMode_None,
+        RasterCullMode_Front,
+        RasterCullMode_Back,
+        RasterCullMode_FrontAndBack,
+        RasterCullMode_MaxEnum
+    };
 }
