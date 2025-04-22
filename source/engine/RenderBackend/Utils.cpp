@@ -13,6 +13,116 @@ namespace render
 {
     namespace utils
     {
+        ImageLayoutState ConvertImageLayoutState(ImageLayout layout)
+        {
+            ImageLayoutState state = {};
+            switch (layout)
+            {
+            case ImageLayout_Undefined:
+                state.layout = VK_IMAGE_LAYOUT_UNDEFINED;
+                state.accessFlags = 0;
+                state.stageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                break;
+            case ImageLayout_General:
+                state.layout = VK_IMAGE_LAYOUT_GENERAL;
+                state.accessFlags = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+                break;
+            case ImageLayout_ColorAttachment:
+                state.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                state.accessFlags = VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+                break;
+            case ImageLayout_DepthStencilAttachment:
+                state.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+                state.accessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                break;
+            case ImageLayout_DepthStencilReadOnly:
+                state.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+                state.accessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+                break;
+            case ImageLayout_ShaderReadOnly:
+                state.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                state.accessFlags = VK_ACCESS_2_SHADER_READ_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+                break;
+            case ImageLayout_TransferSrc:
+                state.layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+                state.accessFlags = VK_ACCESS_2_TRANSFER_READ_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                break;
+            case ImageLayout_TransferDst:
+                state.layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                state.accessFlags = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+                state.stageFlags = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+                break;
+            case ImageLayout_PresentSrc:
+                state.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                state.accessFlags = 0;
+                state.stageFlags = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+                break;
+            default:
+                unreachable_code();
+            }
+            return state;
+        }
+
+        VkImageMemoryBarrier2 ConvertImageBarrier(const TextureBarrier& barrier)
+        {
+            ImageLayoutState oldState = ConvertImageLayoutState(barrier.oldLayout);
+            ImageLayoutState newState = ConvertImageLayoutState(barrier.newLayout);
+            VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2, nullptr };
+            imageBarrier.image = barrier.texture->m_image;
+            imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            imageBarrier.srcAccessMask = oldState.accessFlags;
+            imageBarrier.dstAccessMask = newState.accessFlags;
+            imageBarrier.oldLayout = oldState.layout;
+            imageBarrier.newLayout = newState.layout;
+            imageBarrier.srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | oldState.stageFlags;
+            imageBarrier.dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT | newState.stageFlags;
+            imageBarrier.subresourceRange = ConvertImageSubresourceRange(barrier.subresources, barrier.texture->m_description.format);
+            return imageBarrier;
+        }
+
+        VkPresentModeKHR ConvertPresentMode(PresentMode mode)
+        {
+            switch (mode)
+            {
+            case PresentMode_Immediate: return VK_PRESENT_MODE_IMMEDIATE_KHR;
+            case PresentMode_Mailbox: return VK_PRESENT_MODE_MAILBOX_KHR;
+            case PresentMode_FIFO: return VK_PRESENT_MODE_FIFO_KHR;
+            case PresentMode_FIFORelaxed: return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+            case PresentMode_SharedDemandRefresh: return VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR;
+            case PresentMode_SharedContinuousRefresh: return VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR;
+            case PresentMode_MaxEnum: return VK_PRESENT_MODE_MAX_ENUM_KHR;
+            }
+            unreachable_code();
+            return VK_PRESENT_MODE_MAX_ENUM_KHR;
+        }
+
+        VkColorSpaceKHR ConvertColorSpace(ColorSpace space)
+        {
+            switch (space)
+            {
+            case ColorSpace_SRGB: return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+            case ColorSpace_MaxEnum: return VK_COLOR_SPACE_MAX_ENUM_KHR;
+            }
+            unreachable_code();
+            return VK_COLOR_SPACE_MAX_ENUM_KHR;
+        }
+
+        VkQueueFlags ConvertQueueFlags(QueueType flags)
+        {
+            VkQueueFlags f = 0;
+            if (flags & Queue_Compute) f |= VK_QUEUE_COMPUTE_BIT;
+            if (flags & Queue_Graphics) f |= VK_QUEUE_GRAPHICS_BIT;
+            if (flags & Queue_Transfer) f |= VK_QUEUE_TRANSFER_BIT;
+            return f;
+        }
+
         VkBufferUsageFlags ConvertBufferUsage(BufferUsage usage)
         {
             VkBufferUsageFlags flags = 0;
@@ -51,6 +161,22 @@ namespace render
             if (usage & ImageUsage_VideoEncodeDpb) flags |= VK_IMAGE_USAGE_VIDEO_ENCODE_DPB_BIT_KHR;
             if (usage & ImageUsage_AttachmentFeedbackLoop) flags |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
             return flags;
+        }
+
+        VkDescriptorType ConvertToDescriptorType(ResourceType type)
+        {
+            switch (type)
+            {
+            case ResourceType_TextureSRV: return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            case ResourceType_TextureUAV: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            case ResourceType_ConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            case ResourceType_VolatileConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+            case ResourceType_BufferUAV: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case ResourceType_MaxEnum:
+            case ResourceType_None: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
 
         VkFormat ConvertFormat(Format format)
@@ -568,6 +694,11 @@ namespace render
             return 0;
         }
 
+		uint32_t GetFormatSize(Format format)
+		{
+			return GetBytesPerPixel(format);
+		}
+
         VkImageLayout ConvertImageLayout(ImageLayout layout)
         {
             switch (layout)
@@ -796,6 +927,151 @@ namespace render
             if (type & ShaderType_RayIntersection) flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
             if (type & ShaderType_RayCallable) flags |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;
             return flags;
+        }
+
+        VkBlendFactor ConvertBlendFactor(BlendFactor factor)
+        {
+            switch (factor)
+            {
+            case BlendFactor_Zero: return VK_BLEND_FACTOR_ZERO;
+            case BlendFactor_One: return VK_BLEND_FACTOR_ONE;
+            case BlendFactor_SrcColor: return VK_BLEND_FACTOR_SRC_COLOR;
+            case BlendFactor_OneMinusSrcColor: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+            case BlendFactor_DstColor: return VK_BLEND_FACTOR_DST_COLOR;
+            case BlendFactor_OneMinusDstColor: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+            case BlendFactor_SrcAlpha: return VK_BLEND_FACTOR_SRC_ALPHA;
+            case BlendFactor_OneMinusSrcAlpha: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+            case BlendFactor_DstAlpha: return VK_BLEND_FACTOR_DST_ALPHA;
+            case BlendFactor_OneMinusDstAlpha: return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+            case BlendFactor_ConstantColor: return VK_BLEND_FACTOR_CONSTANT_COLOR;
+            case BlendFactor_OneMinusConstantColor: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+            case BlendFactor_ConstantAlpha: return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+            case BlendFactor_OneMinusConstantAlpha: return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+            case BlendFactor_SrcAlphaSaturate: return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+            case BlendFactor_MaxEnum: return VK_BLEND_FACTOR_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_BLEND_FACTOR_MAX_ENUM;
+        }
+
+        VkBlendOp ConvertBlendOp(BlendOp op)
+        {
+            switch (op)
+            {
+            case BlendOp_Add: return VK_BLEND_OP_ADD;
+            case BlendOp_Subtract: return VK_BLEND_OP_SUBTRACT;
+            case BlendOp_ReverseSubtract: return VK_BLEND_OP_REVERSE_SUBTRACT;
+            case BlendOp_Min: return VK_BLEND_OP_MIN;
+            case BlendOp_Max: return VK_BLEND_OP_MAX;
+            case BlendOp_MaxEnum: return VK_BLEND_OP_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_BLEND_OP_MAX_ENUM;
+        }
+
+        VkCompareOp ConvertCompareOp(CompareOp op)
+        {
+            switch (op)
+            {
+            case CompareOp_Never: return VK_COMPARE_OP_NEVER;
+            case CompareOp_Less: return VK_COMPARE_OP_LESS;
+            case CompareOp_Equal: return VK_COMPARE_OP_EQUAL;
+            case CompareOp_LessOrEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+            case CompareOp_Greater: return VK_COMPARE_OP_GREATER;
+            case CompareOp_NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+            case CompareOp_GreaterOrEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+            case CompareOp_Always: return VK_COMPARE_OP_ALWAYS;
+            case CompareOp_MaxEnum: return VK_COMPARE_OP_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_COMPARE_OP_MAX_ENUM;
+        }
+
+        VkColorComponentFlags ConvertColorComponentFlags(ColorMask mask)
+        {
+            VkColorComponentFlags flags = 0;
+            if (mask & ColorMask_Red) flags |= VK_COLOR_COMPONENT_R_BIT;
+            if (mask & ColorMask_Green) flags |= VK_COLOR_COMPONENT_G_BIT;
+            if (mask & ColorMask_Blue) flags |= VK_COLOR_COMPONENT_B_BIT;
+            if (mask & ColorMask_Alpha) flags |= VK_COLOR_COMPONENT_A_BIT;
+            return flags;
+        }
+
+        VkStencilOp ConvertStencilOp(StencilOp op)
+        {
+            switch (op)
+            {
+            case StencilOp_Keep: return VK_STENCIL_OP_KEEP;
+            case StencilOp_Zero: return VK_STENCIL_OP_ZERO;
+            case StencilOp_Replace: return VK_STENCIL_OP_REPLACE;
+            case StencilOp_IncrementAndClamp: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+            case StencilOp_DecrementAndClamp: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+            case StencilOp_Invert: return VK_STENCIL_OP_INVERT;
+            case StencilOp_IncrementAndWrap: return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+            case StencilOp_DecrementAndWrap: return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+            case StencilOp_MaxEnum: return VK_STENCIL_OP_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_STENCIL_OP_MAX_ENUM;
+        }
+
+        VkPrimitiveTopology ConvertPrimitiveType(PrimitiveType type)
+        {
+            switch (type)
+            {
+            case PrimitiveType_PointList: return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            case PrimitiveType_LineList: return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            case PrimitiveType_LineStrip: return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+            case PrimitiveType_TriangleList: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            case PrimitiveType_TriangleStrip: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+            case PrimitiveType_TriangleFan: return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN;
+            case PrimitiveType_PatchList: return VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+            case PrimitiveType_MaxEnum: return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+        }
+
+        VkPolygonMode ConvertPolygonMode(RasterFillMode mode)
+        {
+            switch (mode)
+            {
+            case RasterFillMode_Fill: return VK_POLYGON_MODE_FILL;
+            case RasterFillMode_Line: return VK_POLYGON_MODE_LINE;
+            case RasterFillMode_Point: return VK_POLYGON_MODE_POINT;
+            case RasterFillMode_MaxEnum: return VK_POLYGON_MODE_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_POLYGON_MODE_MAX_ENUM;
+        }
+
+        VkCullModeFlags ConvertCullMode(RasterCullMode mode)
+        {
+            switch (mode)
+            {
+            case RasterCullMode_None: return VK_CULL_MODE_NONE;
+            case RasterCullMode_Front: return VK_CULL_MODE_FRONT_BIT;
+            case RasterCullMode_Back: return VK_CULL_MODE_BACK_BIT;
+            case RasterCullMode_FrontAndBack: return VK_CULL_MODE_FRONT_AND_BACK;
+            case RasterCullMode_MaxEnum: return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
+            }
+            unreachable_code();
+            return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
+        }
+
+        void ComputeMipExtent(uint32_t mipLevel, uint32_t width, uint32_t height, uint32_t depth, uint32_t* mipWidth, uint32_t* mipHeight, uint32_t* mipDepth)
+        {
+            if (mipWidth)
+                *mipWidth = __max(width >> mipLevel, 1);
+            if (mipHeight)
+                *mipHeight = __max(height >> mipLevel, 1);
+            if (mipDepth)
+                *mipDepth = __max(depth >> mipLevel, 1);
+        }
+
+        uint32_t ComputeMipLevels(uint32_t width, uint32_t height)
+        {
+            return static_cast<uint32_t>(floorf(std::log2(__max(width, height)))) + 1;
         }
     }
 }
