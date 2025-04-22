@@ -541,8 +541,11 @@ namespace Mist
 			InternalReleaseRef();
 			m_ptr = rvl.m_ptr;
 			InternalAddRef();
+			return *this;
 		}
 
+		inline bool operator==(const ThisType& other) const { return m_ptr == other.m_ptr; }
+		inline bool operator!=(const ThisType& other) const { return m_ptr != other.m_ptr; }
         operator bool() const { return m_ptr != nullptr; }
         PtrType operator*() const { return m_ptr; }
 		PtrType operator->() const { return m_ptr; }
