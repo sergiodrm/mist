@@ -30,6 +30,8 @@ namespace Mist
 		static void Destroy(Window& window);
 
 		static bool IsMinimized(const Window& window);
+
+		static void GetWindowExtent(const void* windowHandle, uint32_t& width, uint32_t& height);
 	};
 
 	class tApplication

@@ -113,6 +113,13 @@ namespace Mist
 		return flags & SDL_WINDOW_MINIMIZED;
 	}
 
+	void Window::GetWindowExtent(const void* windowHandle, uint32_t& width, uint32_t& height)
+	{
+		const Window& window = *reinterpret_cast<const Window*>(windowHandle);
+		width = window.Width;
+		height = window.Height;
+	}
+
 	tApplication* tApplication::CreateApplication(int argc, char** argv)
 	{
 		check(!GApp);
