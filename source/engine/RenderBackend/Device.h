@@ -64,20 +64,23 @@ namespace render
         Format format;
         uint32_t mipLevels = 1;
         uint32_t layers = 1;
-        ImageUsage usage;
         ImageDimension dimension = ImageDimension_2D;
-        ImageLayout initialLayout = ImageLayout_Undefined;
         Extent3D extent = {0,0,0};
-        MemoryUsage memoryUsage;
+        MemoryUsage memoryUsage = MemoryUsage_Gpu;
+
+        bool isShaderResource = false;
+        bool isRenderTarget = false;
+        bool isStorageTexture = false;
 
         inline bool operator==(const TextureDescription& other) const
         {
             return format == other.format &&
                 mipLevels == other.mipLevels &&
                 layers == other.layers &&
-                usage == other.usage &&
+                isShaderResource == other.isShaderResource &&
+                isRenderTarget == other.isRenderTarget &&
+                isStorageTexture == other.isStorageTexture &&
                 dimension == other.dimension &&
-                initialLayout == other.initialLayout &&
                 extent == other.extent &&
                 memoryUsage == other.memoryUsage;
         }
@@ -205,7 +208,9 @@ namespace std
             Mist::HashCombine(seed, desc.extent.depth);
             Mist::HashCombine(seed, desc.mipLevels);
             Mist::HashCombine(seed, desc.layers);
-            Mist::HashCombine(seed, desc.usage);
+            Mist::HashCombine(seed, desc.isShaderResource);
+            Mist::HashCombine(seed, desc.isRenderTarget);
+            Mist::HashCombine(seed, desc.isStorageTexture);
             Mist::HashCombine(seed, desc.dimension);
             return seed;
         }
@@ -537,6 +542,12 @@ namespace render
 		Mist::tStaticArray<Format, RenderTargetDescription::MaxRenderAttachments> colorFormats;
 		Format depthStencilFormat = Format_Undefined;
 		Extent2D extent;
+
+        RenderTargetInfo() = default;
+        RenderTargetInfo(const RenderTargetDescription& description);
+
+        inline Viewport GetViewport() const { return Viewport(0, 0, extent.width, extent.height, 0, 0); }
+        inline Rect GetScissor() const { return Rect(0, extent.width, 0, extent.height); }
 	};
 
     class RenderTarget final : public Mist::Ref<RenderTarget>
@@ -550,7 +561,6 @@ namespace render
         {
         }
         ~RenderTarget();
-        RenderTargetInfo GetInfo() const;
 
         void BeginPass(CommandBuffer* cmd, Rect2D renderArea);
         void BeginPass(CommandBuffer* cmd);
@@ -1198,6 +1208,9 @@ namespace render
         inline bool IsRecording() const { return m_currentCommandBuffer != nullptr; }
         void EndRecording();
 
+        // Bindings
+        void BindSets(const BindingSetHandle* bindings, uint32_t count);
+
         // Graphics
         void SetGraphicsState(const GraphicsState& state);
         void ClearColor(float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
@@ -1283,6 +1296,7 @@ namespace render
         SemaphoreHandle CreateRenderSemaphore(bool timelineSemaphore = false);
         void DestroyRenderSemaphore(Semaphore* semaphore);
         uint64_t GetSemaphoreTimelineCounter(SemaphoreHandle semaphore);
+        bool WaitSemaphore(SemaphoreHandle semaphore, uint64_t timeoutNs = 1000000000);
 
         BufferHandle CreateBuffer(const BufferDescription& description);
         void DestroyBuffer(Buffer* buffer);
@@ -1316,6 +1330,7 @@ namespace render
         const Swapchain& GetSwapchain() const { return m_swapchain; }
         uint32_t AcquireSwapchainIndex(SemaphoreHandle semaphoreToBeSignaled);
         void Present(SemaphoreHandle semaphoreToWait);
+        void WaitIdle();
 
     private:
         void InitContext(const DeviceDescription& description);

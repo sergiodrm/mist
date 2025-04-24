@@ -8,11 +8,14 @@
 #include "Render/RenderTypes.h"
 #include "Utils/GenericUtils.h"
 
+namespace Mist
+{
+    extern Mist::CBoolVar CVar_EnableValidationLayer;
+    extern Mist::CBoolVar CVar_ExitValidationLayer;
+}
 
 namespace render
 {
-    Mist::CBoolVar CVar_EnableValidationLayer("r_enableValidationLayer2", true);
-    Mist::CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer2", true);
     uint32_t GVulkanLayerValidationErrors = 0;
 
 
@@ -31,9 +34,9 @@ namespace render
         Logf(level, "\nValidation layer\n> Message: %s\n\n", callbackData->pMessage);
         if (level == Mist::LogLevel::Error)
         {
-            if (!CVar_ExitValidationLayer.Get())
+            if (!Mist::CVar_ExitValidationLayer.Get())
                 Mist::Debug::PrintCallstack();
-            check(!CVar_ExitValidationLayer.Get() && "Validation layer error");
+            //check(!Mist::CVar_ExitValidationLayer.Get() && "Validation layer error");
         }
         return VK_FALSE;
     }
@@ -193,46 +196,44 @@ namespace render
         m_device->DestroyRenderTarget(this);
     }
 
-    RenderTargetInfo RenderTarget::GetInfo() const
+    RenderTargetInfo::RenderTargetInfo(const RenderTargetDescription& description)
     {
-        RenderTargetInfo info;
-        info.extent = { UINT32_MAX, UINT32_MAX };
-        for (uint32_t i = 0; i < m_description.colorAttachments.GetSize(); ++i)
+        extent = { UINT32_MAX, UINT32_MAX };
+        for (uint32_t i = 0; i < description.colorAttachments.GetSize(); ++i)
         {
-            const RenderTargetAttachment& rta = m_description.colorAttachments[i];
+            const RenderTargetAttachment& rta = description.colorAttachments[i];
             check(rta.IsValid() && rta.texture->m_description.format != Format_Undefined);
-            info.colorFormats.Push(rta.texture->m_description.format);
+            colorFormats.Push(rta.texture->m_description.format);
 
-            if (info.extent.width == UINT32_MAX && info.extent.height == UINT32_MAX)
+            if (extent.width == UINT32_MAX && extent.height == UINT32_MAX)
             {
-                info.extent.width = rta.texture->m_description.extent.width;
-                info.extent.height = rta.texture->m_description.extent.height;
+                extent.width = rta.texture->m_description.extent.width;
+                extent.height = rta.texture->m_description.extent.height;
             }
             else
             {
-                check(info.extent.width == rta.texture->m_description.extent.width);
-                check(info.extent.height == rta.texture->m_description.extent.height);
+                check(extent.width == rta.texture->m_description.extent.width);
+                check(extent.height == rta.texture->m_description.extent.height);
             }
         }
-        if (m_description.depthStencilAttachment.IsValid())
+        if (description.depthStencilAttachment.IsValid())
         {
-            const RenderTargetAttachment& rta = m_description.depthStencilAttachment;
+            const RenderTargetAttachment& rta = description.depthStencilAttachment;
             check(rta.IsValid() && utils::IsDepthFormat(rta.texture->m_description.format));
-            info.depthStencilFormat = rta.texture->m_description.format;
+            depthStencilFormat = rta.texture->m_description.format;
 
-            if (info.extent.width == UINT32_MAX && info.extent.height == UINT32_MAX)
+            if (extent.width == UINT32_MAX && extent.height == UINT32_MAX)
             {
-                info.extent.width = rta.texture->m_description.extent.width;
-                info.extent.height = rta.texture->m_description.extent.height;
+                extent.width = rta.texture->m_description.extent.width;
+                extent.height = rta.texture->m_description.extent.height;
             }
             else
             {
-                check(info.extent.width == rta.texture->m_description.extent.width);
-                check(info.extent.height == rta.texture->m_description.extent.height);
+                check(extent.width == rta.texture->m_description.extent.width);
+                check(extent.height == rta.texture->m_description.extent.height);
             }
         }
-        check(info.extent.width != UINT32_MAX && info.extent.height != UINT32_MAX);
-        return info;
+        check(extent.width != UINT32_MAX && extent.height != UINT32_MAX);
     }
 
     void RenderTarget::BeginPass(CommandBuffer* cmd, Rect2D renderArea)
@@ -396,6 +397,9 @@ namespace render
         // Create a new submission id.
         ++m_submissionId;
 
+        // Signal internal semaphore to know when this submission is finished.
+        AddSignalSemaphore(m_trackingSemaphore, m_submissionId);
+
         constexpr uint32_t MaxCount = 8;
         check(count <= MaxCount);
 
@@ -421,9 +425,6 @@ namespace render
             waitSemaphores.Push(m_waitSemaphores[i]->m_semaphore);
         for (uint32_t i = 0; i < m_signalSemaphores.GetSize(); ++i)
             signalSemaphores.Push(m_signalSemaphores[i]->m_semaphore);
-
-        // Signal internal semaphore to know when this submission is finished.
-        AddSignalSemaphore(m_trackingSemaphore, m_submissionId);
 
         // Create syncronization values struct
         VkTimelineSemaphoreSubmitInfo timelineInfo = { VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO, nullptr };
@@ -527,8 +528,8 @@ namespace render
         waitInfo.semaphoreCount = 1;
         waitInfo.pSemaphores = &m_trackingSemaphore->m_semaphore;
         waitInfo.pValues = &submissionId;
-        vkWaitSemaphores(m_device->GetContext().device, &waitInfo, timeout * 1000000000);
-        return false;
+        VkResult res = vkWaitSemaphores(m_device->GetContext().device, &waitInfo, timeout * 1000000000);
+        return res == VK_SUCCESS;
     }
 
     TransferMemory::TransferMemory(Device* device, BufferHandle buffer, uint64_t pointer, uint64_t availableSize)
@@ -566,9 +567,10 @@ namespace render
         check(m_dst);
         check(dstOffset + size + m_pointer <= m_buffer->m_description.size);
         check(dstOffset + size <= m_availableSize);
-        void* dst = reinterpret_cast<char*>(m_dst) + dstOffset + m_pointer;
+        size_t offset = dstOffset + m_pointer;
+        void* dst = reinterpret_cast<char*>(m_dst) + offset;
         const void* src = reinterpret_cast<const char*>(data) + srcOffset;
-        memcpy_s(dst, m_buffer->m_description.size - dstOffset, src, size);
+        memcpy_s(dst, m_availableSize-dstOffset, src, size);
     }
 
     TransferMemoryPool::TransferMemoryPool(Device* device, uint64_t defaultChunkSize)
@@ -717,7 +719,26 @@ namespace render
     void CommandList::EndRecording()
     {
         check(IsRecording());
+        EndRenderPass();
         m_currentCommandBuffer->End();
+    }
+
+    void CommandList::BindSets(const BindingSetHandle* bindings, uint32_t count)
+    {
+        check(IsRecording());
+        // TODO add dynamic offsets for volatile buffers
+        check(count <= BindingSet::MaxBindingSets);
+        Mist::tStaticArray<VkDescriptorSet, BindingSet::MaxBindingSets> sets;
+        Mist::tStaticArray<uint32_t, BindingSet::MaxBindingSets> dynamicOffsets;
+        uint32_t firstSet = UINT32_MAX;
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            sets.Push(bindings[i]->m_set);
+        }
+
+        VkPipelineBindPoint bindPoint = m_graphicsState.pipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+        VkPipelineLayout layout = m_graphicsState.pipeline ? m_graphicsState.pipeline->m_pipelineLayout : m_computeState.pipeline->m_pipelineLayout;
+        vkCmdBindDescriptorSets(m_currentCommandBuffer->cmd, bindPoint, layout, 0, sets.GetSize(), sets.GetData(), 0, nullptr);
     }
 
     void CommandList::SetGraphicsState(const GraphicsState& state)
@@ -728,10 +749,10 @@ namespace render
 
         if (m_graphicsState.rt != state.rt)
             EndRenderPass();
-        if (!m_graphicsState.rt)
+        if (!m_graphicsState.rt && state.rt)
             state.rt->BeginPass(m_currentCommandBuffer);
 
-        if (m_graphicsState.pipeline != state.pipeline)
+        if (m_graphicsState.pipeline != state.pipeline && state.pipeline)
             state.pipeline->UsePipeline(m_currentCommandBuffer);
 
         if (state.vertexBuffer)
@@ -901,7 +922,7 @@ namespace render
 
         VkBufferImageCopy copyRegion
         {
-            .bufferOffset = 0,
+            .bufferOffset = transferMemory.m_pointer,
             .bufferRowLength = 0,
             .bufferImageHeight = 0
         };
@@ -947,7 +968,7 @@ namespace render
     }
 
     Device::Device(const DeviceDescription& description)
-        : m_context(nullptr)
+        : m_context(nullptr), m_swapchainIndex(UINT32_MAX), m_queue(nullptr)
     {
         InitContext(description);
         InitMemoryContext();
@@ -1011,12 +1032,19 @@ namespace render
         return v;
     }
 
+    bool Device::WaitSemaphore(SemaphoreHandle semaphore, uint64_t timeoutNs)
+    {
+        VkSemaphoreWaitInfo info{};
+        return false;
+    }
+
     BufferHandle Device::CreateBuffer(const BufferDescription& description)
     {
         Buffer* buffer = _new Buffer(this);
         buffer->m_description = description;
+        buffer->m_description.bufferUsage = utils::GetBufferUsage(description);
 
-        VkBufferUsageFlags usage = utils::ConvertBufferUsage(description.bufferUsage);
+        VkBufferUsageFlags usage = utils::ConvertBufferUsage(buffer->m_description.bufferUsage);
         VkBufferCreateInfo bufferInfo
         {
             .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -1086,9 +1114,9 @@ namespace render
         imageInfo.arrayLayers = description.layers;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-        imageInfo.usage = utils::ConvertImageUsage(description.usage);
+        imageInfo.usage = utils::ConvertImageUsage(utils::GetImageUsage(texture->m_description));
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.initialLayout = utils::ConvertImageLayout(description.initialLayout);
+        imageInfo.initialLayout = utils::ConvertImageLayout(ImageLayout_Undefined);
         imageInfo.pQueueFamilyIndices = nullptr;
         imageInfo.queueFamilyIndexCount = 0;
 
@@ -1314,6 +1342,8 @@ namespace render
         framebufferInfo.layers = 1;
         vkcheck(vkCreateFramebuffer(m_context->device, &framebufferInfo, m_context->allocationCallbacks, &renderTarget->m_framebuffer));
 
+        renderTarget->m_info = RenderTargetInfo(renderTarget->m_description);
+
         return RenderTargetHandle(renderTarget);
     }
 
@@ -1372,10 +1402,10 @@ namespace render
 
         // Pipeline Viewport
         VkViewport viewport = {};
-        viewport.x = description.renderState.viewportState.viewport.minX;
-        viewport.y = description.renderState.viewportState.viewport.minY;
-        viewport.width = description.renderState.viewportState.viewport.maxX;
-        viewport.height = description.renderState.viewportState.viewport.maxY;
+        viewport.x = description.renderState.viewportState.viewport.x;
+        viewport.y = description.renderState.viewportState.viewport.y;
+        viewport.width = description.renderState.viewportState.viewport.width;
+        viewport.height = description.renderState.viewportState.viewport.height;
         viewport.minDepth = 0.f;
         viewport.maxDepth = 1.f;
         VkRect2D scissor = {};
@@ -1475,6 +1505,7 @@ namespace render
         
         // Pipeline Dynamic States
         // Set as default Viewport and Scissor
+#if 0
         VkDynamicState dynamicStates[] = {
             VK_DYNAMIC_STATE_VIEWPORT,
             VK_DYNAMIC_STATE_SCISSOR,
@@ -1491,6 +1522,15 @@ namespace render
         dynamicState.flags = 0;
         dynamicState.dynamicStateCount = Mist::CountOf(dynamicStates);
         dynamicState.pDynamicStates = dynamicStates;
+#else
+        VkPipelineDynamicStateCreateInfo dynamicState = {};
+        dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+        dynamicState.pNext = nullptr;
+        dynamicState.flags = 0;
+        dynamicState.dynamicStateCount = 0;
+        dynamicState.pDynamicStates = nullptr;
+#endif // 0
+
 
         // create pipeline layout
         pipeline->m_pipelineLayout = VK_NULL_HANDLE;
@@ -1775,6 +1815,11 @@ namespace render
         m_swapchainIndex = UINT32_MAX;
     }
 
+    void Device::WaitIdle()
+    {
+        vkcheck(vkDeviceWaitIdle(m_context->device));
+    }
+
     void Device::InitContext(const DeviceDescription& description)
     {
         // Get Vulkan version
@@ -1796,7 +1841,7 @@ namespace render
         vkb::InstanceBuilder builder;
         vkb::Result<vkb::Instance> instanceReturn = builder
             .set_app_name("Vulkan renderer")
-            .request_validation_layers(CVar_EnableValidationLayer.Get())
+            .request_validation_layers(Mist::CVar_EnableValidationLayer.Get())
             .require_api_version(major, minor, patch)
             .set_debug_callback(&DebugVulkanCallback)
             //.enable_extension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)
@@ -2058,7 +2103,6 @@ namespace render
             TextureDescription desc;
             desc.extent = { m_swapchain.width, m_swapchain.height, 1 };
             desc.format = m_swapchain.format;
-            desc.initialLayout = ImageLayout_PresentSrc;
             desc.layers = imageLayers;
             desc.mipLevels = 1;
             desc.memoryUsage = MemoryUsage_Gpu;
@@ -2266,7 +2310,4 @@ namespace render
         check(m_device);
         m_device->DestroyBindingSet(this);
     }
-
-
-
 }
