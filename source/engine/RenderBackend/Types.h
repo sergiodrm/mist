@@ -143,44 +143,34 @@ namespace render
 
     struct Viewport
     {
-        float minX;
-        float maxX;
-        float minY;
-        float maxY;
-        float minZ;
-        float maxZ;
+        float x;
+        float y;
+        float width;
+        float height;
+        float minDepth;
+        float maxDepth;
 
         Viewport()
-            : minX(0.f), maxX(1.f), minY(0.f), maxY(1.f), minZ(0.f), maxZ(1.f)
+            : x(0.f), width(0.f), y(0.f), height(0.f), minDepth(0.f), maxDepth(0.f)
         { }
 
-        Viewport(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
-            : minX(minX), maxX(maxX), minY(minY), maxY(maxY), minZ(minZ), maxZ(maxZ)
+        Viewport(float _x, float _y, float _width, float _height, float _minDepth, float _maxDepth)
+            : x(_x), width(_width), y(_y), height(_height), minDepth(_minDepth), maxDepth(_maxDepth)
         { }
 
         inline bool operator==(const Viewport& other) const
         {
-            return minX == other.minX &&
-                maxX == other.maxX &&
-                minY == other.minY &&
-                maxY == other.maxY &&
-                minZ == other.minZ &&
-                maxZ == other.maxZ;
+            return x == other.x &&
+                y == other.y &&
+                width == other.width &&
+                height == other.height &&
+                minDepth == other.minDepth &&
+                maxDepth == other.maxDepth;
         }
 
         inline bool operator!=(const Viewport& other) const
         {
             return !(*this == other);
-        }
-
-        inline float GetWidth() const
-        {
-            return maxX - minX;
-        }
-
-        inline float GetHeight() const
-        {
-            return maxY - minY;
         }
     };
 
