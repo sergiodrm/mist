@@ -610,9 +610,9 @@ namespace Mist
 				commandList->BeginRecording();
 				float quadVertices[] =
 				{
-					-0.5f, -0.5f, 0.f, 0.f, 0.f,
+					-0.f, -0.5f, 0.f, 0.f, 0.f,
 					0.5f, -0.5f, 0.f, 1.f, 0.f,
-					-0.5f, 0.5f, 0.f, 0.f, 1.f,
+					-0.f, 0.5f, 0.f, 0.f, 1.f,
 					0.5f, 0.5f, 0.f, 1.f, 1.f,
 				};
 				uint32_t quadIndices[] = { 0, 1, 2, 2, 1, 3 };
@@ -621,13 +621,13 @@ namespace Mist
 				render::BufferDescription bufferDescription;
 				bufferDescription.size = sizeof(quadVertices);
 				bufferDescription.memoryUsage = render::MemoryUsage_Gpu;
-				bufferDescription.bufferUsage = render::BufferUsage_TransferDst | render::BufferUsage_VertexBuffer;
+				bufferDescription.bufferUsage = render::BufferUsage_VertexBuffer;
 				render::BufferHandle vb = device->CreateBuffer(bufferDescription);
 				commandList->WriteBuffer(vb, quadVertices, sizeof(quadVertices));
 
 				// Index buffer
 				bufferDescription.size = sizeof(quadIndices);
-				bufferDescription.bufferUsage = render::BufferUsage_TransferDst | render::BufferUsage_IndexBuffer;
+				bufferDescription.bufferUsage = render::BufferUsage_IndexBuffer;
 				render::BufferHandle ib = device->CreateBuffer(bufferDescription);
 				commandList->WriteBuffer(ib, quadIndices, sizeof(quadIndices));
 
@@ -636,36 +636,55 @@ namespace Mist
 				render::VertexInputLayout inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, CountOf(attributes));
 
 				// Texture
-				uint32_t width = 1920, height = 1080;
+				uint32_t width = 4, height = 4;
 				render::TextureDescription textureDescription;
 				textureDescription.extent = { width, height, 1 };
-				textureDescription.mipLevels = render::utils::ComputeMipLevels(width, height);
+				textureDescription.mipLevels = 1;// render::utils::ComputeMipLevels(width, height);
 				textureDescription.format = render::Format_R8G8B8A8_UNorm;
-				textureDescription.memoryUsage = render::MemoryUsage_Gpu;
-				textureDescription.usage = render::ImageUsage_Sampled | render::ImageUsage_TransferDst;
+				textureDescription.isShaderResource = true;
 				render::TextureHandle texture = device->CreateTexture(textureDescription);
 				size_t texturePixelCount = width * height;
 				uint8_t* textureData = _new uint8_t[texturePixelCount * 4];
 				for (size_t i = 0; i < texturePixelCount; ++i)
 				{
-					textureData[i + 0] = (uint8_t)(i * rand() + UINT8_MAX);
-					textureData[i + 1] = (uint8_t)(i * rand() + UINT8_MAX);
-					textureData[i + 2] = (uint8_t)(i * rand() + UINT8_MAX);
-					textureData[i + 3] = 1;
+					textureData[4*i + 0] = (uint8_t)(rand() % UINT8_MAX);
+					textureData[4*i + 1] = (uint8_t)(rand() % UINT8_MAX);
+					textureData[4*i + 2] = (uint8_t)(rand() % UINT8_MAX);
+					textureData[4*i + 3] = 0xff;
 				}
 				commandList->WriteTexture(texture, 0, 0, textureData, texturePixelCount * 4 * sizeof(uint8_t));
+				render::TextureBarrier barrier;
+				barrier.texture = texture;
+				barrier.oldLayout = render::ImageLayout_Undefined;
+				barrier.newLayout = render::ImageLayout_ShaderReadOnly;
+				commandList->SetTextureState(barrier);
 				delete[] textureData;
+
+                // prepare swapchain images
+                const render::Device::Swapchain& swapchain = device->GetSwapchain();
+				for (uint32_t i = 0; i < 2; ++i)
+				{
+					render::TextureBarrier barrier2;
+					barrier.texture = swapchain.images[i];
+					barrier.oldLayout = render::ImageLayout_Undefined;
+					barrier.newLayout = render::ImageLayout_PresentSrc;
+					commandList->SetTextureState(barrier);
+				}
 
 				// submit resources
 				commandList->EndRecording();
 				render::CommandList* list = commandList.GetPtr();
 				uint64_t submissionId = commandList->ExecuteCommandList();
 				render::CommandQueue* queue = device->GetCommandQueue(render::Queue_Transfer);
-				queue->WaitForCommandSubmission(submissionId);
+				while (!queue->WaitForCommandSubmission(submissionId, 1))
+					logferror("Timeout waiting for transfer queue (submissionId: %d)\n", submissionId);
 				commandList = nullptr;
 
 				// Sampler
-				render::SamplerHandle sampler = device->CreateSampler(render::SamplerDescription());
+				render::SamplerDescription samplerDesc;
+				samplerDesc.minFilter = render::Filter_Linear;
+				samplerDesc.magFilter = render::Filter_Linear;
+				render::SamplerHandle sampler = device->CreateSampler(samplerDesc);
 
 				// Shader modules
 				render::shader_compiler::CompiledBinary vsSrc = render::shader_compiler::Compile(cAssetPath("shaders/quad.vert"), render::ShaderType_Vertex);
@@ -685,10 +704,13 @@ namespace Mist
 				render::BindingSetHandle bindingSet = device->CreateBindingSet(bindingDescription, layout);
 
 				// Render target using swapchain image
-				const render::Device::Swapchain& swapchain = device->GetSwapchain();
 				render::RenderTargetDescription rtDesc;
 				rtDesc.AddColorAttachment(swapchain.images[0], render::TextureSubresourceRange::AllSubresources(), swapchain.format);
-				render::RenderTargetHandle rt = device->CreateRenderTarget(rtDesc);
+				render::RenderTargetHandle rts[2];
+				rts[0] = device->CreateRenderTarget(rtDesc);
+                render::RenderTargetDescription rtDesc2;
+                rtDesc2.AddColorAttachment(swapchain.images[1], render::TextureSubresourceRange::AllSubresources(), swapchain.format);
+				rts[1] = device->CreateRenderTarget(rtDesc2);
 
 				// Graphics pipeline
 				render::GraphicsPipelineDescription gpDesc;
@@ -696,44 +718,91 @@ namespace Mist
 				gpDesc.vertexInputLayout = inputLayout;
 				gpDesc.vertexShader = vs;
 				gpDesc.fragmentShader = fs;
+				gpDesc.renderState.viewportState.viewport = rts[0]->m_info.GetViewport();
+				gpDesc.renderState.viewportState.scissor = rts[0]->m_info.GetScissor();
+
 				gpDesc.renderState.blendState.renderTargetBlendStates.Push(render::RenderTargetBlendState());
-				render::GraphicsPipelineHandle graphicsPipeline = device->CreateGraphicsPipeline(gpDesc, rt);
+				render::GraphicsPipelineHandle graphicsPipeline = device->CreateGraphicsPipeline(gpDesc, rts[0]);
 
 				render::SemaphoreHandle acquireSemaphore = device->CreateRenderSemaphore();
 				render::SemaphoreHandle renderSemaphore = device->CreateRenderSemaphore();
 
 				commandList = device->CreateCommandList();
-				while (true)
+				submissionId = 0;
+				bool endLoop = false;
+				while (!endLoop)
 				{
-					render::CommandQueue* commandQueue = device->GetCommandQueue(render::Queue_Graphics);
-					commandQueue->ProcessInFlightCommands();
+                    SDL_Event e;
+                    while (SDL_PollEvent(&e))
+                    {
+                        switch (e.type)
+                        {
+                        case SDL_QUIT:
+							endLoop = true;
+                            break;
+                        case SDL_WINDOWEVENT:
+                        {
+                            {
+                                uint8_t windowEvent = (*(SDL_WindowEvent*)&e).event;
+                                if (windowEvent == SDL_WINDOWEVENT_CLOSE)
+									endLoop = true;
+                            }
+                            break;
+                        default:
+                            //app.ProcessEvent(e);
+                            break;
+                        }
+                        }
+                    }
 
+					render::CommandQueue* commandQueue = device->GetCommandQueue(render::Queue_Graphics);
+
+					if (submissionId)
+					{
+						while (!commandQueue->WaitForCommandSubmission(submissionId, 1))
+							logferror("Timeout waiting for command queue (submissionId: %d)\n", submissionId);
+					}
+
+					commandQueue->ProcessInFlightCommands();
 					uint32_t swapchainIndex = device->AcquireSwapchainIndex(acquireSemaphore);
 					commandQueue->AddWaitSemaphore(acquireSemaphore, 0);
 					commandQueue->AddSignalSemaphore(renderSemaphore, 0);
 
 					commandList->BeginRecording();
 
+                    render::TextureBarrier barrier;
+                    barrier.texture = swapchain.images[swapchainIndex];
+                    barrier.oldLayout = render::ImageLayout_PresentSrc;
+                    barrier.newLayout = render::ImageLayout_ColorAttachment;
+					commandList->SetTextureState(barrier);
+
 					render::GraphicsState state;
 					state.bindings.Push(bindingSet);
 					state.indexBuffer = ib;
 					state.vertexBuffer = vb;
 					state.pipeline = graphicsPipeline;
-					state.rt = rt;
+					state.rt = rts[swapchainIndex];
 					commandList->SetGraphicsState(state);
+					commandList->BindSets(&bindingSet, 1);
 					commandList->DrawIndexed(6, 1, 0, 0, 0);
+					commandList->SetGraphicsState({});
+
+					barrier.oldLayout = barrier.newLayout;
+					barrier.newLayout = render::ImageLayout_PresentSrc;
+					commandList->SetTextureState(barrier);
 
 					commandList->EndRecording();
-					commandList->ExecuteCommandList();
+					submissionId = commandList->ExecuteCommandList();
 					device->Present(renderSemaphore);
 				}
+				device->WaitIdle();
 			}
 
 			delete device;
 			device = nullptr;
 		}
 
-		return true;
+		return false;
 #endif
 
 
