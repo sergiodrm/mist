@@ -1073,5 +1073,29 @@ namespace render
         {
             return static_cast<uint32_t>(floorf(std::log2(__max(width, height)))) + 1;
         }
+
+        BufferUsage GetBufferUsage(const BufferDescription& description)
+        {
+            BufferUsage usage = BufferUsage_TransferSrc | BufferUsage_TransferDst | description.bufferUsage;
+            return usage;
+        }
+
+        ImageUsage GetImageUsage(const TextureDescription& description)
+        {
+            ImageUsage usage = ImageUsage_TransferDst | ImageUsage_TransferSrc;
+
+            if (description.isRenderTarget)
+            {
+                if (IsDepthFormat(description.format) || IsStencilFormat(description.format))
+                    usage |= ImageUsage_DepthStencilAttachment;
+                else
+                    usage |= ImageUsage_ColorAttachment;
+            }
+            if (description.isShaderResource)
+                usage |= ImageUsage_Sampled;
+            if (description.isStorageTexture)
+                usage |= ImageUsage_Storage;
+            return usage;
+        }
     }
 }

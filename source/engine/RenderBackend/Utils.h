@@ -10,6 +10,8 @@ namespace render
 {
     struct TextureSubresourceRange;
     struct TextureBarrier;
+    struct TextureDescription;
+    struct BufferDescription;
 
     namespace utils
     {
@@ -81,5 +83,8 @@ namespace render
             t = u;
             u = t;
         }
+
+        BufferUsage GetBufferUsage(const BufferDescription& description);
+        ImageUsage GetImageUsage(const TextureDescription& description);
     }
 }
