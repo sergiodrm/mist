@@ -319,7 +319,9 @@ namespace Mist
 		{
 			m_models.Push();
 			model = &m_models.GetBack();
+#ifndef RENDER_BACKEND_TEST
 			check(model->LoadModel(context, filepath));
+#endif
 		}
 		check(model);
 		return (index_t)(model-m_models.GetData());
@@ -654,6 +656,11 @@ namespace Mist
 	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
 		PROFILE_SCOPE_LOG(LoadSkybox, "LoadSkybox");
+
+#ifdef RENDER_BACKEND_TEST
+		return true;
+#endif
+
 		// descriptors generator
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 

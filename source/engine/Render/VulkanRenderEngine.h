@@ -23,6 +23,13 @@
 #include "Render/Globals.h"
 #include "RenderProcesses/GPUParticleSystem.h"
 
+#define RENDER_BACKEND_TEST
+
+namespace rendersystem
+{
+	class RenderSystem;
+}
+
 namespace Mist
 {
 	class Framebuffer;
@@ -92,6 +99,8 @@ namespace Mist
 
 		GPUParticleSystem m_gpuParticleSystem;
 		Gol* m_gol;
+
+		rendersystem::RenderSystem* m_renderSystem;
 	};
 
 	extern void CmdDrawFullscreenQuad(CommandList* commandList);

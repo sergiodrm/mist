@@ -34,12 +34,13 @@
 #include "Render/CommandList.h"
 #include "Render/UI.h"
 
-#define RENDER_BACKEND_TEST
+
 #ifdef RENDER_BACKEND_TEST
-#include "RenderBackend/Device.h"
-#include "RenderBackend/ShaderCompiler.h"
+#include "RenderAPI/Device.h"
+#include "RenderAPI/ShaderCompiler.h"
+#include "RenderAPI/Utils.h"
+#include "RenderSystem/RenderSystem.h"
 #endif
-#include "RenderBackend/Utils.h"
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -207,6 +208,19 @@ namespace Mist
 		m_renderContext.Window = &window;
 		SDL_Init(SDL_INIT_VIDEO);
 
+#ifdef RENDER_BACKEND_TEST
+		class WindowRenderInterface : public rendersystem::IWindow
+		{
+		public:
+			const Window* window;
+			virtual void* GetWindowHandle() const override { return const_cast<Window*>(window); }
+		} windowInterface;
+		windowInterface.window = &window;
+		m_renderSystem = _new rendersystem::RenderSystem();
+		m_renderSystem->Init(&windowInterface);
+#else
+
+
 		// Init vulkan context
 		check(InitVulkan());
 
@@ -269,7 +283,7 @@ namespace Mist
 		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
 
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
-
+#endif
 		return true;
 	}
 
@@ -277,6 +291,9 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(Process);
 
+#ifdef RENDER_BACKEND_TEST
+		m_renderSystem->Draw();
+#else
 		ui::Begin(m_renderContext);
 		{
 			CPU_PROFILE_SCOPE(ImGuiCalbacks);
@@ -285,6 +302,7 @@ namespace Mist
 		//BeginFrame();
 		Mist::Profiling::GRenderStats.Reset();
 		Draw();
+#endif
 		return true;
 	}
 
@@ -292,6 +310,10 @@ namespace Mist
 	{
 		loginfo("Shutdown render engine.\n");
 
+#ifdef RENDER_BACKEND_TEST
+		m_renderSystem->Destroy();
+		delete m_renderSystem;
+#else
 		RenderContext_ForceFrameSync(m_renderContext);
 
 		delete m_renderContext.CmdList;
@@ -361,7 +383,7 @@ namespace Mist
 		logok("Render engine terminated.\n");
 		Logf(Mist::Debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok,
 			"Total vulkan layer validation errors: %u.\n", Mist::Debug::GVulkanLayerValidationErrors);
-
+#endif
 	}
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
@@ -369,6 +391,10 @@ namespace Mist
 		m_cameraData.InvView = glm::inverse(view);
 		m_cameraData.Projection = projection;
 		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.InvView;
+
+#ifdef RENDER_BACKEND_TEST
+		m_renderSystem->SetViewProjection(view, projection);
+#endif
 	}
 
 	Scene* VulkanRenderEngine::GetScene()
@@ -596,7 +622,7 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitVulkan()
 	{
-#ifdef RENDER_BACKEND_TEST
+#if defined(RENDER_BACKEND_TEST) && 0
 		{
 			render::DeviceDescription devdesc;
 			devdesc.enableValidationLayer = true;
@@ -655,7 +681,6 @@ namespace Mist
 				commandList->WriteTexture(texture, 0, 0, textureData, texturePixelCount * 4 * sizeof(uint8_t));
 				render::TextureBarrier barrier;
 				barrier.texture = texture;
-				barrier.oldLayout = render::ImageLayout_Undefined;
 				barrier.newLayout = render::ImageLayout_ShaderReadOnly;
 				commandList->SetTextureState(barrier);
 				delete[] textureData;
@@ -666,7 +691,6 @@ namespace Mist
 				{
 					render::TextureBarrier barrier2;
 					barrier.texture = swapchain.images[i];
-					barrier.oldLayout = render::ImageLayout_Undefined;
 					barrier.newLayout = render::ImageLayout_PresentSrc;
 					commandList->SetTextureState(barrier);
 				}
@@ -705,11 +729,11 @@ namespace Mist
 
 				// Render target using swapchain image
 				render::RenderTargetDescription rtDesc;
-				rtDesc.AddColorAttachment(swapchain.images[0], render::TextureSubresourceRange::AllSubresources(), swapchain.format);
+				rtDesc.AddColorAttachment(swapchain.images[0]);
 				render::RenderTargetHandle rts[2];
 				rts[0] = device->CreateRenderTarget(rtDesc);
                 render::RenderTargetDescription rtDesc2;
-                rtDesc2.AddColorAttachment(swapchain.images[1], render::TextureSubresourceRange::AllSubresources(), swapchain.format);
+                rtDesc2.AddColorAttachment(swapchain.images[1]);
 				rts[1] = device->CreateRenderTarget(rtDesc2);
 
 				// Graphics pipeline
@@ -772,7 +796,6 @@ namespace Mist
 
                     render::TextureBarrier barrier;
                     barrier.texture = swapchain.images[swapchainIndex];
-                    barrier.oldLayout = render::ImageLayout_PresentSrc;
                     barrier.newLayout = render::ImageLayout_ColorAttachment;
 					commandList->SetTextureState(barrier);
 
@@ -787,7 +810,6 @@ namespace Mist
 					commandList->DrawIndexed(6, 1, 0, 0, 0);
 					commandList->SetGraphicsState({});
 
-					barrier.oldLayout = barrier.newLayout;
 					barrier.newLayout = render::ImageLayout_PresentSrc;
 					commandList->SetTextureState(barrier);
 
