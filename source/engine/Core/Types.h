@@ -167,14 +167,15 @@ namespace Mist
 		tStaticArray(const T& defaultValue)
 		{
 			for (uint32_t i = 0; i < Size; ++i)
-				Data[i] = defaultValue;
+				Push(defaultValue);
 		}
+
 		tStaticArray(const tThisType& other)
 		{
 			for (uint32_t i = 0; i < other.GetSize(); ++i)
-				Data[i] = other[i];
-            PushIndex = other.PushIndex;
+				Push(other.At(i));
 		}
+
 		tStaticArray(uint32_t n)
 		{
 			Resize(n);
@@ -183,74 +184,116 @@ namespace Mist
         tStaticArray(tThisType&& other)
         {
             for (uint32_t i = 0; i < other.GetSize(); ++i)
-                Data[i] = other[i];
-            PushIndex = other.PushIndex;
+                Push(other.At(i));
         }
+
+		~tStaticArray()
+		{
+			Clear();
+		}
 
 		tThisType& operator=(const tThisType& other)
 		{
-            for (uint32_t i = 0; i < other.GetSize(); ++i)
-                Data[i] = other[i];
-            PushIndex = other.PushIndex;
+			if (PushIndex == other.PushIndex)
+			{
+				for (uint32_t i = 0; i < other.GetSize(); ++i)
+					At(i) = other.At(i);
+			}
+			else if (PushIndex < other.PushIndex)
+			{
+                for (uint32_t i = PushIndex; i < other.GetSize(); ++i)
+                    Push(other.At(i));
+			}
+			else
+			{
+				Resize(other.PushIndex);
+			}
             return *this;
 		}
 
-		const T& operator[](uint32_t index) const { check(index < PushIndex); return Data[index]; }
-		T& operator[](uint32_t index) { check(index < PushIndex); return Data[index]; }
+		const T& At(uint32_t index) const { check(index < PushIndex); return *reinterpret_cast<const T*>(&Data[GetOffset(index)]); }
+		T& At(uint32_t index) { check(index < PushIndex); return *reinterpret_cast<T*>(&Data[GetOffset(index)]); }
+
+		const T& operator[](uint32_t index) const { return At(index); }
+		T& operator[](uint32_t index) { return At(index); }
 
 		inline void Resize(uint32_t newSize)
 		{
 			check(newSize <= Size);
-			PushIndex = PushIndex > newSize ? PushIndex : newSize;
+			if (newSize == PushIndex)
+				return;
+			if (newSize > PushIndex)
+			{
+				for (uint32_t i = PushIndex; i < newSize; ++i)
+					Push();
+			}
+			else if (newSize == 0)
+			{
+				Clear();
+			}
+			else
+			{
+				for (uint32_t i = PushIndex-1; i >= newSize; --i)
+					At(i).~T();
+			}
+			PushIndex = newSize;
 		}
 
 		inline uint32_t GetSize() const { return PushIndex; }
 		inline bool IsEmpty() const { return !GetSize(); }
 		inline constexpr uint32_t GetCapacity() const { return Size; }
-		inline void Clear() { PushIndex = 0; }
+		inline void Clear() 
+		{ 
+			for (uint32_t i = PushIndex - 1; i < Size; --i)
+				At(i).~T();
+			PushIndex = 0; 
+		}
+
+#if 0
 		inline void Clear(const T& clearValue)
 		{
 			for (uint32_t i = 0; i < Size; ++i)
-			{
-				Data[i] = clearValue;
-				Data[i].~T();
-			}
+				At(i) = clearValue;
 			Clear();
 		}
+#endif // 0
+
 
 		T& Push(const T& value)
 		{
 			check(PushIndex < Size);
-			new(&Data[PushIndex++])T(value);
-            return Data[PushIndex - 1];
+			uint32_t offset = GetOffset(PushIndex++);
+			new(&Data[offset])T(value);
+            return GetBack();
 		}
 
 		T& Push()
 		{
-			check(PushIndex < Size);
-			new(&Data[PushIndex++])T();
-            return Data[PushIndex - 1];
+            check(PushIndex < Size);
+            uint32_t offset = GetOffset(PushIndex++);
+            new(&Data[offset])T();
+            return GetBack();
 		}
 
-		void Pop() { check(PushIndex > 0); --PushIndex; }
+		void Pop() { check(PushIndex > 0); GetBack().~T(); --PushIndex; }
 
-		inline const T& GetBack() const { check(PushIndex); return Data[PushIndex - 1]; }
-		inline T& GetBack() { check(PushIndex); return Data[PushIndex - 1]; }
+		inline const T& GetBack() const { check(PushIndex); return At(PushIndex - 1); }
+		inline T& GetBack() { check(PushIndex); return At(PushIndex - 1); }
 
-		inline const T* GetData() const { return Data; }
-		inline T* GetData() { return Data; }
+		inline const T* GetData() const { return reinterpret_cast<const T*>(Data); }
+		inline T* GetData() { return reinterpret_cast<T*>(Data); }
 
-		void Swap(index_t item1, index_t item2)
+		void Swap(uint32_t item1, uint32_t item2)
 		{
-			check(item1 < PushIndex && item2 < PushIndex);
-			T temp = Data[item1];
-			Data[item1] = Data[item2];
-			Data[item2] = temp;
+			T temp = At(item1);
+			At(item1) = At(item2);
+			At(item2) = temp;
 		}
-
+	protected:
+		inline uint32_t GetOffset(uint32_t index) const { return index * sizeof(T); }
 
 	private:
-		T Data[Size];
+		uint8_t Data[Size * sizeof(T)];
 		uint32_t PushIndex = 0;
 	};
 
@@ -530,6 +573,8 @@ namespace Mist
 
 		ThisType& operator=(const ThisType& other)
 		{
+			if (m_ptr == other.m_ptr)
+				return *this;
 			InternalReleaseRef();
 			m_ptr = other.m_ptr;
 			InternalAddRef();
@@ -538,6 +583,8 @@ namespace Mist
 
 		ThisType& operator=(ThisType&& rvl)
 		{
+            if (m_ptr == rvl.m_ptr)
+                return *this;
 			InternalReleaseRef();
 			m_ptr = rvl.m_ptr;
 			InternalAddRef();
