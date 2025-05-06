@@ -36,7 +36,7 @@ namespace render
         {
             if (!Mist::CVar_ExitValidationLayer.Get())
                 Mist::Debug::PrintCallstack();
-            //check(!Mist::CVar_ExitValidationLayer.Get() && "Validation layer error");
+            check(!Mist::CVar_ExitValidationLayer.Get() && "Validation layer error");
         }
         return VK_FALSE;
     }
@@ -53,24 +53,24 @@ namespace render
         m_device->DestroyRenderSemaphore(this);
     }
 
-    RenderTargetDescription& RenderTargetDescription::AddColorAttachment(TextureHandle texture, const TextureSubresourceRange& range, Format format)
+    RenderTargetDescription& RenderTargetDescription::AddColorAttachment(TextureHandle texture, TextureSubresourceRange range)
     {
+        Format format = texture->m_description.format;
         RenderTargetAttachment& attachment = colorAttachments.Push();
         check((format != Format_Undefined && !utils::IsDepthFormat(format) && !utils::IsStencilFormat(format)) 
             || (!utils::IsDepthFormat(texture->m_description.format) && !utils::IsStencilFormat(texture->m_description.format)));
         attachment.texture = texture;
         attachment.range = range;
-        attachment.format = format;
         return *this;
     }
 
-    RenderTargetDescription& RenderTargetDescription::SetDepthStencilAttachment(TextureHandle texture, const TextureSubresourceRange& range, Format format)
+    RenderTargetDescription& RenderTargetDescription::SetDepthStencilAttachment(TextureHandle texture, TextureSubresourceRange range)
     {
+        Format format = texture->m_description.format;
         check((format != Format_Undefined && utils::IsDepthFormat(format) && utils::IsStencilFormat(format))
             || (utils::IsDepthFormat(texture->m_description.format) && utils::IsStencilFormat(texture->m_description.format)));
         depthStencilAttachment.texture = texture;
         depthStencilAttachment.range = range;
-        depthStencilAttachment.format = format;
         return *this;
     }
 
@@ -183,6 +183,7 @@ namespace render
             attribute.offset = offset;
 
             offset += utils::GetFormatSize(attributes[i].format);
+            layout.m_description.Push(attributes[i]);
         }
         layout.m_binding.binding = 0;
         layout.m_binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -350,10 +351,20 @@ namespace render
         check(m_queue != VK_NULL_HANDLE);
 
         m_trackingSemaphore = m_device->CreateRenderSemaphore(true);
+        m_device->SetDebugName(m_trackingSemaphore.GetPtr(), "tracking semaphore command queue");
     }
 
     CommandQueue::~CommandQueue()
     {
+        for (uint32_t i = 0; i < (uint32_t)m_createdCommandBuffers.size(); ++i)
+        {
+            vkDestroyCommandPool(m_device->GetContext().device, m_createdCommandBuffers[i]->pool, m_device->GetContext().allocationCallbacks);
+            delete m_createdCommandBuffers[i];
+        }
+        m_createdCommandBuffers.clear();
+        m_signalSemaphores.Clear();
+        m_waitSemaphores.Clear();
+        m_trackingSemaphore = nullptr;
     }
 
     CommandBuffer* CommandQueue::CreateCommandBuffer()
@@ -488,7 +499,7 @@ namespace render
         uint64_t lastFinishedId = QueryTrackingId();
 
         // iterate submitted cmd array backward, so we can reorder the unused slots in the same iteration
-        for (uint32_t i = (uint32_t)m_submittedCommandBuffers.size() - 1; i < (uint32_t)m_submittedCommandBuffers.size(); ++i)
+        for (uint32_t i = (uint32_t)m_submittedCommandBuffers.size() - 1; i < (uint32_t)m_submittedCommandBuffers.size(); --i)
         {
             CommandBuffer* cmd = m_submittedCommandBuffers[i];
             check(cmd);
@@ -528,7 +539,7 @@ namespace render
         waitInfo.semaphoreCount = 1;
         waitInfo.pSemaphores = &m_trackingSemaphore->m_semaphore;
         waitInfo.pValues = &submissionId;
-        VkResult res = vkWaitSemaphores(m_device->GetContext().device, &waitInfo, timeout * 1000000000);
+        VkResult res = vkWaitSemaphores(m_device->GetContext().device, &waitInfo, timeout);
         return res == VK_SUCCESS;
     }
 
@@ -648,8 +659,9 @@ namespace render
 
         for (uint32_t i = 0; i < (uint32_t)m_submittedChunkIndices.size(); ++i)
         {
-            if (m_pool[i].version == 0)
-                m_pool[i].version = submissionId;
+            uint32_t index = m_submittedChunkIndices[i];
+            if (m_pool[index].version == 0)
+                m_pool[index].version = submissionId;
         }
     }
 
@@ -723,43 +735,85 @@ namespace render
         m_currentCommandBuffer->End();
     }
 
-    void CommandList::BindSets(const BindingSetHandle* bindings, uint32_t count)
+    void CommandList::BindSets(const BindingSetVector& setsToBind, const BindingSetVector& currentBinding)
     {
         check(IsRecording());
-        // TODO add dynamic offsets for volatile buffers
-        check(count <= BindingSet::MaxBindingSets);
-        Mist::tStaticArray<VkDescriptorSet, BindingSet::MaxBindingSets> sets;
-        Mist::tStaticArray<uint32_t, BindingSet::MaxBindingSets> dynamicOffsets;
-        uint32_t firstSet = UINT32_MAX;
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            sets.Push(bindings[i]->m_set);
-        }
 
-        VkPipelineBindPoint bindPoint = m_graphicsState.pipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
-        VkPipelineLayout layout = m_graphicsState.pipeline ? m_graphicsState.pipeline->m_pipelineLayout : m_computeState.pipeline->m_pipelineLayout;
-        vkCmdBindDescriptorSets(m_currentCommandBuffer->cmd, bindPoint, layout, 0, sets.GetSize(), sets.GetData(), 0, nullptr);
+        auto bindSetsFn = [&](uint32_t firstSet, const VkDescriptorSet* sets, uint32_t setCount, const uint32_t* offsets, uint32_t offsetCount)
+            {
+                check(firstSet != UINT32_MAX);
+                FlushRequiredStates();
+                VkPipelineBindPoint bindPoint = m_graphicsState.pipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+                VkPipelineLayout layout = m_graphicsState.pipeline ? m_graphicsState.pipeline->m_pipelineLayout : m_computeState.pipeline->m_pipelineLayout;
+                vkCmdBindDescriptorSets(m_currentCommandBuffer->cmd, bindPoint, layout, firstSet, setCount, sets, offsetCount, offsets);
+            };
+
+        Mist::tStaticArray<VkDescriptorSet, BindingSetVector::MaxSets> vksets;
+        Mist::tStaticArray<uint32_t, BindingSetVector::MaxDynamicsPerSet> offsets;
+        uint32_t firstSet = UINT32_MAX;
+        for (uint32_t i = 0; i < BindingSetVector::MaxSets; ++i)
+        {
+            if (setsToBind.m_slots[i].set != currentBinding.m_slots[i].set ||
+                !utils::EqualArrays(setsToBind.m_slots[i].offsets.GetData(), setsToBind.m_slots[i].offsets.GetSize(), currentBinding.m_slots[i].offsets.GetData(), currentBinding.m_slots[i].offsets.GetSize()))
+            {
+                if (setsToBind.m_slots[i].set)
+                {
+                    // cache set and offsets
+                    vksets.Push(setsToBind.m_slots[i].set->m_set);
+                    for (uint32_t j = 0; j < setsToBind.m_slots[i].offsets.GetSize(); ++j)
+                        offsets.Push(setsToBind.m_slots[i].offsets[j]);
+                    // mark as the first one if there is no one
+                    if (firstSet == UINT32_MAX)
+                        firstSet = i;
+
+                    // set required texture states
+                    for (uint32_t textureIndex = 0; textureIndex < (uint32_t)setsToBind.m_slots[i].set->m_textures.size(); ++textureIndex)
+                        m_requiredStates.push_back({ setsToBind.m_slots[i].set->m_textures[textureIndex], render::ImageLayout_ShaderReadOnly });
+                }
+                else
+                {
+                    // if not set in this slot, we need to flush those already processed.
+                    if (!vksets.IsEmpty())
+                    {
+                        bindSetsFn(firstSet, vksets.GetData(), vksets.GetSize(), offsets.GetData(), offsets.GetSize());
+                        firstSet = UINT32_MAX;
+                        vksets.Clear();
+                        offsets.Clear();
+                    }
+                }
+            }
+        }
+        if (!vksets.IsEmpty())
+        {
+            bindSetsFn(firstSet, vksets.GetData(), vksets.GetSize(), offsets.GetData(), offsets.GetSize());
+            firstSet = UINT32_MAX;
+            vksets.Clear();
+            offsets.Clear();
+        }
     }
 
     void CommandList::SetGraphicsState(const GraphicsState& state)
     {
         check(AllowsCommandType(Queue_Graphics));
-        if (state == m_graphicsState)
-            return;
-
-        if (m_graphicsState.rt != state.rt)
-            EndRenderPass();
-        if (!m_graphicsState.rt && state.rt)
-            state.rt->BeginPass(m_currentCommandBuffer);
 
         if (m_graphicsState.pipeline != state.pipeline && state.pipeline)
+        {
             state.pipeline->UsePipeline(m_currentCommandBuffer);
+            m_graphicsState.pipeline = state.pipeline;
+        }
 
         if (state.vertexBuffer)
             BindVertexBuffer(state.vertexBuffer);
         if (state.indexBuffer)
             BindIndexBuffer(state.indexBuffer);
 
+        BindSets(state.bindings, m_graphicsState.bindings);
+        m_graphicsState.bindings = state.bindings;
+
+        if (m_graphicsState.rt != state.rt)
+            EndRenderPass();
+        if (!m_graphicsState.rt && state.rt)
+            BeginRenderPass(state.rt);
         m_graphicsState = state;
     }
 
@@ -853,11 +907,20 @@ namespace render
         check(count <= MaxBarriers);
         Mist::tStaticArray<VkImageMemoryBarrier2, MaxBarriers> imageBarriers;
         for (uint32_t i = 0; i < count; ++i)
-            imageBarriers.Push(utils::ConvertImageBarrier(barriers[i]));
-        VkDependencyInfo depInfo = { .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .pNext = nullptr };
-        depInfo.imageMemoryBarrierCount = count;
-        depInfo.pImageMemoryBarriers = imageBarriers.GetData();
-        vkCmdPipelineBarrier2(m_currentCommandBuffer->cmd, &depInfo);
+        {
+            if (barriers[i].texture->m_layout != barriers[i].newLayout)
+            {
+                imageBarriers.Push(utils::ConvertImageBarrier(barriers[i]));
+                barriers[i].texture->m_layout = barriers[i].newLayout;
+            }
+        }
+        if (!imageBarriers.IsEmpty())
+        {
+            VkDependencyInfo depInfo = { .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .pNext = nullptr };
+            depInfo.imageMemoryBarrierCount = imageBarriers.GetSize();
+            depInfo.pImageMemoryBarriers = imageBarriers.GetData();
+            vkCmdPipelineBarrier2(m_currentCommandBuffer->cmd, &depInfo);
+        }
     }
 
     void CommandList::SetTextureState(const TextureBarrier& barrier)
@@ -910,9 +973,9 @@ namespace render
         transferMemory.Write(data, dataSize, 0);
         transferMemory.UnmapMemory();
 
+        ImageLayout oldLayout = texture->m_layout;
         TextureBarrier barrier;
         barrier.texture = texture;
-        barrier.oldLayout = ImageLayout_Undefined;
         barrier.newLayout = ImageLayout_TransferDst;
         barrier.subresources.baseLayer = layer;
         barrier.subresources.countLayers = 1;
@@ -937,10 +1000,22 @@ namespace render
             transferMemory.m_buffer->m_buffer, texture->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1, &copyRegion);
 
-        if (texture->m_description.mipLevels == 1)
+        barrier.newLayout = oldLayout;
+        SetTextureState(barrier);
+    }
+
+    void CommandList::BeginRenderPass(render::RenderTargetHandle rt)
+    {
+        if (!m_graphicsState.rt)
         {
-            utils::Swap(barrier.oldLayout, barrier.newLayout);
-            SetTextureState(barrier);
+            check(AllowsCommandType(Queue_Graphics));
+            for (uint32_t i = 0; i < rt->m_description.colorAttachments.GetSize(); ++i)
+                m_requiredStates.push_back(TextureBarrier{ rt->m_description.colorAttachments[i].texture, render::ImageLayout_ColorAttachment });
+            if (rt->m_description.depthStencilAttachment.IsValid())
+                m_requiredStates.push_back(TextureBarrier{ rt->m_description.depthStencilAttachment.texture, render::ImageLayout_DepthStencilAttachment });
+            FlushRequiredStates();
+            rt->BeginPass(m_currentCommandBuffer);
+            m_graphicsState.rt = rt;
         }
     }
 
@@ -967,6 +1042,12 @@ namespace render
         m_transferMemoryPool.Submit(submissionId);
     }
 
+    void CommandList::FlushRequiredStates()
+    {
+        SetTextureState(m_requiredStates.data(), (uint32_t)m_requiredStates.size());
+        m_requiredStates.clear();
+    }
+
     Device::Device(const DeviceDescription& description)
         : m_context(nullptr), m_swapchainIndex(UINT32_MAX), m_queue(nullptr)
     {
@@ -991,6 +1072,11 @@ namespace render
     {
         check(m_queue && ((m_queue->GetQueueType() & type) == type));
         return m_queue;
+    }
+
+    uint64_t Device::AlignUniformSize(uint64_t size) const
+    {
+        return utils::Align(size, m_context->GetMinUniformBufferOffsetAlignment());
     }
 
     CommandListHandle Device::CreateCommandList()
@@ -1060,11 +1146,12 @@ namespace render
         };
         vkcheck(vmaCreateBuffer(m_context->memoryContext.allocator, &bufferInfo, &allocInfo,
             &buffer->m_buffer, &buffer->m_alloc, nullptr));
+        SetDebugName(buffer, description.debugName.c_str());
 
         ++m_context->memoryContext.bufferStats.allocationCounts;
         m_context->memoryContext.bufferStats.currentAllocated += description.size;
         m_context->memoryContext.bufferStats.maxAllocated = __max(m_context->memoryContext.bufferStats.currentAllocated, m_context->memoryContext.bufferStats.maxAllocated);
-
+        m_bufferTracking.push_back(buffer);
         return BufferHandle(buffer);
     }
 
@@ -1102,6 +1189,8 @@ namespace render
             .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         };
 
+        texture->m_layout = ImageLayout_Undefined;
+
         VkImageCreateInfo imageInfo = { .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, .pNext = nullptr };
         imageInfo.imageType = utils::ConvertImageType(description.dimension);
         imageInfo.flags = description.dimension == ImageDimension_Cube || description.dimension == ImageDimension_CubeArray ?
@@ -1116,7 +1205,7 @@ namespace render
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = utils::ConvertImageUsage(utils::GetImageUsage(texture->m_description));
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.initialLayout = utils::ConvertImageLayout(ImageLayout_Undefined);
+        imageInfo.initialLayout = utils::ConvertImageLayout(texture->m_layout);
         imageInfo.pQueueFamilyIndices = nullptr;
         imageInfo.queueFamilyIndexCount = 0;
 
@@ -1137,11 +1226,12 @@ namespace render
 
         vkcheck(vmaCreateImage(m_context->memoryContext.allocator, &imageInfo, &allocInfo,
             &texture->m_image, &texture->m_alloc, nullptr));
+        SetDebugName(texture, description.debugName.c_str());
 
         ++m_context->memoryContext.imageStats.allocationCounts;
         m_context->memoryContext.imageStats.currentAllocated += texture->GetImageSize();
         m_context->memoryContext.imageStats.maxAllocated = __max(m_context->memoryContext.imageStats.currentAllocated, m_context->memoryContext.imageStats.maxAllocated);
-
+        m_textureTracking.push_back(texture);
         return TextureHandle(texture);
     }
 
@@ -1153,6 +1243,9 @@ namespace render
         texture->m_alloc = nullptr;
         texture->m_image = image;
         texture->m_owner = false;
+        texture->m_layout = ImageLayout_Undefined;
+        SetDebugName(texture, description.debugName.c_str());
+        m_textureTracking.push_back(texture);
         return TextureHandle(texture);
     }
 
@@ -1199,7 +1292,7 @@ namespace render
         samplerInfo.flags = 0;
 
         vkcheck(vkCreateSampler(m_context->device, &samplerInfo, m_context->allocationCallbacks, &sampler->m_sampler));
-
+        SetDebugName(sampler, description.debugName.c_str());
         return SamplerHandle(sampler);
     }
 
@@ -1221,7 +1314,7 @@ namespace render
         createInfo.pCode = (const uint32_t*)binary;
         createInfo.flags = 0;
         vkcheck(vkCreateShaderModule(m_context->device, &createInfo, m_context->allocationCallbacks, &shader->m_shader));
-
+        SetDebugName(shader, description.debugName.c_str());
         return ShaderHandle(shader);
     }
 
@@ -1236,7 +1329,7 @@ namespace render
     {
         RenderTarget* renderTarget = _new RenderTarget(this);
         renderTarget->m_description = description;
-
+        
         static constexpr uint32_t MaxAttachments = RenderTargetDescription::MaxRenderAttachments + 1;
         Mist::tStaticArray<VkAttachmentDescription, MaxAttachments> attachmentDescriptions(description.colorAttachments.GetSize());
         Mist::tStaticArray<VkAttachmentReference, MaxAttachments> colorReferences(description.colorAttachments.GetSize());
@@ -1251,7 +1344,7 @@ namespace render
             check(rta.IsValid());
             TextureHandle texture = rta.texture;
 
-            Format format = rta.format != Format_Undefined ? rta.format : texture->m_description.format;
+            Format format = texture->m_description.format;
             check(format != Format_Undefined);
 
             VkAttachmentDescription& desc = attachmentDescriptions[i];
@@ -1282,7 +1375,7 @@ namespace render
             const RenderTargetAttachment& rta = description.depthStencilAttachment;
             TextureHandle texture = rta.texture;
 
-            Format format = rta.format != Format_Undefined ? rta.format : texture->m_description.format;
+            Format format = texture->m_description.format;
             check(format != Format_Undefined);
 
             VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -1344,6 +1437,7 @@ namespace render
 
         renderTarget->m_info = RenderTargetInfo(renderTarget->m_description);
 
+        SetDebugName(renderTarget, description.debugName.c_str());
         return RenderTargetHandle(renderTarget);
     }
 
@@ -1560,7 +1654,7 @@ namespace render
         graphicsPipelineInfo.basePipelineIndex = -1;
 
         vkcheck(vkCreateGraphicsPipelines(m_context->device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
-
+        SetDebugName(pipeline, description.debugName.c_str());
         return GraphicsPipelineHandle(pipeline);
     }
 
@@ -1586,7 +1680,7 @@ namespace render
             b.binding = binding.binding;
             b.descriptorType = utils::ConvertToDescriptorType(binding.type);
             b.descriptorCount = 1;
-            b.stageFlags = utils::ConvertShaderStage(description.shaderType);
+            b.stageFlags = utils::ConvertShaderStage(binding.shaderType);
             b.pImmutableSamplers = nullptr;
         }
 
@@ -1623,6 +1717,7 @@ namespace render
             bindingLayout->m_poolSizes[index].descriptorCount += binding.descriptorCount;
         }
 
+        SetDebugName(bindingLayout, description.debugName.c_str());
         return BindingLayoutHandle(bindingLayout);
     }
 
@@ -1636,7 +1731,7 @@ namespace render
     {
         ComputePipeline* pipeline = _new ComputePipeline(this);
         pipeline->m_description = description;
-
+        
         check(description.computeShader && description.computeShader->m_shader != VK_NULL_HANDLE);
 
         VkPipelineShaderStageCreateInfo shaderStageInfo = {};
@@ -1663,7 +1758,7 @@ namespace render
         pipelineInfo.layout = pipeline->m_pipelineLayout;
 
         vkcheck(vkCreateComputePipelines(m_context->device, VK_NULL_HANDLE, 1, &pipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
-        
+        SetDebugName(pipeline, description.debugName.c_str());
         return ComputePipelineHandle(pipeline);
     }
 
@@ -1778,6 +1873,7 @@ namespace render
         }
 
         vkUpdateDescriptorSets(m_context->device, writes.GetSize(), writes.GetData(), 0, nullptr);
+        SetDebugName(bindingSet, description.debugName.c_str());
         return BindingSetHandle(bindingSet);
     }
 
@@ -1820,6 +1916,79 @@ namespace render
         vkcheck(vkDeviceWaitIdle(m_context->device));
     }
 
+    bool Device::WaitForSubmissionId(uint64_t submissionId, uint64_t timeoutCounter) const
+    {
+        uint64_t c = 0;
+        while (c++ < timeoutCounter && !m_queue->WaitForCommandSubmission(submissionId, 1000000000))
+            logferror("[Device] Timeout wait for command submission (%d)\n", submissionId);
+        return c <= timeoutCounter;
+    }
+
+    void Device::SetDebugName(Semaphore* object, const char* debugName) const
+    {
+        SetDebugName(object->m_semaphore, debugName, VK_OBJECT_TYPE_SEMAPHORE);
+    }
+
+    void Device::SetDebugName(Buffer* object, const char* debugName) const
+    {
+        SetDebugName(object->m_buffer, debugName, VK_OBJECT_TYPE_BUFFER);
+    }
+
+    void Device::SetDebugName(Texture* object, const char* debugName) const
+    {
+        SetDebugName(object->m_image, debugName, VK_OBJECT_TYPE_IMAGE);
+        for (auto& it : object->m_views)
+            SetDebugName(it.second.m_view, debugName, VK_OBJECT_TYPE_IMAGE_VIEW);
+    }
+
+    void Device::SetDebugName(Sampler* object, const char* debugName) const
+    {
+        SetDebugName(object->m_sampler, debugName, VK_OBJECT_TYPE_SAMPLER);
+    }
+
+    void Device::SetDebugName(Shader* object, const char* debugName) const
+    {
+        SetDebugName(object->m_shader, debugName, VK_OBJECT_TYPE_SHADER_MODULE);
+    }
+
+    void Device::SetDebugName(RenderTarget* object, const char* debugName) const
+    {
+        SetDebugName(object->m_renderPass, debugName, VK_OBJECT_TYPE_RENDER_PASS);
+        SetDebugName(object->m_framebuffer, debugName, VK_OBJECT_TYPE_FRAMEBUFFER);
+    }
+
+    void Device::SetDebugName(GraphicsPipeline* object, const char* debugName) const
+    {
+        SetDebugName(object->m_pipeline, debugName, VK_OBJECT_TYPE_PIPELINE);
+        SetDebugName(object->m_pipelineLayout, debugName, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+    }
+
+    void Device::SetDebugName(BindingLayout* object, const char* debugName) const
+    {
+        SetDebugName(object->m_layout, debugName, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
+    }
+
+    void Device::SetDebugName(BindingSet* object, const char* debugName) const
+    {
+        SetDebugName(object->m_set, debugName, VK_OBJECT_TYPE_DESCRIPTOR_SET);
+        SetDebugName(object->m_pool, debugName, VK_OBJECT_TYPE_DESCRIPTOR_POOL);
+    }
+
+    void Device::SetDebugName(ComputePipeline* object, const char* debugName) const
+    {
+        SetDebugName(object->m_pipeline, debugName, VK_OBJECT_TYPE_PIPELINE);
+        SetDebugName(object->m_pipelineLayout, debugName, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+    }
+
+    void Device::SetDebugName(const void* object, const char* debugName, uint32_t type) const
+    {
+        VkDebugUtilsObjectNameInfoEXT info{ .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, .pNext = nullptr };
+        info.objectType = (VkObjectType)type;
+        info.objectHandle = *(const uint64_t*)(&object);
+        info.pObjectName = debugName;
+        vkcheck(m_context->pfn_vkSetDebugUtilsObjectNameEXT(m_context->device, &info));
+    }
+
     void Device::InitContext(const DeviceDescription& description)
     {
         // Get Vulkan version
@@ -1841,7 +2010,7 @@ namespace render
         vkb::InstanceBuilder builder;
         vkb::Result<vkb::Instance> instanceReturn = builder
             .set_app_name("Vulkan renderer")
-            .request_validation_layers(Mist::CVar_EnableValidationLayer.Get())
+            .request_validation_layers(true || Mist::CVar_EnableValidationLayer.Get())
             .require_api_version(major, minor, patch)
             .set_debug_callback(&DebugVulkanCallback)
             //.enable_extension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)
@@ -2098,6 +2267,7 @@ namespace render
         vkcheck(vkGetSwapchainImagesKHR(m_context->device, m_swapchain.swapchain, &swapchainImageCount, swapchainImages));
 
         m_swapchain.images.resize(swapchainImageCount);
+        Mist::tStaticArray<TextureBarrier, 8> barriers;
         for (uint32_t i = 0; i < swapchainImageCount; ++i)
         {
             TextureDescription desc;
@@ -2108,7 +2278,19 @@ namespace render
             desc.memoryUsage = MemoryUsage_Gpu;
             TextureHandle texture = CreateTextureFromNative(desc, swapchainImages[i]);
             m_swapchain.images[i] = texture;
+
+            TextureBarrier& barrier = barriers.Push();
+            barrier.texture = texture;
+            barrier.newLayout = ImageLayout_PresentSrc;
         }
+        check(!barriers.IsEmpty());
+        CommandListHandle cmd = CreateCommandList();
+        cmd->BeginRecording();
+        cmd->SetTextureState(barriers.GetData(), barriers.GetSize());
+        cmd->EndRecording();
+        uint64_t id = cmd->ExecuteCommandList();
+        check(WaitForSubmissionId(id));
+        cmd = nullptr;
     }
 
     void Device::DestroyMemoryContext()
@@ -2160,19 +2342,13 @@ namespace render
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.pNext = nullptr;
 
-        BindingLayoutArray reorderedLayouts;
         Mist::tStaticArray<VkDescriptorSetLayout, BindingLayout::MaxLayouts> layouts;
-        reorderedLayouts.Resize(bindingLayouts.GetSize());
         layouts.Resize(bindingLayouts.GetSize());
         ZeroMem(layouts.GetData(), layouts.GetSize() * sizeof(VkDescriptorSetLayout));
         for (uint32_t i = 0; i < bindingLayouts.GetSize(); ++i)
         {
             check(bindingLayouts[i]->m_layout != VK_NULL_HANDLE);
-            uint32_t setIndex = bindingLayouts[i]->m_description.setIndex;
-            check(setIndex < layouts.GetSize());
-            check(layouts[setIndex] == VK_NULL_HANDLE);
-            reorderedLayouts[bindingLayouts[i]->m_description.setIndex] = bindingLayouts[i];
-            layouts[setIndex] = bindingLayouts[i]->m_layout;
+            layouts[i] = bindingLayouts[i]->m_layout;
         }
 
         pipelineLayoutInfo.flags = 0;
@@ -2251,7 +2427,7 @@ namespace render
         return range;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, Texture* texture, SamplerHandle sampler, TextureSubresourceRange subresource, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
     {
         BindingSetItem item;
         item.texture = texture;
@@ -2260,10 +2436,11 @@ namespace render
         item.textureSubresources = subresource;
         item.dimension = dimension;
         item.type = ResourceType_TextureSRV;
+        item.shaderStages = shaderStages;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, Texture* texture, TextureSubresourceRange subresource, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
     {
         BindingSetItem item;
         item.texture = texture;
@@ -2272,36 +2449,43 @@ namespace render
         item.textureSubresources = subresource;
         item.dimension = dimension;
         item.type = ResourceType_TextureUAV;
+        item.shaderStages = shaderStages;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateConstantBufferItem(uint32_t slot, Buffer* buffer, BufferRange bufferRange)
+    BindingSetItem BindingSetItem::CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
         item.binding = slot;
         item.bufferRange = bufferRange;
         item.type = ResourceType_ConstantBuffer;
+        item.dimension = ImageDimension_Undefined;
+        item.shaderStages = shaderStages;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, BufferRange bufferRange)
+    BindingSetItem BindingSetItem::CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
         item.binding = slot;
         item.bufferRange = bufferRange;
         item.type = ResourceType_VolatileConstantBuffer;
+        item.dimension = ImageDimension_Undefined;
+        item.shaderStages = shaderStages;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateBufferUAVItem(uint32_t slot, Buffer* buffer, BufferRange bufferRange)
+    BindingSetItem BindingSetItem::CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
         item.binding = slot;
         item.bufferRange = bufferRange;
         item.type = ResourceType_BufferUAV;
+        item.dimension = ImageDimension_Undefined;
+        item.shaderStages = shaderStages;
         return item;
     }
 

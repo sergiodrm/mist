@@ -71,7 +71,7 @@ namespace render
 
         VkImageMemoryBarrier2 ConvertImageBarrier(const TextureBarrier& barrier)
         {
-            ImageLayoutState oldState = ConvertImageLayoutState(barrier.oldLayout);
+            ImageLayoutState oldState = ConvertImageLayoutState(barrier.texture->m_layout);
             ImageLayoutState newState = ConvertImageLayoutState(barrier.newLayout);
             VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2, nullptr };
             imageBarrier.image = barrier.texture->m_image;
@@ -1071,7 +1071,7 @@ namespace render
 
         uint32_t ComputeMipLevels(uint32_t width, uint32_t height)
         {
-            return static_cast<uint32_t>(floorf(std::log2(__max(width, height)))) + 1;
+            return static_cast<uint32_t>(floorf(std::log2f(static_cast<float>(__max(width, height))))) + 1;
         }
 
         BufferUsage GetBufferUsage(const BufferDescription& description)

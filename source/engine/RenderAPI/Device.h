@@ -8,6 +8,7 @@
 
 #include "Core/Types.h"
 #include "Types.h"
+#include "Utils.h"
 
 // declare first the structs which are used in the hash functions
 namespace render
@@ -45,6 +46,7 @@ namespace render
         size_t size;
         BufferUsage bufferUsage;
         MemoryUsage memoryUsage;
+        Mist::tString debugName;
 
         inline bool operator==(const BufferDescription& other) const
         {
@@ -67,6 +69,7 @@ namespace render
         ImageDimension dimension = ImageDimension_2D;
         Extent3D extent = {0,0,0};
         MemoryUsage memoryUsage = MemoryUsage_Gpu;
+        Mist::tString debugName;
 
         bool isShaderResource = false;
         bool isRenderTarget = false;
@@ -158,6 +161,7 @@ namespace render
         float minLod = 0.f;
         float maxLod = 0.f;
         float maxAnisotropy = 1.f;
+        Mist::tString debugName;
 
         inline bool operator==(const SamplerDescription& other) const
         {
@@ -178,11 +182,24 @@ namespace render
             return !(*this == other);
         }
     };
+
 }
 
 // hash functions of custom structs
 namespace std
 {
+    template <>
+    struct hash<render::BufferRange>
+    {
+        size_t operator()(const render::BufferRange& range) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, range.size);
+            Mist::HashCombine(seed, range.offset);
+            return seed;
+        }
+    };
+
     template <>
     struct hash<render::BufferDescription>
     {
@@ -336,6 +353,139 @@ namespace render
 #undef GET_VK_PROC_ADDRESS
         }
 #endif
+
+        inline uint32_t              GetMaxImageDimension1D() const { return physicalDeviceProperties.limits.maxImageDimension1D; }
+        inline uint32_t              GetMaxImageDimension2D() const { return physicalDeviceProperties.limits.maxImageDimension2D; }
+        inline uint32_t              GetMaxImageDimension3D() const { return physicalDeviceProperties.limits.maxImageDimension3D; }
+        inline uint32_t              GetMaxImageDimensionCube() const { return physicalDeviceProperties.limits.maxImageDimensionCube; }
+        inline uint32_t              GetMaxImageArrayLayers() const { return physicalDeviceProperties.limits.maxImageArrayLayers; }
+        inline uint32_t              GetMaxTexelBufferElements() const { return physicalDeviceProperties.limits.maxTexelBufferElements; }
+        inline uint32_t              GetMaxUniformBufferRange() const { return physicalDeviceProperties.limits.maxUniformBufferRange; }
+        inline uint32_t              GetMaxStorageBufferRange() const { return physicalDeviceProperties.limits.maxStorageBufferRange; }
+        inline uint32_t              GetMaxPushConstantsSize() const { return physicalDeviceProperties.limits.maxPushConstantsSize; }
+        inline uint32_t              GetMaxMemoryAllocationCount() const { return physicalDeviceProperties.limits.maxMemoryAllocationCount; }
+        inline uint32_t              GetMaxSamplerAllocationCount() const { return physicalDeviceProperties.limits.maxSamplerAllocationCount; }
+        inline uint64_t              GetBufferImageGranularity() const { return physicalDeviceProperties.limits.bufferImageGranularity; }
+        inline uint64_t              GetSparseAddressSpaceSize() const { return physicalDeviceProperties.limits.sparseAddressSpaceSize; }
+        inline uint32_t              GetMaxBoundDescriptorSets() const { return physicalDeviceProperties.limits.maxBoundDescriptorSets; }
+        inline uint32_t              GetMaxPerStageDescriptorSamplers() const { return physicalDeviceProperties.limits.maxPerStageDescriptorSamplers; }
+        inline uint32_t              GetMaxPerStageDescriptorUniformBuffers() const { return physicalDeviceProperties.limits.maxPerStageDescriptorUniformBuffers; }
+        inline uint32_t              GetMaxPerStageDescriptorStorageBuffers() const { return physicalDeviceProperties.limits.maxPerStageDescriptorStorageBuffers; }
+        inline uint32_t              GetMaxPerStageDescriptorSampledImages() const { return physicalDeviceProperties.limits.maxPerStageDescriptorSampledImages; }
+        inline uint32_t              GetMaxPerStageDescriptorStorageImages() const { return physicalDeviceProperties.limits.maxPerStageDescriptorStorageImages; }
+        inline uint32_t              GetMaxPerStageDescriptorInputAttachments() const { return physicalDeviceProperties.limits.maxPerStageDescriptorInputAttachments; }
+        inline uint32_t              GetMaxPerStageResources() const { return physicalDeviceProperties.limits.maxPerStageResources; }
+        inline uint32_t              GetMaxDescriptorSetSamplers() const { return physicalDeviceProperties.limits.maxDescriptorSetSamplers; }
+        inline uint32_t              GetMaxDescriptorSetUniformBuffers() const { return physicalDeviceProperties.limits.maxDescriptorSetUniformBuffers; }
+        inline uint32_t              GetMaxDescriptorSetUniformBuffersDynamic() const { return physicalDeviceProperties.limits.maxDescriptorSetUniformBuffersDynamic; }
+        inline uint32_t              GetMaxDescriptorSetStorageBuffers() const { return physicalDeviceProperties.limits.maxDescriptorSetStorageBuffers; }
+        inline uint32_t              GetMaxDescriptorSetStorageBuffersDynamic() const { return physicalDeviceProperties.limits.maxDescriptorSetStorageBuffersDynamic; }
+        inline uint32_t              GetMaxDescriptorSetSampledImages() const { return physicalDeviceProperties.limits.maxDescriptorSetSampledImages; }
+        inline uint32_t              GetMaxDescriptorSetStorageImages() const { return physicalDeviceProperties.limits.maxDescriptorSetStorageImages; }
+        inline uint32_t              GetMaxDescriptorSetInputAttachments() const { return physicalDeviceProperties.limits.maxDescriptorSetInputAttachments; }
+        inline uint32_t              GetMaxVertexInputAttributes() const { return physicalDeviceProperties.limits.maxVertexInputAttributes; }
+        inline uint32_t              GetMaxVertexInputBindings() const { return physicalDeviceProperties.limits.maxVertexInputBindings; }
+        inline uint32_t              GetMaxVertexInputAttributeOffset() const { return physicalDeviceProperties.limits.maxVertexInputAttributeOffset; }
+        inline uint32_t              GetMaxVertexInputBindingStride() const { return physicalDeviceProperties.limits.maxVertexInputBindingStride; }
+        inline uint32_t              GetMaxVertexOutputComponents() const { return physicalDeviceProperties.limits.maxVertexOutputComponents; }
+        inline uint32_t              GetMaxTessellationGenerationLevel() const { return physicalDeviceProperties.limits.maxTessellationGenerationLevel; }
+        inline uint32_t              GetMaxTessellationPatchSize() const { return physicalDeviceProperties.limits.maxTessellationPatchSize; }
+        inline uint32_t              GetMaxTessellationControlPerVertexInputComponents() const { return physicalDeviceProperties.limits.maxTessellationControlPerVertexInputComponents; }
+        inline uint32_t              GetMaxTessellationControlPerVertexOutputComponents() const { return physicalDeviceProperties.limits.maxTessellationControlPerVertexOutputComponents; }
+        inline uint32_t              GetMaxTessellationControlPerPatchOutputComponents() const { return physicalDeviceProperties.limits.maxTessellationControlPerPatchOutputComponents; }
+        inline uint32_t              GetMaxTessellationControlTotalOutputComponents() const { return physicalDeviceProperties.limits.maxTessellationControlTotalOutputComponents; }
+        inline uint32_t              GetMaxTessellationEvaluationInputComponents() const { return physicalDeviceProperties.limits.maxTessellationEvaluationInputComponents; }
+        inline uint32_t              GetMaxTessellationEvaluationOutputComponents() const { return physicalDeviceProperties.limits.maxTessellationEvaluationOutputComponents; }
+        inline uint32_t              GetMaxGeometryShaderInvocations() const { return physicalDeviceProperties.limits.maxGeometryShaderInvocations; }
+        inline uint32_t              GetMaxGeometryInputComponents() const { return physicalDeviceProperties.limits.maxGeometryInputComponents; }
+        inline uint32_t              GetMaxGeometryOutputComponents() const { return physicalDeviceProperties.limits.maxGeometryOutputComponents; }
+        inline uint32_t              GetMaxGeometryOutputVertices() const { return physicalDeviceProperties.limits.maxGeometryOutputVertices; }
+        inline uint32_t              GetMaxGeometryTotalOutputComponents() const { return physicalDeviceProperties.limits.maxGeometryTotalOutputComponents; }
+        inline uint32_t              GetMaxFragmentInputComponents() const { return physicalDeviceProperties.limits.maxFragmentInputComponents; }
+        inline uint32_t              GetMaxFragmentOutputAttachments() const { return physicalDeviceProperties.limits.maxFragmentOutputAttachments; }
+        inline uint32_t              GetMaxFragmentDualSrcAttachments() const { return physicalDeviceProperties.limits.maxFragmentDualSrcAttachments; }
+        inline uint32_t              GetMaxFragmentCombinedOutputResources() const { return physicalDeviceProperties.limits.maxFragmentCombinedOutputResources; }
+        inline uint32_t              GetMaxComputeSharedMemorySize() const { return physicalDeviceProperties.limits.maxComputeSharedMemorySize; }
+        inline void                  GetMaxComputeWorkGroupCount(uint32_t& x, uint32_t& y, uint32_t& z) const 
+        {
+            x = physicalDeviceProperties.limits.maxComputeWorkGroupCount[0]; 
+            y = physicalDeviceProperties.limits.maxComputeWorkGroupCount[1]; 
+            z = physicalDeviceProperties.limits.maxComputeWorkGroupCount[2];
+        }
+        inline uint32_t              GetMaxComputeWorkGroupInvocations() const { return physicalDeviceProperties.limits.maxComputeWorkGroupInvocations; }
+        inline void                  GetMaxComputeWorkGroupSize(uint32_t& x, uint32_t& y, uint32_t& z) const 
+        { 
+            x = physicalDeviceProperties.limits.maxComputeWorkGroupSize[0];
+            y = physicalDeviceProperties.limits.maxComputeWorkGroupSize[1];
+            z = physicalDeviceProperties.limits.maxComputeWorkGroupSize[2];
+        }
+        inline uint32_t              GetSubPixelPrecisionBits() const { return physicalDeviceProperties.limits.subPixelPrecisionBits; }
+        inline uint32_t              GetSubTexelPrecisionBits() const { return physicalDeviceProperties.limits.subTexelPrecisionBits; }
+        inline uint32_t              GetMipmapPrecisionBits() const { return physicalDeviceProperties.limits.mipmapPrecisionBits; }
+        inline uint32_t              GetMaxDrawIndexedIndexValue() const { return physicalDeviceProperties.limits.maxDrawIndexedIndexValue; }
+        inline uint32_t              GetMaxDrawIndirectCount() const { return physicalDeviceProperties.limits.maxDrawIndirectCount; }
+        inline float                 GetMaxSamplerLodBias() const { return physicalDeviceProperties.limits.maxSamplerLodBias; }
+        inline float                 GetMaxSamplerAnisotropy() const { return physicalDeviceProperties.limits.maxSamplerAnisotropy; }
+        inline uint32_t              GetMaxViewports() const { return physicalDeviceProperties.limits.maxViewports; }
+        inline void                  GetMaxViewportDimensions(uint32_t& dimX, uint32_t& dimY) const 
+        { 
+            dimX = physicalDeviceProperties.limits.maxViewportDimensions[0];
+            dimY = physicalDeviceProperties.limits.maxViewportDimensions[1];
+        }
+        inline void                  GetViewportBoundsRange(float& boundMin, float& boundMax) const
+        { 
+            boundMin = physicalDeviceProperties.limits.viewportBoundsRange[0]; 
+            boundMax = physicalDeviceProperties.limits.viewportBoundsRange[1]; 
+        }
+        inline uint32_t              GetViewportSubPixelBits() const { return physicalDeviceProperties.limits.viewportSubPixelBits; }
+        inline size_t                GetminMemoryMapAlignment() const { return physicalDeviceProperties.limits.minMemoryMapAlignment; }
+        inline uint64_t              GetMinTexelBufferOffsetAlignment() const { return physicalDeviceProperties.limits.minTexelBufferOffsetAlignment; }
+        inline uint64_t              GetMinUniformBufferOffsetAlignment() const { return physicalDeviceProperties.limits.minUniformBufferOffsetAlignment; }
+        inline uint64_t              GetMinStorageBufferOffsetAlignment() const { return physicalDeviceProperties.limits.minStorageBufferOffsetAlignment; }
+        inline int32_t               GetMinTexelOffset() const { return physicalDeviceProperties.limits.minTexelOffset; }
+        inline uint32_t              GetMaxTexelOffset() const { return physicalDeviceProperties.limits.maxTexelOffset; }
+        inline int32_t               GetMinTexelGatherOffset() const { return physicalDeviceProperties.limits.minTexelGatherOffset; }
+        inline uint32_t              GetMaxTexelGatherOffset() const { return physicalDeviceProperties.limits.maxTexelGatherOffset; }
+        inline float                 GetMinInterpolationOffset() const { return physicalDeviceProperties.limits.minInterpolationOffset; }
+        inline float                 GetMaxInterpolationOffset() const { return physicalDeviceProperties.limits.maxInterpolationOffset; }
+        inline uint32_t              GetSubPixelInterpolationOffsetBits() const { return physicalDeviceProperties.limits.subPixelInterpolationOffsetBits; }
+        inline uint32_t              GetMaxFramebufferWidth() const { return physicalDeviceProperties.limits.maxFramebufferWidth; }
+        inline uint32_t              GetMaxFramebufferHeight() const { return physicalDeviceProperties.limits.maxFramebufferHeight; }
+        inline uint32_t              GetMaxFramebufferLayers() const { return physicalDeviceProperties.limits.maxFramebufferLayers; }
+        //inline VkSampleCountFlags    GetFramebufferColorSampleCounts() const {return physicalDeviceProperties.limits.framebufferColorSampleCount;s}
+        //inline VkSampleCountFlags    GetFramebufferDepthSampleCounts() const {return physicalDeviceProperties.limits.framebufferDepthSampleCount;s}
+        //inline VkSampleCountFlags    GetFramebufferStencilSampleCounts() const {return physicalDeviceProperties.limits.framebufferStencilSampleCount;s}
+        //inline VkSampleCountFlags    GetFramebufferNoAttachmentsSampleCounts() const {return physicalDeviceProperties.limits.framebufferNoAttachmentsSampleCount;s}
+        inline uint32_t              GetMaxColorAttachments() const { return physicalDeviceProperties.limits.maxColorAttachments; }
+        //inline VkSampleCountFlags    GetSampledImageColorSampleCounts() const {return physicalDeviceProperties.limits.sampledImageColorSampleCount;s}
+        //inline VkSampleCountFlags    GetSampledImageIntegerSampleCounts() const {return physicalDeviceProperties.limits.sampledImageIntegerSampleCount;s}
+        //inline VkSampleCountFlags    GetSampledImageDepthSampleCounts() const {return physicalDeviceProperties.limits.sampledImageDepthSampleCount;s}
+        //inline VkSampleCountFlags    GetSampledImageStencilSampleCounts() const {return physicalDeviceProperties.limits.sampledImageStencilSampleCount;s}
+        //inline VkSampleCountFlags    GetStorageImageSampleCounts() const {return physicalDeviceProperties.limits.storageImageSampleCount;s}
+        inline uint32_t              GetMaxSampleMaskWords() const { return physicalDeviceProperties.limits.maxSampleMaskWords; }
+        inline uint32_t              GetTimestampComputeAndGraphics() const { return physicalDeviceProperties.limits.timestampComputeAndGraphics; }
+        inline float                 GetTimestampPeriod() const { return physicalDeviceProperties.limits.timestampPeriod; }
+        inline uint32_t              GetMaxClipDistances() const { return physicalDeviceProperties.limits.maxClipDistances; }
+        inline uint32_t              GetMaxCullDistances() const { return physicalDeviceProperties.limits.maxCullDistances; }
+        inline uint32_t              GetMaxCombinedClipAndCullDistances() const { return physicalDeviceProperties.limits.maxCombinedClipAndCullDistances; }
+        inline uint32_t              GetDiscreteQueuePriorities() const { return physicalDeviceProperties.limits.discreteQueuePriorities; }
+        inline void                  GetPointSizeRange(float& sizeRangeMin, float& sizeRangeMax) const 
+        { 
+            sizeRangeMin = physicalDeviceProperties.limits.pointSizeRange[0]; 
+            sizeRangeMax = physicalDeviceProperties.limits.pointSizeRange[1]; 
+        }
+        inline void                  GetLineWidthRange(float& widthRangeMin, float& widthRangeMax) const 
+        { 
+            widthRangeMin = physicalDeviceProperties.limits.lineWidthRange[0]; 
+            widthRangeMax = physicalDeviceProperties.limits.lineWidthRange[1]; 
+        }
+        inline float                 GetPointSizeGranularity() const { return physicalDeviceProperties.limits.pointSizeGranularity; }
+        inline float                 GetLineWidthGranularity() const { return physicalDeviceProperties.limits.lineWidthGranularity; }
+        inline uint32_t              GetStrictLines() const { return physicalDeviceProperties.limits.strictLines; }
+        inline uint32_t              GetStandardSampleLocations() const { return physicalDeviceProperties.limits.standardSampleLocations; }
+        inline uint64_t              GetPptimalBufferCopyOffsetAlignment() const { return physicalDeviceProperties.limits.optimalBufferCopyOffsetAlignment; }
+        inline uint64_t              GetPptimalBufferCopyRowPitchAlignment() const { return physicalDeviceProperties.limits.optimalBufferCopyRowPitchAlignment; }
+        inline uint64_t              GetNonCoherentAtomSize() const { return physicalDeviceProperties.limits.nonCoherentAtomSize; }
     };
 
     /**
@@ -423,6 +573,7 @@ namespace render
         Alloc m_alloc;
         VkImage m_image;
         bool m_owner;
+        ImageLayout m_layout;
         Mist::tMap<TextureViewDescription, TextureView> m_views;
         typedef Mist::tMap<TextureViewDescription, TextureView>::iterator ViewIterator;
     private:
@@ -460,6 +611,7 @@ namespace render
         ShaderType type = ShaderType_None;
         Mist::tString name;
         Mist::tString entryPoint = "main";
+        Mist::tString debugName;
     };
 
     class Shader final : public Mist::Ref<Shader>
@@ -501,11 +653,15 @@ namespace render
     {
         static constexpr uint32_t MaxAttributes = 16;
         
+        Mist::tStaticArray<VertexInputAttribute, MaxAttributes> m_description;
         Mist::tStaticArray<VkVertexInputAttributeDescription, MaxAttributes> m_attributes;
         VkVertexInputBindingDescription m_binding;
 
         VertexInputLayout() : m_attributes{}, m_binding{} {}
         static VertexInputLayout BuildVertexInputLayout(const VertexInputAttribute* attributes, uint32_t count);
+
+        inline bool operator==(const VertexInputLayout& other) const { return utils::EqualArrays(m_description.GetData(), m_description.GetSize(), other.m_description.GetData(), other.m_description.GetSize()); }
+        inline bool operator!=(const VertexInputLayout& other) const { return !((*this) == other); }
     };
 
 
@@ -518,7 +674,6 @@ namespace render
     {
         TextureHandle texture = nullptr;
         TextureSubresourceRange range = TextureSubresourceRange(0,1,0,1);
-        Format format;
         bool isReadOnly = false;
 
         inline bool IsValid() const
@@ -532,9 +687,10 @@ namespace render
         static constexpr uint32_t MaxRenderAttachments = 8;
         Mist::tStaticArray<RenderTargetAttachment, MaxRenderAttachments> colorAttachments;
         RenderTargetAttachment depthStencilAttachment;
+        Mist::tString debugName;
 
-        RenderTargetDescription& AddColorAttachment(TextureHandle texture, const TextureSubresourceRange& range, Format format);
-        RenderTargetDescription& SetDepthStencilAttachment(TextureHandle texture, const TextureSubresourceRange& range, Format format);
+        RenderTargetDescription& AddColorAttachment(TextureHandle texture, TextureSubresourceRange range = TextureSubresourceRange{0,1,0,1});
+        RenderTargetDescription& SetDepthStencilAttachment(TextureHandle texture, TextureSubresourceRange range = TextureSubresourceRange{ 0,1,0,1 });
     };
 
 	struct RenderTargetInfo
@@ -546,8 +702,8 @@ namespace render
         RenderTargetInfo() = default;
         RenderTargetInfo(const RenderTargetDescription& description);
 
-        inline Viewport GetViewport() const { return Viewport(0, 0, extent.width, extent.height, 0, 0); }
-        inline Rect GetScissor() const { return Rect(0, extent.width, 0, extent.height); }
+        inline Viewport GetViewport() const { return Viewport(0, 0, static_cast<float>(extent.width), static_cast<float>(extent.height), 0, 0); }
+        inline Rect GetScissor() const { return Rect(0, static_cast<float>(extent.width), 0, static_cast<float>(extent.height)); }
 	};
 
     class RenderTarget final : public Mist::Ref<RenderTarget>
@@ -621,14 +777,7 @@ namespace render
         {
             if (this == &other)
                 return true;
-            if (renderTargetBlendStates.GetSize() != other.renderTargetBlendStates.GetSize())
-                return false;
-            for (uint32_t i = 0; i < RenderTargetDescription::MaxRenderAttachments; ++i)
-            {
-                if (renderTargetBlendStates[i] != other.renderTargetBlendStates[i])
-                    return false;
-            }
-            return true;
+            return utils::EqualArrays(renderTargetBlendStates.GetData(), renderTargetBlendStates.GetSize(), other.renderTargetBlendStates.GetData(), other.renderTargetBlendStates.GetSize());
         }
 
         inline bool operator!=(const BlendState& other) const
@@ -693,7 +842,7 @@ namespace render
     {
         RasterFillMode fillMode = RasterFillMode_Fill;
         RasterCullMode cullMode = RasterCullMode_Back;
-        bool frontFaceCounterClockWise = false;
+        bool frontFaceCounterClockWise = true;
         bool depthBiasEnable = false;
         float depthBiasConstantFactor = 0.f;
         float depthBiasClamp = 0.f;
@@ -753,13 +902,15 @@ namespace render
     {
         ResourceType type = ResourceType_None;
         uint32_t binding = 0;
-        uint32_t size = 0;
+        uint64_t size = 0;
+        ShaderType shaderType = ShaderType_None;
 
         BindingLayoutItem() = default;
-        BindingLayoutItem(ResourceType _type, uint32_t _binding, uint32_t _size)
+        BindingLayoutItem(ResourceType _type, uint32_t _binding, uint64_t _size, ShaderType _shaderType)
             : type(_type),
             binding(_binding),
-            size(_size)
+            size(_size),
+            shaderType(_shaderType)
         { }
 
         inline bool operator==(const BindingLayoutItem& other) const
@@ -779,34 +930,16 @@ namespace render
     {
         static constexpr uint32_t MaxBindings = 16;
         Mist::tStaticArray<BindingLayoutItem, MaxBindings> bindings;
-        uint32_t setIndex = 0;
-        ShaderType shaderType = ShaderType_None;
+        Mist::tString debugName;
 
-        BindingLayoutDescription& SetShaderType(ShaderType type) { shaderType = type; return *this; }
-        BindingLayoutDescription& PushTextureSRV() { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0)); return *this; }
-        BindingLayoutDescription& PushTextureUAV() { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0)); return *this; }
-        BindingLayoutDescription& PushConstantBuffer(size_t size) { bindings.Push(BindingLayoutItem(ResourceType_ConstantBuffer, bindings.GetSize(), size)); return *this; }
-        BindingLayoutDescription& PushVolatileConstantBuffer(size_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size)); return *this; }
-        BindingLayoutDescription& PushBufferUAV(size_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size)); return *this; }
+        BindingLayoutDescription& PushTextureSRV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0, shaderType)); return *this; }
+        BindingLayoutDescription& PushTextureUAV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0, shaderType)); return *this; }
+        BindingLayoutDescription& PushConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_ConstantBuffer, bindings.GetSize(), size, shaderType)); return *this; }
+        BindingLayoutDescription& PushVolatileConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size, shaderType)); return *this; }
+        BindingLayoutDescription& PushBufferUAV(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size, shaderType)); return *this; }
 
-        inline bool operator==(const BindingLayoutDescription& other) const
-        {
-            if (bindings.GetSize() != other.bindings.GetSize())
-                return false;
-            if (setIndex != other.setIndex || shaderType != other.shaderType)
-                return false;
-            for (uint32_t i = 0; i < bindings.GetSize(); ++i)
-            {
-                if (bindings[i] != other.bindings[i])
-                    return false;
-            }
-            return true;
-        }
-
-        inline bool operator!=(const BindingLayoutDescription& other) const
-        {
-            return !(*this == other);
-        }
+        inline bool operator==(const BindingLayoutDescription& other) const { return utils::EqualArrays(bindings.GetData(), bindings.GetSize(), other.bindings.GetData(), other.bindings.GetSize()); }
+        inline bool operator!=(const BindingLayoutDescription& other) const { return !(*this == other); }
     };
 
     class BindingLayout final : public Mist::Ref<BindingLayout>
@@ -833,6 +966,7 @@ namespace render
     void CreatePipelineLayout(Device* device, const BindingLayoutArray& bindingLayouts,
         VkPipelineLayout& pipelineLayout);
 
+
     struct BindingSetItem
     {
         static constexpr uint32_t MaxBindingSets = 32;
@@ -850,7 +984,8 @@ namespace render
         uint32_t binding;
         ResourceType type;
         ImageDimension dimension;
-        
+        ShaderType shaderStages;
+
         union
         {
             TextureSubresourceRange textureSubresources;
@@ -860,13 +995,13 @@ namespace render
         BindingSetItem() {}
         ~BindingSetItem() {}
 
-        static BindingSetItem CreateTextureSRVItem(uint32_t slot, Texture* texture, SamplerHandle sampler,
+        static BindingSetItem CreateTextureSRVItem(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages,
             TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined);
-        static BindingSetItem CreateTextureUAVItem(uint32_t slot, Texture* texture,
-            TextureSubresourceRange subresource = {0,1,0,TextureSubresourceRange::AllLayers}, ImageDimension dimension = ImageDimension_Undefined);
-        static BindingSetItem CreateConstantBufferItem(uint32_t slot, Buffer* buffer, BufferRange bufferRange = BufferRange::WholeBuffer());
-        static BindingSetItem CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, BufferRange bufferRange = BufferRange::WholeBuffer());
-        static BindingSetItem CreateBufferUAVItem(uint32_t slot, Buffer* buffer, BufferRange bufferRange = BufferRange::WholeBuffer());
+        static BindingSetItem CreateTextureUAVItem(uint32_t slot, Texture* texture, ShaderType shaderStages,
+            TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined);
+        static BindingSetItem CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
+        static BindingSetItem CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
+        static BindingSetItem CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
 
         inline bool operator==(const BindingSetItem& other) const
         {
@@ -887,50 +1022,45 @@ namespace render
     struct BindingSetDescription
     {
         BindingSetItemArray bindingItems;
+        Mist::tString debugName;
 
         BindingSetDescription()
-        { }
-
-        BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
         {
-            bindingItems.Push(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, subresource, dimension));
+        }
+
+        BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
+        {
+            bindingItems.Push(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, shaderStages, subresource, dimension));
             return *this;
         }
 
-        BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
+        BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
         {
-            bindingItems.Push(BindingSetItem::CreateTextureUAVItem(slot, texture, subresource, dimension));
+            bindingItems.Push(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStages, subresource, dimension));
             return *this;
         }
 
-        BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, BufferRange bufferRange = BufferRange::WholeBuffer())
+        BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            bindingItems.Push(BindingSetItem::CreateConstantBufferItem(slot, buffer, bufferRange));
+            bindingItems.Push(BindingSetItem::CreateConstantBufferItem(slot, buffer, shaderStages, bufferRange));
             return *this;
         }
 
-        BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, BufferRange bufferRange = BufferRange::WholeBuffer())
+        BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            bindingItems.Push(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, bufferRange));
+            bindingItems.Push(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, shaderStages, bufferRange));
             return *this;
         }
 
-        BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, BufferRange bufferRange = BufferRange::WholeBuffer())
+        BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            bindingItems.Push(BindingSetItem::CreateBufferUAVItem(slot, buffer, bufferRange));
+            bindingItems.Push(BindingSetItem::CreateBufferUAVItem(slot, buffer, shaderStages, bufferRange));
             return *this;
         }
 
         inline bool operator==(const BindingSetDescription& other) const
         {
-            if (bindingItems.GetSize() != other.bindingItems.GetSize())
-                return false;
-            for (uint32_t i = 0; i < bindingItems.GetSize(); ++i)
-            {
-                if (bindingItems[i] != other.bindingItems[i])
-                    return false;
-            }
-            return true;
+            return utils::EqualArrays(bindingItems.GetData(), bindingItems.GetSize(), other.bindingItems.GetData(), other.bindingItems.GetSize());
         }
 
         inline bool operator!=(const BindingSetDescription& other) const
@@ -968,6 +1098,49 @@ namespace render
     };
     typedef Mist::RefPtr<BindingSet> BindingSetHandle;
     typedef Mist::tStaticArray<BindingSetHandle, BindingSet::MaxBindingSets> BindingSetArray;
+    typedef Mist::tStaticArray<uint32_t, BindingSet::MaxBindingSets> BindingSetDynamicOffsetsArray;
+
+    class BindingSetVector
+    {
+    public:
+        static constexpr uint32_t MaxDynamicsPerSet = 8;
+        static constexpr uint32_t MaxSets = 8;
+        struct BindingSetSlot
+        {
+            BindingSetHandle set = nullptr;
+            Mist::tStaticArray<uint32_t, MaxDynamicsPerSet> offsets;
+
+            inline bool operator==(const BindingSetSlot& other) const { return set == other.set && utils::EqualArrays(offsets.GetData(), offsets.GetSize(), other.offsets.GetData(), other.offsets.GetSize()); }
+            inline bool operator!=(const BindingSetSlot& other) const { return !(*this == other); }
+        };
+
+        void SetBindingSlot(uint32_t slot, BindingSetHandle set, const uint32_t* offsets = nullptr, uint32_t count = 0)
+        {
+            check(slot < MaxSets);
+            if (m_slots[slot].set != set || !utils::EqualArrays(m_slots[slot].offsets.GetData(), m_slots[slot].offsets.GetSize(), offsets, count))
+            {
+                m_slots[slot].set = set;
+                check(count < MaxDynamicsPerSet);
+                m_slots[slot].offsets.Clear();
+                for (uint32_t i = 0; i < count; ++i)
+                    m_slots[slot].offsets.Push(offsets[i]);
+            }
+        }
+
+        void Clear()
+        {
+            for (uint32_t i = 0; i < MaxSets; ++i)
+            {
+                m_slots[i].set = nullptr;
+                m_slots[i].offsets.Clear();
+            }
+        }
+
+        inline bool operator==(const BindingSetVector& other) const { return utils::EqualArrays(m_slots, MaxSets, other.m_slots, MaxSets); }
+        inline bool operator!=(const BindingSetVector& other) const { return !(*this == other); }
+
+        BindingSetSlot m_slots[MaxSets];
+    };
 
     /**
      * Pipelines
@@ -981,6 +1154,17 @@ namespace render
         RenderState renderState;
         VertexInputLayout vertexInputLayout;
         BindingLayoutArray bindingLayouts;
+        Mist::tString debugName;
+
+        inline bool operator==(const GraphicsPipelineDescription& desc) const
+        {
+            return primitiveType == desc.primitiveType &&
+                vertexShader == desc.vertexShader &&
+                fragmentShader == desc.fragmentShader &&
+                renderState == desc.renderState &&
+                vertexInputLayout == desc.vertexInputLayout &&
+                utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
+        }
     };
 
 	class GraphicsPipeline : public Mist::Ref<GraphicsPipeline>
@@ -1006,6 +1190,7 @@ namespace render
     {
         ShaderHandle computeShader;
         BindingLayoutArray bindingLayouts;
+        Mist::tString debugName;
     };
 
     class ComputePipeline : public Mist::Ref<ComputePipeline>
@@ -1035,7 +1220,7 @@ namespace render
         VkCommandBuffer cmd;
         VkCommandPool pool;
         QueueType type;
-        uint32_t submissionId;
+        uint64_t submissionId;
 
         void Begin();
         void End();
@@ -1063,7 +1248,7 @@ namespace render
         bool WaitForCommandSubmission(uint64_t submissionId, uint64_t timeout = 1);
 
         inline uint64_t GetLastSubmissionId() const { return m_submissionId; }
-        inline uint32_t GetLastSubmissionIdFinished() const { return m_lastSubmissionIdFinished; }
+        inline uint64_t GetLastSubmissionIdFinished() const { return m_lastSubmissionIdFinished; }
         inline QueueType GetQueueType() const { return m_type; }
 
         VkQueue m_queue;
@@ -1094,26 +1279,18 @@ namespace render
         GraphicsPipelineHandle pipeline = nullptr;
         RenderTargetHandle rt = nullptr;
 
-        BindingSetArray bindings;
+        BindingSetVector bindings;
 
         BufferHandle vertexBuffer = nullptr;
         BufferHandle indexBuffer = nullptr;
 
         inline bool operator ==(const GraphicsState& other) const
         {
-            if (pipeline != other.pipeline
-                || rt != other.rt
-                || vertexBuffer != other.vertexBuffer
-                || indexBuffer != other.indexBuffer)
-                return false;
-            if (bindings.GetSize() != other.bindings.GetSize())
-                return false;
-            for (uint32_t i = 0; i < bindings.GetSize(); ++i)
-            {
-                if (bindings[i] != other.bindings[i])
-                    return false;
-            }
-            return true;
+            return pipeline == other.pipeline && 
+                rt == other.rt &&
+                vertexBuffer == other.vertexBuffer &&
+                indexBuffer == other.indexBuffer &&
+                bindings == other.bindings;
         }
 
         inline bool operator!=(const GraphicsState& other) const { return !(*this == other); }
@@ -1144,7 +1321,6 @@ namespace render
     struct TextureBarrier
     {
         TextureHandle texture;
-        ImageLayout oldLayout;
         ImageLayout newLayout;
         TextureSubresourceRange subresources = TextureSubresourceRange::AllSubresources();
     };
@@ -1208,9 +1384,6 @@ namespace render
         inline bool IsRecording() const { return m_currentCommandBuffer != nullptr; }
         void EndRecording();
 
-        // Bindings
-        void BindSets(const BindingSetHandle* bindings, uint32_t count);
-
         // Graphics
         void SetGraphicsState(const GraphicsState& state);
         void ClearColor(float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
@@ -1237,11 +1410,16 @@ namespace render
 
         inline bool AllowsCommandType(QueueType type) const { return IsRecording() && m_currentCommandBuffer->type & type; }
 
-    private:
-
-        void EndRenderPass();
         void ClearState();
+    private:
+        void BeginRenderPass(render::RenderTargetHandle rt);
+        inline bool IsInsideRenderPass() const { return m_graphicsState.rt != nullptr; }
+        void EndRenderPass();
         void Submitted(uint64_t submissionId);
+        void FlushRequiredStates();
+
+        // Bindings
+        void BindSets(const BindingSetVector& setsToBind, const BindingSetVector& currentBinding);
 
     private:
         Device* m_device;
@@ -1251,6 +1429,7 @@ namespace render
         bool m_dirtyBindings;
 
         TransferMemoryPool m_transferMemoryPool;
+        Mist::tDynArray<TextureBarrier> m_requiredStates;
     };
     typedef Mist::RefPtr<CommandList> CommandListHandle;
 
@@ -1289,6 +1468,8 @@ namespace render
         inline const VulkanContext& GetContext() const { return *m_context; }
 
         CommandQueue* GetCommandQueue(QueueType type);
+
+        uint64_t AlignUniformSize(uint64_t size) const;
 
         CommandListHandle CreateCommandList();
         void DestroyCommandList(CommandList* commandList);
@@ -1332,6 +1513,20 @@ namespace render
         void Present(SemaphoreHandle semaphoreToWait);
         void WaitIdle();
 
+        bool WaitForSubmissionId(uint64_t submissionId, uint64_t timeoutCounter = 10) const;
+
+        void SetDebugName(Semaphore* object, const char* debugName) const;
+        void SetDebugName(Buffer* object, const char* debugName) const;
+        void SetDebugName(Texture* object, const char* debugName) const;
+        void SetDebugName(Sampler* object, const char* debugName) const;
+        void SetDebugName(Shader* object, const char* debugName) const;
+        void SetDebugName(RenderTarget* object, const char* debugName) const;
+        void SetDebugName(GraphicsPipeline* object, const char* debugName) const;
+        void SetDebugName(BindingLayout* object, const char* debugName) const;
+        void SetDebugName(BindingSet* object, const char* debugName) const;
+        void SetDebugName(ComputePipeline* object, const char* debugName) const;
+        void SetDebugName(const void* object, const char* debugName, uint32_t type) const;
+
     private:
         void InitContext(const DeviceDescription& description);
         void InitMemoryContext();
@@ -1349,6 +1544,242 @@ namespace render
 
         Swapchain m_swapchain;
         uint32_t m_swapchainIndex;
+        Mist::tDynArray<Buffer*> m_bufferTracking;
+        Mist::tDynArray<Texture*> m_textureTracking;
     };
 }
 
+
+// hashes
+namespace std
+{
+    template <>
+    struct hash<render::StencilOpState>
+    {
+        size_t operator()(const render::StencilOpState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.compareOp);
+            Mist::HashCombine(seed, state.passOp);
+            Mist::HashCombine(seed, state.depthFailOp);
+            Mist::HashCombine(seed, state.failOp);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::DepthStencilState>
+    {
+        size_t operator()(const render::DepthStencilState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.depthTestEnable);
+            Mist::HashCombine(seed, state.depthWriteEnable);
+            Mist::HashCombine(seed, state.depthCompareOp);
+            Mist::HashCombine(seed, state.stencilTestEnable);
+            Mist::HashCombine(seed, state.stencilReadMask);
+            Mist::HashCombine(seed, state.stencilWriteMask);
+            Mist::HashCombine(seed, state.stencilRefValue);
+            Mist::HashCombine(seed, state.frontFace);
+            Mist::HashCombine(seed, state.backFace);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::RasterState>
+    {
+        size_t operator()(const render::RasterState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.cullMode);
+            Mist::HashCombine(seed, state.depthBiasClamp);
+            Mist::HashCombine(seed, state.depthBiasConstantFactor);
+            Mist::HashCombine(seed, state.depthBiasEnable);
+            Mist::HashCombine(seed, state.depthBiasSlopeFactor);
+            Mist::HashCombine(seed, state.depthClampEnable);
+            Mist::HashCombine(seed, state.fillMode);
+            Mist::HashCombine(seed, state.cullMode);
+            Mist::HashCombine(seed, state.frontFaceCounterClockWise);
+            Mist::HashCombine(seed, state.scissorEnable);
+            return seed;
+        }
+    };
+    
+    template <>
+    struct hash<render::RenderTargetBlendState>
+    {
+        size_t operator()(const render::RenderTargetBlendState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.blendEnable);
+            Mist::HashCombine(seed, state.srcBlend);
+            Mist::HashCombine(seed, state.dstBlend);
+            Mist::HashCombine(seed, state.blendOp);
+            Mist::HashCombine(seed, state.srcAlphaBlend);
+            Mist::HashCombine(seed, state.dstAlphaBlend);
+            Mist::HashCombine(seed, state.alphaBlendOp);
+            Mist::HashCombine(seed, state.colorWriteMask);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::BlendState>
+    {
+        size_t operator()(const render::BlendState& state) const
+        {
+            size_t seed = 0;
+            for (uint32_t i = 0; i < state.renderTargetBlendStates.GetSize(); ++i)
+                Mist::HashCombine(seed, state.renderTargetBlendStates[i]);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::ViewportState>
+    {
+        size_t operator()(const render::ViewportState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.viewport.x);
+            Mist::HashCombine(seed, state.viewport.y);
+            Mist::HashCombine(seed, state.viewport.width);
+            Mist::HashCombine(seed, state.viewport.height);
+            Mist::HashCombine(seed, state.viewport.minDepth);
+            Mist::HashCombine(seed, state.viewport.maxDepth);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::RenderState>
+    {
+        size_t operator()(const render::RenderState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.viewportState);
+            Mist::HashCombine(seed, state.rasterState);
+            Mist::HashCombine(seed, state.blendState);
+            Mist::HashCombine(seed, state.depthStencilState);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::VertexInputLayout>
+    {
+        size_t operator()(const render::VertexInputLayout& layout) const
+        {
+            size_t seed = 0;
+            for (uint32_t i = 0; i < layout.m_attributes.GetSize(); ++i)
+            {
+                Mist::HashCombine(seed, layout.m_attributes[i].location);
+                Mist::HashCombine(seed, layout.m_attributes[i].format);
+            }
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::ShaderDescription>
+    {
+        size_t operator()(const render::ShaderDescription& desc) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, desc.type);
+            Mist::HashCombine(seed, desc.name);
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::GraphicsPipelineDescription>
+    {
+        size_t operator()(const render::GraphicsPipelineDescription& desc) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, desc.primitiveType);
+            Mist::HashCombine(seed, desc.renderState);
+            Mist::HashCombine(seed, desc.vertexInputLayout);
+            Mist::HashCombine(seed, desc.vertexShader->m_description);
+            Mist::HashCombine(seed, desc.fragmentShader->m_description);
+            return seed;
+        }
+    };
+
+    template<>
+    struct hash<render::BindingSetItem>
+    {
+        size_t operator()(const render::BindingSetItem& item) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, item.binding);
+            Mist::HashCombine(seed, item.type);
+            Mist::HashCombine(seed, item.resource);
+            switch (item.type)
+            {
+            case render::ResourceType_TextureSRV:
+            case render::ResourceType_TextureUAV:
+                Mist::HashCombine(seed, item.sampler.GetPtr());
+                Mist::HashCombine(seed, item.dimension);
+                Mist::HashCombine(seed, item.textureSubresources);
+                break;
+            case render::ResourceType_ConstantBuffer:
+            case render::ResourceType_VolatileConstantBuffer:
+            case render::ResourceType_BufferUAV:
+                Mist::HashCombine(seed, item.bufferRange);
+                break;
+            default:
+                unreachable_code();
+                break;
+            }
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::BindingSetDescription>
+    {
+        size_t operator()(const render::BindingSetDescription& desc) const
+        {
+            size_t seed = 0;
+            for (uint32_t i = 0; i < desc.bindingItems.GetSize(); ++i)
+                Mist::HashCombine(seed, desc.bindingItems[i]);
+            return seed;
+        }
+    };
+
+    template<>
+    struct hash<render::BindingLayoutItem>
+    {
+        size_t operator()(const render::BindingLayoutItem& item) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, item.binding);
+            Mist::HashCombine(seed, item.type);
+            Mist::HashCombine(seed, item.shaderType);
+            switch (item.type)
+            {
+            case render::ResourceType_ConstantBuffer:
+            case render::ResourceType_VolatileConstantBuffer:
+            case render::ResourceType_BufferUAV:
+                Mist::HashCombine(seed, item.size);
+                break;
+            }
+            return seed;
+        }
+    };
+
+    template <>
+    struct hash<render::BindingLayoutDescription>
+    {
+        size_t operator()(const render::BindingLayoutDescription& desc) const
+        {
+            size_t seed = 0;
+            for (uint32_t i = 0; i < desc.bindings.GetSize(); ++i)
+                Mist::HashCombine(seed, desc.bindings[i]);
+            return seed;
+        }
+    };
+}
