@@ -174,7 +174,8 @@ namespace Mist
 		void Init(const RenderContext& context)
 		{
 			const cTexture* defaultTex = GetTextureCheckerboard4x4(context);
-			DebugRenderPipeline.QuadBatch.Textures.Clear(defaultTex);
+			//DebugRenderPipeline.QuadBatch.Textures.Clear(defaultTex);
+			DebugRenderPipeline.QuadBatch.Textures.Clear();
 			Renderer* renderer = context.Renderer;
 			{
 				tShaderProgramDescription shaderDesc;
