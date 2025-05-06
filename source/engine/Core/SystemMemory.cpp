@@ -111,7 +111,7 @@ namespace Mist
 		return false;
 	}
 
-	void DumpMemoryTrace(tSystemMemStats& memStats)
+	void DumpMemoryTrace(const tSystemMemStats& memStats)
 	{
 		logfinfo("Allocated: %d bytes | MaxAllocated: %d bytes\n", memStats.Allocated, memStats.MaxAllocated);
 		for (uint32_t i = 0; i < memStats.MemTraceSize; ++i)
@@ -123,6 +123,21 @@ namespace Mist
 					memStats.MemTraceArray[i].File, 
 					memStats.MemTraceArray[i].Line);
 		}
+	}
+
+	void DumpMemoryStats(const tSystemMemStats& memStats)
+	{
+		loginfo("****************** Host memory stats ******************\n");
+		logfinfo("Current bytes allocated:		%8d bytes\n", memStats.Allocated);
+		logfinfo("    Max bytes allocated:		%8d bytes\n", memStats.MaxAllocated);
+		logfinfo("Memory trace registered:		%8d/%8d\n", memStats.MemTraceIndex, memStats.MemTraceSize);
+		logfinfo("Free indices availables:		%8d\n", memStats.FreeIndicesIndex);
+		loginfo("*******************************************************\n");
+	}
+
+	void DumpMemoryStats()
+	{
+		DumpMemoryStats(SystemMemStats);
 	}
 
 	void ExecCommand_DumpMemoryTrace(const char* command)

@@ -39,6 +39,7 @@ namespace Mist
 	void TerminateSystemMemory();
 	const tSystemMemStats& GetMemoryStats();
 	void SysMem_IntegrityCheck();
+	void DumpMemoryStats();
 
 	[[nodiscard]] void* Malloc(size_t size, const char* file, int line);
 	[[nodiscard]] void* Realloc(void* p, size_t size, const char* file, int line);
