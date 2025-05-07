@@ -2,6 +2,7 @@
 #include "Core/Logger.h"
 #include "RenderAPI/ShaderCompiler.h"
 #include "Utils/FileSystem.h"
+#include "Utils/GenericUtils.h"
 
 namespace rendersystem
 {
@@ -266,8 +267,7 @@ namespace rendersystem
 
         InitScreenQuad();
 
-        m_drawList.models.Reserve(1);
-
+        // init quad model
         m_cmd->BeginRecording();
 
         float quadVertices[] =
@@ -279,8 +279,8 @@ namespace rendersystem
         };
         uint32_t quadIndices[] = { 0, 1, 2, 2, 1, 3 };
 
+        m_drawList.models.Reserve(1);
         Model& model = m_drawList.models.data[0];
-        model.transform = glm::mat4(1.f);
         model.meshes.Reserve(1);
         Mesh& mesh = model.meshes.data[0];
 
@@ -325,6 +325,22 @@ namespace rendersystem
         m_cmd->EndRecording();
         uint64_t id = m_cmd->ExecuteCommandList();
         check(m_device->WaitForSubmissionId(id));
+
+        // create instances
+        static constexpr uint32_t w = 10;
+        static constexpr uint32_t h = 10;
+        m_drawList.modelInstances.Reserve(w*h);
+        for (uint32_t i = 0; i < w; ++i)
+        {
+            for (uint32_t j = 0; j < h; ++j)
+            {
+                uint32_t modelInstanceIndex = j * h + i;
+                ModelInstance& m = m_drawList.modelInstances.data[modelInstanceIndex];
+                glm::vec4 pos((float)i * 5.f, 0.f, (float)j * 5.f, 1.f);
+                m.transform = Mist::math::PosToMat4(pos);
+                m.model = 0;
+            }
+        }
     }
 
     void RenderSystem::Destroy()
@@ -406,23 +422,32 @@ namespace rendersystem
         viewProjSetDesc.PushConstantBuffer(0, m_memoryPool->GetBuffer(viewProjAllocation.chunkIndex).GetPtr(), render::ShaderType_Vertex, render::BufferRange(viewProjAllocation.pointer, viewProjAllocation.size));
         render::BindingSetHandle viewProjSet = m_bindingCache->GetCachedBindingSet(viewProjSetDesc);
         
-        uint64_t transformSize = list.models.count * sizeof(glm::mat4);
-        ShaderMemoryPool::MemoryAllocation transformAllocation = m_memoryPool->Allocate("transforms", sizeof(transformSize));
-        render::BindingSetDescription transformSetDesc;
-        transformSetDesc.PushVolatileConstantBuffer(0, m_memoryPool->GetBuffer(transformAllocation.chunkIndex).GetPtr(), render::ShaderType_Vertex, render::BufferRange(transformAllocation.pointer, transformAllocation.size));
-        render::BindingSetHandle transformSet = m_bindingCache->GetCachedBindingSet(transformSetDesc);
         
-        m_transforms.clear();
-        m_transforms.reserve(list.models.count);
-        uint32_t transformOffset = 0;
+        if (m_transforms.count < list.modelInstances.count)
+        {
+            m_transforms.Release();
+            m_transforms.Reserve(list.modelInstances.count);
+        }
+        uint64_t transformSize = m_transforms.count * sizeof(glm::mat4);
+        ShaderMemoryPool::MemoryAllocation transformAllocation = m_memoryPool->Allocate("transforms", transformSize);
+        render::BindingSetDescription transformSetDesc;
+        transformSetDesc.PushVolatileConstantBuffer(0, m_memoryPool->GetBuffer(transformAllocation.chunkIndex).GetPtr(), render::ShaderType_Vertex, render::BufferRange(transformAllocation.pointer, sizeof(glm::mat4)/*transformAllocation.size*/));
+        render::BindingSetHandle transformSet = m_bindingCache->GetCachedBindingSet(transformSetDesc);
 
         render::GraphicsState state;
         state.rt = rt;
 
-        for (uint32_t i = 0; i < list.models.count; ++i)
+        for (uint32_t i = 0; i < list.modelInstances.count; ++i)
         {
-            Model& model = list.models.data[i];
-            m_transforms.push_back(model.transform);
+            ModelInstance& instance = list.modelInstances.data[i];
+            check(instance.model < list.models.count);
+            Model& model = list.models.data[instance.model];
+
+            static constexpr float dt = 0.033f;
+            Mist::tAngles rot(90.f * dt * static_cast<float>(rand() % 100)*0.01f, 45.f * dt * static_cast<float>(rand() % 100)*0.01f, 0.f);
+            instance.transform = instance.transform * rot.ToMat4();
+            
+            m_transforms.data[i] = instance.transform;
             for (uint32_t j = 0; j < model.meshes.count; ++j)
             {
                 Mesh& mesh = model.meshes.data[j];
@@ -449,15 +474,13 @@ namespace rendersystem
                         desc.PushConstantBuffer(0, m_memoryPool->GetBuffer(materialAllocation.chunkIndex).GetPtr(), render::ShaderType_Fragment, render::BufferRange(materialAllocation.pointer, materialAllocation.size));
                         render::BindingSetHandle set = m_bindingCache->GetCachedBindingSet(desc);
 
-                        //psoDesc.renderState.rasterState.frontFaceCounterClockWise = false;
-                        //psoDesc.renderState.rasterState.cullMode = render::RasterCullMode_FrontAndBack;
                         psoDesc.bindingLayouts.Clear();
                         psoDesc.bindingLayouts.Push(viewProjSet->m_layout);
                         psoDesc.bindingLayouts.Push(transformSet->m_layout);
                         psoDesc.bindingLayouts.Push(set->m_layout);
                         state.bindings.Clear();
                         state.bindings.SetBindingSlot(0, viewProjSet);
-                        uint32_t bindingOffset = m_device->AlignUniformSize(transformOffset * sizeof(glm::mat4));
+                        uint32_t bindingOffset = m_device->AlignUniformSize(i * sizeof(glm::mat4));
                         state.bindings.SetBindingSlot(1, transformSet, &bindingOffset, 1);
                         state.bindings.SetBindingSlot(2, set);
 
@@ -468,11 +491,11 @@ namespace rendersystem
                     m_cmd->DrawIndexed(primitive.count, 1, primitive.first, 0, 0);
                 }
             }
-            ++transformOffset;
         }
 
         // flush transform buffer
-        m_memoryPool->Write(transformAllocation, m_transforms.data(), m_transforms.size() * sizeof(glm::mat4));
+        if (m_transforms.count)
+            m_memoryPool->Write(transformAllocation, m_transforms.data, m_transforms.count * sizeof(glm::mat4));
     }
 
     void RenderSystem::InitScreenQuad()

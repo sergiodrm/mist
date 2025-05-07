@@ -139,7 +139,6 @@ namespace rendersystem
     struct Model
     {
         HeapArray<Mesh> meshes;
-        glm::mat4 transform;
 
         void Release()
         {
@@ -149,18 +148,25 @@ namespace rendersystem
         }
     };
 
+    struct ModelInstance
+    {
+        uint32_t model = UINT32_MAX;
+        glm::mat4 transform = glm::mat4(1.f);
+    };
+
     struct DrawList
     {
         glm::mat4 view;
         glm::mat4 projection;
 
         HeapArray<Model> models;
+        HeapArray<ModelInstance> modelInstances;
 
         void Release()
         {
             for (uint32_t i = 0; i < models.count; ++i)
                 models.data[i].Release();
-            models.Release();
+            modelInstances.Release();
         }
     };
 
@@ -190,13 +196,18 @@ namespace rendersystem
         
 
     private:
+        // Device context. Communication with render api.
         render::Device* m_device;
         uint32_t m_swapchainIndex;
-
+        // Frame counter
+        uint64_t m_frame;
+        // Testing draw list architecture
         DrawList m_drawList;
-        ShaderMemoryPool* m_memoryPool;
-        Mist::tDynArray<glm::mat4> m_transforms;
+        // Store transform block data 
+        HeapArray<glm::mat4> m_transforms;
 
+
+        // Syncronization objects. One per frame in flight.
         struct
         {
             render::SemaphoreHandle renderQueueSemaphore;
@@ -204,14 +215,17 @@ namespace rendersystem
             uint64_t submission = 0;
         } m_frameSyncronization[8];
 
+        // Command list with transfer, graphics and compute commands
+        render::CommandListHandle m_cmd;
+
+        // Render targets and other resources.
         render::TextureHandle m_ldrTexture;
         render::TextureHandle m_depthTexture;
         render::RenderTargetHandle m_ldrRt;
+        // Present render targets
         Mist::tDynArray<render::RenderTargetHandle> m_presentRts;
-        render::CommandListHandle m_cmd;
-        uint64_t m_frame;
 
-
+        // Screen quad draw call resources
         struct
         {
             render::ShaderHandle vs;
@@ -221,9 +235,9 @@ namespace rendersystem
             render::SamplerHandle sampler;
         } m_screenQuadCopy;
 
-
-
+        // Memory and cache management.
         Mist::tMap<render::GraphicsPipelineDescription, render::GraphicsPipelineHandle> m_psoMap;
         BindingCache* m_bindingCache;
+        ShaderMemoryPool* m_memoryPool;
     };
 }
