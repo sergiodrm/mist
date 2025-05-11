@@ -320,8 +320,7 @@ namespace Mist
 		SDL_Event e;
 		while (SDL_PollEvent(&e))
 		{
-			if (0)
-				ImGui_ImplSDL2_ProcessEvent(&e);
+			ImGui_ImplSDL2_ProcessEvent(&e);
 			(*Fn)(&e, userData);
 		}
 	}

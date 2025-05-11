@@ -33,6 +33,7 @@ namespace rendersystem
     {
     public:
         virtual void* GetWindowHandle() const = 0;
+        virtual void* GetWindowNative() const = 0;
     };
 
     class BindingLayoutCache
@@ -177,7 +178,9 @@ namespace rendersystem
         void Init(IWindow* window);
         void Destroy();
 
+        void BeginFrame();
         void Draw();
+        void EndFrame();
 
         void SetViewProjection(const glm::mat4& view, const glm::mat4& projection);
 
@@ -191,8 +194,8 @@ namespace rendersystem
         void DestroyScreenQuad();
 
         void CopyToPresentRt(render::TextureHandle texture);
-        void BeginFrame();
-        void EndFrame();
+
+        void ImGuiDraw();
         
 
     private:

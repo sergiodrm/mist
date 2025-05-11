@@ -17,7 +17,7 @@
 
 namespace Mist
 {
-	CIntVar CVar_LogProfileScopes("s_logprofilescopes", 0);
+	CIntVar CVar_LogProfileScopes("s_logprofilescopes", 1);
 
 	int64_t cpufreq(bool force = false)
 	{

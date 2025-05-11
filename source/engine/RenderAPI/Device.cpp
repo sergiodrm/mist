@@ -800,6 +800,7 @@ namespace render
         {
             state.pipeline->UsePipeline(m_currentCommandBuffer);
             m_graphicsState.pipeline = state.pipeline;
+            ++m_stats.pipelines;
         }
 
         if (state.vertexBuffer)
@@ -877,12 +878,18 @@ namespace render
     {
         check(AllowsCommandType(Queue_Graphics));
         vkCmdDraw(m_currentCommandBuffer->cmd, vertexCount, instanceCount, firstVertex, firstInstance);
+        check((vertexCount % 3) == 0);
+        ++m_stats.drawCalls;
+        m_stats.tris += vertexCount / 3;
     }
 
     void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
     {
         check(AllowsCommandType(Queue_Graphics));
         vkCmdDrawIndexed(m_currentCommandBuffer->cmd, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+        check((indexCount % 3) == 0);
+        ++m_stats.drawCalls;
+        m_stats.tris += indexCount / 3;
     }
 
     void CommandList::SetComputeState(const ComputeState& state)
@@ -1009,6 +1016,7 @@ namespace render
         if (!m_graphicsState.rt)
         {
             check(AllowsCommandType(Queue_Graphics));
+            ++m_stats.rts;
             for (uint32_t i = 0; i < rt->m_description.colorAttachments.GetSize(); ++i)
                 m_requiredStates.push_back(TextureBarrier{ rt->m_description.colorAttachments[i].texture, render::ImageLayout_ColorAttachment });
             if (rt->m_description.depthStencilAttachment.IsValid())

@@ -4,6 +4,9 @@
 #include "Utils/FileSystem.h"
 #include "Utils/GenericUtils.h"
 
+#include "UI.h"
+#include <imgui.h>
+
 namespace rendersystem
 {
     render::BindingLayoutHandle BindingLayoutCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
@@ -265,6 +268,8 @@ namespace rendersystem
             m_bindingCache = _new BindingCache(m_device);
         }
 
+        ui::Init(m_device, m_ldrRt, window->GetWindowNative());
+
         InitScreenQuad();
 
         // init quad model
@@ -348,6 +353,7 @@ namespace rendersystem
         m_device->WaitIdle();
         m_drawList.Release();
         DestroyScreenQuad();
+        ui::Destroy();
         delete m_bindingCache;
         delete m_memoryPool;
         m_psoMap.clear();
@@ -367,14 +373,13 @@ namespace rendersystem
 
     void RenderSystem::Draw()
     {
-        BeginFrame();
+        //BeginFrame();
         render::GraphicsState state;
         state.rt = m_ldrRt;
         m_cmd->SetGraphicsState(state);
         m_cmd->ClearColor(0.2f, 0.2f, 0.2f, 1.f);
         DrawDrawList(m_drawList);
-        CopyToPresentRt(m_ldrTexture);
-        EndFrame();
+        //EndFrame();
     }
 
     void RenderSystem::SetViewProjection(const glm::mat4& view, const glm::mat4& projection)
@@ -600,9 +605,34 @@ namespace rendersystem
         //m_cmd->SetTextureState(barriers, 2);
     }
 
+    void RenderSystem::ImGuiDraw()
+    {
+        //ImGui::SetNextWindowPos(ImVec2(500, 500));
+        ImGui::Begin("Render system");
+        ImGui::Text("Tris:          %4d", m_cmd->GetStats().tris);
+        ImGui::Text("DrawCalls:     %4d", m_cmd->GetStats().drawCalls);
+        ImGui::Text("Pipelines:     %4d", m_cmd->GetStats().pipelines);
+        ImGui::Text("Rts:           %4d", m_cmd->GetStats().rts);
+        const render::MemoryContext& memstats = m_device->GetContext().memoryContext;
+        ImGui::Text("Buffers:       %4d (%6d b/%6d b)", memstats.bufferStats.allocationCounts,
+            memstats.bufferStats.currentAllocated, memstats.bufferStats.maxAllocated);
+        ImGui::Text("Images:        %4d (%6d b/%6d b)", memstats.imageStats.allocationCounts,
+            memstats.imageStats.currentAllocated, memstats.imageStats.maxAllocated);
+        const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
+        ImGui::Text("CB total:      %4d", queue->GetTotalCommandBuffers());
+        ImGui::Text("CB submitted:  %4d", queue->GetSubmittedCommandBuffersCount());
+        ImGui::Text("CB pool:       %4d", queue->GetPoolCommandBuffersCount());
+        ImGui::End();
+    }
+
     void RenderSystem::BeginFrame()
     {
         m_frame++;
+
+        ui::BeginFrame();
+        ImGuiDraw();
+        m_cmd->ResetStats();
+
         render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
 
         render::SemaphoreHandle presentSemaphore = m_frameSyncronization[GetFrameIndex()].presentSemaphore;
@@ -621,6 +651,9 @@ namespace rendersystem
 
     void RenderSystem::EndFrame()
     {
+        ui::EndFrame(m_cmd);
+
+        CopyToPresentRt(m_ldrTexture);
         m_cmd->SetTextureState(render::TextureBarrier{ m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc });
         m_cmd->EndRecording();
 

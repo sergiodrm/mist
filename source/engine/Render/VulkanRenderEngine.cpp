@@ -214,13 +214,12 @@ namespace Mist
 		public:
 			const Window* window;
 			virtual void* GetWindowHandle() const override { return const_cast<Window*>(window); }
+			virtual void* GetWindowNative() const override { return const_cast<Window*>(window)->WindowInstance; }
 		} windowInterface;
 		windowInterface.window = &window;
 		m_renderSystem = _new rendersystem::RenderSystem();
 		m_renderSystem->Init(&windowInterface);
 #else
-
-
 		// Init vulkan context
 		check(InitVulkan());
 
@@ -277,13 +276,13 @@ namespace Mist
 		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
 		m_gol = _new Gol(&m_renderContext);
         m_gol->Init(256, 256);
+		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
+#endif
 
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
 		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
 
-		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
-#endif
 		return true;
 	}
 
@@ -292,7 +291,10 @@ namespace Mist
 		CPU_PROFILE_SCOPE(Process);
 
 #ifdef RENDER_BACKEND_TEST
+		m_renderSystem->BeginFrame();
+		ImGuiDraw();
 		m_renderSystem->Draw();
+		m_renderSystem->EndFrame();
 #else
 		ui::Begin(m_renderContext);
 		{
@@ -563,8 +565,10 @@ namespace Mist
 			ImGuiDrawInputState();
 
 			// Render engine imgui calls
-			m_renderer.ImGuiDraw();
 			GpuProf_ImGuiDraw(m_renderContext);
+
+#if !defined(RENDER_BACKEND_TEST)
+			m_renderer.ImGuiDraw();
 			m_gpuParticleSystem.ImGuiDraw();
 			m_gol->ImGuiDraw();
 			if (m_scene)
@@ -574,8 +578,9 @@ namespace Mist
 			if (CVar_ShowImGuiDemo.Get())
 				ImGui::ShowDemoWindow();
 
-			tApplication::ImGuiDraw();
 			RenderTarget::ImGuiRenderTargets();
+#endif
+			tApplication::ImGuiDraw();
 		}
 	}
 

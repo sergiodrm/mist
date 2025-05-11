@@ -1251,6 +1251,10 @@ namespace render
         inline uint64_t GetLastSubmissionIdFinished() const { return m_lastSubmissionIdFinished; }
         inline QueueType GetQueueType() const { return m_type; }
 
+        inline uint32_t GetTotalCommandBuffers() const { return (uint32_t)m_createdCommandBuffers.size(); }
+        inline uint32_t GetSubmittedCommandBuffersCount() const { return (uint32_t)m_submittedCommandBuffers.size(); }
+        inline uint32_t GetPoolCommandBuffersCount() const { return (uint32_t)m_commandPool.size(); }
+
         VkQueue m_queue;
         uint32_t m_queueFamilyIndex;
         QueueType m_type;
@@ -1370,6 +1374,14 @@ namespace render
         uint32_t m_currentChunkIndex;
     };
 
+    struct CommandStats
+    {
+        uint32_t tris;
+        uint32_t drawCalls;
+        uint32_t rts;
+        uint32_t pipelines;
+    };
+
     class CommandList final : public Mist::Ref<CommandList>
     {
     public:
@@ -1379,6 +1391,9 @@ namespace render
 
         static uint64_t ExecuteCommandLists(CommandList* const* lists, uint32_t count);
         uint64_t ExecuteCommandList();
+
+        const CommandStats& GetStats() const { return m_stats; }
+        void ResetStats() { m_stats = {}; }
 
         void BeginRecording();
         inline bool IsRecording() const { return m_currentCommandBuffer != nullptr; }
@@ -1411,6 +1426,7 @@ namespace render
         inline bool AllowsCommandType(QueueType type) const { return IsRecording() && m_currentCommandBuffer->type & type; }
 
         void ClearState();
+        CommandBuffer* GetCommandBuffer() const { check(IsRecording()); return m_currentCommandBuffer; }
     private:
         void BeginRenderPass(render::RenderTargetHandle rt);
         inline bool IsInsideRenderPass() const { return m_graphicsState.rt != nullptr; }
@@ -1430,6 +1446,8 @@ namespace render
 
         TransferMemoryPool m_transferMemoryPool;
         Mist::tDynArray<TextureBarrier> m_requiredStates;
+
+        CommandStats m_stats;
     };
     typedef Mist::RefPtr<CommandList> CommandListHandle;
 

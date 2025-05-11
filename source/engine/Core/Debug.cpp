@@ -516,7 +516,7 @@ namespace Mist
 				);
 				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
 				ImGui::Text("%ux%u", context.Window->Width, context.Window->Height);
-				if (CVar_ShowStats.Get() > 1)
+				if (CVar_ShowStats.Get() > 1 && 0)
 				{
 					ImGui::Columns(3, nullptr, false);
 					auto utilLamb = [&](const char* label, float ms)
