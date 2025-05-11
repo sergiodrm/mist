@@ -2502,4 +2502,72 @@ namespace render
         check(m_device);
         m_device->DestroyBindingSet(this);
     }
+
+    namespace utils
+    {
+        BufferHandle CreateBufferAndUpload(Device* device, const void* buffer, uint64_t size, BufferUsage usage, MemoryUsage memoryUsage, UploadContext* uploadContext, const char* debugName)
+        {
+            BufferDescription desc;
+            desc.size = size;
+            desc.bufferUsage = usage;
+            desc.memoryUsage = memoryUsage;
+            if (debugName && *debugName)
+                desc.debugName = debugName;
+            BufferHandle h = device->CreateBuffer(desc);
+
+            if (uploadContext)
+            {
+                uploadContext->WriteBuffer(h, buffer, size);
+            }
+            else
+            {
+                UploadContext context(device);
+                context.WriteBuffer(h, buffer, size);
+                context.Submit();
+            }
+            return h;
+        }
+
+        BufferHandle CreateVertexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext, const char* debugName)
+        {
+            return CreateBufferAndUpload(device, buffer, bufferSize, BufferUsage_VertexBuffer, MemoryUsage_Gpu, uploadContext, debugName);
+        }
+
+        BufferHandle CreateIndexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext, const char* debugName)
+        {
+            return CreateBufferAndUpload(device, buffer, bufferSize, BufferUsage_IndexBuffer, MemoryUsage_Gpu, uploadContext, debugName);
+        }
+
+        UploadContext::UploadContext(Device* device)
+            : m_device(device)
+        {
+            m_cmd = m_device->CreateCommandList();
+        }
+
+        UploadContext::~UploadContext()
+        {
+            Submit();
+            m_cmd = nullptr;
+            m_device = nullptr;
+        }
+
+        void UploadContext::WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset, uint64_t dstOffset)
+        {
+            if (!m_cmd->IsRecording())
+                m_cmd->BeginRecording();
+
+            m_cmd->WriteBuffer(buffer, data, dataSize, srcOffset, dstOffset);
+        }
+
+        uint64_t UploadContext::Submit(bool waitForSubmission)
+        {
+            if (!m_cmd->IsRecording())
+                return 0;
+            m_cmd->EndRecording();
+            uint64_t submission = m_cmd->ExecuteCommandList();
+            if (waitForSubmission)
+                m_device->WaitForSubmissionId(submission);
+            return submission;
+        }
+    }
 }

@@ -1565,6 +1565,27 @@ namespace render
         Mist::tDynArray<Buffer*> m_bufferTracking;
         Mist::tDynArray<Texture*> m_textureTracking;
     };
+
+    namespace utils
+    {
+        class UploadContext
+        {
+        public:
+            UploadContext(Device* device);
+            ~UploadContext();
+
+            void WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
+            uint64_t Submit(bool waitForSubmission = true);
+
+        private:
+            Device* m_device;
+            CommandListHandle m_cmd;
+        };
+
+        BufferHandle CreateBufferAndUpload(Device* device, const void* buffer, uint64_t size, BufferUsage usage, MemoryUsage memoryUsage, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
+        BufferHandle CreateVertexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
+        BufferHandle CreateIndexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
+    }
 }
 
 
