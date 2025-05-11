@@ -286,33 +286,26 @@ namespace rendersystem
 
         m_drawList.models.Reserve(1);
         Model& model = m_drawList.models.data[0];
+
+        model.materials.Reserve(1);
+        Material& material = model.materials.data[0];
+        material.albedo[0] = 1.f;
+        material.albedo[1] = 0.f;
+        material.albedo[2] = 0.f;
+        material.albedo[3] = 1.f;
+
         model.meshes.Reserve(1);
         Mesh& mesh = model.meshes.data[0];
 
         // Vertex buffer
-        render::BufferDescription bufferDescription;
-        bufferDescription.size = sizeof(quadVertices);
-        bufferDescription.memoryUsage = render::MemoryUsage_Gpu;
-        bufferDescription.bufferUsage = render::BufferUsage_VertexBuffer;
-        mesh.vb = m_device->CreateBuffer(bufferDescription);
-        m_cmd->WriteBuffer(mesh.vb, quadVertices, sizeof(quadVertices));
+        mesh.vb = render::utils::CreateVertexBuffer(m_device, quadVertices, sizeof(quadVertices));
 
         // Index buffer
-        bufferDescription.size = sizeof(quadIndices);
-        bufferDescription.bufferUsage = render::BufferUsage_IndexBuffer;
-        mesh.ib = m_device->CreateBuffer(bufferDescription);
-        m_cmd->WriteBuffer(mesh.ib, quadIndices, sizeof(quadIndices));
+        mesh.ib = render::utils::CreateIndexBuffer(m_device, quadIndices, sizeof(quadIndices));
 
         render::VertexInputAttribute attributes[2] = { render::Format_R32G32B32_SFloat, render::Format_R32G32_SFloat };
         mesh.inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, Mist::CountOf(attributes));
         
-        mesh.materials.Reserve(1);
-
-        Material& material = mesh.materials.data[0];
-        material.color[0] = 1.f;
-        material.color[1] = 0.f;
-        material.color[2] = 0.f;
-        material.color[3] = 1.f;
         // Shader modules
         render::shader_compiler::CompiledBinary vsSrc = render::shader_compiler::Compile(Mist::cAssetPath("shaders/world_quad.vert"), render::ShaderType_Vertex);
         render::shader_compiler::CompiledBinary fsSrc = render::shader_compiler::Compile(Mist::cAssetPath("shaders/world_quad.frag"), render::ShaderType_Fragment);
@@ -332,8 +325,8 @@ namespace rendersystem
         check(m_device->WaitForSubmissionId(id));
 
         // create instances
-        static constexpr uint32_t w = 10;
-        static constexpr uint32_t h = 10;
+        static constexpr uint32_t w = 50;
+        static constexpr uint32_t h = 50;
         m_drawList.modelInstances.Reserve(w*h);
         for (uint32_t i = 0; i < w; ++i)
         {
@@ -466,14 +459,14 @@ namespace rendersystem
                     if (lastMaterial != primitive.material)
                     {
                         lastMaterial = primitive.material;
-                        Material& material = mesh.materials.data[primitive.material];
+                        Material& material = model.materials.data[primitive.material];
                         psoDesc.vertexShader = material.vs;
                         psoDesc.fragmentShader = material.fs;
 
                         char buff[32];
                         sprintf_s(buff, "%p", &material);
-                        ShaderMemoryPool::MemoryAllocation materialAllocation = m_memoryPool->Allocate(buff, sizeof(material.color));
-                        m_memoryPool->Write(materialAllocation, &material.color, sizeof(material.color));
+                        ShaderMemoryPool::MemoryAllocation materialAllocation = m_memoryPool->Allocate(buff, sizeof(material.albedo));
+                        m_memoryPool->Write(materialAllocation, &material.albedo, sizeof(material.albedo));
 
                         render::BindingSetDescription desc;
                         desc.PushConstantBuffer(0, m_memoryPool->GetBuffer(materialAllocation.chunkIndex).GetPtr(), render::ShaderType_Fragment, render::BufferRange(materialAllocation.pointer, materialAllocation.size));
@@ -662,5 +655,73 @@ namespace rendersystem
 
         m_memoryPool->Submit(submissionId);
         m_frameSyncronization[GetFrameIndex()].submission = submissionId;
+    }
+
+    TextureCache::TextureCache(render::Device* device)
+        : m_device(device), m_pushIndex(0)
+    {
+        // initial pool
+        m_textures.Reserve(64);
+        //for (uint32_t i = 0; i < m_textures.count; ++i)
+        //    m_textures.data[i] = nullptr;
+    }
+
+    TextureCache::~TextureCache()
+    {
+        // integrity check. all textures must have been released before destroy cache object.
+        for (uint32_t i = 0; i < m_textures.count; ++i)
+            check(m_textures.data[i] == nullptr);
+        m_textures.Release();
+    }
+
+    render::TextureHandle TextureCache::GetTexture(const char* name) const
+    {
+        if (m_map.contains(name))
+        {
+            uint32_t i = m_map.at(name);
+            if (i != UINT32_MAX)
+            {
+                check(i < m_pushIndex);
+                return m_textures.data[i];
+            }
+        }
+        return nullptr;
+    }
+
+    render::TextureHandle TextureCache::GetOrCreateTexture(const render::TextureDescription& desc)
+    {
+        render::TextureHandle tex = GetTexture(desc.debugName.c_str());
+        if (tex)
+        {
+            check(tex->m_description == desc);
+            return tex;
+        }
+        check(m_pushIndex < m_textures.count);
+        tex = m_device->CreateTexture(desc);
+        m_textures.data[m_pushIndex] = tex;
+        m_map[desc.debugName] = m_pushIndex++;
+        return tex;
+    }
+
+    void TextureCache::Purge()
+    {
+        for (uint32_t i = m_pushIndex - 1; i < m_pushIndex; --i)
+        {
+            check(m_textures.data[i] && m_map.contains(m_textures.data[i]->m_description.debugName));
+            check(m_map.at(m_textures.data[i]->m_description.debugName) == i);
+            if (m_textures.data[i]->GetRefCounter() == 1)
+            {
+                // release texture
+                m_map[m_textures.data[i]->m_description.debugName] = UINT32_MAX;
+                m_textures.data[i] = nullptr;
+                if (i != m_pushIndex - 1)
+                {
+                    // remap
+                    m_textures.data[i] = m_textures.data[m_pushIndex - 1];
+                    m_map[m_textures.data[i]->m_description.debugName] = i;
+                }
+                --m_pushIndex;
+            }
+        }
     }
 }

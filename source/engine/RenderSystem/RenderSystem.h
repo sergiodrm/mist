@@ -13,9 +13,24 @@ namespace rendersystem
 
         void Reserve(IndexType _count)
         {
-            check(!data);
-            data = _new DataType[_count];
-            count = _count;
+            check(_count > 0);
+            if (!data)
+            {
+                check(count == 0);
+                data = _new DataType[_count];
+                count = _count;
+            }
+            else
+            {
+                check(count > 0);
+                if (count < _count)
+                {
+                    DataType* p = (DataType*)_realloc(data, _count);
+                    check(p);
+                    data = p;
+                    count = _count;
+                }
+            }
         }
 
         void Release()
@@ -105,6 +120,21 @@ namespace rendersystem
         uint64_t m_minChunkSize;
     };
 
+    class TextureCache
+    {
+    public:
+        TextureCache(render::Device* device);
+        ~TextureCache();
+        render::TextureHandle GetTexture(const char* name) const;
+        render::TextureHandle GetOrCreateTexture(const render::TextureDescription& desc);
+        // iterate over all textures and remove it if there is no external refs and reorganize free indices.
+        void Purge();
+    private:
+        render::Device* m_device;
+        HeapArray<render::TextureHandle> m_textures;
+        uint32_t m_pushIndex;
+        Mist::tMap<Mist::tString, uint32_t> m_map;
+    };
 
     struct Primitive
     {
@@ -114,18 +144,31 @@ namespace rendersystem
         uint32_t material;
     };
 
+    struct MaterialTextureMap
+    {
+        render::TextureHandle albedo;
+        render::TextureHandle normal;
+        render::TextureHandle metallicRoughness;
+        render::TextureHandle emissive;
+        render::TextureHandle occlusion;
+    };
+
     struct Material
     {
         render::ShaderHandle vs;
         render::ShaderHandle fs;
 
-        float color[4];
+        float albedo[4];
+        float roughness;
+        float metallic;
+        float emissive[4];
+
+        MaterialTextureMap textureMap;
     };
 
     struct Mesh
     {
         HeapArray<Primitive> primitives;
-        HeapArray<Material> materials;
         render::BufferHandle vb;
         render::BufferHandle ib;
         render::VertexInputLayout inputLayout;
@@ -133,19 +176,20 @@ namespace rendersystem
         void Release()
         {
             primitives.Release();
-            materials.Release();
         }
     };
 
     struct Model
     {
         HeapArray<Mesh> meshes;
+        HeapArray<Material> materials;
 
         void Release()
         {
             for (uint32_t i = 0; i < meshes.count; ++i)
                 meshes.data[i].Release();
             meshes.Release();
+            materials.Release();
         }
     };
 
