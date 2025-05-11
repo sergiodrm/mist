@@ -597,6 +597,7 @@ namespace Mist
         PtrType operator*() const { return m_ptr; }
 		PtrType operator->() const { return m_ptr; }
 		PtrType GetPtr() const { return m_ptr; }
+		size_t GetRefCounter() const { return m_ptr ? m_ptr->GetRefCounter() : 0; }
 
 	protected:
 
@@ -640,6 +641,8 @@ namespace Mist
 			size_t c = --m_counter;
 			return c;
 		}
+
+		size_t GetRefCounter() const { return m_counter; }
 
 	private:
 		std::atomic<size_t> m_counter;
