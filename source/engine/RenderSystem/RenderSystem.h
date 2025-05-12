@@ -172,6 +172,7 @@ namespace rendersystem
 
     struct Material
     {
+        render::DepthStencilState depthStencilState;
         render::ShaderHandle vs;
         render::ShaderHandle fs;
 

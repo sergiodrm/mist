@@ -5,6 +5,7 @@
 #include "Utils/GenericUtils.h"
 
 #include "UI.h"
+#include "ModelLoader.h"
 #include <imgui.h>
 
 namespace rendersystem
@@ -284,7 +285,7 @@ namespace rendersystem
         };
         uint32_t quadIndices[] = { 0, 1, 2, 2, 1, 3 };
 
-        m_drawList.models.Reserve(1);
+        m_drawList.models.Reserve(2);
         Model& model = m_drawList.models.data[0];
 
         model.materials.Reserve(1);
@@ -325,9 +326,10 @@ namespace rendersystem
         check(m_device->WaitForSubmissionId(id));
 
         // create instances
-        static constexpr uint32_t w = 50;
-        static constexpr uint32_t h = 50;
-        m_drawList.modelInstances.Reserve(w*h);
+        static constexpr uint32_t w = 10;
+        static constexpr uint32_t h = 10;
+#if 0
+        m_drawList.modelInstances.Reserve(w* h + 1);
         for (uint32_t i = 0; i < w; ++i)
         {
             for (uint32_t j = 0; j < h; ++j)
@@ -339,6 +341,14 @@ namespace rendersystem
                 m.model = 0;
             }
         }
+#else
+        m_drawList.modelInstances.Reserve(1);
+#endif // 0
+
+
+        modelloader::LoadModelFromFile(m_device, "models/sponza/sponza.gltf", &m_drawList.models.data[1]);
+        m_drawList.modelInstances.data[m_drawList.modelInstances.count - 1].model = 1;
+        m_drawList.modelInstances.data[m_drawList.modelInstances.count - 1].transform = glm::mat4(1.f);
     }
 
     void RenderSystem::Destroy()
@@ -434,6 +444,8 @@ namespace rendersystem
 
         render::GraphicsState state;
         state.rt = rt;
+        m_cmd->SetGraphicsState(state);
+        m_cmd->ClearDepthStencil();
 
         for (uint32_t i = 0; i < list.modelInstances.count; ++i)
         {
@@ -443,7 +455,7 @@ namespace rendersystem
 
             static constexpr float dt = 0.033f;
             Mist::tAngles rot(90.f * dt * static_cast<float>(rand() % 100)*0.01f, 45.f * dt * static_cast<float>(rand() % 100)*0.01f, 0.f);
-            instance.transform = instance.transform * rot.ToMat4();
+            //instance.transform = instance.transform * rot.ToMat4();
             
             m_transforms.data[i] = instance.transform;
             for (uint32_t j = 0; j < model.meshes.count; ++j)
@@ -462,6 +474,7 @@ namespace rendersystem
                         Material& material = model.materials.data[primitive.material];
                         psoDesc.vertexShader = material.vs;
                         psoDesc.fragmentShader = material.fs;
+                        psoDesc.renderState.depthStencilState = material.depthStencilState;
 
                         char buff[32];
                         sprintf_s(buff, "%p", &material);
