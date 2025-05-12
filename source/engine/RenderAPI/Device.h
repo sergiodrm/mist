@@ -1568,6 +1568,9 @@ namespace render
 
     namespace utils
     {
+        /**
+         * Buffers utilities
+         */
         class UploadContext
         {
         public:
@@ -1585,6 +1588,13 @@ namespace render
         BufferHandle CreateBufferAndUpload(Device* device, const void* buffer, uint64_t size, BufferUsage usage, MemoryUsage memoryUsage, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
         BufferHandle CreateVertexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
         BufferHandle CreateIndexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
+
+        /**
+         * Shader utilities
+         */
+        ShaderHandle BuildShader(Device* device, const char* filepath, ShaderType type);
+        ShaderHandle BuildVertexShader(Device* device, const char* filepath);
+        ShaderHandle BuildFragmentShader(Device* device, const char* filepath);
     }
 }
 

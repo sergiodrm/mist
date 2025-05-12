@@ -8,6 +8,8 @@
 #include "Render/RenderTypes.h"
 #include "Utils/GenericUtils.h"
 
+#include "ShaderCompiler.h"
+
 namespace Mist
 {
     extern Mist::CBoolVar CVar_EnableValidationLayer;
@@ -2018,7 +2020,7 @@ namespace render
         vkb::InstanceBuilder builder;
         vkb::Result<vkb::Instance> instanceReturn = builder
             .set_app_name("Vulkan renderer")
-            .request_validation_layers(true || Mist::CVar_EnableValidationLayer.Get())
+            .request_validation_layers(Mist::CVar_EnableValidationLayer.Get())
             .require_api_version(major, minor, patch)
             .set_debug_callback(&DebugVulkanCallback)
             //.enable_extension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)
@@ -2569,5 +2571,29 @@ namespace render
                 m_device->WaitForSubmissionId(submission);
             return submission;
         }
+
+        ShaderHandle BuildShader(Device* device, const char* filepath, ShaderType type)
+        {
+            shader_compiler::CompiledBinary bin = shader_compiler::Compile(filepath, type);
+            check(bin.IsCompilationSucceed());
+            ShaderDescription desc;
+            desc.debugName = filepath;
+            desc.name = filepath;
+            desc.type = type;
+            desc.entryPoint = "main";
+            ShaderHandle h = device->CreateShader(desc, bin.binary, bin.binaryCount);
+            return h;
+        }
+
+        ShaderHandle BuildVertexShader(Device* device, const char* filepath)
+        {
+            return BuildShader(device, filepath, ShaderType_Vertex);
+        }
+
+        ShaderHandle BuildFragmentShader(Device* device, const char* filepath)
+        {
+            return BuildShader(device, filepath, ShaderType_Fragment);
+        }
+
     }
 }
