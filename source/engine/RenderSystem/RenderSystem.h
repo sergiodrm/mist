@@ -136,6 +136,23 @@ namespace rendersystem
         Mist::tMap<Mist::tString, uint32_t> m_map;
     };
 
+    struct Vertex
+    {
+        glm::vec3 position;
+        glm::vec3 normal;
+        glm::vec2 texCoord0;
+        glm::vec2 texCoord1;
+        glm::vec4 tangent;
+        glm::vec4 vertexColor;
+    };
+
+    struct ScreenVertex
+    {
+        glm::vec3 position;
+        glm::vec2 texCoords0;
+        glm::vec2 texCoords1;
+    };
+
     struct Primitive
     {
         uint32_t first;

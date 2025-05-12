@@ -1,6 +1,6 @@
 #include "ModelLoader.h"
 
-#define CGLTF_IMPLEMENTATION
+//#define CGLTF_IMPLEMENTATION
 #pragma warning(disable:4996)
 #include <gltf/cgltf.h>
 //#include "Texture.h"
@@ -17,6 +17,7 @@
 
 
 #include "RenderSystem.h"
+#include "RenderAPI/ShaderCompiler.h"
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
 #define GLTF_LOAD_GEOMETRY_NORMAL 0x02
@@ -27,7 +28,7 @@
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
 
-//#define MESH_DUMP_LOAD_INFO
+#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
 #define loadmeshlabel "[loadmesh] "
 #define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
@@ -47,7 +48,7 @@
 #endif
 
 
-namespace gltf_api
+namespace gltfapi
 {
     void HandleError(cgltf_result result, const char* filepath)
     {
@@ -142,26 +143,26 @@ namespace gltf_api
         t = glm::mat4(1.f);
         if (node.has_matrix)
         {
-            gltf_api::ToMat4(&t, node.matrix);
+            ToMat4(&t, node.matrix);
         }
         else
         {
             if (node.has_translation)
             {
                 glm::vec3 pos;
-                gltf_api::ToVec3(pos, node.translation);
+                ToVec3(pos, node.translation);
                 t *= glm::translate(t, pos);
             }
             if (node.has_rotation)
             {
                 glm::quat quat;
-                gltf_api::ToQuat(quat, node.rotation);
+                ToQuat(quat, node.rotation);
                 t *= glm::toMat4(quat);
             }
             if (node.has_scale)
             {
                 glm::vec3 scl;
-                gltf_api::ToVec3(scl, node.scale);
+                ToVec3(scl, node.scale);
                 t = glm::scale(t, scl);
             }
         }
@@ -244,28 +245,14 @@ namespace gltf_api
     }
 #else
 
-    float* GetAttributeInBuffer(float* buffer, uint64_t bufferSizeInBytes, uint32_t elementIndex, uint32_t offset, uint32_t stride, uint32_t attributeNumComponents)
-    {
-        float* p = buffer + offset + stride * elementIndex;
-        check_accessor((uint64_t(p + attributeNumComponents - 1) - uint64_t(buffer)) < bufferSizeInBytes);
-        return p;
-    }
-
-    float* ReadAttribute(float* buffer, uint64_t bufferSizeInBytes, uint32_t elementIndex, uint32_t offset, uint32_t stride, const cgltf_accessor* accessor)
-    {
-        uint32_t nc = (uint32_t)cgltf_num_components(accessor->type);
-        float* p = GetAttributeInBuffer(buffer, bufferSizeInBytes, elementIndex, offset, stride, nc);
-        check_accessor_call(cgltf_accessor_read_float(accessor, elementIndex, p, nc));
-        return p;
-    }
-
     // Attributes are an continuous array of positions, normals, uvs...
-    void ReadAttributeArray(float* buffer, uint64_t bufferSizeInBytes, uint32_t offset, uint32_t stride, const cgltf_attribute& attribute)
+    void ReadAttributeArray(rendersystem::Vertex* buffer, uint64_t bufferCount, uint32_t bufferOffset, const cgltf_attribute& attribute)
     {
         const cgltf_accessor* accessor = attribute.data;
         uint32_t count = Mist::limits_cast<uint32_t>(accessor->count);
 
         // Get how many values has current attribute
+        rendersystem::Vertex* outputBuffer = buffer + bufferOffset;
         cgltf_size numComponents = cgltf_num_components(accessor->type);
         check_accessor(accessor->component_type == cgltf_component_type_r_32f);
         switch (attribute.type)
@@ -276,22 +263,31 @@ namespace gltf_api
             check_accessor(accessor->type == cgltf_type_vec3 && numComponents == 3);
             check_accessor(!strcmp(attribute.name, "POSITION"));
             for (uint32_t i = 0; i < count; ++i)
-                ReadAttribute(buffer, bufferSizeInBytes, i, offset, stride, accessor);
+                check_accessor_call(cgltf_accessor_read_float(accessor, i, &outputBuffer[i].position[0], numComponents));
             break;
         }
         case cgltf_attribute_type_texcoord:
             check_accessor(accessor->type == cgltf_type_vec2 && numComponents == 2);
-            check_accessor(!strcmp(attribute.name, "TEXCOORD_0") || !strcmp(attribute.name, "TEXCOORD_1"));
-            for (uint32_t i = 0; i < count; ++i)
-                ReadAttribute(buffer, bufferSizeInBytes, i, offset, stride, accessor);
+            if (!strcmp(attribute.name, "TEXCOORD_0"))
+            {
+                for (uint32_t i = 0; i < count; ++i)
+                    check_accessor_call(cgltf_accessor_read_float(accessor, i, &outputBuffer[i].texCoord0[0], numComponents));
+            }
+            else if (!strcmp(attribute.name, "TEXCOORD_1"))
+            {
+                for (uint32_t i = 0; i < count; ++i)
+                    check_accessor_call(cgltf_accessor_read_float(accessor, i, &outputBuffer[i].texCoord1[0], numComponents));
+            }
+            else
+                unreachable_code();
             break;
         case cgltf_attribute_type_normal:
             check_accessor(accessor->type == cgltf_type_vec3 && numComponents == 3);
             check_accessor(!strcmp(attribute.name, "NORMAL"));
             for (uint32_t i = 0; i < count; ++i)
             {
-                float* p = ReadAttribute(buffer, bufferSizeInBytes, i, offset, stride, accessor);
-                check_accessor(Length2({p[0], p[1], p[2]}) > 1e-5f);
+                check_accessor_call(cgltf_accessor_read_float(accessor, i, &outputBuffer[i].normal[0], numComponents));
+                check_accessor(Length2(outputBuffer[i].normal) > 1e-5f);
             }
             break;
         case cgltf_attribute_type_color:
@@ -299,10 +295,10 @@ namespace gltf_api
             check_accessor(!strcmp(attribute.name, "COLOR_0"));
             for (uint32_t i = 0; i < count; ++i)
             {
-                float* p = ReadAttribute(buffer, bufferSizeInBytes, i, offset, stride, accessor);
-                check_accessor(p[0] >= 0.f && p[0] <= 1.f);
-                check_accessor(p[1] >= 0.f && p[1] <= 1.f);
-                check_accessor(p[2] >= 0.f && p[2] <= 1.f);
+                check_accessor_call(cgltf_accessor_read_float(accessor, i, &outputBuffer[i].vertexColor[0], numComponents));
+                check_accessor(outputBuffer[i].vertexColor[0] >= 0.f && outputBuffer[i].vertexColor[0] <= 1.f);
+                check_accessor(outputBuffer[i].vertexColor[1] >= 0.f && outputBuffer[i].vertexColor[1] <= 1.f);
+                check_accessor(outputBuffer[i].vertexColor[2] >= 0.f && outputBuffer[i].vertexColor[2] <= 1.f);
             }
             break;
         case cgltf_attribute_type_tangent:
@@ -310,8 +306,8 @@ namespace gltf_api
             check_accessor(!strcmp(attribute.name, "TANGENT"));
             for (uint32_t i = 0; i < count; ++i)
             {
-                float* p = ReadAttribute(buffer, bufferSizeInBytes, i, offset, stride, accessor);
-                check_accessor(p[3] == -1.f || p[3] == 1.f);
+                check_accessor_call(cgltf_accessor_read_float(accessor, i, &outputBuffer[i].tangent[0], numComponents));
+                check_accessor(outputBuffer[i].tangent[3] == -1.f || outputBuffer[i].tangent[3] == 1.f);
             }
             break;
         case cgltf_attribute_type_invalid:
@@ -372,55 +368,29 @@ namespace gltf_api
         }
     }
 #else
-    rendersystem::modelloader::AttributeType GetAttributeType(const cgltf_attribute& attribute)
-    {
-        switch (attribute.type)
-        {
-        case cgltf_attribute_type_position: return rendersystem::modelloader::Attribute_Position;
-        case cgltf_attribute_type_texcoord:
-            if (!strcmp(attribute.name, "TEXCOORD0")) return rendersystem::modelloader::Attribute_TexCoord0;
-            if (!strcmp(attribute.name, "TEXCOORD1")) return rendersystem::modelloader::Attribute_TexCoord1;
-            unreachable_code();
-        case cgltf_attribute_type_normal: return rendersystem::modelloader::Attribute_Normal;
-        case cgltf_attribute_type_color: return rendersystem::modelloader::Attribute_VertexColor;
-        case cgltf_attribute_type_tangent: return rendersystem::modelloader::Attribute_Tangent;
-        case cgltf_attribute_type_invalid:
-        case cgltf_attribute_type_custom:
-        case cgltf_attribute_type_max_enum:
-        default:
-            unreachable_code();
-        }
-        return rendersystem::modelloader::Attribute_Count;
-    }
-
-    void LoadVertices(const cgltf_primitive& primitive, float* buffer, uint32_t bufferSizeInBytes, const rendersystem::modelloader::VertexLayout& layout)
+    void LoadVertices(const cgltf_primitive& primitive, rendersystem::Vertex* buffer, uint32_t bufferCount, uint32_t bufferOffset)
     {
         uint32_t attributeCount = Mist::limits_cast<uint32_t>(primitive.attributes_count);
         for (uint32_t i = 0; i < attributeCount; ++i)
         {
             const cgltf_attribute& attribute = primitive.attributes[i];
-            rendersystem::modelloader::AttributeType type = GetAttributeType(attribute);
-            check(layout.attributeMask & (1 << type));
-            check(bufferSizeInBytes % layout.size == 0);
-            uint32_t vertexCount = bufferSizeInBytes / layout.size;
-            check(attribute.data->count <= vertexCount);
-            check(attribute.data->count == primitive.attributes[0].data->count);
-            ReadAttributeArray(buffer, bufferSizeInBytes, layout.offsets[type], layout.size, attribute);
+            check(Mist::limits_cast<uint32_t>(attribute.data->count) <= bufferCount-bufferOffset);
+            check(Mist::limits_cast<uint32_t>(attribute.data->count) == primitive.attributes[0].data->count);
+            ReadAttributeArray(buffer, bufferCount, bufferOffset, attribute);
         }
     }
 #endif // 0
 
 
-    void LoadIndices(const cgltf_primitive& primitive, uint32_t* indicesOut, uint32_t offset)
+    void LoadIndices(const cgltf_primitive& primitive, uint32_t* indicesOut, uint32_t bufferOffset, uint32_t indexBase)
     {
         check(primitive.indices && primitive.type == cgltf_primitive_type_triangles);
         check(primitive.indices->count < UINT32_MAX);
-        uint32_t indexCount = (uint32_t)primitive.indices->count;
+        uint32_t indexCount = Mist::limits_cast<uint32_t>(primitive.indices->count);
         for (uint32_t i = 0; i < indexCount; ++i)
         {
-            size_t index = cgltf_accessor_read_index(primitive.indices, i);
-            check(index + (size_t)offset < UINT32_MAX);
-            indicesOut[i] = (uint32_t)index + offset;
+            uint32_t index = Mist::limits_cast<uint32_t>(cgltf_accessor_read_index(primitive.indices, i));
+            indicesOut[i + bufferOffset] = index + indexBase;
         }
     }
 
@@ -533,47 +503,6 @@ namespace gltf_api
         //    material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
     }
 #endif // 0
-
-    rendersystem::modelloader::VertexLayout GetVertexLayout(const cgltf_primitive& primitive)
-    {
-        rendersystem::modelloader::VertexLayout layout;
-
-        // get how many and which attributes has this primitive.
-        static_assert(rendersystem::modelloader::Attribute_Count <= 8);
-        for (uint32_t i = 0; i < primitive.attributes_count; ++i)
-        {
-            const cgltf_attribute& attribute = primitive.attributes[i];
-            switch (attribute.type)
-            {
-            case cgltf_attribute_type_position: layout.attributeMask |= (1 << rendersystem::modelloader::Attribute_Position); break;
-            case cgltf_attribute_type_texcoord:
-                if (!strcmp(attribute.name, "TEXCOORD0")) layout.attributeMask |= (1 << rendersystem::modelloader::Attribute_TexCoord0);
-                if (!strcmp(attribute.name, "TEXCOORD1")) layout.attributeMask |= (1 << rendersystem::modelloader::Attribute_TexCoord1);
-                break;
-            case cgltf_attribute_type_normal: layout.attributeMask |= (1 << rendersystem::modelloader::Attribute_Normal); break;
-            case cgltf_attribute_type_color: layout.attributeMask |= (1 << rendersystem::modelloader::Attribute_VertexColor); break;
-            case cgltf_attribute_type_tangent: layout.attributeMask |= (1 << rendersystem::modelloader::Attribute_Tangent); break;
-            case cgltf_attribute_type_invalid:
-            case cgltf_attribute_type_custom:
-            case cgltf_attribute_type_max_enum:
-                unreachable_code();
-            }
-        }
-
-        // iterate attributes and build layout
-        uint32_t offset = 0;
-        for (uint32_t i = 0; i < rendersystem::modelloader::Attribute_Count; ++i)
-        {
-            if (layout.attributeMask & (1 << i))
-            {
-                uint32_t attributeSize = sizeof(float) * rendersystem::modelloader::GetAttributeElementCount((rendersystem::modelloader::AttributeType)i);
-                layout.offsets[i] = offset;
-                offset += attributeSize;
-            }
-        }
-        layout.size = offset;
-        return layout;
-    }
 }
 
 
@@ -587,7 +516,7 @@ namespace rendersystem
             PROFILE_SCOPE_LOGF(ModelLoader_LoadFile, "ModelLoader_LoadFile (%s)", filepath);
 
             Mist::cAssetPath assetPath(filepath);
-            cgltf_data* data = gltf_api::ParseFile(assetPath);
+            cgltf_data* data = gltfapi::ParseFile(assetPath);
 
             char rootAssetPath[512];
             Mist::FileSystem::GetDirectoryFromFilepath(assetPath, rootAssetPath, 512);
@@ -600,7 +529,7 @@ namespace rendersystem
             if (!data->nodes_count)
             {
                 logferror("Model file without nodes in scene: %s.\n", assetPath);
-                gltf_api::FreeData(data);
+                gltfapi::FreeData(data);
                 return false;
             }
             //SetName(assetPath);
@@ -614,6 +543,9 @@ namespace rendersystem
 
             render::utils::UploadContext uploadContext(device);
 
+            render::ShaderHandle vs = render::utils::BuildVertexShader(device, "shaders/world_mesh.vert");
+            render::ShaderHandle fs = render::utils::BuildFragmentShader(device, "shaders/world_mesh.frag");
+
             loadmeshlog("Loading materials\n");
             if (data->materials_count)
             {
@@ -623,8 +555,12 @@ namespace rendersystem
                 for (uint32_t i = 0; i < outModel->materials.count; ++i)
                 {
                     //m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
-                    gltf_api::LoadMaterial(&outModel->materials.data[i], data->materials[i], rootAssetPath);
+                    gltfapi::LoadMaterial(&outModel->materials.data[i], data->materials[i], rootAssetPath);
                     //m_materials[i].SetupShader(context);
+                    outModel->materials.data[i].vs = vs;
+                    outModel->materials.data[i].fs = fs;
+                    outModel->materials.data[i].depthStencilState.depthTestEnable = true;
+                    outModel->materials.data[i].depthStencilState.depthWriteEnable = true;
                 }
             }
             else
@@ -637,9 +573,8 @@ namespace rendersystem
             //InitNodes((index_t)data->nodes_count);
             //InitMeshes((index_t)data->meshes_count);
             outModel->meshes.Reserve((uint32_t)data->meshes_count);
-            HeapArray<float> buffer;
+            HeapArray<Vertex> buffer;
             HeapArray<uint32_t> indices;
-            VertexLayout vertexLayout;
             
             loadmeshlog("Loading meshes\n");
             for (uint32_t i = 0; i < outModel->meshes.count; ++i)
@@ -655,27 +590,20 @@ namespace rendersystem
                 for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.primitives_count; ++primitiveIndex)
                 {
                     const cgltf_primitive& primitive = mesh.primitives[primitiveIndex];
-                    check(primitive.attributes_count == mesh.primitives[0].attributes_count);
+                    //check(primitive.attributes_count == mesh.primitives[0].attributes_count);
                     check(primitive.type == cgltf_primitive_type_triangles);
                     check(primitive.indices && primitive.indices->type == cgltf_type_scalar && primitive.indices->count % 3 == 0);
                     check(primitive.attributes && primitive.attributes->data);
                     vertexCount += Mist::limits_cast<uint32_t>(primitive.attributes[0].data->count);
                     indexCount += Mist::limits_cast<uint32_t>(primitive.indices->count);
-
-                    // Get vertices layout
-                    if (vertexLayout.attributeMask == 0)
-                        vertexLayout = gltf_api::GetVertexLayout(mesh.primitives[primitiveIndex]);
-                    else
-                    {
-                        VertexLayout vl = gltf_api::GetVertexLayout(mesh.primitives[primitiveIndex]);
-                        check(vl.attributeMask == vertexLayout.attributeMask && vl.size == vertexLayout.size);
-                    }
                 }
                 // create buffers to read vertices and indices of this mesh
-                check(vertexLayout.attributeMask && vertexLayout.size);
-                uint32_t bufferSize = vertexCount * vertexLayout.size;
                 buffer.Reserve(vertexCount);
                 indices.Reserve(indexCount);
+                for (uint32_t j = 0; j < buffer.count; ++j)
+                    buffer.data[j] = {};
+                for (uint32_t j = 0; j < indices.count; ++j)
+                    indices.data[j] = UINT32_MAX;
 
                 loadmeshlogf("* mesh: %s (%d) [primitives: %d; indices: %d; vertices: %d: tris: %d]\n", mesh.name, i, 
                     mesh.primitives_count, indexCount, vertexCount, indexCount / 3);
@@ -687,8 +615,10 @@ namespace rendersystem
                 {
                     // load vertices and indices into temporal buffers
                     const cgltf_primitive& primitive = mesh.primitives[primitiveIndex];
-                    gltf_api::LoadIndices(primitive, indices.data + indexOffset, vertexOffset);
-                    gltf_api::LoadVertices(primitive, buffer.data + vertexOffset, bufferSize * sizeof(float), vertexLayout);
+                    gltfapi::LoadIndices(primitive, indices.data, indexOffset, vertexOffset);
+                    gltfapi::LoadVertices(primitive, buffer.data, buffer.count, vertexOffset);
+                    //if (indices.data[indexOffset] == 39803) __debugbreak();
+
 
                     // build primitive object into mesh primitives buffer
                     Primitive& outPrimitive = outMesh.primitives.data[primitiveIndex];
@@ -696,28 +626,41 @@ namespace rendersystem
                     outPrimitive.count = Mist::limits_cast<uint32_t>(primitive.indices->count);
                     outPrimitive.mesh = i;
                     check(primitive.material >= data->materials);
-                    outPrimitive.material = Mist::limits_cast<uint32_t>(size_t(primitive.material) - size_t(data->materials));
+                    outPrimitive.material = Mist::limits_cast<uint32_t>(size_t(primitive.material) - size_t(data->materials)) / sizeof(cgltf_material);
+                    check(outPrimitive.material < outModel->materials.count);
+
+                    loadmeshlogf("** primitive %3d [first: %6d; count: %6d; mesh: %2d; material: %3d] (%6d, %6d)\n",
+                        primitiveIndex, outPrimitive.first, outPrimitive.count, outPrimitive.mesh, outPrimitive.material,
+                        vertexOffset, indexOffset);
 
                     indexOffset += Mist::limits_cast<uint32_t>(primitive.indices->count);
                     vertexOffset += Mist::limits_cast<uint32_t>(primitive.attributes->data->count);
                     check(indexOffset <= indexCount && vertexOffset <= vertexCount);
                 }
 
+                for (uint32_t j = 0; j < buffer.count; ++j)
+                    check(buffer.data[i].position != glm::vec3(0.f));
+                for (uint32_t j = 0; j < indices.count; ++j)
+                    check(indices.data[i] != UINT32_MAX);
+
                 // build mesh object
-                render::VertexInputAttribute attributes[rendersystem::modelloader::Attribute_Count];
-                uint32_t attributeCount = 0;
-                for (uint32_t j = 0; j < rendersystem::modelloader::Attribute_Count; ++j)
-                {
-                    if (vertexLayout.attributeMask & (1 << i))
-                        attributes[attributeCount++] = { GetAttributeFormat((AttributeType)i) };
-                }
-                outMesh.inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, attributeCount);
-                outMesh.vb = render::utils::CreateVertexBuffer(device, buffer.data, buffer.count * sizeof(float), &uploadContext);
+                render::VertexInputAttribute attributes[] = {
+                    render::Format_R32G32B32_SFloat,
+                    render::Format_R32G32B32_SFloat,
+                    render::Format_R32G32_SFloat,
+                    render::Format_R32G32_SFloat,
+                    render::Format_R32G32B32A32_SFloat,
+                    render::Format_R32G32B32A32_SFloat,
+                };
+                outMesh.inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, Mist::CountOf(attributes));
+                outMesh.vb = render::utils::CreateVertexBuffer(device, buffer.data, buffer.count * sizeof(Vertex), &uploadContext);
                 outMesh.ib = render::utils::CreateIndexBuffer(device, indices.data, indices.count * sizeof(uint32_t), &uploadContext);
             }
             uploadContext.Submit();
             loadmeshlog("=== End loading model ===\n");
-            gltf_api::FreeData(data);
+            gltfapi::FreeData(data);
+            buffer.Release();
+            indices.Release();
             return true;
 
 #if 0
