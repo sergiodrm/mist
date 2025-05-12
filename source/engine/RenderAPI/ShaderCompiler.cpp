@@ -93,7 +93,8 @@ namespace render
         {
             char* source;
             size_t s;
-            check(Mist::FileSystem::ReadFile(filepath, &source, s));
+            Mist::cAssetPath path(filepath);
+            check(Mist::FileSystem::ReadFile(path, &source, s));
 
             shaderc::Compiler compiler;
             shaderc::CompileOptions options;
@@ -125,7 +126,7 @@ namespace render
             }
 
             shaderc_shader_kind kind = GetShaderType(shaderType);
-            shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, filepath, options);
+            shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, path, options);
             if (!HandleError(prepRes, "preprocess"))
                 return CompiledBinary();
 
@@ -133,7 +134,7 @@ namespace render
 #ifdef SHADER_DUMP_PREPROCESS_RESULT
             Mist::Logf(Mist::LogLevel::Debug, "Preprocessed source:\n\n%s\n\n", preprocessSource.c_str());
 #endif
-            shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, filepath, entryPoint, options);
+            shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, path, entryPoint, options);
             if (!HandleError(result, "assembly"))
                 return CompiledBinary();
             Mist::tString assemble{ result.begin(), result.end() };
