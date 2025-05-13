@@ -4,11 +4,51 @@
 
 #include "shaderc/shaderc.hpp"
 #include "Core/Logger.h"
+#include "Utils/TimeUtils.h"
+
+#define SHADER_BINARY_FILE_DIRECTORY "shaderbin"
+#define SHADER_BINARY_FILE_EXTENSION ".mist.spv"
+
+//#define SHADER_DUMP_INFO
+#ifdef SHADER_DUMP_INFO
+#define shaderlabel "[shaders] "
+#define shaderlog(fmt) loginfo(shaderlabel fmt)
+#define shaderlogf(fmt, ...) logfinfo(shaderlabel fmt, __VA_ARGS__)
+#else
+#define shaderlog(fmt) DUMMY_MACRO
+#define shaderlogf(fmt, ...) DUMMY_MACRO
+#endif
+
+Mist::CIntVar CVar_ForceShaderRecompilation("r_forceShaderCompilation", 0);
+
 
 namespace render
 {
     namespace shader_compiler
     {
+        template <uint32_t Size>
+        void GenerateSpvFileName(char(&outFilepath)[Size], const char* srcFile, const CompilationOptions& options)
+        {
+            sprintf_s(outFilepath, Size, "%s.[%s]", srcFile, options.entryPoint);
+            if (!options.macroDefinitionArray.empty())
+            {
+                strcat_s(outFilepath, Size, ".[");
+                for (uint32_t i = 0; i < (uint32_t)options.macroDefinitionArray.size(); ++i)
+                {
+                    char buff[256];
+                    sprintf_s(buff, "%s(%s).", options.macroDefinitionArray[i].macro.CStr(), options.macroDefinitionArray[i].value.CStr());
+                    strcat_s(outFilepath, Size, buff);
+                }
+                strcat_s(outFilepath, Size, "]");
+            }
+
+            size_t h = std::hash<std::string>()(outFilepath);
+            Mist::FileSystem::GetDirectoryFromFilepath(srcFile, outFilepath, Size);
+            sprintf_s(outFilepath, "%s%s/%llu%s", outFilepath, SHADER_BINARY_FILE_DIRECTORY, h, SHADER_BINARY_FILE_EXTENSION);
+
+            //strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
+        }
+
         class ShaderIncluder : public shaderc::CompileOptions::IncluderInterface
         {
         public:
@@ -89,6 +129,112 @@ namespace render
             }
         }
 
+        bool CheckShaderFileExtension(const char* filepath, ShaderType type)
+        {
+            // TODO
+            return true;
+        }
+
+        bool ReadSpvBinaryFromFile(const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount)
+        {
+            check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
+            //PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
+            // Binary file is created after last file modification, valid binary
+            FILE* f;
+            errno_t err = fopen_s(&f, binaryFilepath, "rb");
+            if (err || !f)
+            {
+                logferror("Failed to open file: %s\n", binaryFilepath);
+                check(false && "Failed to open shader compiled file");
+            }
+            fseek(f, 0L, SEEK_END);
+            size_t numbytes = ftell(f);
+            fseek(f, 0L, SEEK_SET);
+            *binaryCount = numbytes / sizeof(uint32_t);
+            *binaryData = (uint32_t*)malloc(numbytes);
+            size_t contentRead = fread_s(*binaryData, numbytes, 1, numbytes, f);
+            check(contentRead == numbytes);
+            fclose(f);
+            return true;
+        }
+
+        bool WriteCompiledBinaryToFile(const char* binaryFilepath, uint32_t* binaryData, size_t binaryCount)
+        {
+            PROFILE_SCOPE_LOGF(WriteCompiledBinaryToFile, "Write file with binary spv shader %s", binaryFilepath);
+            check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
+            char dir[256];
+            Mist::FileSystem::GetDirectoryFromFilepath(binaryFilepath, dir, Mist::CountOf(dir));
+            Mist::FileSystem::Mkdir(dir);
+            FILE* f;
+            errno_t err = fopen_s(&f, binaryFilepath, "wb");
+            check(!err && f && "Failed to write shader compiled file");
+            size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
+            check(writtenCount == binaryCount);
+            fclose(f);
+            shaderlogf("Shader binary compiled written: %s [%u bytes]\n", binaryFilepath, writtenCount * sizeof(uint32_t));
+            return true;
+        }
+
+        bool ContainsNewerFileInIncludes_Recursive(const char* filepath, const CompilationOptions* options)
+        {
+            Mist::cAssetPath assetPath(filepath);
+            char binaryFilepath[1024];
+            GenerateSpvFileName(binaryFilepath, assetPath, *options);
+
+            if (Mist::FileSystem::IsFileNewerThanOther(assetPath, binaryFilepath))
+                return true;
+
+            size_t contentSize;
+            char* content;
+            check(Mist::FileSystem::ReadTextFile(assetPath, &content, contentSize));
+            char* it = content;
+            bool containsNewerFile = false;
+            while (it = strstr(it, "#include"))
+            {
+                // #include length
+                size_t tokenLength = 8;
+                it += tokenLength;
+                // After include always at least one space
+                check(*it == ' ');
+                // Looking for open token " or <
+                while (*it == ' ') ++it;
+                check((*it == '"' || *it == '<') && "Unexpected token. Expected '\"' or '<' after include preprocessor instruction.");
+                // Determinate matching close token
+                char closeToken = (*it == '"') ? '"' : '>';
+                ++it;
+                // After open token we have the path
+                char* dependencyPath = it;
+                // Find close token
+                while (*it && *it != '\r' && *it != '\n' && *it != closeToken) ++it;
+                check(*it == closeToken && "Unexpected close token. Expected '\"' or '>' to close include preprocessor instruction.");
+                // In close token, terminate string dependencyPath
+                *it = 0;
+                ++it;
+                // Build complete asset path and register it.
+                // Keep building dependencies inside current dependency.
+                if (ContainsNewerFileInIncludes_Recursive(dependencyPath, options))
+                {
+                    containsNewerFile = true;
+                    logfwarn("Shader dependency newer than compiled binary (%s)\n", dependencyPath);
+                    break;
+                }
+            }
+            delete[] content;
+            return containsNewerFile;
+        }
+
+        bool ShouldRecompileShaderFile(const char* filepath, const CompilationOptions* compileOptions)
+        {
+            check(filepath && *filepath && compileOptions);
+            Mist::cAssetPath assetPath(filepath);
+            PROFILE_SCOPE_LOGF(ShouldRecompileShaderFile, "Build shader dependency (%s)", assetPath);
+
+            if (CVar_ForceShaderRecompilation.Get())
+                return true;
+
+            return ContainsNewerFileInIncludes_Recursive(filepath, compileOptions);
+        }
+
         CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions)
         {
             char* source;
@@ -157,6 +303,69 @@ namespace render
                 binary.binary = nullptr;
                 binary.binaryCount = 0;
             }
+        }
+
+        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions)
+        {
+            Mist::cAssetPath assetPath(filepath);
+            PROFILE_SCOPE_LOGF(ProcessShaderFile, "Shader file process (%s)", assetPath);
+            shaderlogf("Compiling shader: [%s]\n", assetPath);
+
+            CompilationOptions defaultOptions;
+            if (!additionalOptions)
+                additionalOptions = &defaultOptions;
+
+            check(!strcmp(additionalOptions->entryPoint, "main") && "Set shader entry point not supported yet.");
+            char binaryFilepath[1024];
+            GenerateSpvFileName(binaryFilepath, assetPath, *additionalOptions);
+
+            check(CheckShaderFileExtension(assetPath, type));
+
+            CompiledBinary bin;
+            if (!ShouldRecompileShaderFile(assetPath, additionalOptions))
+            {
+                shaderlogf("Loading shader binary from compiled file: %s.spv\n", filepath);
+                check(ReadSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount));
+            }
+            else
+            {
+                PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
+                if (CVar_ForceShaderRecompilation.Get())
+                    logfwarn("Force shader recompilation: %s\n", assetPath);
+                else
+                    logfwarn("Compiled binary not found or shader source is newer (%s)\n", assetPath);
+                bin = shader_compiler::Compile(assetPath, type, additionalOptions);
+                if (!bin.IsCompilationSucceed())
+                {
+                    logferror("Shader compilation failed (%s)\n", filepath);
+                    if (Mist::FileSystem::FileExists(binaryFilepath))
+                    {
+                        // Try to load the last compiled binary.
+                        logferror("Loading last compiled binary: %s\n", binaryFilepath);
+                        if (!ReadSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount))
+                        {
+                            logferror("Failed to load last compiled binary: %s\n", binaryFilepath);
+                            return CompiledBinary::FailureBinary();
+                        }
+                    }
+                    else
+                    {
+                        logferror("Compiled binary not found: %s\n", binaryFilepath);
+                        return CompiledBinary::FailureBinary();
+                    }
+                }
+                else
+                {
+                    // if compilation is succeeded, generate a compiled file.
+                    check(WriteCompiledBinaryToFile(binaryFilepath, bin.binary, bin.binaryCount));
+                }
+            }
+
+            // At this point we must have a valid binary.
+            check(bin.IsCompilationSucceed());
+
+            shaderlogf("Shader compiled successfully (%s)\n", assetPath);
+            return bin;
         }
     }
 }
