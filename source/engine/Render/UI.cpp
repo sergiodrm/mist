@@ -244,16 +244,19 @@ namespace Mist
 
 		void End(const RenderContext& context)
 		{
+#if 0
 			// TODO: use LDR render target from renderer
 			Renderer* renderer = context.Renderer;
-            CommandList* commandList = context.CmdList;
-            commandList->SetGraphicsState({ .Rt = &renderer->GetLDRTarget() });
+			CommandList* commandList = context.CmdList;
+			commandList->SetGraphicsState({ .Rt = &renderer->GetLDRTarget() });
 			//renderer->GetLDRTarget().BeginPass(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
-            commandList->BeginMarker("ImGui");
+			commandList->BeginMarker("ImGui");
 			ImGuiInstance.Draw(context, commandList->GetCurrentCommandBuffer()->CmdBuffer);
 			commandList->ClearState();
 			commandList->EndMarker();
-			//renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
+			//renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);  
+#endif // 0
+
 		}
 	}
 }

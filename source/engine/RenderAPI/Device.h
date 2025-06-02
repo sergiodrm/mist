@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef RBE_VK
+#error .
+#endif
+
 #ifdef RBE_VK
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
@@ -67,11 +71,11 @@ namespace render
         uint32_t mipLevels = 1;
         uint32_t layers = 1;
         ImageDimension dimension = ImageDimension_2D;
-        Extent3D extent = {0,0,0};
+        Extent3D extent = {0,0,1};
         MemoryUsage memoryUsage = MemoryUsage_Gpu;
         Mist::tString debugName;
 
-        bool isShaderResource = false;
+        bool isShaderResource = true;
         bool isRenderTarget = false;
         bool isStorageTexture = false;
 
@@ -92,6 +96,29 @@ namespace render
         {
             return !(*this == other);
         }
+    };
+
+    struct TextureSubresourceLayer
+    {
+        uint32_t mipLevel = 0;
+        uint32_t layer = 0;
+        uint32_t layerCount= UINT32_MAX;
+
+        TextureSubresourceLayer() = default;
+
+        TextureSubresourceLayer(uint32_t _mipLevel, uint32_t _layer, uint32_t _layerCount)
+            : mipLevel(_mipLevel), layer(_layer), layerCount(_layerCount) {}
+
+        TextureSubresourceLayer Resolve(const TextureDescription& desc) const;
+
+        inline bool operator==(const TextureSubresourceLayer& other) const
+        {
+            return mipLevel == other.mipLevel &&
+                layer == other.layer &&
+                layerCount == other.layerCount;
+        }
+
+        inline bool operator!=(const TextureSubresourceLayer& other) const { return !(*this == other); }
     };
 
     struct TextureSubresourceRange
@@ -353,6 +380,7 @@ namespace render
 #undef GET_VK_PROC_ADDRESS
         }
 #endif
+        bool FormatSupportsLinearFiltering(Format format) const;
 
         inline uint32_t              GetMaxImageDimension1D() const { return physicalDeviceProperties.limits.maxImageDimension1D; }
         inline uint32_t              GetMaxImageDimension2D() const { return physicalDeviceProperties.limits.maxImageDimension2D; }
@@ -1382,6 +1410,17 @@ namespace render
         uint32_t pipelines;
     };
 
+    struct BlitDescription
+    {
+        TextureHandle src;
+        TextureHandle dst;
+        Offset3D srcOffsets[2];
+        Offset3D dstOffsets[2];
+        TextureSubresourceLayer srcSubresource;
+        TextureSubresourceLayer dstSubresource;
+        Filter filter;
+    };
+
     class CommandList final : public Mist::Ref<CommandList>
     {
     public:
@@ -1417,19 +1456,21 @@ namespace render
         // Texture barriers
         void SetTextureState(const TextureBarrier* barriers, uint32_t count);
         void SetTextureState(const TextureBarrier& barrier);
+        void RequireTextureState(const TextureBarrier& barrier);
 
         // Transfer
         void WriteBuffer(BufferHandle buffer, const void* data, size_t size, size_t srcOffset = 0, size_t dstOffset = 0);
         void WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize);
+        void BlitTexture(const BlitDescription& desc);
 
 
         inline bool AllowsCommandType(QueueType type) const { return IsRecording() && m_currentCommandBuffer->type & type; }
 
         void ClearState();
         CommandBuffer* GetCommandBuffer() const { check(IsRecording()); return m_currentCommandBuffer; }
+        inline bool IsInsideRenderPass() const { return m_graphicsState.rt != nullptr; }
     private:
         void BeginRenderPass(render::RenderTargetHandle rt);
-        inline bool IsInsideRenderPass() const { return m_graphicsState.rt != nullptr; }
         void EndRenderPass();
         void Submitted(uint64_t submissionId);
         void FlushRequiredStates();
@@ -1574,10 +1615,15 @@ namespace render
         class UploadContext
         {
         public:
+            UploadContext();
             UploadContext(Device* device);
             ~UploadContext();
+            void Init(Device* device);
+            void Destroy(bool waitForSubmission = true);
 
+            void WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize);
             void WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
+            void Blit(const BlitDescription& desc);
             uint64_t Submit(bool waitForSubmission = true);
 
         private:
@@ -1588,6 +1634,8 @@ namespace render
         BufferHandle CreateBufferAndUpload(Device* device, const void* buffer, uint64_t size, BufferUsage usage, MemoryUsage memoryUsage, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
         BufferHandle CreateVertexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
         BufferHandle CreateIndexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
+        BufferHandle CreateUniformBuffer(Device* device, uint64_t size, const char* debugName = nullptr);
+        BufferHandle CreateDynamicVertexBuffer(Device* device, uint64_t bufferSize, const char* debugName);
 
         /**
          * Shader utilities

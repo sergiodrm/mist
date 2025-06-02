@@ -43,6 +43,13 @@ namespace render
         return VK_FALSE;
     }
 
+    bool VulkanContext::FormatSupportsLinearFiltering(Format format) const
+    {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, utils::ConvertFormat(format), &props);
+        return props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+    }
+
     Semaphore::Semaphore(Device* device)
         : m_device(device), m_semaphore(VK_NULL_HANDLE), m_isTimeline(false)
     {
@@ -69,8 +76,7 @@ namespace render
     RenderTargetDescription& RenderTargetDescription::SetDepthStencilAttachment(TextureHandle texture, TextureSubresourceRange range)
     {
         Format format = texture->m_description.format;
-        check((format != Format_Undefined && utils::IsDepthFormat(format) && utils::IsStencilFormat(format))
-            || (utils::IsDepthFormat(texture->m_description.format) && utils::IsStencilFormat(texture->m_description.format)));
+        check(utils::IsDepthFormat(format) || utils::IsStencilFormat(format));
         depthStencilAttachment.texture = texture;
         depthStencilAttachment.range = range;
         return *this;
@@ -787,7 +793,8 @@ namespace render
         }
         if (!vksets.IsEmpty())
         {
-            bindSetsFn(firstSet, vksets.GetData(), vksets.GetSize(), offsets.GetData(), offsets.GetSize());
+            bindSetsFn(firstSet, vksets.GetSize() ? vksets.GetData() : nullptr, vksets.GetSize(), 
+                offsets.GetSize() ? offsets.GetData() : nullptr, offsets.GetSize());
             firstSet = UINT32_MAX;
             vksets.Clear();
             offsets.Clear();
@@ -912,13 +919,15 @@ namespace render
 
     void CommandList::SetTextureState(const TextureBarrier* barriers, uint32_t count)
     {
-        static constexpr uint32_t MaxBarriers = 8;
+        check(!IsInsideRenderPass());
+        static constexpr uint32_t MaxBarriers = 16;
         check(count <= MaxBarriers);
         Mist::tStaticArray<VkImageMemoryBarrier2, MaxBarriers> imageBarriers;
         for (uint32_t i = 0; i < count; ++i)
         {
             if (barriers[i].texture->m_layout != barriers[i].newLayout)
             {
+                check(barriers[i].newLayout != ImageLayout_Undefined);
                 imageBarriers.Push(utils::ConvertImageBarrier(barriers[i]));
                 barriers[i].texture->m_layout = barriers[i].newLayout;
             }
@@ -935,6 +944,11 @@ namespace render
     void CommandList::SetTextureState(const TextureBarrier& barrier)
     {
         SetTextureState(&barrier, 1);
+    }
+
+    void CommandList::RequireTextureState(const TextureBarrier& barrier)
+    {
+        m_requiredStates.push_back(barrier);
     }
 
     void CommandList::WriteBuffer(BufferHandle buffer, const void* data, size_t size, size_t srcOffset, size_t dstOffset)
@@ -1009,8 +1023,47 @@ namespace render
             transferMemory.m_buffer->m_buffer, texture->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1, &copyRegion);
 
-        barrier.newLayout = oldLayout;
-        SetTextureState(barrier);
+        if (oldLayout != ImageLayout_Undefined)
+        {
+            barrier.newLayout = oldLayout;
+            SetTextureState(barrier);
+        }
+    }
+
+    void CommandList::BlitTexture(const BlitDescription& desc)
+    {
+        check(desc.src && desc.dst);
+
+        ImageLayout oldLayouts[2] = { desc.src->m_layout, desc.dst->m_layout };
+        TextureBarrier barriers[2];
+        barriers[0].texture = desc.src;
+        barriers[0].newLayout = ImageLayout_TransferSrc;
+        barriers[0].subresources.baseLayer = desc.srcSubresource.layer;
+        barriers[0].subresources.baseMipLevel = desc.srcSubresource.mipLevel;
+        barriers[0].subresources.countMipLevels = 1;
+        barriers[0].subresources.countLayers = desc.srcSubresource.layerCount;
+        barriers[1].texture = desc.dst;
+        barriers[1].newLayout = ImageLayout_TransferDst;
+        barriers[1].subresources.baseLayer = desc.dstSubresource.layer;
+        barriers[1].subresources.baseMipLevel = desc.dstSubresource.mipLevel;
+        barriers[1].subresources.countMipLevels = 1;
+        barriers[1].subresources.countLayers = desc.dstSubresource.layerCount;
+        SetTextureState(barriers, 2);
+
+        VkImageBlit blit;
+        memcpy_s(blit.srcOffsets, sizeof(Offset3D) * 2, desc.srcOffsets, sizeof(Offset3D) * 2);
+        memcpy_s(blit.dstOffsets, sizeof(Offset3D) * 2, desc.dstOffsets, sizeof(Offset3D) * 2);
+        TextureSubresourceLayer subresource = desc.srcSubresource.Resolve(desc.src->m_description);
+        blit.srcSubresource = utils::ConvertImageSubresourceLayer(subresource, desc.src->m_description.format);
+        subresource = desc.dstSubresource.Resolve(desc.dst->m_description);
+        blit.dstSubresource = utils::ConvertImageSubresourceLayer(subresource, desc.dst->m_description.format);
+        vkCmdBlitImage(m_currentCommandBuffer->cmd, desc.src->m_image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            desc.dst->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit,
+            utils::ConvertFilter(desc.filter));
+
+        barriers[0].newLayout = oldLayouts[0];
+        barriers[1].newLayout = oldLayouts[1];
+        SetTextureState(barriers, 2);
     }
 
     void CommandList::BeginRenderPass(render::RenderTargetHandle rt)
@@ -1054,6 +1107,7 @@ namespace render
 
     void CommandList::FlushRequiredStates()
     {
+        check(!IsInsideRenderPass());
         SetTextureState(m_requiredStates.data(), (uint32_t)m_requiredStates.size());
         m_requiredStates.clear();
     }
@@ -1139,6 +1193,7 @@ namespace render
         Buffer* buffer = _new Buffer(this);
         buffer->m_description = description;
         buffer->m_description.bufferUsage = utils::GetBufferUsage(description);
+        check(description.size > 0);
 
         VkBufferUsageFlags usage = utils::ConvertBufferUsage(buffer->m_description.bufferUsage);
         VkBufferCreateInfo bufferInfo
@@ -1188,7 +1243,10 @@ namespace render
 
     TextureHandle Device::CreateTexture(const TextureDescription& description)
     {
-        check(description.extent != Extent3D(0, 0, 0) && description.format != Format_Undefined);
+        check(description.format != Format_Undefined);
+        check(description.extent.width != 0);
+        check(description.extent.height != 0);
+        check(description.extent.depth != 0);
         Texture* texture = _new Texture(this);
         texture->m_description = description;
 
@@ -1339,6 +1397,7 @@ namespace render
     {
         RenderTarget* renderTarget = _new RenderTarget(this);
         renderTarget->m_description = description;
+        renderTarget->m_info = RenderTargetInfo(renderTarget->m_description);
         
         static constexpr uint32_t MaxAttachments = RenderTargetDescription::MaxRenderAttachments + 1;
         Mist::tStaticArray<VkAttachmentDescription, MaxAttachments> attachmentDescriptions(description.colorAttachments.GetSize());
@@ -1440,12 +1499,11 @@ namespace render
         framebufferInfo.renderPass = renderTarget->m_renderPass;
         framebufferInfo.attachmentCount = (uint32_t)views.GetSize();
         framebufferInfo.pAttachments = views.GetData();
-        framebufferInfo.width = description.colorAttachments[0].texture->m_description.extent.width;
-        framebufferInfo.height = description.colorAttachments[0].texture->m_description.extent.height;
+        framebufferInfo.width = renderTarget->m_info.extent.width;
+        framebufferInfo.height = renderTarget->m_info.extent.height;
         framebufferInfo.layers = 1;
         vkcheck(vkCreateFramebuffer(m_context->device, &framebufferInfo, m_context->allocationCallbacks, &renderTarget->m_framebuffer));
 
-        renderTarget->m_info = RenderTargetInfo(renderTarget->m_description);
 
         SetDebugName(renderTarget, description.debugName.c_str());
         return RenderTargetHandle(renderTarget);
@@ -2540,17 +2598,63 @@ namespace render
             return CreateBufferAndUpload(device, buffer, bufferSize, BufferUsage_IndexBuffer, MemoryUsage_Gpu, uploadContext, debugName);
         }
 
-        UploadContext::UploadContext(Device* device)
-            : m_device(device)
+        BufferHandle CreateUniformBuffer(Device* device, uint64_t size, const char* debugName)
         {
-            m_cmd = m_device->CreateCommandList();
+            BufferDescription desc;
+            desc.size = device->AlignUniformSize(size);
+            desc.bufferUsage = BufferUsage_UniformBuffer;
+            desc.memoryUsage = MemoryUsage_CpuToGpu;
+            if (debugName && *debugName)
+                desc.debugName = debugName;
+            return device->CreateBuffer(desc);
+        }
+
+        BufferHandle CreateDynamicVertexBuffer(Device* device, uint64_t bufferSize, const char* debugName)
+        {
+            BufferDescription desc;
+            desc.size = bufferSize;
+            desc.memoryUsage = MemoryUsage_CpuToGpu;
+            desc.bufferUsage = BufferUsage_VertexBuffer;
+            if (debugName && *debugName)
+                desc.debugName = debugName;
+            return device->CreateBuffer(desc);
+        }
+
+        UploadContext::UploadContext()
+            : m_device(nullptr), m_cmd(nullptr) { }
+
+        UploadContext::UploadContext(Device* device)
+            : m_device(nullptr), m_cmd(nullptr)
+        {
+            Init(device);
         }
 
         UploadContext::~UploadContext()
         {
-            Submit();
+            Destroy();
+        }
+
+        void UploadContext::Init(Device* device)
+        {
+            check(!m_device && !m_cmd && device);
+            m_device = device;
+            m_cmd = m_device->CreateCommandList();
+        }
+
+        void UploadContext::Destroy(bool waitForSubmission)
+        {
+            if (!m_cmd || !m_device)
+                return;
+            Submit(waitForSubmission);
             m_cmd = nullptr;
             m_device = nullptr;
+        }
+
+        void UploadContext::WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize)
+        {
+            if (!m_cmd->IsRecording())
+                m_cmd->BeginRecording();
+            m_cmd->WriteTexture(texture, mipLevel, layer, data, dataSize);
         }
 
         void UploadContext::WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset, uint64_t dstOffset)
@@ -2559,6 +2663,13 @@ namespace render
                 m_cmd->BeginRecording();
 
             m_cmd->WriteBuffer(buffer, data, dataSize, srcOffset, dstOffset);
+        }
+
+        void UploadContext::Blit(const BlitDescription& desc)
+        {
+            if (!m_cmd->IsRecording())
+                m_cmd->BeginRecording();
+            m_cmd->BlitTexture(desc);
         }
 
         uint64_t UploadContext::Submit(bool waitForSubmission)
@@ -2595,5 +2706,15 @@ namespace render
             return BuildShader(device, filepath, ShaderType_Fragment);
         }
 
+    }
+
+    TextureSubresourceLayer TextureSubresourceLayer::Resolve(const TextureDescription& desc) const
+    {
+        check(desc.layers > 0);
+        TextureSubresourceLayer subresource;
+        subresource.mipLevel = __min(desc.mipLevels, mipLevel);
+        subresource.layer = __min(desc.layers-1, layer);
+        subresource.layerCount = __min(desc.layers - subresource.layer, layerCount);
+        return subresource;
     }
 }

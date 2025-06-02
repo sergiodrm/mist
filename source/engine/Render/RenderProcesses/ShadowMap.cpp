@@ -17,6 +17,7 @@
 #include "glm/ext/quaternion_geometric.hpp"
 #include "glm/ext/matrix_transform.hpp"
 #include "../CommandList.h"
+#include "RenderSystem/RenderSystem.h"
 
 #define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
 #define SHADOW_MAP_RT_LAYOUT IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
@@ -44,27 +45,9 @@ namespace Mist
 
 	void ShadowMapPipeline::Init(const RenderContext& renderContext, const RenderTarget* renderTarget)
 	{
-		tShaderProgramDescription shaderDesc;
-
-		// CreatePipeline
-		const VertexInputLayout inputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-
-		tShaderDynamicBufferDescription modelDynDesc;
-		modelDynDesc.Name = "u_model";
-		modelDynDesc.ElemCount = globals::MaxRenderObjects;
-		modelDynDesc.IsShared = true;
-
-		tShaderDynamicBufferDescription uboDynDesc;
-		uboDynDesc.Name = "u_ubo";
-		uboDynDesc.ElemCount = globals::MaxShadowMapAttachments;
-		uboDynDesc.IsShared = false;
-
-		shaderDesc.DynamicBuffers.push_back(uboDynDesc);
-		shaderDesc.DynamicBuffers.push_back(modelDynDesc);
-		shaderDesc.VertexShaderFile.Filepath = globals::DepthVertexShader;
-		shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-		shaderDesc.RenderTarget = renderTarget;
-		m_shader = ShaderProgram::Create(renderContext, shaderDesc);
+		rendersystem::ShaderBuildDescription shaderDesc;
+		shaderDesc.vsDesc.filePath = "shaders/depth.vert";
+		m_shader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 	}
 
 	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
@@ -163,15 +146,15 @@ namespace Mist
 
 	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
 	{
-		m_shader->SetDynamicBufferData(renderContext, "u_ubo", m_depthMVPCache, sizeof(glm::mat4), globals::MaxShadowMapAttachments);
+		//m_shader->SetDynamicBufferData(renderContext, "u_ubo", m_depthMVPCache, sizeof(glm::mat4), globals::MaxShadowMapAttachments);
 	}
 
 	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex)
 	{
 		check(lightIndex < globals::MaxShadowMapAttachments);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
-		m_shader->SetDynamicBufferOffset(context, "u_ubo", sizeof(glm::mat4), lightIndex);
-		scene->Draw(context, m_shader, 0, 0, 0, RenderFlags_ShadowMap | RenderFlags_NoTextures);
+		g_render->SetShaderProperty("u_ubo", &m_depthMVPCache[lightIndex], sizeof(glm::mat4));
+		scene->Draw(context, nullptr, 0, 0, 0, RenderFlags_ShadowMap | RenderFlags_NoTextures);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -299,19 +282,21 @@ namespace Mist
 
 	void ShadowMapProcess::Init(const RenderContext& context)
 	{
-		// RenderTarget description
-		RenderTargetDescription rtDesc;
-		rtDesc.SetDepthAttachment(SHADOW_MAP_RT_FORMAT, SHADOW_MAP_RT_LAYOUT, SAMPLE_COUNT_1_BIT, { .depthStencil = {.depth = 1.f} });
-		rtDesc.RenderArea.extent = { .width = context.Window->Width, .height = context.Window->Height };
-
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
 		{
-			rtDesc.ResourceName.Fmt("ShadowMap_RT_%d", i);
-			m_shadowMapTargetArray[i] = RenderTarget::Create(context, rtDesc);
+			render::TextureDescription texDesc;
+			texDesc.extent = { .width = context.Window->Width, .height = context.Window->Height, .depth = 1 };
+			texDesc.format = render::Format_D32_SFloat;
+			texDesc.isRenderTarget = true;
+			render::TextureHandle depthTex = g_device->CreateTexture(texDesc);
+
+			render::RenderTargetDescription rtDesc;
+			rtDesc.SetDepthStencilAttachment(depthTex);
+			m_shadowMapTargetArray[i] = g_device->CreateRenderTarget(rtDesc);
 		}
 
 		// Init shadow map pipeline when render target is created
-		m_shadowMapPipeline.Init(context, m_shadowMapTargetArray[0]);
+		m_shadowMapPipeline.Init(context, nullptr);
 	}
 
 	void ShadowMapProcess::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -321,7 +306,7 @@ namespace Mist
 	void ShadowMapProcess::Destroy(const RenderContext& renderContext)
 	{
 		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
-			RenderTarget::Destroy(renderContext, m_shadowMapTargetArray[j]);
+			m_shadowMapTargetArray[j] = nullptr;
 		m_shadowMapPipeline.Destroy(renderContext);
 	}
 
@@ -332,13 +317,13 @@ namespace Mist
 		// Update shadow map matrix
 		if (GUseCameraForShadowMapping)
 		{
-			m_shadowMapPipeline.SetDepthVP(0, renderFrameContext.CameraData->ViewProjection);
+			m_shadowMapPipeline.SetDepthVP(0, GetCameraData()->ViewProjection);
 		}
 		else
 		{
 			float shadowMapIndex = 0.f;
-			glm::mat4 invView = renderFrameContext.CameraData->InvView;
-			glm::mat4 cameraProj = renderFrameContext.CameraData->Projection;
+			glm::mat4 invView = GetCameraData()->InvView;
+			glm::mat4 cameraProj = GetCameraData()->Projection;
 
 			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
 			uint32_t count = scene.GetRenderObjectCount();
@@ -405,22 +390,16 @@ namespace Mist
 	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuShadowMapping);
-		CommandList* commandList = renderContext.CmdList;
-		commandList->BeginMarker("ShadowMapping");
-		GpuProf_Begin(renderContext, "Shadow mapping");
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);
-        GraphicsState state = {};
-		state.Program = m_shadowMapPipeline.GetShader();
+		g_render->SetShader(m_shadowMapPipeline.GetShader());
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-            state.Rt = m_shadowMapTargetArray[i];
-            commandList->SetGraphicsState(state);
+			g_render->SetRenderTarget(m_shadowMapTargetArray[i]);
 			if (i < m_lightCount)
 				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
 		}
-		GpuProf_End(renderContext);
-		commandList->EndMarker();
+		g_render->ClearState();
 	}
 
 	void ShadowMapProcess::ImGuiDraw()
@@ -458,7 +437,7 @@ namespace Mist
 		ImGui::End();
 	}
 
-	const RenderTarget* ShadowMapProcess::GetRenderTarget(uint32_t index) const
+	render::RenderTargetHandle ShadowMapProcess::GetRenderTarget(uint32_t index) const
 	{
 		check(index < globals::MaxShadowMapAttachments);
 		return m_shadowMapTargetArray[index];
@@ -475,7 +454,7 @@ namespace Mist
 		case DEBUG_SINGLE_RT:
 			{	
 				float f = 0.33f;
-				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, *m_shadowMapTargetArray[m_debugIndex]->GetDepthTexture());
+				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, m_shadowMapTargetArray[m_debugIndex]->m_description.depthStencilAttachment.texture);
 			}
 			break;
 		case DEBUG_ALL:
@@ -486,7 +465,7 @@ namespace Mist
 				glm::vec2 size = { screenSize.x * factor, screenSize.y * factor };
 				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 				{
-					DebugRender::DrawScreenQuad(pos, size, *m_shadowMapTargetArray[i]->GetDepthTexture());
+					DebugRender::DrawScreenQuad(pos, size, m_shadowMapTargetArray[i]->m_description.depthStencilAttachment.texture);
 					pos.y += size.y;
 				}
 			}

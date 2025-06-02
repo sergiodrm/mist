@@ -5,6 +5,9 @@
 #include "shaderc/shaderc.hpp"
 #include "Core/Logger.h"
 #include "Utils/TimeUtils.h"
+//#include <spirv-cross-main/spirv_glsl.hpp>
+#include <spirv_cross/spirv_glsl.hpp>
+
 
 #define SHADER_BINARY_FILE_DIRECTORY "shaderbin"
 #define SHADER_BINARY_FILE_EXTENSION ".mist.spv"
@@ -18,9 +21,6 @@
 #define shaderlog(fmt) DUMMY_MACRO
 #define shaderlogf(fmt, ...) DUMMY_MACRO
 #endif
-
-Mist::CIntVar CVar_ForceShaderRecompilation("r_forceShaderCompilation", 0);
-
 
 namespace render
 {
@@ -131,8 +131,33 @@ namespace render
 
         bool CheckShaderFileExtension(const char* filepath, ShaderType type)
         {
-            // TODO
-            return true;
+            bool res = false;
+            if (filepath && *filepath)
+            {
+                const char* desiredExt;
+                switch (type)
+                {
+                case ShaderType_Vertex: 
+                    desiredExt = ".vert";
+                    break;
+                case ShaderType_Fragment: 
+                    desiredExt = ".frag"; 
+                    break;
+                case ShaderType_Compute: 
+                    desiredExt = ".comp";
+                    break;
+                default:
+                    return res;
+                }
+                size_t filepathLen = strlen(filepath);
+                size_t desiredExtLen = strlen(desiredExt);
+                if (filepathLen > desiredExtLen)
+                {
+                    size_t ext = filepathLen - desiredExtLen;
+                    res = !strcmp(&filepath[ext], desiredExt);
+                }
+            }
+            return res;
         }
 
         bool ReadSpvBinaryFromFile(const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount)
@@ -229,14 +254,12 @@ namespace render
             Mist::cAssetPath assetPath(filepath);
             PROFILE_SCOPE_LOGF(ShouldRecompileShaderFile, "Build shader dependency (%s)", assetPath);
 
-            if (CVar_ForceShaderRecompilation.Get())
-                return true;
-
             return ContainsNewerFileInIncludes_Recursive(filepath, compileOptions);
         }
 
         CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions)
         {
+            PROFILE_SCOPE_LOGF(Compile, "Compile shader (%s)", filepath);
             char* source;
             size_t s;
             Mist::cAssetPath path(filepath);
@@ -248,21 +271,21 @@ namespace render
 
             options.SetIncluder(std::make_unique<ShaderIncluder>());
 
-#if 0
+#if 1
             if (additionalOptions)
             {
-                for (uint32_t i = 0; i < (size_t)additionalOptions->MacroDefinitionArray.size(); ++i)
+                for (uint32_t i = 0; i < (uint32_t)additionalOptions->macroDefinitionArray.size(); ++i)
                 {
-                    check(additionalOptions->MacroDefinitionArray[i].Macro[0]);
-                    if (additionalOptions->MacroDefinitionArray[i].Value[0])
-                        options.AddMacroDefinition(additionalOptions->MacroDefinitionArray[i].Macro.CStr(), additionalOptions->MacroDefinitionArray[i].Value.CStr());
+                    check(additionalOptions->macroDefinitionArray[i].macro[0]);
+                    if (additionalOptions->macroDefinitionArray[i].value[0])
+                        options.AddMacroDefinition(additionalOptions->macroDefinitionArray[i].macro.CStr(), additionalOptions->macroDefinitionArray[i].value.CStr());
                     else
-                        options.AddMacroDefinition(additionalOptions->MacroDefinitionArray[i].Macro.CStr());
+                        options.AddMacroDefinition(additionalOptions->macroDefinitionArray[i].macro.CStr());
                 }
-                if (additionalOptions->GenerateDebugInfo)
+                if (additionalOptions->generateDebugInfo)
                     options.SetGenerateDebugInfo();
-                if (*additionalOptions->EntryPointName)
-                    entryPoint = compileOptions->EntryPointName;
+                if (*additionalOptions->entryPoint)
+                    entryPoint = additionalOptions->entryPoint;
         }
             else
 #endif // 0
@@ -305,7 +328,7 @@ namespace render
             }
         }
 
-        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions)
+        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions, bool forceCompilation)
         {
             Mist::cAssetPath assetPath(filepath);
             PROFILE_SCOPE_LOGF(ProcessShaderFile, "Shader file process (%s)", assetPath);
@@ -322,7 +345,7 @@ namespace render
             check(CheckShaderFileExtension(assetPath, type));
 
             CompiledBinary bin;
-            if (!ShouldRecompileShaderFile(assetPath, additionalOptions))
+            if (!forceCompilation && !ShouldRecompileShaderFile(assetPath, additionalOptions))
             {
                 shaderlogf("Loading shader binary from compiled file: %s.spv\n", filepath);
                 check(ReadSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount));
@@ -330,7 +353,7 @@ namespace render
             else
             {
                 PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
-                if (CVar_ForceShaderRecompilation.Get())
+                if (forceCompilation)
                     logfwarn("Force shader recompilation: %s\n", assetPath);
                 else
                     logfwarn("Compiled binary not found or shader source is newer (%s)\n", assetPath);
@@ -366,6 +389,129 @@ namespace render
 
             shaderlogf("Shader compiled successfully (%s)\n", assetPath);
             return bin;
+        }
+
+        bool BuildShaderParams(const CompiledBinary& bin, ShaderType stage, ShaderReflectionProperties& outProperties)
+        {
+            auto processSpirvResource = [](ShaderReflectionProperties& properties, 
+                const spirv_cross::CompilerGLSL& compiler, 
+                const spirv_cross::Resource& resource, 
+                ShaderType stage, 
+                ResourceType resourceType)
+                {
+                    ShaderPropertyDescription bufferInfo;
+                    bufferInfo.binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+
+                    // spirv cross get naming heuristic for uniform buffers. 
+                    // (https://github.com/KhronosGroup/SPIRV-Cross/wiki/Reflection-API-user-guide#a-note-on-names)
+                    // case: layout (set, binding) uniform UBO {} u_ubo;
+                    // To get the name of the struct UBO use resource.name.c_str()
+                    // To get the name of the instance use compiler.get_name(resource.id)
+                    //bufferInfo.Name = resource.name.c_str();
+                    bufferInfo.name = compiler.get_name(resource.id);
+                    if (resourceType != ResourceType_TextureSRV && resourceType != ResourceType_TextureUAV)
+                    {
+                        const spirv_cross::SPIRType& bufferType = compiler.get_type(resource.base_type_id);
+                        bufferInfo.size = compiler.get_declared_struct_size(bufferType);
+                        bufferInfo.arrayCount = 1;
+                        check(bufferType.array.size() == 0);
+                    }
+                    else
+                    {
+                        const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
+                        bufferInfo.size = 0;
+                        bufferInfo.arrayCount = type.array.size() > 0 ? type.array[0] : 1;
+                    }
+                    bufferInfo.type = resourceType;
+                    bufferInfo.stage = stage;
+
+                    uint32_t setIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+                    ShaderPropertySetDescription* setDesc = nullptr;
+                    for (uint32_t i = 0; i < (uint32_t)properties.params.size(); ++i)
+                    {
+                        if (properties.params[i].setIndex == setIndex)
+                        {
+                            setDesc = &properties.params[i];
+                            break;
+                        }
+                    }
+                    if (!setDesc)
+                    {
+                        properties.params.push_back(ShaderPropertySetDescription());
+                        setDesc = &properties.params.back();
+                        setDesc->setIndex = setIndex;
+                    }
+
+                    check(setDesc && setDesc->setIndex == setIndex);
+                    if (setDesc->params.size() < bufferInfo.binding + 1)
+                        setDesc->params.resize(bufferInfo.binding + 1);
+                    setDesc->params[bufferInfo.binding] = bufferInfo;
+
+#ifdef MIST_SHADER_REFLECTION_LOG
+                    logfdebug("> %s [ShaderStage: %s; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", vkutils::GetVulkanDescriptorTypeName(descriptorType),
+                        vkutils::GetVulkanShaderStageName(shaderStage), bufferInfo.Name.c_str(), setIndex, bufferInfo.Binding, bufferInfo.Size, bufferInfo.ArrayCount);
+#endif // MIST_SHADER_REFLECTION_LOG
+
+                    return setIndex;
+                };
+
+            check(bin.binary && bin.binaryCount && "Invalid binary source.");
+            spirv_cross::CompilerGLSL compiler(bin.binary, bin.binaryCount);
+            spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+
+#ifdef MIST_SHADER_REFLECTION_LOG
+            logdebug("Processing shader reflection...\n");
+#endif // MIST_SHADER_REFLECTION_LOG
+
+
+            for (const spirv_cross::Resource& resource : resources.uniform_buffers)
+                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_ConstantBuffer);
+
+            for (const spirv_cross::Resource& resource : resources.storage_buffers)
+                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_BufferUAV);
+
+            for (const spirv_cross::Resource& resource : resources.sampled_images)
+                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_TextureSRV);
+
+            for (const spirv_cross::Resource& resource : resources.storage_images)
+                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_TextureUAV);
+
+            for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
+            {
+                check(!outProperties.pushConstantMap.contains(stage));
+                ShaderPushConstantDescription desc;
+                desc.name = resource.name.c_str();
+                desc.offset = compiler.get_decoration(resource.id, spv::DecorationOffset);
+                const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
+                desc.size = (uint32_t)compiler.get_declared_struct_size(type);
+                desc.stage = stage;
+                outProperties.pushConstantMap[stage] = desc;
+#ifdef MIST_SHADER_REFLECTION_LOG
+                logfdebug("> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
+                    vkutils::GetVulkanShaderStageName(shaderStage), info.Name.c_str(), info.Offset, info.Size);
+#endif // MIST_SHADER_REFLECTION_LOG
+
+            }
+
+            if (stage & ShaderType_Vertex)
+            {
+                for (const auto& resource : resources.stage_inputs)
+                {
+                    spirv_cross::SPIRType type = compiler.get_type(resource.type_id);
+
+                    VertexInputAttribute attribute;
+                    attribute.location = compiler.get_decoration(resource.id, spv::DecorationLocation);
+                    attribute.count = type.vecsize;
+                    attribute.size = type.width;
+                    logfinfo("location: %d; size: %d; count: %d;\n", attribute.location, attribute.size, attribute.count);
+                    outProperties.inputLayout.attributes.push_back(attribute);
+                }
+            }
+
+#ifdef MIST_SHADER_REFLECTION_LOG
+            logdebug("End shader reflection.\n");
+#endif // MIST_SHADER_REFLECTION_LOG
+            return true;
         }
     }
 }

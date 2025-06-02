@@ -35,18 +35,21 @@
 #include "Render/UI.h"
 
 
-#ifdef RENDER_BACKEND_TEST
 #include "RenderAPI/Device.h"
 #include "RenderAPI/ShaderCompiler.h"
 #include "RenderAPI/Utils.h"
 #include "RenderSystem/RenderSystem.h"
-#endif
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
 
 namespace Mist
 {
+	::render::Device* g_device = nullptr;
+	::rendersystem::RenderSystem* g_render = nullptr;
+
+	CameraData g_cameraData;
+
 	CBoolVar CVar_EnableValidationLayer("r_enableValidationLayer", true);
 	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
@@ -195,6 +198,11 @@ namespace Mist
 		}
 		return DefaultMaterial;
 	}
+
+	const CameraData* GetCameraData()
+	{
+		return &g_cameraData;
+	}
 	
 	bool VulkanRenderEngine::Init(const Window& window)
 	{
@@ -219,6 +227,9 @@ namespace Mist
 		windowInterface.window = &window;
 		m_renderSystem = _new rendersystem::RenderSystem();
 		m_renderSystem->Init(&windowInterface);
+
+		g_render = m_renderSystem;
+		g_device = m_renderSystem->GetDevice();
 #else
 		// Init vulkan context
 		check(InitVulkan());
@@ -265,7 +276,6 @@ namespace Mist
 		}
 
 		// Initialize render processes after instantiate render context
-		m_renderContext.Renderer = &m_renderer;
 		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
 		DebugRender::Init(m_renderContext);
 		ui::Init(m_renderContext, m_renderer.GetLDRTarget());
@@ -279,6 +289,9 @@ namespace Mist
 		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
 #endif
 
+		m_renderContext.Renderer = &m_renderer;
+		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
+		DebugRender::Init(m_renderContext);
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
 		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
@@ -291,10 +304,7 @@ namespace Mist
 		CPU_PROFILE_SCOPE(Process);
 
 #ifdef RENDER_BACKEND_TEST
-		m_renderSystem->BeginFrame();
-		ImGuiDraw();
-		m_renderSystem->Draw();
-		m_renderSystem->EndFrame();
+		Draw();
 #else
 		ui::Begin(m_renderContext);
 		{
@@ -313,6 +323,8 @@ namespace Mist
 		loginfo("Shutdown render engine.\n");
 
 #ifdef RENDER_BACKEND_TEST
+		g_device = nullptr;
+		g_render = nullptr;
 		m_renderSystem->Destroy();
 		delete m_renderSystem;
 #else
@@ -394,6 +406,7 @@ namespace Mist
 		m_cameraData.Projection = projection;
 		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.InvView;
 
+		g_cameraData = m_cameraData;
 #ifdef RENDER_BACKEND_TEST
 		m_renderSystem->SetViewProjection(view, projection);
 #endif
@@ -424,26 +437,34 @@ namespace Mist
 	void VulkanRenderEngine::ReloadShaders()
 	{
 		PROFILE_SCOPE_LOG(ReloadShaders, "reload shaders");
+#if 0
 		RenderContext_ForceFrameSync(m_renderContext);
 		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
 		{
 			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
+#endif // 0
+
 		logok("Shader reloaded.\n");
 	}
 
 	void VulkanRenderEngine::DumpShadersInfo()
 	{
+#if 0
 		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
 			m_shaderDb.GetShaderArray()[i]->DumpInfo();
+#endif // 0
+
 	}
 
 	void VulkanRenderEngine::BeginFrame()
 	{
 		CPU_PROFILE_SCOPE(BeginFrame);
-		// TODO descriptor allocators must be instanciated on each frame context.
-		m_renderContext.DescAllocator = &m_descriptorAllocators[m_renderContext.GetFrameIndex()];
-		RenderFrameContext& frameContext = GetFrameContext();
+		g_render->BeginFrame(); 
+#if 0
+
+			// TODO descriptor allocators must be instanciated on each frame context.
+			RenderFrameContext & frameContext = GetFrameContext();
 		frameContext.DescriptorAllocator = m_renderContext.DescAllocator;
 
 		frameContext.GlobalBuffer->SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
@@ -457,98 +478,35 @@ namespace Mist
 		//m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
 		m_renderer.UpdateRenderData(m_renderContext, frameContext);
 		m_gpuParticleSystem.UpdateBuffers(m_renderContext, frameContext);
+#endif // 0
+
 	}
 
 	void VulkanRenderEngine::Draw()
 	{
+#if 0
 		{
 			CPU_PROFILE_SCOPE(NextFrame);
 			RenderContext_NewFrame(m_renderContext);
 			GpuProf_Resolve(m_renderContext);
 			Profiling::AddGPUTime((float)(0.001 * GpuProf_GetGpuTime(m_renderContext, "GpuTime")));
 		}
-		RenderFrameContext& frameContext = GetFrameContext();
-		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 		m_renderContext.Queue->ProcessInFlightCommands();
+#endif // 0
+		RenderFrameContext& frameContext = GetFrameContext();
+		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 
-		BeginFrame();
-		{
-			CPU_PROFILE_SCOPE(AcquireImage);
-			// Acquire render image from swapchain
-			vkcheck(vkAcquireNextImageKHR(m_renderContext.Device, m_swapchain.GetSwapchainHandle(), 1000000000, frameContext.PresentSemaphore,
-				nullptr, &m_currentSwapchainIndex));
+		g_render->BeginFrame();
 
-			m_renderContext.Queue->AddWaitSemaphore(frameContext.PresentSemaphore, 0);
-			m_renderContext.Queue->AddSignalSemaphore(frameContext.RenderSemaphore, 0);
-		}
-		CommandList* commandList = m_renderContext.CmdList;
-		m_renderContext.CmdList->Begin();
-
-		CPU_PROFILE_SCOPE(Draw);
-		
-		// Graphics
-		CPU_PROFILE_SCOPE(CpuGraphics);
-		// Timestamp queries
-		GpuProf_Reset(m_renderContext);
-		GpuProf_Begin(m_renderContext, "GpuTime");
-
-		commandList->BeginMarker("Graphics");
-		GpuProf_Begin(m_renderContext, "Graphics_Renderer");
 		m_renderer.Draw(m_renderContext, frameContext);
-		GpuProf_End(m_renderContext);
-
-		commandList->BeginMarker("ComputeParticles");
 		m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
-		commandList->EndMarker();
-		commandList->BeginMarker("DrawParticles");
 		m_gpuParticleSystem.Draw(m_renderContext, frameContext);
-		commandList->EndMarker();
-		commandList->BeginMarker("Gol");
 		m_gol->Compute();
-		commandList->EndMarker();
 
 		DebugRender::Draw(m_renderContext);
-		ui::End(m_renderContext);
-
-		GpuProf_Begin(m_renderContext, "Graphics_ScreenDraw");
-        commandList->BeginMarker("ScreenDraw");
-		RenderTarget& rt = m_renderer.GetPresentRenderTarget(m_currentSwapchainIndex);
-		Renderer::tCopyParams copyParams;
-		copyParams.BlendState.Enabled = false;
-		copyParams.Src = &m_renderer.GetLDRTarget();
-		copyParams.Dst = &rt;
-		copyParams.Context = &m_renderContext;
-		m_renderer.CopyRenderTarget(copyParams);
-        commandList->EndMarker();
-		GpuProf_End(m_renderContext);
-
-		// End command buffers
-		GpuProf_End(m_renderContext);
-		commandList->End();
-		commandList->EndMarker();
-		frameContext.GraphicsTimestampQueryPool.EndFrame();
-
-		{
-			CPU_PROFILE_SCOPE(QueueSubmit);
-			CommandList* lists[] = { commandList };
-			frameContext.SubmissionId = CommandList::ExecuteCommandLists(lists, CountOf(lists));
-		}
-
-		{
-			CPU_PROFILE_SCOPE(Present);
-			// Present
-			VkPresentInfoKHR presentInfo = {};
-			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-			presentInfo.pNext = nullptr;
-			VkSwapchainKHR swapchain = m_swapchain.GetSwapchainHandle();
-			presentInfo.pSwapchains = &swapchain;
-			presentInfo.swapchainCount = 1;
-			presentInfo.pWaitSemaphores = &frameContext.RenderSemaphore;
-			presentInfo.waitSemaphoreCount = 1;
-			presentInfo.pImageIndices = &m_currentSwapchainIndex;
-			vkcheck(vkQueuePresentKHR(m_renderContext.GraphicsQueue, &presentInfo));
-		}
+		
+		g_render->EndFrame();
 	}
 
 	void VulkanRenderEngine::ImGuiDraw()
@@ -627,6 +585,7 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitVulkan()
 	{
+		return true;
 #if defined(RENDER_BACKEND_TEST) && 0
 		{
 			render::DeviceDescription devdesc;
@@ -1042,6 +1001,7 @@ namespace Mist
 
 	bool VulkanRenderEngine::InitPipeline()
 	{
+#if 0
 		for (size_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
@@ -1068,6 +1028,8 @@ namespace Mist
 			frameContext.GlobalBuffer->AllocUniform(m_renderContext, UNIFORM_ID_SCENE_ENV_DATA, sizeof(EnvironmentData));
 			frameContext.GlobalBuffer->AllocUniform(m_renderContext, UNIFORM_ID_TIME, sizeof(UBOTime));
 		}
+#endif // 0
+
 		return true;
 	}
 }

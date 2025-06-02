@@ -1,6 +1,12 @@
 #pragma once
 
 #include <cstdint>
+#include "RenderAPI/Device.h"
+
+namespace rendersystem
+{
+    class ShaderProgram;
+}
 
 namespace Mist
 {
@@ -54,6 +60,6 @@ namespace Mist
 		virtual void ImGuiDraw() {}
 		virtual void DebugDraw(const RenderContext& context) {}
 
-		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const = 0;
+		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index = 0) const = 0;
 	};
 }

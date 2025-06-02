@@ -15,6 +15,7 @@
 #include "Core/SystemMemory.h"
 #include "../CommandList.h"
 #include "../VulkanRenderEngine.h"
+#include "RenderSystem/RenderSystem.h"
 
 #define PARTICLE_COUNT 512 * 256
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
@@ -32,49 +33,41 @@ namespace Mist
 
 	void GPUParticleSystem::Init(const RenderContext& context)
 	{
+		uint32_t width = 1920;
+		uint32_t height = 1080;
 		// RenderTarget
 		{
-			tClearValue clearValue{ 0.f, 0.f, 0.f, 0.f };
-			RenderTargetDescription description;
-			description.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-			description.RenderArea.extent = { context.Window->Width, context.Window->Height };
-			description.RenderArea.offset = { 0,0 };
-			description.ResourceName = "GPUParticles_RT";
-			m_renderTarget = RenderTarget::Create(context, description);
+			render::TextureDescription texDesc;
+			texDesc.extent = { width, height, 1 };
+			texDesc.format = render::Format_R8G8B8A8_UNorm;
+			texDesc.isRenderTarget = true;
+			render::TextureHandle texture = g_device->CreateTexture(texDesc);
+
+			render::RenderTargetDescription rtDesc;
+			rtDesc.AddColorAttachment(texture);
+			m_renderTarget = g_device->CreateRenderTarget(rtDesc);
 		}
 
 		// Create shader
 		{
-			tShaderProgramDescription description{ .Type = tShaderType::Compute, .ComputeShaderFile = SHADER_FILEPATH("particles.comp") };
-			m_computeShader = ShaderProgram::Create(context, description);
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.csDesc.filePath = "shaders/particles.comp";
+			shaderDesc.type = rendersystem::ShaderProgram_Compute;
+			m_computeShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 		}
 		{
-			tShaderProgramDescription description;
-			description.VertexShaderFile.Filepath = SHADER_FILEPATH("particles.vert");
-			description.FragmentShaderFile.Filepath = SHADER_FILEPATH("particles.frag");
-			description.Topology = PRIMITIVE_TOPOLOGY_POINT_LIST;
-			description.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Float4 });
-			description.RenderTarget = m_renderTarget;
-			description.DepthStencilMode = DEPTH_STENCIL_NONE;
-			description.CullMode = CULL_MODE_NONE;
-			description.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
-			description.ColorAttachmentBlendingArray.resize(1);
-			description.ColorAttachmentBlendingArray[0].WriteMask = COLOR_COMPONENT_RGBA;
-			description.ColorAttachmentBlendingArray[0].Enabled = true;
-			description.ColorAttachmentBlendingArray[0].ColorOp = BLEND_OP_ADD;
-			description.ColorAttachmentBlendingArray[0].SrcColor= BLEND_FACTOR_SRC_ALPHA;
-			description.ColorAttachmentBlendingArray[0].DstColor= BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			description.ColorAttachmentBlendingArray[0].AlphaOp = BLEND_OP_ADD;
-			description.ColorAttachmentBlendingArray[0].SrcAlpha = BLEND_FACTOR_ONE;
-			description.ColorAttachmentBlendingArray[0].DstAlpha = BLEND_FACTOR_ZERO;
-			m_graphicsShader = ShaderProgram::Create(context, description);
+            rendersystem::ShaderBuildDescription shaderDesc;
+            shaderDesc.vsDesc.filePath = "shaders/particles.vert";
+            shaderDesc.fsDesc.filePath = "shaders/particles.frag";
+            m_graphicsShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 		}
 
-        BufferCreateInfo bufferInfo;
-        bufferInfo.Size = PARTICLE_STORAGE_BUFFER_SIZE;
-        bufferInfo.Usage = BUFFER_USAGE_STORAGE;
-        bufferInfo.Data = nullptr;
-        m_particlesBuffer.Init(context, bufferInfo);
+		render::BufferDescription bufferDesc;
+		bufferDesc.bufferUsage = render::BufferUsage_StorageBuffer | render::BufferUsage_VertexBuffer;
+		bufferDesc.memoryUsage = render::MemoryUsage_Gpu;
+		bufferDesc.size = PARTICLE_STORAGE_BUFFER_SIZE;
+		bufferDesc.debugName = "ParticlesBuffer";
+		m_particlesBuffer = g_device->CreateBuffer(bufferDesc);
 		/*m_particlesBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
 			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
 			| VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -85,12 +78,16 @@ namespace Mist
 		// Fill particles
 		ResetParticles(context);
 
+#if 0
 		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), &m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
 		m_circleGradientTexture->CreateView(context, tViewDescription());
+#endif // 0
+
 	}
 
 	void GPUParticleSystem::InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray)
 	{
+#if 0
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
 		{
 			frameContextArray[i].GlobalBuffer->AllocUniform(context, "GPUParticles", sizeof(ParameterUBO));
@@ -105,6 +102,7 @@ namespace Mist
 				.BindBuffer(1, &singleBufferInfo, 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
 				.Build(context, m_singleBufferDescriptorSet);
 		}
+#endif // 0
 	}
 
 	void GPUParticleSystem::UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext)
@@ -140,6 +138,7 @@ namespace Mist
 	void GPUParticleSystem::Dispatch(const RenderContext& context, uint32_t frameIndex)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDispatch);
+#if 0
 		CommandList* commandList = context.CmdList;
 
 		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
@@ -175,41 +174,24 @@ namespace Mist
 				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 1, &memoryBarrier, 0, nullptr);
 			}
 		}
+#endif // 0
+
 	}
 
 	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDraw);
-        CommandList* commandList = context.CmdList;
-
-		if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
-		{
-			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.GetBuffer().Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
-				0, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, context.ComputeQueueFamily, context.GraphicsQueueFamily);
-			vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0,
-				0, nullptr, 1, &barrier, 0, nullptr);
-		}
-
+        
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
-			GraphicsState state = {};
-			state.Rt = m_renderTarget;
-			state.Program = m_graphicsShader;
-            state.Vbo = m_particlesBuffer;
-			commandList->SetGraphicsState(state);
+			g_render->SetRenderTarget(m_renderTarget);
+			g_render->SetShader(m_graphicsShader);
+			g_render->SetVertexBuffer(m_particlesBuffer);
 			
-			m_graphicsShader->BindSampledTexture(context, "u_gradientTex", *m_circleGradientTexture);
-			commandList->BindProgramDescriptorSets();
-            commandList->Draw(m_particleCount, 1, 0, 0);
+			g_render->SetTextureSlot("u_gradientTex", m_circleGradientTexture);
+			g_render->Draw(m_particleCount);
 		}
-		if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
-		{
-			VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.GetBuffer().Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
-				VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, 0, context.GraphicsQueueFamily, context.ComputeQueueFamily);
-			vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-				0, nullptr, 1, &barrier, 0, nullptr);
-		}
-
+		
 		if (m_flags & GPU_PARTICLES_SHOW_RT)
 		{
 			float width = (float)context.Window->Width;
@@ -217,15 +199,14 @@ namespace Mist
 			float wprop = 0.f;
 			float hprop = 0.f;
 			DebugRender::DrawScreenQuad(glm::vec2{ width * wprop, height * hprop }, glm::vec2{ width * (1.f-wprop), height * (1.f-hprop)}, 
-				*m_renderTarget->GetTexture());
+				*m_renderTarget->m_description.colorAttachments[0].texture);
 		}
 	}
 
 	void GPUParticleSystem::Destroy(const RenderContext& context)
 	{
-		m_particlesBuffer.Destroy(context);
-		RenderTarget::Destroy(context, m_renderTarget);
 		m_renderTarget = nullptr;
+		m_particlesBuffer = nullptr;
 	}
 
 	void GPUParticleSystem::ImGuiDraw()
@@ -262,29 +243,10 @@ namespace Mist
 			particles[i].Velocity = glm::normalize(glm::vec2(rndDist(rndEng), rndDist(rndEng))) * rndDist(rndEng) * 0.025f;
 			particles[i].Color = { rndDist(rndEng), rndDist(rndEng) , rndDist(rndEng) , 1.f };
 		}
-
-		// Create staging buffer to copy from system memory to host memory
-		AllocatedBuffer stageBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, EMemUsage::MEMORY_USAGE_CPU);
-		Memory::MemCopy(context.Allocator, stageBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
-
-		utils::CmdSubmitTransfer(*const_cast<RenderContext*>(&context), [&](CommandList* commandList)
-			{
-				//VkBufferCopy bufferCopy{ 0, 0, 0 };
-				//bufferCopy.size = PARTICLE_STORAGE_BUFFER_SIZE;
-				//vkCmdCopyBuffer(context.TransferContext.CommandBuffer, stageBuffer.Buffer, m_particlesBuffer.GetBuffer().Buffer, 1, &bufferCopy);
-				commandList->CopyBuffer(stageBuffer, m_particlesBuffer.GetBuffer(), PARTICLE_STORAGE_BUFFER_SIZE);
-
-				if (context.ComputeQueueFamily != context.GraphicsQueueFamily)
-				{
-					VkBufferMemoryBarrier barrier = vkinit::BufferMemoryBarrier(m_particlesBuffer.GetBuffer().Buffer, PARTICLE_STORAGE_BUFFER_SIZE, 0,
-						VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, 0, context.GraphicsQueueFamily, context.ComputeQueueFamily);
-					vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-						0, 0, nullptr, 1, &barrier, 0, nullptr);
-				}
-			});
 		
-		// Destroy stage buffer
-		MemFreeBuffer(context.Allocator, stageBuffer);
+		render::utils::UploadContext upload(g_device);
+		upload.WriteBuffer(m_particlesBuffer, particles, PARTICLE_STORAGE_BUFFER_SIZE);
+		upload.Submit();
 
 		delete[] particles;
 	}
@@ -300,56 +262,63 @@ namespace Mist
 
     void Gol::Init(uint32_t width, uint32_t height)
     {
-        const RenderContext& context = *m_context;
+#if 0
+		const RenderContext& context = *m_context;
 
-        tShaderProgramDescription shaderDesc{ .Type = tShaderType::Compute };
-        shaderDesc.ComputeShaderFile.Filepath = SHADER_FILEPATH("gol.comp");
-        shaderDesc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "GOL_INVOCATIONS_X", GOL_INVOCATIONS_X });
-        shaderDesc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "GOL_INVOCATIONS_Y", GOL_INVOCATIONS_Y });
-        m_computeShader = ShaderProgram::Create(context, shaderDesc);
+		tShaderProgramDescription shaderDesc{ .Type = tShaderType::Compute };
+		shaderDesc.ComputeShaderFile.Filepath = SHADER_FILEPATH("gol.comp");
+		shaderDesc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "GOL_INVOCATIONS_X", GOL_INVOCATIONS_X });
+		shaderDesc.ComputeShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "GOL_INVOCATIONS_Y", GOL_INVOCATIONS_Y });
+		m_computeShader = ShaderProgram::Create(context, shaderDesc);
 
 		RenderTargetDescription desc;
-		desc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {0.f, 0.f, 0.f, 0.f});
-		desc.RenderArea.extent = {context.Window->Width, context.Window->Height};
-		desc.RenderArea.offset = {0,0};
-        desc.ResourceName = "GOL_RT";
-        m_rt = RenderTarget::Create(context, desc);
+		desc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 0.f });
+		desc.RenderArea.extent = { context.Window->Width, context.Window->Height };
+		desc.RenderArea.offset = { 0,0 };
+		desc.ResourceName = "GOL_RT";
+		m_rt = RenderTarget::Create(context, desc);
 
 		tShaderProgramDescription drawDesc;
-        drawDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-        drawDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("gol.frag");
+		drawDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
+		drawDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("gol.frag");
 		drawDesc.RenderTarget = m_rt;
-        drawDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-        m_drawShader = ShaderProgram::Create(context, drawDesc);
+		drawDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+		m_drawShader = ShaderProgram::Create(context, drawDesc);
 
 
-        m_counter = 0;
-        m_period = 30;
+		m_counter = 0;
+		m_period = 30;
 		m_drawScale = 0.75f;
-        m_paused = false;
-        m_width = width;
-        m_height = height;
+		m_paused = false;
+		m_width = width;
+		m_height = height;
 		m_modifiedWidth = m_width;
-        m_modifiedHeight = m_height;
+		m_modifiedHeight = m_height;
 		m_dirtyState = false;
 
 		InitBuffers(m_width, m_height);
 		CreateDescriptorBuffers();
-        Reset();
+		Reset();
+#endif // 0
+
     }
 
     void Gol::Destroy()
     {
-        const RenderContext& context = *m_context;
+#if 0
+		const RenderContext& context = *m_context;
 		for (uint32_t i = 0; i < CountOf(m_buffers); ++i)
 			m_buffers[i].Destroy(context);
 		RenderTarget::Destroy(context, m_rt);
 		m_rt = nullptr;
+#endif // 0
+
     }
 
     void Gol::Compute()
     {
-        const RenderContext& context = *m_context;
+#if 0
+		const RenderContext& context = *m_context;
 
 		if (CVar_ComputeGol.Get())
 		{
@@ -392,9 +361,9 @@ namespace Mist
 
 		if (CVar_ShowGol.Get())
 		{
-            CommandList* commandList = context.CmdList;
-            uint32_t bindingIndex = limits_cast<uint32_t>(m_counter);
-			commandList->SetGraphicsState({.Program = m_drawShader, .Rt = m_rt});
+			CommandList* commandList = context.CmdList;
+			uint32_t bindingIndex = limits_cast<uint32_t>(m_counter);
+			commandList->SetGraphicsState({ .Program = m_drawShader, .Rt = m_rt });
 
 			commandList->BindDescriptorSets(&m_drawBinding[bindingIndex], 1, 1);
 
@@ -405,7 +374,7 @@ namespace Mist
 				glm::vec2 resolution;
 				float gridSize = 1.f;
 				glm::vec3 padding;
-			} drawParams{ m_width, m_height, {m_rt->GetWidth(), m_rt->GetHeight()}};
+			} drawParams{ m_width, m_height, {m_rt->GetWidth(), m_rt->GetHeight()} };
 			m_drawShader->SetBufferData(context, "u_params", &drawParams, sizeof(drawParams));
 			commandList->BindProgramDescriptorSets();
 			CmdDrawFullscreenQuad(commandList);
@@ -413,110 +382,124 @@ namespace Mist
 
 			DebugRender::DrawScreenQuad({ 0.f, 0.f }, drawParams.resolution * m_drawScale, *m_rt->GetTexture());
 		}
+#endif // 0
+
     }
 
 	void Gol::ImGuiDraw()
 	{
+#if 0
 		if (!CVar_ShowGol.Get())
 			return;
 
-        ImGui::Begin("GOL");
+		ImGui::Begin("GOL");
 		ImGui::SeparatorText("Info");
 		if (m_dirtyState)
 			ImGui::Text("Cells: %d (%d x %d) | Pending to reload", m_width * m_height, m_width, m_height);
 		else
 			ImGui::Text("Cells: %d (%d x %d)", m_width * m_height, m_width, m_height);
-        ImGui::Text("Total size: %4.3f KB", float(m_width * m_height * sizeof(int)) / 1024.f);
+		ImGui::Text("Total size: %4.3f KB", float(m_width * m_height * sizeof(int)) / 1024.f);
 		uint32_t cursorPos[2];
-        GetMousePosition(&cursorPos[0], &cursorPos[1]);
-        glm::vec2 cursorTexCoords = CalculateTexCoordsFromPixel(cursorPos[0], cursorPos[1]);
-        ImGui::Text("Cursor tex coords: %.3f, %.3f", cursorTexCoords[0], cursorTexCoords.y);
+		GetMousePosition(&cursorPos[0], &cursorPos[1]);
+		glm::vec2 cursorTexCoords = CalculateTexCoordsFromPixel(cursorPos[0], cursorPos[1]);
+		ImGui::Text("Cursor tex coords: %.3f, %.3f", cursorTexCoords[0], cursorTexCoords.y);
 		ImGui::SeparatorText("Controls");
 		ImGui::DragFloat("Draw scale", &m_drawScale, 0.05f, 0.f, 1.f);
 		ImGui::Checkbox("Paused", &m_paused);
-        ImGui::DragInt("Frame period", (int*)&m_period, 1.f, 1, 1000);
+		ImGui::DragInt("Frame period", (int*)&m_period, 1.f, 1, 1000);
 		if (ImGui::Button("Reset grid"))
 			Reset();
-        int dims[] = { m_modifiedWidth, m_modifiedHeight };
+		int dims[] = { m_modifiedWidth, m_modifiedHeight };
 		if (ImGui::DragInt2("Dimensions", dims, 1.f, 0, 2048))
 		{
 			m_modifiedWidth = dims[0];
-            m_modifiedHeight = dims[1];
+			m_modifiedHeight = dims[1];
 			m_dirtyState = true;
 		}
 		if (m_dirtyState && ImGui::Button("Apply changes"))
 		{
-            m_width = m_modifiedWidth;
+			m_width = m_modifiedWidth;
 			m_height = m_modifiedHeight;
 			InitBuffers(m_width, m_height);
 			CreateDescriptorBuffers();
 			Reset();
 			m_dirtyState = false;
 		}
-        ImGui::End();
+		ImGui::End();
+#endif // 0
+
 	}
 
 	void Gol::Reset()
 	{
+#if 0
 		RenderContext_ForceFrameSync(*const_cast<RenderContext*>(m_context));
-        std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
-        std::default_random_engine generator;
+		std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
+		std::default_random_engine generator;
 		generator.seed(tApplication::GetFrame());
-        int* data = _new int[m_width * m_height];
-        for (uint32_t i = 0; i < m_width * m_height; ++i)
-            data[i] = randomFloat(generator) > 0.5f ? 1 : 0;
+		int* data = _new int[m_width * m_height];
+		for (uint32_t i = 0; i < m_width * m_height; ++i)
+			data[i] = randomFloat(generator) > 0.5f ? 1 : 0;
 
 		GPUBuffer::SubmitBufferToGpu(m_buffers[0], data, m_width * m_height * sizeof(int));
 		GPUBuffer::SubmitBufferToGpu(m_buffers[1], data, m_width * m_height * sizeof(int));
 
-        delete[] data;
+		delete[] data;
+#endif // 0
+
 	}
 
 	void Gol::InitBuffers(uint32_t width, uint32_t height)
 	{
+#if 0
 		RenderContext_ForceFrameSync(*const_cast<RenderContext*>(m_context));
-        const uint32_t bufferSize = width * height * sizeof(int); // 4 byte per cell
-        BufferCreateInfo info;
-        info.Data = nullptr;
-        info.Size = bufferSize;
-        info.Usage = BUFFER_USAGE_STORAGE | BUFFER_USAGE_VERTEX;
+		const uint32_t bufferSize = width * height * sizeof(int); // 4 byte per cell
+		BufferCreateInfo info;
+		info.Data = nullptr;
+		info.Size = bufferSize;
+		info.Usage = BUFFER_USAGE_STORAGE | BUFFER_USAGE_VERTEX;
 		for (uint32_t i = 0; i < CountOf(m_buffers); ++i)
 		{
 			if (m_buffers[i].IsAllocated())
-                m_buffers[i].Destroy(*m_context);
-            m_buffers[i].Init(*m_context, info);
+				m_buffers[i].Destroy(*m_context);
+			m_buffers[i].Init(*m_context, info);
 		}
+#endif // 0
+
 	}
 
 	void Gol::CreateDescriptorBuffers()
 	{
-        const RenderContext& context = *m_context;
-        const uint32_t bufferSize = m_width * m_height * sizeof(int);
-        VkDescriptorBufferInfo bufferInfo[2];
-        bufferInfo[0].buffer = m_buffers[0].GetBuffer().Buffer;
-        bufferInfo[0].offset = 0;
-        bufferInfo[0].range = bufferSize;
-        bufferInfo[1].buffer = m_buffers[1].GetBuffer().Buffer;
-        bufferInfo[1].offset = 0;
-        bufferInfo[1].range = bufferSize;
+#if 0
+		const RenderContext& context = *m_context;
+		const uint32_t bufferSize = m_width * m_height * sizeof(int);
+		VkDescriptorBufferInfo bufferInfo[2];
+		bufferInfo[0].buffer = m_buffers[0].GetBuffer().Buffer;
+		bufferInfo[0].offset = 0;
+		bufferInfo[0].range = bufferSize;
+		bufferInfo[1].buffer = m_buffers[1].GetBuffer().Buffer;
+		bufferInfo[1].offset = 0;
+		bufferInfo[1].range = bufferSize;
 
 		// Compute bindings
-        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-            .BindBuffer(0, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-            .BindBuffer(1, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-            .Build(context, m_bufferBinding[0]);
-        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-            .BindBuffer(0, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-            .BindBuffer(1, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
-            .Build(context, m_bufferBinding[1]);
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindBuffer(0, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.BindBuffer(1, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.Build(context, m_bufferBinding[0]);
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindBuffer(0, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.BindBuffer(1, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT)
+			.Build(context, m_bufferBinding[1]);
 
 		// Graphics bindings
-        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-            .BindBuffer(0, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .Build(context, m_drawBinding[0]);
-        DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
-            .BindBuffer(0, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
-            .Build(context, m_drawBinding[1]);
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindBuffer(0, &bufferInfo[0], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, m_drawBinding[0]);
+		DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
+			.BindBuffer(0, &bufferInfo[1], 1, DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT)
+			.Build(context, m_drawBinding[1]);
+#endif // 0
+
 	}
 
 	glm::vec2 Gol::CalculateTexCoordsFromPixel(uint32_t x, uint32_t y) const

@@ -43,7 +43,7 @@ namespace Mist
         VkCommandBuffer CmdBuffer;
         VkCommandPool Pool;
         EQueueType Type;
-        uint32_t SubmissionId;
+        uint64_t SubmissionId;
 
         void Begin();
         void End();

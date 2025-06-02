@@ -10,6 +10,7 @@
 #include "Render/Model.h"
 #include "../CommandList.h"
 
+#include "RenderSystem/RenderSystem.h"
 
 
 
@@ -21,25 +22,34 @@ namespace Mist
 	{
 		check(g_gbuffer == nullptr);
 		g_gbuffer = this;
+		uint32_t width = 1920;
+		uint32_t height = 1080;
 
-		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
-		RenderTargetDescription description;
-		description.AddColorAttachment(GetGBufferFormat(RT_POSITION), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GetGBufferFormat(RT_NORMAL), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-		description.AddColorAttachment(GetGBufferFormat(RT_ALBEDO), IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-		description.SetDepthAttachment(GetGBufferFormat(RT_DEPTH_STENCIL), IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {});
-		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
-		description.RenderArea.offset = { .x = 0, .y = 0 };
-		description.ResourceName = "Gbuffer_RT";
-		m_renderTarget = RenderTarget::Create(renderContext, description);
+		render::TextureHandle textures[RT_COUNT];
+		render::RenderTargetDescription rtDesc;
+		for (uint32_t i = 0; i < RT_COUNT; ++i)
+		{
+			render::TextureDescription texDesc;
+			texDesc.format = GetGBufferFormat((EGBufferTarget)i);
+			texDesc.extent = { width, height, 1 };
+			texDesc.isRenderTarget = true;
+			textures[i] = g_device->CreateTexture(texDesc);
+
+			if (render::utils::IsDepthStencilFormat(texDesc.format))
+				rtDesc.SetDepthStencilAttachment(textures[i]);
+			else
+				rtDesc.AddColorAttachment(textures[i]);
+		}
+		m_renderTarget = g_device->CreateRenderTarget(rtDesc);
 		InitPipeline(renderContext);
 	}
 
 	void GBuffer::Destroy(const RenderContext& renderContext)
 	{
 		check(g_gbuffer == this);
-		RenderTarget::Destroy(renderContext, m_renderTarget);
+		//RenderTarget::Destroy(renderContext, m_renderTarget);
 
+		m_renderTarget = nullptr;
 		g_gbuffer = nullptr;
 	}
 
@@ -56,24 +66,16 @@ namespace Mist
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
-        CommandList* commandList = renderContext.CmdList;
-
-		// MRT
-        commandList->BeginMarker("GBuffer_MRT");
-		GraphicsState state{ .Rt = m_renderTarget };
-		if (CVar_GBufferDraw.Get())
-			state.Program = m_gbufferShader;
-		commandList->SetGraphicsState(state);
-		commandList->ClearDepthStencil();
+		g_render->SetRenderTarget(m_renderTarget);
 		if (CVar_GBufferDraw.Get())
 		{
-			state.Program->SetBufferData(renderContext, "u_camera", frameContext.CameraData, sizeof(*frameContext.CameraData));
-			frameContext.Scene->Draw(renderContext, state.Program, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
+			g_render->SetShader(m_gbufferShader);
+			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+			frameContext.Scene->Draw(renderContext, nullptr, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
 		}
 		else
 			frameContext.Scene->RenderPipelineDraw(renderContext, RenderFlags_Fixed);
-		commandList->ClearState();
-		commandList->EndMarker();
+		g_render->ClearState();
 	}
 
 	void GBuffer::ImGuiDraw()
@@ -96,12 +98,12 @@ namespace Mist
 		ImGui::End();
 	}
 
-	const RenderTarget* GBuffer::GetRenderTarget(uint32_t index) const
+	render::RenderTargetHandle GBuffer::GetRenderTarget(uint32_t index) const
 	{
 		return m_renderTarget;
 	}
 
-	const RenderTarget* GBuffer::GetGBuffer()
+	render::RenderTargetHandle GBuffer::GetGBuffer()
 	{
 		check(g_gbuffer);
 		return g_gbuffer->GetRenderTarget();
@@ -128,22 +130,22 @@ namespace Mist
 			static_assert(RT_COUNT > 0);
 			for (uint32_t i = RT_POSITION; i < RT_COUNT; ++i)
 			{
-				DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(i));
+				DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[i].texture);
 				pos.y += ydiff;
 			}
 		}
 			break;
 		case DEBUG_POSITION:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(RT_POSITION));
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[RT_POSITION].texture);
 			break;
 		case DEBUG_NORMAL:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(RT_NORMAL));
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[RT_NORMAL].texture);
 			break;
 		case DEBUG_ALBEDO:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetTexture(RT_ALBEDO));
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[RT_ALBEDO].texture);
 			break;
 		case DEBUG_DEPTH:
-			DebugRender::DrawScreenQuad(pos, size, *m_renderTarget->GetDepthTexture());
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.depthStencilAttachment.texture);
 			break;
 		default:
 			break;
@@ -153,24 +155,10 @@ namespace Mist
 	void GBuffer::InitPipeline(const RenderContext& renderContext)
 	{
 		{
-			// MRT pipeline
-			tShaderProgramDescription shaderDesc;
-
-			tShaderDynamicBufferDescription modelDynDesc;
-			modelDynDesc.Name = "u_model";
-			modelDynDesc.ElemCount = globals::MaxRenderObjects;
-			modelDynDesc.IsShared = true;
-
-			tShaderDynamicBufferDescription materialDynDesc = modelDynDesc;
-			materialDynDesc.Name = "u_material";
-			materialDynDesc.ElemCount = globals::MaxMaterials;
-			materialDynDesc.IsShared = true;
-
-			shaderDesc.DynamicBuffers.push_back(modelDynDesc);
-			shaderDesc.DynamicBuffers.push_back(materialDynDesc);
-			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("mrt.vert");
-			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("mrt.frag");
-#define DECLARE_MACRO_ENUM(_flag) shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({#_flag, _flag})
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.vsDesc.filePath = "shaders/mrt.vert";
+			shaderDesc.fsDesc.filePath = "shaders/mrt.frag";
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
@@ -189,31 +177,19 @@ namespace Mist
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
 			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-
-			shaderDesc.RenderTarget = m_renderTarget;
-			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
-			shaderDesc.FrontStencil.CompareMask = 0x1;
-			shaderDesc.FrontStencil.Reference = 0x1;
-			shaderDesc.FrontStencil.WriteMask = 0x1;
-			shaderDesc.FrontStencil.CompareOp = COMPARE_OP_ALWAYS;
-			shaderDesc.FrontStencil.FailOp = STENCIL_OP_REPLACE;
-			shaderDesc.FrontStencil.PassOp = STENCIL_OP_REPLACE;
-			shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_REPLACE;
-			shaderDesc.BackStencil = shaderDesc.FrontStencil;
-			m_gbufferShader = ShaderProgram::Create(renderContext, shaderDesc);
+			m_gbufferShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 		}
 	}
 
-	EFormat GBuffer::GetGBufferFormat(EGBufferTarget target)
+	render::Format GBuffer::GetGBufferFormat(EGBufferTarget target)
 	{
 		switch (target)
 		{
 		case RT_POSITION:
-		case RT_NORMAL: return FORMAT_R32G32B32A32_SFLOAT;
-		case RT_ALBEDO: return FORMAT_R8G8B8A8_UNORM;
-		case RT_DEPTH_STENCIL: return FORMAT_D24_UNORM_S8_UINT;
+		case RT_NORMAL: return render::Format_R32G32B32A32_SFloat;
+		case RT_ALBEDO: return render::Format_R8G8B8A8_UNorm;
+		case RT_DEPTH_STENCIL: return render::Format_D24_UNorm_S8_UInt;
 		}
-		return FORMAT_UNDEFINED;
+		return render::Format_Undefined;
 	}
 }

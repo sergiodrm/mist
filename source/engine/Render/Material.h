@@ -5,6 +5,13 @@
 #include "RenderResource.h"
 #include <glm/glm.hpp>
 
+#include "RenderAPI/Device.h"
+
+namespace rendersystem
+{
+	class ShaderProgram;
+}
+
 namespace Mist
 {
 	class ShaderProgram;
@@ -59,15 +66,18 @@ namespace Mist
 		void SetupDescriptors(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 
-		void BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot) const;
+		void BindTextures(uint32_t slot) const;
 		sMaterialRenderData GetRenderData() const;
 
 		ShaderProgram* m_shader;
 		// Material flags
 		tMaterialFlags m_flags;
 		// Texture maps
-		cTexture* m_textures[MATERIAL_TEXTURE_COUNT];
+		//cTexture* m_textures[MATERIAL_TEXTURE_COUNT];
 		VkDescriptorSet m_textureSet;
+		render::TextureHandle m_textures[MATERIAL_TEXTURE_COUNT];
+		render::SamplerHandle m_samplers[MATERIAL_TEXTURE_COUNT];
+		rendersystem::ShaderProgram* m_shaderProgram;
 
 		// Emissive
 		glm::vec3 m_emissiveFactor;

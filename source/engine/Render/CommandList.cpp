@@ -481,7 +481,7 @@ namespace Mist
         // Bind program
         if (state.Program && state.Program != m_graphicsState.Program)
         {
-            state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
+            //state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
         }
 
         // Bind vertex buffer
@@ -567,7 +567,7 @@ namespace Mist
             ClearState();
         if (state.Program != m_computeState.Program)
         {
-            state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
+            //state.Program->UseProgram(*m_context, m_currentCmd->CmdBuffer);
         }
         m_computeState = state;
         m_state = STATE_COMPUTE;
@@ -625,7 +625,7 @@ namespace Mist
         if (program)
         {
             check(IsRecording());
-            program->BindDescriptorSets(m_currentCmd->CmdBuffer, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
+            //program->BindDescriptorSets(m_currentCmd->CmdBuffer, setArray, setCount, firstSet, dynamicOffsetArray, dynamicOffsetCount);
         }
     }
 
@@ -635,7 +635,7 @@ namespace Mist
         if (program)
         {
             check(IsRecording());
-            program->FlushDescriptors(*m_context);
+            //program->FlushDescriptors(*m_context);
         }
     }
 

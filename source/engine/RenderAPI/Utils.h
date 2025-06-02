@@ -9,6 +9,7 @@
 namespace render
 {
     struct TextureSubresourceRange;
+    struct TextureSubresourceLayer;
     struct TextureBarrier;
     struct TextureDescription;
     struct BufferDescription;
@@ -46,6 +47,7 @@ namespace render
         bool IsStencilFormat(Format format);
         bool IsDepthStencilFormat(Format format);
         VkImageSubresourceRange ConvertImageSubresourceRange(const TextureSubresourceRange& range, Format format);
+        VkImageSubresourceLayers ConvertImageSubresourceLayer(const TextureSubresourceLayer& layer, Format format);
         VkFilter ConvertFilter(Filter filter);
         VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode mode);
         VkShaderStageFlags ConvertShaderStage(ShaderType type);

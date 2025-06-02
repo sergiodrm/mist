@@ -2,6 +2,7 @@
 
 #include "Core/Types.h"
 #include "Types.h"
+#include "Device.h"
 
 namespace render
 {
@@ -44,6 +45,14 @@ namespace render
                 macro.Set(_macro);
                 value.Set(std::to_string(_value).c_str());
             }
+
+            inline bool operator ==(const CompileMacroDefinition& other) const
+            {
+                return macro == other.macro
+                    && value == other.value;
+            }
+
+            inline bool operator!=(const CompileMacroDefinition& other) const { return !(*this == other); }
         };
 
         struct CompilationOptions
@@ -55,11 +64,81 @@ namespace render
             CompilationOptions()
                 : generateDebugInfo(true), entryPoint{"main"}
             { }
+
+            void PushMacroDefinition(const char* macro)
+            {
+                macroDefinitionArray.push_back(CompileMacroDefinition(macro));
+            }
+            void PushMacroDefinition(const char* macro, const char* value)
+            {
+                macroDefinitionArray.push_back(CompileMacroDefinition(macro, value));
+            }
+            void PushMacroDefinition(const char* macro, int value)
+            {
+                macroDefinitionArray.push_back(CompileMacroDefinition(macro, value));
+            }
+            void PushMacroDefinition(const char* macro, float value)
+            {
+                macroDefinitionArray.push_back(CompileMacroDefinition(macro, value));
+            }
+
+            inline bool operator ==(const CompilationOptions& other) const
+            {
+                return !strcmp(entryPoint, other.entryPoint)
+                    && render::utils::EqualArrays(macroDefinitionArray.data(), (uint32_t)macroDefinitionArray.size(),
+                        other.macroDefinitionArray.data(), (uint32_t)other.macroDefinitionArray.size());
+            }
+
+            inline bool operator!=(const CompilationOptions& other) const { return !(*this == other); }
+        };
+
+        struct VertexInputAttribute
+        {
+            size_t size = 0;
+            size_t count = 0;
+            size_t location = 0;
+        };
+
+        struct VertexInputLayout
+        {
+            Mist::tDynArray<VertexInputAttribute> attributes;
+        };
+
+        struct ShaderPropertyDescription
+        {
+            ResourceType type = ResourceType_None;
+            uint64_t size = 0;
+            uint32_t binding = 0;
+            uint32_t arrayCount = 0;
+            ShaderType stage = ShaderType_None;
+            std::string name;
+        };
+
+        struct ShaderPropertySetDescription
+        {
+            Mist::tDynArray<ShaderPropertyDescription> params;
+            uint32_t setIndex = 0;
+        };
+
+        struct ShaderPushConstantDescription
+        {
+            std::string name;
+            uint32_t offset = 0;
+            uint32_t size = 0;
+            ShaderType stage = ShaderType_None;
+        };
+
+        struct ShaderReflectionProperties
+        {
+            Mist::tDynArray<ShaderPropertySetDescription> params;
+            Mist::tMap<ShaderType, ShaderPushConstantDescription> pushConstantMap;
+            VertexInputLayout inputLayout;
         };
 
         CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions = nullptr);
         void FreeBinary(CompiledBinary& binary);
 
-        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions = nullptr);
+        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions = nullptr, bool forceCompilation = false);
+        bool BuildShaderParams(const CompiledBinary& bin, ShaderType type, ShaderReflectionProperties& outProperties);
     }
 }

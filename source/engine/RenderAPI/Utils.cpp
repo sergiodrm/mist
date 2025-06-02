@@ -34,6 +34,7 @@ namespace render
                 state.stageFlags = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
                 break;
             case ImageLayout_DepthStencilAttachment:
+            case ImageLayout_DepthAttachment:
                 state.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
                 state.accessFlags = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 state.stageFlags = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
@@ -172,6 +173,7 @@ namespace render
             case ResourceType_ConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             case ResourceType_VolatileConstantBuffer: return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
             case ResourceType_BufferUAV: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            case ResourceType_DynamicBufferUAV: return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
             case ResourceType_MaxEnum:
             case ResourceType_None: return VK_DESCRIPTOR_TYPE_MAX_ENUM;
             }
@@ -883,6 +885,16 @@ namespace render
             subresourceRange.baseArrayLayer = range.baseLayer;
             subresourceRange.layerCount = range.countLayers == TextureSubresourceRange::AllLayers ? VK_REMAINING_ARRAY_LAYERS : range.countLayers;
             return subresourceRange;
+        }
+
+        VkImageSubresourceLayers ConvertImageSubresourceLayer(const TextureSubresourceLayer& layer, Format format)
+        {
+            VkImageSubresourceLayers ret;
+            ret.aspectMask = ConvertImageAspectFlags(format);
+            ret.mipLevel = layer.mipLevel;
+            ret.baseArrayLayer = layer.layer;
+            ret.layerCount = layer.layerCount;
+            return ret;
         }
 
         VkFilter ConvertFilter(Filter filter)

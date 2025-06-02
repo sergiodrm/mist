@@ -9,6 +9,8 @@
 #include "Core/Logger.h"
 #include "CommandList.h"
 
+#include "RenderSystem/RenderSystem.h"
+
 namespace Mist
 {
     const char* GetMaterialTextureStr(eMaterialTexture type)
@@ -105,7 +107,7 @@ namespace Mist
             desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "MAX_SHADOW_MAPS", MAX_SHADOW_MAPS_STR });
 
         m_shader = ShaderProgram::Create(context, desc); 
-#else
+#elif 0
         tShaderProgramDescription shaderDesc;
 
         tShaderDynamicBufferDescription modelDynDesc;
@@ -154,13 +156,17 @@ namespace Mist
         shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_REPLACE;
         shaderDesc.BackStencil = shaderDesc.FrontStencil;
         m_shader = ShaderProgram::Create(context, shaderDesc);
-#endif // 0
 
         SetupDescriptors(context);
+#else
+
+#endif // 0
+
     }
 
     void cMaterial::SetupDescriptors(const RenderContext& context)
     {
+#if 0
         tStaticArray<VkDescriptorImageInfo, MATERIAL_TEXTURE_COUNT> imageInfoList;
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
@@ -177,6 +183,8 @@ namespace Mist
         DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator)
             .BindImage(0, imageInfoList.GetData(), MATERIAL_TEXTURE_COUNT, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 0)
             .Build(context, m_textureSet);
+#endif // 0
+
     }
 
     void cMaterial::Destroy(const RenderContext& context)
@@ -184,13 +192,23 @@ namespace Mist
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
             m_textures[i] = nullptr;
+            m_samplers[i] = nullptr;
         }
     }
-    void cMaterial::BindTextures(const RenderContext& context, ShaderProgram& shader, uint32_t slot) const
+
+    void cMaterial::BindTextures(uint32_t slot) const
     {
-#if 1
+#if 0
         CommandList* cmd = context.CmdList;
         cmd->BindDescriptorSets(&m_textureSet, 1, shader.GetParam("u_Textures").SetIndex);
+#elif 1
+        for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
+        {
+            if (m_textures[i])
+                g_render->SetTextureSlot(m_textures[i], slot, i);
+            if (m_samplers[i])
+                g_render->SetSampler(m_samplers[i], slot, i);
+        }
 #else
         cTexture* textures[MATERIAL_TEXTURE_COUNT];
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
@@ -204,6 +222,7 @@ namespace Mist
         shader.BindSampledTextureArray(context, "u_Textures", textures, MATERIAL_TEXTURE_COUNT);
 #endif
     }
+
     sMaterialRenderData cMaterial::GetRenderData() const
     {
         sMaterialRenderData data;

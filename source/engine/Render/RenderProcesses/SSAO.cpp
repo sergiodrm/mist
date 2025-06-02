@@ -10,6 +10,7 @@
 #include "Core/Logger.h"
 #include "Render/DebugRender.h"
 #include "../CommandList.h"
+#include "RenderSystem/RenderSystem.h"
 
 
 #define SSAO_NOISE_SAMPLES 16
@@ -41,70 +42,60 @@ namespace Mist
 		{
 			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
 		}
-		ImageDescription imageDesc;
-		imageDesc.Width = 4;
-		imageDesc.Height = 4;
-		imageDesc.Depth = 1;
-		imageDesc.Format = FORMAT_R32G32B32A32_SFLOAT;
-		imageDesc.Flags = 0;
-		imageDesc.Layers = 1;
-		imageDesc.MipLevels = 1;
-		imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-		imageDesc.SamplerDesc.MinFilter = FILTER_NEAREST;
-		imageDesc.SamplerDesc.MagFilter = FILTER_NEAREST;
-		imageDesc.SamplerDesc.AddressModeU = SAMPLER_ADDRESS_MODE_REPEAT;
-		imageDesc.SamplerDesc.AddressModeV = SAMPLER_ADDRESS_MODE_REPEAT;
-		imageDesc.SamplerDesc.AddressModeW = SAMPLER_ADDRESS_MODE_REPEAT;
-		imageDesc.DebugName = "ssaoNoiseTexture";
-		m_noiseTexture = cTexture::Create(renderContext, imageDesc);
-		const uint8_t* pixels = (uint8_t*)ssaoNoise;
-		m_noiseTexture->SetImageLayers(renderContext, &pixels, 1);
 
-		tViewDescription viewDesc;
-		m_noiseTexture->CreateView(renderContext, viewDesc);
+        {
+            render::TextureDescription noiseDesc;
+            noiseDesc.extent = { 4,4,1 };
+            noiseDesc.format = render::Format_R32G32B32A32_SFloat;
+			noiseDesc.isShaderResource = true;
+            m_noiseTexture = g_device->CreateTexture(noiseDesc);
+            render::utils::UploadContext upload(g_device);
+            upload.WriteTexture(m_noiseTexture, 0, 0, ssaoNoise, sizeof(glm::vec4) * SSAO_NOISE_SAMPLES);
+            upload.Submit();
 
-		// Render target
-		RenderTargetDescription rtDesc;
-		tClearValue value = { .color = {1.f, 0.f, 0.f, 1.f} };
-		rtDesc.AddColorAttachment(FORMAT_R8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, value);
-		rtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
-		rtDesc.RenderArea.offset = { 0, 0 };
-		rtDesc.ResourceName = "SSAO_RT";
-		m_rt = RenderTarget::Create(renderContext, rtDesc);
+            render::TextureDescription texDesc;
+            texDesc.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height, .depth = 1 };
+            texDesc.format = render::Format_R8_UNorm;
+            texDesc.isShaderResource = true;
+            texDesc.isRenderTarget = true;
+            render::TextureHandle texture = g_device->CreateTexture(texDesc);
 
-		// Shader
-		tShaderProgramDescription shaderDesc;
-		shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-		shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("ssao.frag");
+            render::RenderTargetDescription rtDesc;
+            rtDesc.AddColorAttachment(texture);
+            m_rt = g_device->CreateRenderTarget(rtDesc);
 
-		tCompileMacroDefinition macroDef("KERNEL_SIZE");
-		macroDef.Value.Fmt("%d", SSAO_KERNEL_SAMPLES);
-		shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back(macroDef);
+            rendersystem::ShaderBuildDescription shaderDesc;
+            shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+            shaderDesc.fsDesc.filePath = "shaders/ssao.frag";
+            shaderDesc.fsDesc.options.PushMacroDefinition("KERNEL_SIZE", SSAO_KERNEL_SAMPLES);
+            m_ssaoShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+        }
 
-		shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-		shaderDesc.RenderTarget = m_rt;
-		m_ssaoShader = ShaderProgram::Create(renderContext, shaderDesc);
+		{
+			render::TextureDescription texDesc;
+			texDesc.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height, .depth = 1 };
+			texDesc.format = render::Format_R8_UNorm;
+			texDesc.isShaderResource = true;
+			texDesc.isRenderTarget = true;
+			render::TextureHandle texture = g_device->CreateTexture(texDesc);
 
-		// Blur RT
-		RenderTargetDescription blurRtDesc;
-		blurRtDesc.AddColorAttachment(FORMAT_R8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, value);
-		blurRtDesc.RenderArea = rtDesc.RenderArea;
-		blurRtDesc.ResourceName = "SSAO_BLUR_RT";
-		m_blurRT = RenderTarget::Create(renderContext, blurRtDesc);
+			render::RenderTargetDescription rtDesc;
+			rtDesc.AddColorAttachment(texture);
+			m_blurRT = g_device->CreateRenderTarget(rtDesc);
 
-		// Blur shader
-		tShaderProgramDescription blurShaderDesc;
-		blurShaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-		blurShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("ssaoblur.frag");
-		blurShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-		blurShaderDesc.RenderTarget = m_blurRT;
-		m_blurShader = ShaderProgram::Create(renderContext, blurShaderDesc);
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+			shaderDesc.fsDesc.filePath = "shaders/ssaoblur.frag";
+			m_blurShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+		}
 	}
 
 	void SSAO::Destroy(const RenderContext& renderContext)
 	{
-		RenderTarget::Destroy(renderContext, m_rt);
-		RenderTarget::Destroy(renderContext, m_blurRT);
+		delete m_blurShader;
+		delete m_ssaoShader;
+		m_rt = nullptr;
+		m_blurRT = nullptr;
 	}
 
 	void SSAO::InitFrameData(const RenderContext& context, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -114,40 +105,30 @@ namespace Mist
 
 	void SSAO::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
-		m_uboData.Projection = frameContext.CameraData->Projection;
+		m_uboData.Projection = GetCameraData()->Projection;
 		m_uboData.InverseProjection = glm::inverse(m_uboData.Projection);
 	}
 
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuSSAO);
-        CommandList* commandList = renderContext.CmdList;
-		GpuProf_Begin(renderContext, "SSAO");
-        commandList->BeginMarker("SSAO");
-		commandList->SetGraphicsState({.Program = m_ssaoShader, .Rt = m_rt });
+		g_render->SetShader(m_ssaoShader);
+		g_render->SetRenderTarget(m_rt);
 		m_uboData.Bypass = m_mode == SSAO_Disabled ? 0.f : 1.f;
-		m_ssaoShader->SetBufferData(renderContext, "u_ssao", &m_uboData, sizeof(m_uboData));
+		g_render->SetShaderProperty("u_ssao", &m_uboData, sizeof(m_uboData));
 
 		const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
-		m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferPosition", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_POSITION).Tex);
-		m_ssaoShader->BindSampledTexture(renderContext, "u_GBufferNormal", *gbuffer->GetRenderTarget()->GetAttachment(GBuffer::RT_NORMAL).Tex);
-		m_ssaoShader->BindSampledTexture(renderContext, "u_SSAONoise", *m_noiseTexture);
-		commandList->BindProgramDescriptorSets();
-		CmdDrawFullscreenQuad(commandList);
-		commandList->ClearState();
-		GpuProf_End(renderContext);
-		commandList->EndMarker();
+		g_render->SetTextureSlot("u_GBufferPosition", *gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_POSITION].texture);
+		g_render->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_NORMAL].texture);
+		g_render->SetTextureSlot("u_SSAONoise", m_noiseTexture);
+		g_render->DrawFullscreenQuad();
+		g_render->ClearState();
 
-        commandList->BeginMarker("SSAOBlur");
-		GpuProf_Begin(renderContext, "SSAO Blur");
-        commandList->SetGraphicsState({ .Program = m_blurShader, .Rt = m_blurRT });
-		const cTexture* tex = m_rt->GetTexture();
-		m_blurShader->BindSampledTexture(renderContext, "u_ssaoTex", *tex);
-		commandList->BindProgramDescriptorSets();
-		CmdDrawFullscreenQuad(commandList);
-		commandList->ClearState();
-		GpuProf_End(renderContext);
-        commandList->EndMarker();
+		g_render->SetShader(m_blurShader);
+		g_render->SetRenderTarget(m_blurRT);
+		g_render->SetTextureSlot("u_ssaoTex", m_rt->m_description.colorAttachments[0].texture);
+		g_render->DrawFullscreenQuad();
+		g_render->ClearState();
 	}
 
 	void SSAO::ImGuiDraw()
@@ -169,7 +150,7 @@ namespace Mist
 
 	void SSAO::DebugDraw(const RenderContext& context)
 	{
-		const cTexture* tex = nullptr;
+		render::TextureHandle tex = nullptr;
 		float scale = 1.f;
 		switch (m_mode)
 		{
@@ -178,10 +159,10 @@ namespace Mist
 		case SSAO_NoBlur: 
 			return;
 		case SSAO_DebugView:
-			tex = m_rt->GetTexture();
+			tex = m_rt->m_description.colorAttachments[0].texture;
 			break;
 		case SSAO_DebugBlurView:
-			tex = m_blurRT->GetTexture();
+			tex = m_blurRT->m_description.colorAttachments[0].texture;
 			break;
 		case SSAO_DebugNoiseView:
 			tex = m_noiseTexture;
@@ -189,10 +170,10 @@ namespace Mist
 			break;
 		}
 		DebugRender::DrawScreenQuad({ 0.f, 0.f },
-			{ scale * (float)tex->GetDescription().Width, scale * (float)tex->GetDescription().Height }, *tex);
+			{ scale * (float)tex->m_description.extent.width, scale * (float)tex->m_description.extent.height }, tex);
 	}
 
-	const RenderTarget* SSAO::GetRenderTarget(uint32_t index) const
+	render::RenderTargetHandle SSAO::GetRenderTarget(uint32_t index) const
 	{
 		if (m_mode == SSAO_NoBlur || m_mode == SSAO_Disabled)
 			return m_rt;

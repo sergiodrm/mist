@@ -7,6 +7,7 @@
 #include "UI.h"
 #include "ModelLoader.h"
 #include <imgui.h>
+#include "Utils/TimeUtils.h"
 
 namespace rendersystem
 {
@@ -199,6 +200,7 @@ namespace rendersystem
 
     void RenderSystem::Init(IWindow* window)
     {
+        PROFILE_SCOPE_LOG(Init, "RenderSystem_Init");
         m_frame = 0;
         {
             render::DeviceDescription desc;
@@ -207,15 +209,16 @@ namespace rendersystem
             desc.windowHandle = window->GetWindowHandle();
             m_device = _new render::Device(desc);
         }
-
         const render::Device::Swapchain& swapchain = m_device->GetSwapchain();
         uint32_t width = swapchain.width;
         uint32_t height = swapchain.height;
+        m_renderResolution = { width, height };
+        m_backbufferResolution = m_renderResolution;
         {
             render::TextureDescription desc;
             desc.isRenderTarget = true;
             desc.isShaderResource = true;
-            desc.extent = {width, height, 1};
+            desc.extent = { width, height, 1 };
             desc.format = render::Format_R8G8B8A8_UNorm;
             desc.debugName = "RT_LDR_TEXTURE";
             m_ldrTexture = m_device->CreateTexture(desc);
@@ -237,7 +240,9 @@ namespace rendersystem
             m_ldrRt = m_device->CreateRenderTarget(desc);
         }
         {
+            check(swapchain.images.size() <= Mist::CountOf(m_frameSyncronization));
             m_presentRts.resize(swapchain.images.size());
+            char buff[256];
             for (uint32_t i = 0; i < (uint32_t)swapchain.images.size(); ++i)
             {
                 render::TextureHandle texture = swapchain.images[i];
@@ -245,17 +250,11 @@ namespace rendersystem
                 desc.AddColorAttachment(texture);
                 desc.debugName = "RT_PRESENT";
                 m_presentRts[i] = m_device->CreateRenderTarget(desc);
-            }
-        }
-        {
-            check(swapchain.images.size() <= Mist::CountOf(m_frameSyncronization));
-            for (uint32_t i = 0; i < (uint32_t)swapchain.images.size(); ++i)
-            {
-                char buff[256];
+
                 sprintf_s(buff, "render semaphore %d", i);
                 m_frameSyncronization[i].renderQueueSemaphore = m_device->CreateRenderSemaphore();
                 m_device->SetDebugName(m_frameSyncronization[i].renderQueueSemaphore.GetPtr(), buff);
-                
+
                 sprintf_s(buff, "present semaphore %d", i);
                 m_frameSyncronization[i].presentSemaphore = m_device->CreateRenderSemaphore();
                 m_device->SetDebugName(m_frameSyncronization[i].presentSemaphore.GetPtr(), buff);
@@ -263,16 +262,20 @@ namespace rendersystem
         }
         {
             m_cmd = m_device->CreateCommandList();
+            m_renderContext.cmd = m_cmd;
         }
         {
             m_memoryPool = _new ShaderMemoryPool(m_device);
             m_bindingCache = _new BindingCache(m_device);
+            m_samplerCache = _new SamplerCache(m_device);
+            m_memoryPool2 = _new ShaderMemoryPool_2(m_device);
         }
 
         ui::Init(m_device, m_ldrRt, window->GetWindowNative());
 
         InitScreenQuad();
 
+#if 0
         // init quad model
         m_cmd->BeginRecording();
 
@@ -306,7 +309,7 @@ namespace rendersystem
 
         render::VertexInputAttribute attributes[2] = { render::Format_R32G32B32_SFloat, render::Format_R32G32_SFloat };
         mesh.inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, Mist::CountOf(attributes));
-        
+
         // Shader modules
         render::shader_compiler::CompiledBinary vsSrc = render::shader_compiler::Compile(Mist::cAssetPath("shaders/world_quad.vert"), render::ShaderType_Vertex);
         render::shader_compiler::CompiledBinary fsSrc = render::shader_compiler::Compile(Mist::cAssetPath("shaders/world_quad.frag"), render::ShaderType_Fragment);
@@ -328,8 +331,7 @@ namespace rendersystem
         // create instances
         static constexpr uint32_t w = 10;
         static constexpr uint32_t h = 10;
-#if 0
-        m_drawList.modelInstances.Reserve(w* h + 1);
+        m_drawList.modelInstances.Reserve(w * h + 1);
         for (uint32_t i = 0; i < w; ++i)
         {
             for (uint32_t j = 0; j < h; ++j)
@@ -341,26 +343,29 @@ namespace rendersystem
                 m.model = 0;
             }
         }
-#else
+#elif 0
         m_drawList.modelInstances.Reserve(1);
-#endif // 0
-
-
         modelloader::LoadModelFromFile(m_device, "models/sponza/sponza.gltf", &m_drawList.models.data[1]);
         m_drawList.modelInstances.data[m_drawList.modelInstances.count - 1].model = 1;
         m_drawList.modelInstances.data[m_drawList.modelInstances.count - 1].transform = glm::mat4(1.f);
+#endif // 0
     }
 
     void RenderSystem::Destroy()
     {
         m_device->WaitIdle();
+        ClearState();
+        m_memoryContextId = UINT32_MAX;
         m_drawList.Release();
         DestroyScreenQuad();
         ui::Destroy();
         delete m_bindingCache;
         delete m_memoryPool;
+        delete m_memoryPool2;
+        delete m_samplerCache;
         m_psoMap.clear();
         m_cmd = nullptr;
+        m_renderContext.cmd = nullptr;
         for (uint32_t i = 0; i < (uint32_t)m_device->GetSwapchain().images.size(); ++i)
         {
             m_frameSyncronization[i].renderQueueSemaphore = nullptr;
@@ -399,6 +404,289 @@ namespace rendersystem
         return m_psoMap.at(psoDesc);
     }
 
+    render::BindingSetHandle RenderSystem::GetBindingSet(const render::BindingSetDescription& desc)
+    {
+        return m_bindingCache->GetCachedBindingSet(desc);
+    }
+
+    render::SamplerHandle RenderSystem::GetSampler(const render::SamplerDescription& desc)
+    {
+        return m_samplerCache->GetSampler(desc);
+    }
+
+    render::SamplerHandle RenderSystem::GetSampler(render::Filter minFilter, render::Filter magFilter, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW)
+    {
+        render::SamplerDescription desc;
+        desc.minFilter = minFilter;
+        desc.magFilter = magFilter;
+        desc.addressModeU = addressModeU;
+        desc.addressModeV = addressModeV;
+        desc.addressModeW = addressModeW;
+        return GetSampler(desc);
+    }
+
+    void RenderSystem::SetDefaultState()
+    {
+        SetDepthEnable();
+        SetDepthOp();
+        SetStencilEnable();
+        SetStencilMask();
+        SetStencilOpFront();
+        SetStencilOpBack();
+        SetBlendEnable();
+        SetBlendFactor();
+        SetBlendAlphaState();
+        SetBlendWriteMask();
+        SetFillMode();
+        SetCullMode();
+        SetViewport(0.f, 0.f,
+            m_renderResolution.width,
+            m_renderResolution.height);
+        SetScissor(0.f, 0.f, 0.f, 0.f);
+    }
+
+    void RenderSystem::ClearState()
+    {
+        m_renderContext.graphicsState = render::GraphicsState();
+        m_program = nullptr;
+
+        for (uint32_t i = 0; i < MaxTextureSlots; ++i)
+        {
+            for (uint32_t j = 0; j < MaxTextureBindingsPerSlot; ++j)
+            {
+                m_textureSlots[i][j] = nullptr;
+                m_samplerSlots[i][j] = nullptr;
+            }
+        }
+        m_cmd->ClearState();
+    }
+
+    void RenderSystem::SetDepthEnable(bool testing, bool writing)
+    {
+        m_psoDesc.renderState.depthStencilState.depthTestEnable = testing;
+        m_psoDesc.renderState.depthStencilState.depthWriteEnable = writing;
+    }
+
+    void RenderSystem::SetDepthOp(render::CompareOp op)
+    {
+        m_psoDesc.renderState.depthStencilState.depthCompareOp = op;
+    }
+
+    void RenderSystem::SetStencilEnable(bool testing)
+    {
+        m_psoDesc.renderState.depthStencilState.stencilTestEnable = testing;
+    }
+
+    void RenderSystem::SetStencilMask(uint8_t readMask, uint8_t writeMask, uint8_t refValue)
+    {
+        m_psoDesc.renderState.depthStencilState.stencilReadMask = readMask;
+        m_psoDesc.renderState.depthStencilState.stencilWriteMask = writeMask;
+        m_psoDesc.renderState.depthStencilState.stencilRefValue = refValue;
+    }
+
+    void RenderSystem::SetStencilOpFront(render::StencilOp fail, render::StencilOp depthFail, render::StencilOp pass, render::CompareOp compareOp)
+    {
+        m_psoDesc.renderState.depthStencilState.frontFace.failOp = fail;
+        m_psoDesc.renderState.depthStencilState.frontFace.depthFailOp = depthFail;
+        m_psoDesc.renderState.depthStencilState.frontFace.passOp = pass;
+        m_psoDesc.renderState.depthStencilState.frontFace.compareOp = compareOp;
+    }
+
+    void RenderSystem::SetStencilOpBack(render::StencilOp fail, render::StencilOp depthFail, render::StencilOp pass, render::CompareOp compareOp)
+    {
+        m_psoDesc.renderState.depthStencilState.backFace.failOp = fail;
+        m_psoDesc.renderState.depthStencilState.backFace.depthFailOp = depthFail;
+        m_psoDesc.renderState.depthStencilState.backFace.passOp = pass;
+        m_psoDesc.renderState.depthStencilState.backFace.compareOp = compareOp;
+    }
+
+    void RenderSystem::SetBlendEnable(bool enabled, uint32_t attachment)
+    {
+        GetPsoBlendStateAttachment(attachment).blendEnable = enabled;
+    }
+
+    void RenderSystem::SetBlendFactor(render::BlendFactor srcBlend, render::BlendFactor dstBlend, render::BlendOp blendOp, uint32_t attachment)
+    {
+        render::RenderTargetBlendState& state = GetPsoBlendStateAttachment(attachment);
+        state.srcBlend = srcBlend;
+        state.dstBlend = dstBlend;
+        state.blendOp = blendOp;
+    }
+
+    void RenderSystem::SetBlendAlphaState(render::BlendFactor srcBlend, render::BlendFactor dstBlend, render::BlendOp blendOp, uint32_t attachment)
+    {
+        render::RenderTargetBlendState& state = GetPsoBlendStateAttachment(attachment);
+        state.srcAlphaBlend = srcBlend;
+        state.dstAlphaBlend = dstBlend;
+        state.alphaBlendOp = blendOp;
+    }
+
+    void RenderSystem::SetBlendWriteMask(render::ColorMask mask, uint32_t attachment)
+    {
+        GetPsoBlendStateAttachment(attachment).colorWriteMask = mask;
+    }
+
+    void RenderSystem::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
+    {
+        m_psoDesc.renderState.viewportState.viewport = { x, y, width, height, minDepth, maxDepth };
+    }
+
+    void RenderSystem::SetScissor(float x0, float x1, float y0, float y1)
+    {
+        m_psoDesc.renderState.viewportState.scissor = { x0, x1, y0, y1 };
+    }
+
+    void RenderSystem::SetFillMode(render::RasterFillMode mode)
+    {
+        m_psoDesc.renderState.rasterState.fillMode = mode;
+    }
+
+    void RenderSystem::SetCullMode(render::RasterCullMode mode)
+    {
+        m_psoDesc.renderState.rasterState.cullMode = mode;
+    }
+
+    void RenderSystem::SetShader(ShaderProgram* shader)
+    {
+        check(shader);
+        switch (shader->m_description->type)
+        {
+        case ShaderProgram_Graphics:
+            m_psoDesc.vertexShader = shader->m_vs;
+            m_psoDesc.fragmentShader = shader->m_fs;
+            m_psoDesc.vertexInputLayout = shader->m_inputLayout;
+            break;
+        case ShaderProgram_Compute:
+            check(false);
+            break;
+        default:
+            unreachable_code();
+            break;
+        }
+        m_program = shader;
+    }
+
+    void RenderSystem::SetTextureSlot(render::TextureHandle texture, uint32_t set, uint32_t binding)
+    {
+        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
+        m_textureSlots[set][binding] = texture;
+
+        if (texture->m_layout != render::ImageLayout_ShaderReadOnly)
+        {
+            check(!m_cmd->IsInsideRenderPass());
+            m_cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
+        }
+    }
+
+    void RenderSystem::SetTextureSlot(const char* id, render::TextureHandle texture)
+    {
+        check(m_program);
+        uint32_t setIndex;
+        const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+        check(property && setIndex != UINT32_MAX);
+        SetTextureSlot(texture, setIndex, property->binding);
+    }
+
+    void RenderSystem::SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding)
+    {
+        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
+        m_samplerSlots[set][binding] = sampler;
+    }
+
+    void RenderSystem::SetSampler(const char* id, render::SamplerHandle sampler)
+    {
+        check(m_program);
+        uint32_t setIndex;
+        const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+        check(property && setIndex != UINT32_MAX);
+        SetSampler(sampler, setIndex, property->binding);
+    }
+
+    void RenderSystem::SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW)
+    {
+        SetSampler(id, GetSampler(minFilter, magFilter, addressModeU, addressModeV, addressModeW));
+    }
+
+    void RenderSystem::SetShaderProperty(const char* id, const void* param, uint64_t size)
+    {
+        check(id && *id && param && size);
+        ShaderMemoryContext* context = m_memoryPool2->GetContext(m_memoryContextId);
+        context->WriteProperty(id, param, size);
+    }
+
+    void RenderSystem::SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout)
+    {
+        if (texture->m_layout != layout)
+        {
+            check(!m_cmd->IsInsideRenderPass());
+            m_cmd->RequireTextureState({ texture, layout });
+        }
+    }
+
+    void RenderSystem::SetTextureAsResourceBinding(render::TextureHandle texture)
+    {
+        if (render::utils::IsDepthFormat(texture->m_description.format))
+            SetTextureLayout(texture, render::ImageLayout_DepthStencilReadOnly);
+        else
+            SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly);
+    }
+
+    void RenderSystem::SetTextureAsRenderTargetAttachment(render::TextureHandle texture)
+    {
+        if (render::utils::IsDepthFormat(texture->m_description.format))
+            SetTextureLayout(texture, render::ImageLayout_DepthAttachment);
+        else if (render::utils::IsDepthFormat(texture->m_description.format))
+            SetTextureLayout(texture, render::ImageLayout_DepthStencilAttachment);
+        else
+            SetTextureLayout(texture, render::ImageLayout_ColorAttachment);
+    }
+
+    void RenderSystem::SetRenderTarget(render::RenderTargetHandle rt)
+    {
+        m_renderContext.graphicsState.rt = rt;
+        for (uint32_t i = 0; i < rt->m_description.colorAttachments.GetSize(); ++i)
+            SetTextureAsRenderTargetAttachment(rt->m_description.colorAttachments[i].texture);
+        if (rt->m_description.depthStencilAttachment.texture)
+            SetTextureAsRenderTargetAttachment(rt->m_description.depthStencilAttachment.texture);
+    }
+
+    void RenderSystem::SetVertexBuffer(render::BufferHandle vb)
+    {
+        m_renderContext.graphicsState.vertexBuffer = vb;
+    }
+
+    void RenderSystem::SetIndexBuffer(render::BufferHandle ib)
+    {
+        m_renderContext.graphicsState.indexBuffer = ib;
+    }
+
+    void RenderSystem::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+    {
+        FlushBeforeDraw();
+        m_renderContext.cmd->Draw(vertexCount, instanceCount, firstVertex, firstInstance);
+    }
+
+    void RenderSystem::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t firstVertex, uint32_t firstInstance)
+    {
+        FlushBeforeDraw();
+        m_renderContext.cmd->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
+    }
+
+    void RenderSystem::DrawFullscreenQuad()
+    {
+        SetVertexBuffer(m_screenQuadCopy.vb);
+        SetIndexBuffer(m_screenQuadCopy.ib);
+        DrawIndexed(6);
+    }
+
+    render::RenderTargetBlendState& RenderSystem::GetPsoBlendStateAttachment(uint32_t attachment)
+    {
+        check(attachment < m_psoDesc.renderState.blendState.renderTargetBlendStates.GetCapacity());
+        if (attachment >= m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize())
+            m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(attachment + 1);
+        return m_psoDesc.renderState.blendState.renderTargetBlendStates[attachment];
+    }
+
     void RenderSystem::DrawDrawList(const DrawList& list)
     {
         render::RenderTargetHandle rt = m_ldrRt;
@@ -410,7 +698,7 @@ namespace rendersystem
         render::BindingSetHandle viewProjectionSet;
         render::BindingSetHandle modelTransformSet;
 
-        struct  
+        struct
         {
             glm::mat4 view;
             glm::mat4 projection;
@@ -429,8 +717,7 @@ namespace rendersystem
         render::BindingSetDescription viewProjSetDesc;
         viewProjSetDesc.PushConstantBuffer(0, m_memoryPool->GetBuffer(viewProjAllocation.chunkIndex).GetPtr(), render::ShaderType_Vertex, render::BufferRange(viewProjAllocation.pointer, viewProjAllocation.size));
         render::BindingSetHandle viewProjSet = m_bindingCache->GetCachedBindingSet(viewProjSetDesc);
-        
-        
+
         if (m_transforms.count < list.modelInstances.count)
         {
             m_transforms.Release();
@@ -454,9 +741,9 @@ namespace rendersystem
             Model& model = list.models.data[instance.model];
 
             static constexpr float dt = 0.033f;
-            Mist::tAngles rot(90.f * dt * static_cast<float>(rand() % 100)*0.01f, 45.f * dt * static_cast<float>(rand() % 100)*0.01f, 0.f);
+            Mist::tAngles rot(90.f * dt * static_cast<float>(rand() % 100) * 0.01f, 45.f * dt * static_cast<float>(rand() % 100) * 0.01f, 0.f);
             //instance.transform = instance.transform * rot.ToMat4();
-            
+
             m_transforms.data[i] = instance.transform;
             for (uint32_t j = 0; j < model.meshes.count; ++j)
             {
@@ -491,7 +778,7 @@ namespace rendersystem
                         psoDesc.bindingLayouts.Push(set->m_layout);
                         state.bindings.Clear();
                         state.bindings.SetBindingSlot(0, viewProjSet);
-                        uint32_t bindingOffset = m_device->AlignUniformSize(i * sizeof(glm::mat4));
+                        uint32_t bindingOffset = Mist::limits_cast<uint32_t>(m_device->AlignUniformSize(i * sizeof(glm::mat4)));
                         state.bindings.SetBindingSlot(1, transformSet, &bindingOffset, 1);
                         state.bindings.SetBindingSlot(2, set);
 
@@ -511,6 +798,7 @@ namespace rendersystem
 
     void RenderSystem::InitScreenQuad()
     {
+        PROFILE_SCOPE_LOG(InitScreenQuad, "RenderSystem_InitScreenQuad");
         m_cmd->BeginRecording();
 
         float quadVertices[] =
@@ -546,18 +834,15 @@ namespace rendersystem
         samplerDesc.magFilter = render::Filter_Linear;
         m_screenQuadCopy.sampler = m_device->CreateSampler(samplerDesc);
 
-        // Shader modules
-        render::shader_compiler::CompiledBinary vsSrc = render::shader_compiler::Compile(Mist::cAssetPath("shaders/quad.vert"), render::ShaderType_Vertex);
-        render::shader_compiler::CompiledBinary fsSrc = render::shader_compiler::Compile(Mist::cAssetPath("shaders/quad.frag"), render::ShaderType_Fragment);
-
-        m_screenQuadCopy.vs = m_device->CreateShader({ .type = render::ShaderType_Vertex }, vsSrc.binary, vsSrc.binaryCount);
-        m_screenQuadCopy.fs = m_device->CreateShader({ .type = render::ShaderType_Fragment }, fsSrc.binary, fsSrc.binaryCount);
+        ShaderBuildDescription shaderDesc;
+        shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+        shaderDesc.fsDesc.filePath = "shaders/quad.frag";
+        m_screenQuadCopy.shader = _new ShaderProgram(m_device, shaderDesc);
     }
 
     void RenderSystem::DestroyScreenQuad()
     {
-        m_screenQuadCopy.fs = nullptr;
-        m_screenQuadCopy.vs = nullptr;
+        delete m_screenQuadCopy.shader;
         m_screenQuadCopy.vb = nullptr;
         m_screenQuadCopy.ib = nullptr;
         m_screenQuadCopy.sampler = nullptr;
@@ -565,50 +850,13 @@ namespace rendersystem
 
     void RenderSystem::CopyToPresentRt(render::TextureHandle texture)
     {
-        m_cmd->ClearState();
-
-        //render::TextureBarrier barriers[2];
-        //barriers[0].texture = m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture;
-        //barriers[0].newLayout = render::ImageLayout_ColorAttachment;
-        //barriers[1].texture = texture;
-        //barriers[1].newLayout = render::ImageLayout_ShaderReadOnly;
-        //m_cmd->SetTextureState(barriers, 2);
-
-        // Set
-        render::BindingSetDescription setDesc;
-        setDesc.PushTextureSRV(0, texture.GetPtr(), m_screenQuadCopy.sampler, render::ShaderType_Fragment);
-        render::BindingSetHandle set = m_bindingCache->GetCachedBindingSet(setDesc);
-
-        // Input layout
-        render::VertexInputAttribute attributes[2] = { render::Format_R32G32B32_SFloat, render::Format_R32G32_SFloat };
-        render::VertexInputLayout inputLayout = render::VertexInputLayout::BuildVertexInputLayout(attributes, Mist::CountOf(attributes));
-
-        render::GraphicsPipelineDescription psoDesc;
-        psoDesc.bindingLayouts.Push(set->m_layout);
-        psoDesc.vertexInputLayout = inputLayout;
-        psoDesc.vertexShader = m_screenQuadCopy.vs;
-        psoDesc.fragmentShader = m_screenQuadCopy.fs;
-        psoDesc.renderState.viewportState.viewport = m_presentRts[m_swapchainIndex]->m_info.GetViewport();
-        psoDesc.renderState.viewportState.scissor = m_presentRts[m_swapchainIndex]->m_info.GetScissor();
-        psoDesc.renderState.blendState.renderTargetBlendStates.Push(render::RenderTargetBlendState());
-
-        render::GraphicsPipelineHandle pso = GetPso(psoDesc, m_presentRts[m_swapchainIndex]);
-
-        render::GraphicsState state;
-        state.pipeline = pso;
-        state.vertexBuffer = m_screenQuadCopy.vb;
-        state.indexBuffer = m_screenQuadCopy.ib;
-        state.rt = m_presentRts[m_swapchainIndex];
-        state.bindings.SetBindingSlot(0, set);
-        m_cmd->SetGraphicsState(state);
-        m_cmd->DrawIndexed(6, 1, 0, 0, 0);
-        m_cmd->ClearState();
-
-        //barriers[0].texture = m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture;
-        //barriers[0].newLayout = render::ImageLayout_PresentSrc;
-        //barriers[1].texture = texture;
-        //barriers[1].newLayout = render::ImageLayout_ColorAttachment;
-        //m_cmd->SetTextureState(barriers, 2);
+        ClearState();
+        SetDefaultState();
+        SetRenderTarget(m_presentRts[m_swapchainIndex]);
+        SetShader(m_screenQuadCopy.shader);
+        SetTextureSlot("u_tex", texture);
+        DrawFullscreenQuad();
+        ClearState();
     }
 
     void RenderSystem::ImGuiDraw()
@@ -631,13 +879,98 @@ namespace rendersystem
         ImGui::End();
     }
 
+    void RenderSystem::FlushBeforeDraw()
+    {
+        check(m_program);
+        m_psoDesc.bindingLayouts.Clear();
+
+        // Flush memory before process bindings
+        ShaderMemoryContext* memoryContext = m_memoryPool2->GetContext(m_memoryContextId);
+        memoryContext->FlushMemory();
+
+        // Bind descriptors sets and memory before draw call
+        const render::shader_compiler::ShaderReflectionProperties* properties = m_program->m_properties;
+        check(properties->pushConstantMap.empty());
+        for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
+        {
+            const render::shader_compiler::ShaderPropertySetDescription& paramSet = properties->params[i];
+            render::BindingSetDescription desc;
+            for (uint32_t j = 0; j < (uint32_t)paramSet.params.size(); ++j)
+            {
+                const render::shader_compiler::ShaderPropertyDescription& param = paramSet.params[j];
+                switch (param.type)
+                {
+                case render::ResourceType_TextureSRV:
+                case render::ResourceType_TextureUAV:
+                {
+                    check(paramSet.setIndex < MaxTextureSlots && param.binding < MaxTextureBindingsPerSlot);
+                    render::TextureHandle tex = m_textureSlots[paramSet.setIndex][param.binding];
+                    render::SamplerHandle sampler = m_samplerSlots[paramSet.setIndex][param.binding];
+                    if (!tex)
+                    {
+                        // TODO: get default texture
+                        logferror("Texture not bound (%s) [%d, %d]\n", param.name.c_str(), paramSet.setIndex, param.binding);
+                        unreachable_code();
+                    }
+                    if (!sampler)
+                    {
+                        sampler = GetSampler(render::Filter_Linear, render::Filter_Linear,
+                            render::SamplerAddressMode_ClampToEdge,
+                            render::SamplerAddressMode_ClampToEdge,
+                            render::SamplerAddressMode_ClampToEdge);
+                    }
+                    check(tex && sampler);
+                    if (param.type == render::ResourceType_TextureSRV)
+                        desc.PushTextureSRV(param.binding, tex.GetPtr(), sampler, param.stage);
+                    else
+                        desc.PushTextureUAV(param.binding, tex.GetPtr(), param.stage);
+                }
+                break;
+                case render::ResourceType_ConstantBuffer:
+                {
+                    const ShaderMemoryContext::PropertyMemory* property = memoryContext->GetProperty(param.name.c_str());
+                    check(property && property->buffer && property->size >= param.size);
+                    desc.PushConstantBuffer(param.binding, property->buffer.GetPtr(), param.stage, render::BufferRange(property->offset, property->size));
+                }
+                break;
+                case render::ResourceType_VolatileConstantBuffer:
+                    unreachable_code();
+                    break;
+                case render::ResourceType_BufferUAV:
+                    unreachable_code();
+                    break;
+                case render::ResourceType_DynamicBufferUAV:
+                    unreachable_code();
+                    break;
+                case render::ResourceType_None:
+                case render::ResourceType_MaxEnum:
+                default:
+                    unreachable_code();
+                    break;
+                }
+            }
+            render::BindingSetHandle set = GetBindingSet(desc);
+            m_renderContext.graphicsState.bindings.SetBindingSlot(paramSet.setIndex, set);
+            m_psoDesc.bindingLayouts.Push(set->m_layout);
+        }
+
+        // Process graphics pipeline
+        render::GraphicsPipelineHandle pso = GetPso(m_psoDesc, m_renderContext.graphicsState.rt);
+        m_renderContext.graphicsState.pipeline = pso;
+
+        m_renderContext.cmd->SetGraphicsState(m_renderContext.graphicsState);
+
+    }
+
     void RenderSystem::BeginFrame()
     {
         m_frame++;
 
         ui::BeginFrame();
         ImGuiDraw();
-        m_cmd->ResetStats();
+        SetDefaultState();
+        ClearState();
+        m_renderContext.cmd->ResetStats();
 
         render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
 
@@ -648,22 +981,24 @@ namespace rendersystem
             m_device->WaitForSubmissionId(m_frameSyncronization[GetFrameIndex()].submission);
 
         commandQueue->ProcessInFlightCommands();
+        m_memoryPool2->ProcessInFlight();
+        m_memoryContextId = m_memoryPool2->CreateContext();
         m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
         commandQueue->AddWaitSemaphore(presentSemaphore, 0);
         commandQueue->AddSignalSemaphore(renderSemaphore, 0);
 
-        m_cmd->BeginRecording();
+        m_renderContext.cmd->BeginRecording();
     }
 
     void RenderSystem::EndFrame()
     {
-        ui::EndFrame(m_cmd);
+        ui::EndFrame(m_renderContext.cmd);
 
         CopyToPresentRt(m_ldrTexture);
-        m_cmd->SetTextureState(render::TextureBarrier{ m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc });
-        m_cmd->EndRecording();
+        m_renderContext.cmd->SetTextureState(render::TextureBarrier{ m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc });
+        m_renderContext.cmd->EndRecording();
 
-        uint64_t submissionId = m_cmd->ExecuteCommandList();
+        uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
         m_device->Present(m_frameSyncronization[GetFrameIndex()].renderQueueSemaphore);
 
         m_memoryPool->Submit(submissionId);
@@ -736,5 +1071,473 @@ namespace rendersystem
                 --m_pushIndex;
             }
         }
+    }
+
+    class ShaderCompiler
+    {
+    public:
+        ShaderCompiler(render::Device* device)
+            : m_device(device)
+        {
+            check(m_device);
+        }
+
+        ~ShaderCompiler()
+        {
+            ClearCachedData();
+        }
+
+        bool Compile(const ShaderFileDescription& desc, render::ShaderType stage)
+        {
+            check(GetShader(stage) == nullptr);
+            render::shader_compiler::CompiledBinary bin = render::shader_compiler::BuildShader(desc.filePath.c_str(), stage, &desc.options);
+            if (!bin.IsCompilationSucceed())
+                return false;
+            check(render::shader_compiler::BuildShaderParams(bin, stage, m_properties));
+
+            render::ShaderDescription shaderDesc;
+            shaderDesc.debugName = desc.filePath.c_str();
+            shaderDesc.name = desc.filePath.c_str();
+            shaderDesc.type = stage;
+            m_shaders.push_back(m_device->CreateShader(shaderDesc, bin.binary, bin.binaryCount));
+
+            render::shader_compiler::FreeBinary(bin);
+            return true;
+        }
+
+        render::ShaderHandle GetShader(render::ShaderType stage) const
+        {
+            for (uint32_t i = 0; i < (uint32_t)m_shaders.size(); ++i)
+            {
+                check(m_shaders[i]);
+                if (m_shaders[i]->m_description.type == stage)
+                    return m_shaders[i];
+            }
+            return nullptr;
+        }
+
+        void ClearCachedData()
+        {
+            for (uint32_t i = 0; i < (uint32_t)m_shaders.size(); ++i)
+                m_shaders[i] = nullptr;
+            m_properties.params.clear();
+            m_properties.pushConstantMap.clear();
+        }
+
+        void SetUniformBufferAsDynamic(const char* uniformBufferName)
+        {
+            check(uniformBufferName && *uniformBufferName);
+            for (uint32_t i = 0; i < (uint32_t)m_properties.params.size(); ++i)
+            {
+                for (uint32_t j = 0; j < (uint32_t)m_properties.params[i].params.size(); ++j)
+                {
+                    render::shader_compiler::ShaderPropertyDescription& param = m_properties.params[i].params[j];
+                    if (!strcmp(param.name.c_str(), uniformBufferName))
+                    {
+                        switch (param.type)
+                        {
+                        case render::ResourceType_ConstantBuffer: param.type = render::ResourceType_VolatileConstantBuffer; return;
+                        case render::ResourceType_BufferUAV: param.type = render::ResourceType_DynamicBufferUAV; return;
+                        default:
+                            logferror("Trying to set as uniform dynamic an invalid Descriptor [%s]\n", uniformBufferName);
+                        }
+                    }
+                }
+            }
+            check(false);
+        }
+
+        const render::shader_compiler::ShaderReflectionProperties& GetReflectionProperties() const { return m_properties; }
+
+        render::VertexInputLayout GetVertexInputLayout() const
+        {
+            Mist::tStaticArray<render::VertexInputAttribute, 16> attributes;
+            check(m_properties.inputLayout.attributes.size() < attributes.GetCapacity());
+            attributes.Resize(Mist::limits_cast<uint32_t>(m_properties.inputLayout.attributes.size()));
+            for (uint32_t i = 0; i < (uint32_t)attributes.GetSize(); ++i)
+            {
+                const render::shader_compiler::VertexInputAttribute& att = m_properties.inputLayout.attributes[i];
+                render::Format format = render::Format_Undefined;
+                check(att.size == sizeof(uint32_t)*8);
+                if (att.count == 1)
+                    format = render::Format_R32_SFloat;
+                else if (att.count == 2)
+                    format = render::Format_R32G32_SFloat;
+                else if (att.count == 3)
+                    format = render::Format_R32G32B32_SFloat;
+                else if (att.count == 4)
+                    format = render::Format_R32G32B32A32_SFloat;
+                check(format != render::Format_Undefined);
+                attributes[att.location] = { format };
+            }
+
+            return render::VertexInputLayout::BuildVertexInputLayout(attributes.GetData(), attributes.GetSize());
+        }
+
+    private:
+        render::Device* m_device;
+        Mist::tDynArray<render::ShaderHandle> m_shaders;
+        render::shader_compiler::ShaderReflectionProperties m_properties;
+    };
+
+    ShaderProgram::ShaderProgram(render::Device* device, const ShaderBuildDescription& description)
+        : m_device(device)
+    {
+        m_description = _new ShaderBuildDescription(description);
+        m_properties = _new render::shader_compiler::ShaderReflectionProperties();
+        Reload();
+    }
+
+    ShaderProgram::~ShaderProgram()
+    {
+        delete m_properties;
+        delete m_description;
+    }
+
+    void ShaderProgram::Reload()
+    {
+        switch (m_description->type)
+        {
+        case ShaderProgram_Graphics:
+            ReloadGraphics();
+            break;
+        case ShaderProgram_Compute:
+            ReloadCompute();
+            break;
+        }
+        check(IsLoaded());
+    }
+
+    bool ShaderProgram::IsLoaded() const
+    {
+        switch (m_description->type)
+        {
+        case ShaderProgram_Graphics: return m_vs || m_fs;
+        case ShaderProgram_Compute: return m_cs;
+        }
+        unreachable_code();
+        return false;
+    }
+
+    void ShaderProgram::ReleaseResources()
+    {
+        m_vs = nullptr;
+        m_fs = nullptr;
+        m_cs = nullptr;
+        if (m_properties)
+            delete m_properties;
+        m_properties = nullptr;
+    }
+
+    const render::shader_compiler::ShaderPropertyDescription* ShaderProgram::GetPropertyDescription(const char* id, uint32_t* setIndexOut) const
+    {
+        for (uint32_t i = 0; i < (uint32_t)m_properties->params.size(); ++i)
+        {
+            for (uint32_t j = 0; j < (uint32_t)m_properties->params[i].params.size(); ++j)
+            {
+                const render::shader_compiler::ShaderPropertyDescription* property = &m_properties->params[i].params[j];
+                if (!strcmp(property->name.c_str(), id))
+                {
+                    if (setIndexOut)
+                        *setIndexOut = m_properties->params[i].setIndex;
+                    return property;
+                }
+            }
+        }
+        if (setIndexOut)
+            *setIndexOut = UINT32_MAX;
+        return nullptr;
+    }
+
+    bool ShaderProgram::ReloadGraphics()
+    {
+        check(!m_description->vsDesc.filePath.empty() || !m_description->fsDesc.filePath.empty());
+
+        // generate shader modules
+        bool succeed = false;
+
+        ShaderCompiler compiler(m_device);
+        if (!m_description->vsDesc.filePath.empty())
+            succeed = compiler.Compile(m_description->vsDesc, render::ShaderType_Vertex);
+        if (succeed && !m_description->fsDesc.filePath.empty())
+            succeed = compiler.Compile(m_description->fsDesc, render::ShaderType_Fragment);
+
+        if (!succeed)
+        {
+            logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
+                m_description->vsDesc.filePath.empty() ? "none" : m_description->vsDesc.filePath.c_str(),
+                m_description->fsDesc.filePath.empty() ? "none" : m_description->fsDesc.filePath.c_str());
+            return false;
+        }
+
+        if (IsLoaded())
+            ReleaseResources();
+
+        // Generate shader reflection data
+        // Override with external info
+        for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
+            compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
+
+        const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
+        m_properties->params = std::move(prop.params);
+        m_properties->pushConstantMap = std::move(prop.pushConstantMap);
+        m_inputLayout = compiler.GetVertexInputLayout();
+
+        m_vs = compiler.GetShader(render::ShaderType_Vertex);
+        m_fs = compiler.GetShader(render::ShaderType_Fragment);
+    }
+
+    bool ShaderProgram::ReloadCompute()
+    {
+        check(!m_description->csDesc.filePath.empty());
+
+        ShaderCompiler compiler(m_device);
+
+        if (!compiler.Compile(m_description->csDesc, render::ShaderType_Compute))
+        {
+            logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
+                m_description->csDesc.filePath.empty() ? "none" : m_description->csDesc.filePath.c_str());
+            return false;
+        }
+
+        if (IsLoaded())
+            ReleaseResources();
+
+        // Generate shader reflection data
+        // Override with external info
+        for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
+            compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
+
+        const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
+        m_properties->params = std::move(prop.params);
+        m_properties->pushConstantMap = std::move(prop.pushConstantMap);
+
+        m_cs = compiler.GetShader(render::ShaderType_Compute);
+    }
+
+    ShaderProgram* ShaderProgramCache::GetOrCreateShader(render::Device* device, const ShaderBuildDescription& desc)
+    {
+        if (m_shaders.contains(desc))
+            return m_shaders.at(desc);
+        ShaderProgram* shader = _new ShaderProgram(device, desc);
+        m_shaders[desc] = shader;
+        return shader;
+    }
+
+    ShaderMemoryContext::ShaderMemoryContext(render::Device* device)
+        : m_device(device)
+    {
+        check(m_device);
+        check(MinTempBufferSize() == m_device->AlignUniformSize(MinTempBufferSize()));
+    }
+
+    void ShaderMemoryContext::ReserveProperty(const char* id, uint64_t size)
+    {
+        check(m_pointer == m_device->AlignUniformSize(m_pointer));
+        check(size);
+        size = m_device->AlignUniformSize(size);
+        if (m_properties.contains(id))
+        {
+            // if already created, see if there is a buffer binded to the property
+            PropertyMemory& p = m_properties.at(id);
+            if (p.buffer)
+            {
+                // if there is a buffer, override property (new property instance)
+                check(p.buffer.GetRefCounter() > 1);
+                p.buffer = nullptr;
+                p.size = size;
+                p.offset = m_pointer;
+                m_pointer += size;
+            }
+            // if not, there is already allocated previously and it is a valid allocation
+            return;
+        }
+
+        // new allocation
+        PropertyMemory property;
+        property.buffer = nullptr;
+        property.size = size;
+        property.offset = m_pointer;
+        m_properties[id] = property;
+        m_pointer += size;
+    }
+
+    void ShaderMemoryContext::WriteProperty(const char* id, const void* data, uint64_t size)
+    {
+        size = m_device->AlignUniformSize(size);
+        ReserveProperty(id, size);
+        const PropertyMemory* property = GetProperty(id);
+        check(property);
+        check(!property->buffer && property->size <= size);
+        Write(data, size, 0, property->offset);
+    }
+
+    const ShaderMemoryContext::PropertyMemory* ShaderMemoryContext::GetProperty(const char* id) const
+    {
+        if (!m_properties.contains(id))
+            return nullptr;
+        return &m_properties.at(id);
+    }
+
+    void ShaderMemoryContext::FlushMemory()
+    {
+        if (!m_pointer)
+            return;
+        uint32_t bufferIndex = GetOrCreateBuffer(m_pointer);
+        render::BufferHandle buffer = m_buffers[bufferIndex];
+        m_usedBuffers.push_back(bufferIndex);
+        m_device->WriteBuffer(buffer, m_tempBuffer, m_pointer);
+
+        for (auto it = m_properties.begin(); it != m_properties.end(); ++it)
+        {
+            check(it->second.buffer == nullptr);
+            it->second.buffer = buffer;
+        }
+        m_pointer = 0;
+    }
+
+    void ShaderMemoryContext::ResizeTempBuffer(uint64_t size)
+    {
+        size = m_device->AlignUniformSize(size);
+        size = __max(size, MinTempBufferSize());
+        if (m_size < size)
+        {
+            uint8_t* p = nullptr;
+            if (m_tempBuffer)
+                p = (uint8_t*)_realloc(m_tempBuffer, size);
+            else
+                p = (uint8_t*)_malloc(size);
+            check(p);
+            m_tempBuffer = p;
+            m_size = size;
+        }
+    }
+
+    void ShaderMemoryContext::Write(const void* data, uint64_t size, uint64_t srcOffset, uint64_t dstOffset)
+    {
+        if (dstOffset + size > m_size)
+            ResizeTempBuffer(dstOffset + size);
+        check(m_tempBuffer && dstOffset + size <= m_size);
+        const uint8_t* src = (const uint8_t*)data + srcOffset;
+        uint8_t* dst = m_tempBuffer + dstOffset;
+        memcpy_s(dst, m_size - dstOffset, src, size);
+    }
+
+    uint32_t ShaderMemoryContext::GetOrCreateBuffer(uint64_t size)
+    {
+        size = m_device->AlignUniformSize(size);
+        for (uint32_t i = (uint32_t)m_freeBuffers.size() - 1; i < (uint32_t)m_freeBuffers.size(); --i)
+        {
+            uint32_t index = m_freeBuffers[i];
+            if (m_buffers[index]->m_description.size >= size)
+            {
+                if (i != (uint32_t)m_freeBuffers.size() - 1)
+                    m_freeBuffers[i] = m_freeBuffers.back();
+                m_freeBuffers.pop_back();
+                return index;
+            }
+        }
+        m_buffers.push_back(render::utils::CreateUniformBuffer(m_device, size, "ShaderMemoryContext_UB"));
+        return (uint32_t)m_buffers.size() - 1;
+    }
+
+    ShaderMemoryPool_2::ShaderMemoryPool_2(render::Device* device)
+        : m_device(device)
+    {
+        check(m_device);
+        m_contexts.reserve(10);
+        m_usedContexts.reserve(10);
+        m_freeContexts.reserve(10);
+    }
+
+    uint32_t ShaderMemoryPool_2::CreateContext()
+    {
+        uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
+        for (uint32_t i = (uint32_t)m_freeContexts.size() - 1; i < (uint32_t)m_freeContexts.size(); --i)
+        {
+            uint32_t index = m_freeContexts[i];
+            if (m_contexts[index].m_submissionId <= lastFinishedId)
+            {
+                if (i != (uint32_t)m_freeContexts.size() - 1)
+                    m_freeContexts[i] = m_freeContexts.back();
+                m_freeContexts.pop_back();
+
+                m_usedContexts.push_back(index);
+                m_contexts[index].m_submissionId = UINT64_MAX;
+                return index;
+            }
+        }
+
+        m_contexts.push_back(ShaderMemoryContext(m_device));
+        m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
+        uint32_t index = (uint32_t)m_contexts.size() - 1;
+        m_contexts[index].m_submissionId = UINT64_MAX;
+        return index;
+    }
+
+    ShaderMemoryContext* ShaderMemoryPool_2::GetContext(uint32_t context)
+    {
+        check(context < (uint32_t)m_contexts.size());
+        // integrity check: only must return used buffers with invalid submission id
+        bool valid = false;
+        for (uint32_t i = 0; i < (uint32_t)m_usedContexts.size(); ++i)
+        {
+            if (m_usedContexts[i] == context)
+            {
+                valid = m_contexts[i].m_submissionId == UINT64_MAX;
+                break;
+            }
+        }
+        check(valid);
+
+        return &m_contexts[context];
+    }
+
+    void ShaderMemoryPool_2::Submit(uint64_t submissionId)
+    {
+        for (uint32_t i = 0; i < (uint32_t)m_usedContexts.size(); ++i)
+        {
+            uint32_t index = m_usedContexts[i];
+            check(m_contexts[index].m_submissionId == UINT64_MAX);
+            m_contexts[index].m_submissionId = submissionId;
+        }
+    }
+
+    void ShaderMemoryPool_2::ProcessInFlight()
+    {
+        // iterates over used contexts and store those which have finished submission id
+        const uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
+        for (uint32_t i = (uint32_t)m_usedContexts.size() - 1; i < (uint32_t)m_usedContexts.size(); --i)
+        {
+            uint32_t index = m_usedContexts[i];
+            if (m_contexts[index].m_submissionId <= lastFinishedId)
+            {
+                if (i != (uint32_t)m_usedContexts.size() - 1)
+                    m_usedContexts[i] = m_usedContexts.back();
+                m_usedContexts.pop_back();
+                m_freeContexts.push_back(index);
+                m_contexts[index].m_submissionId = UINT64_MAX;
+            }
+        }
+    }
+
+    SamplerCache::SamplerCache(render::Device* device)
+        : m_device(device)
+    {
+        check(m_device);
+    }
+
+    SamplerCache::~SamplerCache()
+    {
+        m_samplers.clear();
+    }
+
+    render::SamplerHandle SamplerCache::GetSampler(const render::SamplerDescription& desc)
+    {
+        if (m_samplers.contains(desc))
+            return m_samplers.at(desc);
+        render::SamplerHandle sampler = m_device->CreateSampler(desc);
+        m_samplers[desc] = sampler;
+        return sampler;
     }
 }

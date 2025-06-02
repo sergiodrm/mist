@@ -65,6 +65,13 @@ namespace Mist
 		uint32_t GetSize() const { size_t s = strlen(m_path); check(s < UINT32_MAX); return static_cast<uint32_t>(s); }
 		const char* GetAssetPath() const;
 
+		inline bool operator==(const cAssetPath& other) const
+		{
+			return !strcmp(m_path, other.m_path);
+		}
+
+		inline bool operator!=(const cAssetPath& other) const { return !(*this == other); }
+
 	private:
 		char m_path[256];
 	};
@@ -137,5 +144,23 @@ namespace Mist
 		tMap<tString, index_t> m_keyValueMap;
 		tDynArray<tString> m_values;
 		tDynArray<tString> m_keys;
+	};
+}
+
+/**
+ * hash functions
+ */
+
+namespace std
+{
+	template <>
+	struct hash<Mist::cAssetPath>
+	{
+		size_t operator()(const Mist::cAssetPath& desc) const
+		{
+			size_t seed = 0;
+			Mist::HashCombine(seed, desc.c_str());
+			return seed;
+		}
 	};
 }

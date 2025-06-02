@@ -1,5 +1,6 @@
 // header file for Mist project 
 #pragma once
+#if 0
 
 #include <vulkan/vulkan.h>
 #include <vector>
@@ -11,6 +12,9 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/RenderAPI.h"
 
+#include "RenderAPI/Device.h"
+#include "RenderAPI/ShaderCompiler.h"
+
 namespace Mist
 {
 	// Forward declarations
@@ -21,198 +25,50 @@ namespace Mist
 	class cTexture;
 	struct SamplerDescription;
 
-
-	struct ShaderBindingDescriptorInfo
-	{
-		EDescriptorType Type = DESCRIPTOR_TYPE_NUM;
-		uint32_t Size = 0;
-		uint32_t Binding = 0;
-		uint32_t ArrayCount = 0;
-		VkShaderStageFlags Stage{ VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM };
-		std::string Name;
-	};
-
-	struct ShaderDescriptorSetInfo
-	{
-		tDynArray<ShaderBindingDescriptorInfo> BindingArray;
-		uint32_t SetIndex = 0;
-	};
-
-	struct ShaderPushConstantBufferInfo
-	{
-		std::string Name;
-		uint32_t Offset = 0;
-		uint32_t Size = 0;
-		VkShaderStageFlags ShaderStage;
-	};
-
-	struct ShaderReflectionProperties
-	{
-		tDynArray<ShaderDescriptorSetInfo> DescriptorSetInfoArray;
-		tMap<VkShaderStageFlags, ShaderPushConstantBufferInfo> PushConstantMap;
-	};
-
-
-	struct tCompileMacroDefinition
-	{
-		tFixedString<64> Macro;
-		tFixedString<64> Value;
-		tCompileMacroDefinition()
-		{
-			Macro[0] = 0;
-			Value[0] = 0;
-		}
-		tCompileMacroDefinition(const char* str)
-		{
-			Macro.Set(str);
-			Value[0] = 0;
-		}
-		tCompileMacroDefinition(const char* macro, const char* value)
-		{
-			Macro.Set(macro);
-			Value.Set(value);
-		}
-		tCompileMacroDefinition(const char* macro, int value)
-		{
-            Macro.Set(macro);
-            Value.Set(std::to_string(value).c_str());
-		}
-		tCompileMacroDefinition(const char* macro, float value)
-		{
-            Macro.Set(macro);
-            Value.Set(std::to_string(value).c_str());
-		}
-	};
-
-	struct tCompileOptions
-	{
-		bool GenerateDebugInfo;
-		char EntryPointName[64];
-		Mist::tDynArray<tCompileMacroDefinition> MacroDefinitionArray;
-
-		tCompileOptions()
-			: GenerateDebugInfo(true), EntryPointName{ "main" }
-		{		}
-	};
-
 	struct ShaderFileDescription
 	{
-		cAssetPath Filepath;
-		tCompileOptions CompileOptions;
-	};
-
-	struct tShaderDependency
-	{
-		typedef Mist::tFixedString<128> tDependency;
-		Mist::tStaticArray<tDependency, 8> Dependencies;
+		cAssetPath filepath;
+		render::shader_compiler::CompilationOptions options;
 	};
 
 	class ShaderCompiler
 	{
-		struct CompiledShaderModule
-		{
-			VkShaderStageFlags ShaderStage;
-			VkShaderModule CompiledModule;
-		};
 	public:
-		ShaderCompiler(const RenderContext& renderContext);
+		ShaderCompiler(render::Device* device);
 		~ShaderCompiler();
 
+		bool Compile(const ShaderFileDescription& desc, render::ShaderType stage);
+		render::ShaderHandle GetShader(render::ShaderType stage) const;
+
 		void ClearCachedData();
-		bool ProcessShaderFile(const char* filepath, VkShaderStageFlagBits shaderStage, const tCompileOptions& compileOptions);
-		bool GenerateReflectionResources(DescriptorLayoutCache& layoutCache);
 		void SetUniformBufferAsDynamic(const char* uniformBufferName);
-		VkShaderModule GetCompiledModule(VkShaderStageFlags shaderStage) const;
-		
-		// Obtain generated resources. These functions will return nullptr/0 until call GenerateResources().
-		const VkDescriptorSetLayout* GetDescriptorSetLayoutArray() const { return m_cachedLayoutArray.data(); };
-		uint32_t GetDescriptorSetLayoutCount() const { return (uint32_t)m_cachedLayoutArray.size(); }
-		const VkPushConstantRange* GetPushConstantArray() const { return m_cachedPushConstantArray.data(); };
-		uint32_t GetPushConstantCount() const { return (uint32_t)m_cachedPushConstantArray.size(); }
 
-		const ShaderReflectionProperties& GetReflectionProperties() const { return m_reflectionProperties; }
-
-
-		/**
-		 * Create VkShaderModule from a cached source file.
-		 * This will compile the shader code in the file.
-		 * @binarySize bytes count.
-		 * @return VkShaderModule valid if the compilation terminated successfully. VK_NULL_HANDLE otherwise.
-		 */
-		static VkShaderModule CompileShaderModule(const RenderContext& context, const uint32_t* binaryData, size_t binaryCount, VkShaderStageFlags stage);
-		static bool CheckShaderFileExtension(const char* filepath, VkShaderStageFlags shaderStage);
-		static bool GenerateCompiledFile(const char* shaderFilepath, uint32_t* binaryData, size_t binaryCount);
-		static bool GetSpvBinaryFromFile(const char* binaryFilepath, uint32_t** binaryData, size_t* binaryCount);
-	protected:
-		void ProcessReflection(VkShaderStageFlags shaderStage, uint32_t* binaryData, size_t binaryCount);
-		
-		ShaderDescriptorSetInfo& FindOrCreateDescriptorSet(uint32_t set);
-		const ShaderDescriptorSetInfo& GetDescriptorSet(uint32_t set) const;
-		VkDescriptorSetLayout GenerateDescriptorSetLayout(const ShaderDescriptorSetInfo& setInfo, DescriptorLayoutCache& layoutCache) const;
-		VkPushConstantRange GeneratePushConstantInfo(const ShaderPushConstantBufferInfo& pushConstantInfo) const;
+		const render::shader_compiler::ShaderReflectionProperties& GetReflectionProperties() const { return m_properties; }
 
 	private:
-		const RenderContext& m_renderContext;
-		tDynArray<CompiledShaderModule> m_modules;
-		tDynArray<VkDescriptorSetLayout> m_cachedLayoutArray;
-		tDynArray<VkPushConstantRange> m_cachedPushConstantArray;
-		ShaderReflectionProperties m_reflectionProperties;
+		render::Device* m_device;
+		tDynArray<render::ShaderHandle> m_shaders;
+		render::shader_compiler::ShaderReflectionProperties m_properties;
 	};
 
-	enum class tShaderType
-	{
-		Graphics,
-		Compute
-	};
-
-	struct tShaderDynamicBufferDescription
+	struct ShaderDynamicBufferDescription
 	{
 		bool IsShared = true;
 		uint32_t ElemCount = 0;
 		tString Name;
 	};
 
-	struct tStencilState
-	{
-		EStencilOp FailOp = STENCIL_OP_REPLACE;
-		EStencilOp PassOp = STENCIL_OP_REPLACE;
-		EStencilOp DepthFailOp = STENCIL_OP_REPLACE;
-		ECompareOp CompareOp = COMPARE_OP_ALWAYS;
-		uint32_t CompareMask = 0xff;
-		uint32_t WriteMask = 0xff;
-		uint32_t Reference = 0x01;
-	};
-
 	struct tShaderProgramDescription
 	{
-		tShaderType Type = tShaderType::Graphics;
 		/// Shader files
 		ShaderFileDescription VertexShaderFile;
 		ShaderFileDescription FragmentShaderFile;
 		ShaderFileDescription ComputeShaderFile;
 
-		// Pipeline config
-		uint32_t SubpassIndex = 0;
-		const RenderTarget* RenderTarget = nullptr;
-		VertexInputLayout InputLayout;
-		EPrimitiveTopology Topology = PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-		ECullMode CullMode = CULL_MODE_FRONT_BIT;
-		EFrontFace FrontFaceMode = FRONT_FACE_CLOCKWISE;
-
-		EDepthStencilState DepthStencilMode = DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_DEPTH_WRITE;
-		ECompareOp DepthCompareOp = COMPARE_OP_LESS_OR_EQUAL;
-
-		tStencilState FrontStencil;
-		tStencilState BackStencil;
-
-		tDynArray<tColorBlendState> ColorAttachmentBlendingArray;
-		tDynArray<EDynamicState> DynamicStates;
-
 		/// Leave empty to run shader reflexion on shader file content.
 		/// Use to specify dynamic uniform buffers.
 		tDynArray<VkPushConstantRange> PushConstantArray;
-		tDynArray<tShaderDynamicBufferDescription> DynamicBuffers;
+		tDynArray<ShaderDynamicBufferDescription> DynamicBuffers;
 	};
 
 	struct tShaderParam
@@ -225,7 +81,7 @@ namespace Mist
 	class tShaderParamAccess
 	{
 	public:
-		void SetupBatch(const RenderContext& context, const ShaderReflectionProperties& reflection, const tShaderDynamicBufferDescription* dynamicBuffers, uint32_t dynamicBuffersCount);
+		void SetupBatch(const RenderContext& context, const ShaderReflectionProperties& reflection, const ShaderDynamicBufferDescription* dynamicBuffers, uint32_t dynamicBuffersCount);
 		inline bool HasBatch() const { return m_batchId != UINT32_MAX; }
 
 		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t dataSize);
@@ -235,7 +91,7 @@ namespace Mist
 		void BindTextureSlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture& texture, EDescriptorType texType, const Sampler* sampler = nullptr);
 		void BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, EDescriptorType texType, const Sampler* sampler = nullptr);
 
-        inline bool IsDirty() const { return m_dirty; }
+		inline bool IsDirty() const { return m_dirty; }
 		void MarkAsDirty(const RenderContext& context);
 		void FlushBatch(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout);
 
@@ -261,7 +117,11 @@ namespace Mist
 
 		void Destroy(const RenderContext& context);
 		bool Reload(const RenderContext& context);
+#if 0
 		inline bool IsLoaded() const { return m_pipeline != VK_NULL_HANDLE && m_pipelineLayout != VK_NULL_HANDLE; }
+#else
+		inline bool IsLoaded() const { return m_vs != nullptr || m_fs != nullptr || m_cs != nullptr; }
+#endif
 
 		[[deprecated]]
 		void UseProgram(VkCommandBuffer cmd) const;
@@ -279,21 +139,26 @@ namespace Mist
 		void SetBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t size);
 		void SetDynamicBufferData(const RenderContext& context, const char* bufferName, const void* data, uint32_t elemSize, uint32_t elemCount, uint32_t elemIndexOffset = 0);
 		void SetDynamicBufferOffset(const RenderContext& renderContext, const char* bufferName, uint32_t elemSize, uint32_t elemOffset);
-		
-        void BindSampledTexture(const RenderContext& context, const char* uniformName, const cTexture& texture);
-        void BindSampledTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount);
-        void BindStorageTexture(const RenderContext& context, const char* uniformName, const cTexture& texture);
-        void BindStorageTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount);
+
+		void BindSampledTexture(const RenderContext& context, const char* uniformName, const cTexture& texture);
+		void BindSampledTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount);
+		void BindStorageTexture(const RenderContext& context, const char* uniformName, const cTexture& texture);
+		void BindStorageTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount);
 		void BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, EDescriptorType texType);
 		void BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, EDescriptorType texType);
 
 		void FlushDescriptors(const RenderContext& context);
 
+
+
 		inline const tShaderParam GetParam(const char* paramName) const { return m_paramAccess.GetParam(paramName); }
+#if 0
 
 		inline VkPipeline GetPipeline() const { return m_pipeline; }
 		inline VkPipelineLayout GetPipelineLayout() const { return m_pipelineLayout; }
 		inline VkDescriptorSetLayout GetDescriptorSetLayout(uint32_t index) const { check(index < (uint32_t)m_setLayoutArray.size());  return m_setLayoutArray[index]; }
+
+#endif // 0
 
 		const tShaderProgramDescription& GetDescription() const { return m_description; }
 
@@ -301,20 +166,30 @@ namespace Mist
 
 	private:
 
-        uint32_t FindTextureSlot(const char* textureName, EDescriptorType type) const;
+		uint32_t FindTextureSlot(const char* textureName, EDescriptorType type) const;
 
 		void SetupDescriptors(const RenderContext& context);
 		VkCommandBuffer GetCommandBuffer(const RenderContext& context) const;
 		bool _Create(const RenderContext& context, const tShaderProgramDescription& description);
 		bool _ReloadGraphics(const RenderContext& context);
 		bool _ReloadCompute(const RenderContext& context);
-        bool GenerateShaderModules(ShaderCompiler& compiler);
+#if 0
+		bool GenerateShaderModules(ShaderCompiler& compiler);
+		bool GenerateShaderModules(const ShaderFileDescription& fileDesc, render::ShaderType type);
+		bool GenerateReflectionProperties(const uint32_t* binarySource, uint32_t binaryCount);
+#endif // 0
+
 		tShaderProgramDescription m_description;
-		ShaderReflectionProperties m_reflectionProperties;
-		VkPipeline m_pipeline;
-		VkPipelineLayout m_pipelineLayout;
-		VkPipelineBindPoint m_bindPoint;
-		tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
+		//ShaderReflectionProperties m_reflectionProperties;
+		//VkPipeline m_pipeline;
+		//VkPipelineLayout m_pipelineLayout;
+		//VkPipelineBindPoint m_bindPoint;
+		//tDynArray<VkDescriptorSetLayout> m_setLayoutArray;
+
+		render::ShaderHandle m_vs;
+		render::ShaderHandle m_fs;
+		render::ShaderHandle m_cs;
+		render::shader_compiler::ShaderReflectionProperties m_properties;
 
 		tShaderParamAccess m_paramAccess;
 		Sampler m_sampler = VK_NULL_HANDLE;
@@ -339,3 +214,4 @@ namespace Mist
 		tMap<tString, uint32_t> m_indexMap;
 	};
 }
+#endif // 0

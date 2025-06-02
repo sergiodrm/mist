@@ -259,6 +259,7 @@ namespace render
         ResourceType_ConstantBuffer,
         ResourceType_VolatileConstantBuffer,
         ResourceType_BufferUAV,
+        ResourceType_DynamicBufferUAV,
         ResourceType_MaxEnum
     };
 

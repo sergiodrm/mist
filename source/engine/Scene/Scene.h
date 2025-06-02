@@ -144,13 +144,14 @@ namespace Mist
 		// Shadow map
 		uint32_t shadowMapTexturesSlot;
 		tShadowMapData shadowMap;
-		const cTexture* shadowMapTextures[globals::MaxShadowMapAttachments];
+		render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 
 		// Scene info
 		EnvironmentData environment;
 
 		uint32_t cubemapSlot;
 		const cTexture* cubemap;
+		render::TextureHandle cubemapTex;
 
 		// Render flags
 		uint16_t flags;
@@ -184,12 +185,12 @@ namespace Mist
 			LEFT, 
 			COUNT
 		};
-		cTexture* Tex;
+		render::TextureHandle texture;
 		char CubemapFiles[COUNT][256];
 
 		Skybox()
 		{ 
-			Tex = nullptr;
+			texture = nullptr;
 			for (uint32_t i = 0; i < COUNT; ++i)
 				*CubemapFiles[i] = 0;
 		}
@@ -246,7 +247,7 @@ namespace Mist
 		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags = 0) const;
 		void DrawWithMaterials(const RenderContext& context, const tViewRenderInfo& viewRenderInfo, uint32_t textureSlot) const;
 		// can be nullptr
-		const cTexture* GetSkyboxTexture() const;
+		render::TextureHandle GetSkyboxTexture() const;
 
 		void ImGuiDraw();
 		bool IsDirty() const;
@@ -258,7 +259,7 @@ namespace Mist
 		void DestroyRenderLists();
 		void ClearDrawLists();
 
-		void RenderPipelineDraw(const RenderContext& context, uint32_t pipelineFlags, index_t materialSetIndex = index_invalid, ShaderProgram* program = nullptr);
+		void RenderPipelineDraw(const RenderContext& context, uint32_t pipelineFlags, index_t materialSetIndex = index_invalid, rendersystem::ShaderProgram* program = nullptr);
 
 	protected:
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);

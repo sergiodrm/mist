@@ -25,6 +25,11 @@
 
 #define RENDER_BACKEND_TEST
 
+namespace render
+{
+	class Device;
+}
+
 namespace rendersystem
 {
 	class RenderSystem;
@@ -88,11 +93,7 @@ namespace Mist
 
 		uint32_t m_currentSwapchainIndex;
 
-		tArray<DescriptorAllocator, globals::MaxOverlappedFrames> m_descriptorAllocators;
-		DescriptorLayoutCache m_descriptorLayoutCache;
-		ShaderFileDB m_shaderDb;
-
-		VkDescriptorSetLayout m_globalDescriptorLayout;
+		//ShaderFileDB m_shaderDb;
 
 		Scene* m_scene = nullptr;
 		CameraData m_cameraData;
@@ -106,4 +107,8 @@ namespace Mist
 	extern void CmdDrawFullscreenQuad(CommandList* commandList);
 	extern cTexture* GetTextureCheckerboard4x4(const RenderContext& context);
 	extern cMaterial* GetDefaultMaterial(const RenderContext& context);
+	const CameraData* GetCameraData();
+
+	extern ::render::Device* g_device;
+	extern ::rendersystem::RenderSystem* g_render;
 }

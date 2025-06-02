@@ -11,6 +11,7 @@
 #include "Utils/GenericUtils.h"
 #include "../CommandList.h"
 #include "../Material.h"
+#include "RenderSystem/RenderSystem.h"
 
 #define MIST_DISABLE_FORWARD
 
@@ -18,7 +19,7 @@ namespace Mist
 {
 	CBoolVar CVar_ShowForwardTech("r_showforwardtech", false);
 
-	RenderTarget* g_forwardRt = nullptr;
+	render::RenderTargetHandle g_forwardRt = nullptr;
 
 	ForwardLighting::ForwardLighting()
 		: m_shader(nullptr), m_rt(nullptr)
@@ -30,28 +31,31 @@ namespace Mist
 #ifdef MIST_DISABLE_FORWARD
 		return;
 #endif
+
+		uint32_t width = 1920;
+		uint32_t height = 1080;
 		// Create render target
 		{
-			RenderTargetDescription desc;
-			desc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
-			// Color attachment
-			//desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
-			desc.AddColorAttachment(FORMAT_R16G16B16A16_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
-			// Emissive attachment
-			//desc.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 0.f, 0.f, 0.f, 1.f });
-			desc.SetDepthAttachment(FORMAT_D24_UNORM_S8_UINT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, { 1.f, 0.f });
-			desc.ResourceName = "RT_ForwardLighting";
-			m_rt = RenderTarget::Create(renderContext, desc);
+			render::TextureDescription texDesc;
+			texDesc.format = render::Format_R16G16B16A16_UNorm;
+			texDesc.extent = { width, height, 1 };
+			texDesc.isRenderTarget = true;
+			texDesc.debugName = "ForwardLighting_HDR";
+			render::TextureHandle texture = g_device->CreateTexture(texDesc);
+
+			render::RenderTargetDescription rtDesc;
+			rtDesc.AddColorAttachment(texture);
+			m_rt = g_device->CreateRenderTarget(rtDesc);
 			g_forwardRt = m_rt;
 		}
 
 		// Create shader program
 		{
-			tShaderProgramDescription desc;
-			desc.VertexShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.vert");
-			desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("forward_lighting.frag");
-			desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "MAX_SHADOW_MAPS", "3" });
-#define DECLARE_MACRO_ENUM(_flag) desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({#_flag, _flag})
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.vsDesc.filePath = "shaders/forward_lighting.vert";
+			shaderDesc.fsDesc.filePath = "shaders/forward_lighting.frag";
+			shaderDesc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", 3);
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
@@ -70,51 +74,14 @@ namespace Mist
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-			desc.RenderTarget = m_rt;
-			desc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			desc.DepthStencilMode = DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST | DEPTH_STENCIL_STENCIL_TEST;
-			desc.FrontStencil.CompareMask = 0x1;
-			desc.FrontStencil.Reference = 0x1;
-			desc.FrontStencil.WriteMask = 0x1;
-			desc.FrontStencil.CompareOp = COMPARE_OP_ALWAYS;
-			desc.FrontStencil.FailOp = STENCIL_OP_REPLACE;
-			desc.FrontStencil.PassOp = STENCIL_OP_REPLACE;
-			desc.FrontStencil.DepthFailOp = STENCIL_OP_REPLACE;
-			tShaderDynamicBufferDescription dynBufferDesc;
-			dynBufferDesc.Name = "u_model";
-			dynBufferDesc.ElemCount = globals::MaxRenderObjects;
-			tShaderDynamicBufferDescription materialDynDesc;
-			materialDynDesc.Name = "u_material";
-			materialDynDesc.ElemCount = globals::MaxMaterials;
-			materialDynDesc.IsShared = true;
-			desc.DynamicBuffers.push_back(dynBufferDesc);
-			desc.DynamicBuffers.push_back(materialDynDesc);
-			m_shader = ShaderProgram::Create(renderContext, desc);
+			m_shader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 		}
 
 		{
-			// Skybox
-			tShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
-			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
-			//shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "SKYBOX_GBUFFER" });
-			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.RenderTarget = m_rt;
-			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
-			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
-			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
-
-			shaderDesc.DepthStencilMode = /*DEPTH_STENCIL_DEPTH_WRITE | DEPTH_STENCIL_DEPTH_TEST |*/ DEPTH_STENCIL_STENCIL_TEST;
-			shaderDesc.FrontStencil.CompareMask = 0x1;
-			shaderDesc.FrontStencil.Reference = 0x1;
-			shaderDesc.FrontStencil.WriteMask = 0x1;
-			shaderDesc.FrontStencil.CompareOp = COMPARE_OP_NOT_EQUAL;
-			shaderDesc.FrontStencil.FailOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.PassOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_KEEP;
-			shaderDesc.BackStencil = shaderDesc.FrontStencil;
-
-			m_skyboxShader = ShaderProgram::Create(renderContext, shaderDesc);
+            rendersystem::ShaderBuildDescription shaderDesc;
+            shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
+            shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
+            m_shader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 
 			m_skyboxModel = _new cModel();
 			m_skyboxModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
@@ -129,7 +96,10 @@ namespace Mist
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
-		RenderTarget::Destroy(renderContext, m_rt);
+
+		m_rt = nullptr;
+		delete m_shader;
+		delete m_skyboxShader;
 	}
 
 	void ForwardLighting::InitFrameData(const RenderContext& context, const Renderer& renderFrame, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -152,66 +122,31 @@ namespace Mist
         return;
 #endif
 		CPU_PROFILE_SCOPE(ForwardLighting);
-        CommandList* commandList = renderContext.CmdList;
 
-		const cTexture* cubemapTexture = renderFrameContext.Scene->GetSkyboxTexture();
+		render::TextureHandle cubemapTexture = renderFrameContext.Scene->GetSkyboxTexture();
 
 		if (CVar_ShowForwardTech.Get())
 		{
-            GraphicsState state = {};
-			state.Program = m_shader;
-			state.Rt = m_rt;
-			commandList->BeginMarker("ForwardTech");
-			commandList->SetGraphicsState(state);
-#if 0
-			tViewRenderInfo renderInfo;
-			// In this pass we render color lighting and 
-			renderInfo.flags = RenderFlags_Fixed | RenderFlags_Emissive;
-			renderInfo.view = *renderFrameContext.CameraData;
-			renderInfo.cubemap = cubemapTexture;
-			renderInfo.cubemapSlot = 6;
-			ShadowMapProcess* shadowMapping = (ShadowMapProcess*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
-			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-			{
-				// Shadow map matrices from shadow map process
-				renderInfo.shadowMap.LightViewMatrices[i] = shadowMapping->m_shadowMapPipeline.GetLightVP(i);
-				// Shadow map textures from shadow map process
-				renderInfo.shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->GetDepthTexture();
-			}
-			renderInfo.shadowMapTexturesSlot = 2;
-			renderInfo.environment = renderFrameContext.Scene->GetEnvironmentData();
-			renderFrameContext.Scene->DrawWithMaterials(renderContext, renderInfo, 3);
-#elif 1
+			g_render->SetDefaultState();
+			g_render->SetShader(m_shader);
+			g_render->SetRenderTarget(m_rt);
 			renderFrameContext.Scene->RenderPipelineDraw(renderContext, RenderFlags_Fixed, 3);
-#else
-			m_shader->UseProgram(renderContext);
-			m_shader->SetBufferData(renderContext, "u_Camera", renderFrameContext.CameraData, sizeof(*renderFrameContext.CameraData));
-			m_shader->SetBufferData(renderContext, "u_depthInfo", lightViewMatrices, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
-			m_shader->SetBufferData(renderContext, "u_env", &renderFrameContext.Scene->GetEnvironmentData(), sizeof(EnvironmentData));
-			m_shader->BindTextureArraySlot(renderContext, 2, shadowMapTextures.data(), globals::MaxShadowMapAttachments);
-			m_shader->BindTextureSlot(renderContext, 6, *cubemapTexture);
-			renderFrameContext.Scene->Draw(renderContext, m_shader, 3, 1, VK_NULL_HANDLE, RenderFlags_Fixed);
-#endif // 0
 
-			state.Program = m_skyboxShader;
+			g_render->SetShader(m_skyboxShader);
 			check(m_skyboxModel->m_meshes.GetSize() == 1);
 			const cMesh& mesh = m_skyboxModel->m_meshes[0];
-			state.Vbo = mesh.VertexBuffer;
-            state.Ibo = mesh.IndexBuffer;
-			commandList->SetGraphicsState(state);
-			glm::mat4 viewRot = renderFrameContext.CameraData->InvView;
+			g_render->SetVertexBuffer(mesh.vb);
+			g_render->SetIndexBuffer(mesh.ib);
+			glm::mat4 viewRot = GetCameraData()->InvView;
 			viewRot[3] = { 0.f,0.f,0.f,1.f };
 			glm::mat4 ubo[2];
 			ubo[0] = viewRot;
-			ubo[1] = renderFrameContext.CameraData->Projection * viewRot;
-			m_skyboxShader->SetBufferData(renderContext, "u_ubo", ubo, sizeof(glm::mat4) * 2);
-			m_skyboxShader->BindSampledTexture(renderContext, "u_cubemap", *cubemapTexture);
-			commandList->BindProgramDescriptorSets();
-            commandList->DrawIndexed(mesh.IndexCount, 1, 0, 0);
+			ubo[1] = GetCameraData()->Projection * viewRot;
+			g_render->SetShaderProperty("u_ubo", ubo, sizeof(glm::mat4) * 2);
+			g_render->SetTextureSlot("u_cubemap", cubemapTexture);
+			g_render->DrawIndexed(mesh.indexCount);
 			
-			commandList->EndMarker();
-
-			DebugRender::DrawScreenQuad({}, { m_rt->GetWidth(), m_rt->GetHeight() }, *m_rt->GetTexture());
+			DebugRender::DrawScreenQuad({}, { m_rt->m_info.extent.width, m_rt->m_info.extent.height }, m_rt->m_description.colorAttachments[0].texture);;
 		}
 	}
 
@@ -225,7 +160,7 @@ namespace Mist
 		ImGui::End();
 	}
 
-	const RenderTarget* ForwardLighting::GetRenderTarget(uint32_t index) const
+	render::RenderTargetHandle ForwardLighting::GetRenderTarget(uint32_t index) const
 	{
 #ifdef MIST_DISABLE_FORWARD
         return nullptr;

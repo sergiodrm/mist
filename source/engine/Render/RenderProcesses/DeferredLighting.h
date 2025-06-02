@@ -24,22 +24,22 @@ namespace Mist
 		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput; }
+		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput; }
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
-		RenderTarget* m_lightingOutput;
+		render::RenderTargetHandle m_lightingOutput;
 	private:
-		ShaderProgram* m_lightingShader;
-		ShaderProgram* m_lightingFogShader;
-		ShaderProgram* m_skyboxShader;
+		rendersystem::ShaderProgram* m_lightingShader;
+		rendersystem::ShaderProgram* m_lightingFogShader;
+		rendersystem::ShaderProgram* m_skyboxShader;
 		cModel* m_skyModel;
 
-		ShaderProgram* m_hdrShader;
-		RenderTarget* m_hdrOutput;
+		rendersystem::ShaderProgram* m_hdrShader;
+		render::RenderTargetHandle m_hdrOutput;
 
-		const RenderTarget* m_gbufferRenderTarget;
-		tArray<const RenderTarget*, globals::MaxShadowMapAttachments> m_shadowMapRenderTargetArray;
-		const RenderTarget* m_ssaoRenderTarget;
+		render::RenderTargetHandle m_gbufferRenderTarget;
+		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapRenderTargetArray;
+		render::RenderTargetHandle m_ssaoRenderTarget;
 
 		BloomEffect m_bloomEffect;
 	};

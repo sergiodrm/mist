@@ -11,38 +11,25 @@
 #include "VulkanRenderEngine.h"
 #include "CommandList.h"
 
+#include "RenderSystem/RenderSystem.h"
+
 namespace Mist
 {
 	void Renderer::Init(const RenderContext& context, RenderFrameContext* frameContextArray, uint32_t frameContextCount, const Swapchain& swapchain)
 	{
-		uint32_t swapchainCount = swapchain.GetImageCount();
-		uint32_t renderTargetCount = __min(swapchainCount, m_presentRenderTargets.GetCapacity());
-		m_presentRenderTargets.Resize(renderTargetCount);
-		check(renderTargetCount > 0);
-		VkRect2D renderArea =
-		{
-			.offset = {0, 0},
-			.extent = {.width = context.Window->Width, .height = context.Window->Height }
-		};
-		for (uint32_t i = 0; i < renderTargetCount; ++i)
-		{
-			RenderTargetDescription rtDesc;
-			rtDesc.RenderArea = renderArea;
-			//rtDesc.AddColorAttachment(swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { .color = {0.2f, 0.4f, 0.1f, 0.f} });
-			RenderTargetAttachmentDescription attachmentDesc{ SAMPLE_COUNT_1_BIT, swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, {0.2f, 0.4f, 0.1f, 0.f}, 0, swapchain.GetImageViewAt(i) };
-			rtDesc.AddColorAttachment(attachmentDesc);
-			//rtDesc.AddExternalAttachment(swapchain.GetImageViewAt(i), swapchain.GetImageFormat(), IMAGE_LAYOUT_PRESENT_SRC_KHR, SAMPLE_COUNT_1_BIT, { 0.2f, 0.4f, 0.1f, 0.f });
-			rtDesc.ResourceName.Fmt("Swapchaing_%d_RT", i);
-			m_presentRenderTargets[i] = RenderTarget::Create(context, rtDesc);
-		}
+		uint32_t width = context.Window->Width;
+		uint32_t height = context.Window->Height;
 
 		{
-			RenderTargetDescription desc;
-			desc.RenderArea = renderArea;
-			desc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, {}, IMAGE_USAGE_TRANSFER_SRC_BIT);
-			desc.ResourceName = "RT_LDR";
-			desc.ClearOnLoad = false;
-			m_ldr = RenderTarget::Create(context, desc);
+			render::TextureDescription texDesc;
+			texDesc.extent = { width, height, 1 };
+			texDesc.format = render::Format_R8G8B8A8_UNorm;
+			texDesc.isRenderTarget = true;
+			render::TextureHandle texture = g_device->CreateTexture(texDesc);
+
+			render::RenderTargetDescription rtDesc;
+			rtDesc.AddColorAttachment(texture);
+			m_ldr = g_device->CreateRenderTarget(rtDesc);
 		}
 
 		m_processArray[RENDERPROCESS_SSAO] = _new SSAO();
@@ -63,10 +50,7 @@ namespace Mist
 
 	void Renderer::Destroy(const RenderContext& context)
 	{
-		RenderTarget::Destroy(context, m_ldr);
-
-		for (uint32_t i = 0; i < m_presentRenderTargets.GetSize(); ++i)
-			RenderTarget::Destroy(context, m_presentRenderTargets[i]);
+		m_ldr = nullptr;
 
 		// reverse order
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
@@ -116,47 +100,17 @@ namespace Mist
 		return m_processArray[type];
 	}
 
-	const RenderTarget& Renderer::GetPresentRenderTarget(uint32_t index) const
+	void Renderer::CopyRenderTarget(const CopyParams& params)
 	{
-		return *m_presentRenderTargets[index];
-	}
-
-	RenderTarget& Renderer::GetPresentRenderTarget(uint32_t index)
-	{
-		return *m_presentRenderTargets[index];
-	}
-
-	void Renderer::CopyRenderTarget(const tCopyParams& params)
-	{
-		check(params.Context && params.Dst && params.Src);
-		tCopyShaderKey key{ params.Dst->GetDescription(), params.BlendState };
-		if (!m_copyPrograms.contains(key))
-		{
-			tShaderProgramDescription desc;
-			desc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-			desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("postprocess_quad.frag");
-			desc.RenderTarget = params.Dst;
-			desc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			m_copyPrograms[key] = ShaderProgram::Create(*params.Context, desc);
-		}
-		ShaderProgram* copyShader = m_copyPrograms[key];
-		check(copyShader);
-		//VkCommandBuffer cmd = params.Context->GetFrameContext().GraphicsCommandContext.CommandBuffer;
-        CommandList* commandList = params.Context->CmdList;
-        commandList->BeginMarker("CopyRT");
-		//BeginGPUEvent(*params.Context, cmd, "CopyRT");
-		//params.Dst->BeginPass(*params.Context, cmd);
-		//copyShader->UseProgram(*params.Context);
-        GraphicsState state = {};
-        state.Program = copyShader;
-        state.Rt = params.Dst;
-        commandList->SetGraphicsState(state);
-		copyShader->BindSampledTexture(*params.Context, "u_tex", *params.Src->GetTexture());
-		//copyShader->FlushDescriptors(*params.Context);
-		commandList->BindProgramDescriptorSets();
-		CmdDrawFullscreenQuad(commandList);
-		//params.Dst->EndPass(cmd);
-		//EndGPUEvent(*params.Context, cmd);
-		commandList->EndMarker();
+		check(params.Dst && params.Src);
+		g_render->SetRenderTarget(params.Dst);
+		g_render->SetShader(m_copyProgram);
+		g_render->SetBlendEnable(params.blendState.blendEnable);
+		g_render->SetBlendFactor(params.blendState.srcBlend, params.blendState.dstBlend, params.blendState.blendOp);
+		g_render->SetBlendAlphaState(params.blendState.srcAlphaBlend, params.blendState.dstAlphaBlend, params.blendState.alphaBlendOp);
+		g_render->SetBlendWriteMask(params.blendState.colorWriteMask);
+		g_render->SetTextureSlot("u_tex", params.Src->m_description.colorAttachments[0].texture);
+		g_render->DrawFullscreenQuad();
+		g_render->ClearState();
 	}
 }

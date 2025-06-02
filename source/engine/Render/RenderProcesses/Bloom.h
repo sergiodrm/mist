@@ -6,8 +6,14 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
 #include <glm/glm.hpp>
+#include "RenderAPI/Device.h"
 
 #define BLOOM_MIPMAP_LEVELS 5
+
+namespace rendersystem
+{
+	class ShaderProgram;
+}
 
 namespace Mist
 {
@@ -44,18 +50,19 @@ namespace Mist
 		// Config of bloom draw. Can be updated before each draw.
 		tBloomConfig m_config;
 		// Output mixing.
-		RenderTarget* m_composeTarget;
+		render::RenderTargetHandle m_composeTarget;
 		// Texture to be blurred by downsampling and upsampling.
-		const cTexture* m_inputTarget;
+		render::TextureHandle m_inputTarget;
 		// Texture to be mixed with the result of bloom process.
-		const cTexture* m_blendTexture = nullptr;
+		render::TextureHandle m_blendTexture = nullptr;
 
 	private:
-		ShaderProgram* m_filterShader;
-		ShaderProgram* m_downsampleShader;
-		ShaderProgram* m_upsampleShader;
-		ShaderProgram* m_composeShader;
-		tArray<RenderTarget*, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
+		rendersystem::ShaderProgram* m_filterShader;
+		rendersystem::ShaderProgram* m_downsampleShader;
+		rendersystem::ShaderProgram* m_upsampleShader;
+		rendersystem::ShaderProgram* m_composeShader;
+		tArray<render::RenderTargetHandle, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
+		tArray<render::TextureHandle, BLOOM_MIPMAP_LEVELS> m_renderTargetTexturesArray;
 
 		float m_threshold = 1.f;
 		float m_knee = 0.1f;

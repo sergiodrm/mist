@@ -53,14 +53,14 @@ namespace Mist
 
 		void ImGuiDraw(bool createWindow = false);
 
-        ShaderProgram* GetShader() const { return m_shader; }
+        rendersystem::ShaderProgram* GetShader() const { return m_shader; }
 
 	protected:
 		glm::mat4 ComputeShadowVolume(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDir, float nearClip, float farClip, float splitLambda = 0.95f);
 		void SetupLight(uint32_t lightIndex, const glm::mat4& depthViewProjection, const glm::mat4& view);
 	private:
 		// Shader shadowmap pipeline
-		ShaderProgram* m_shader;
+		rendersystem::ShaderProgram* m_shader;
 		// Cache for save depth view projection data until flush to gpu buffer.
 		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
 		glm::mat4 m_lightMVPCache[globals::MaxShadowMapAttachments];
@@ -87,7 +87,7 @@ namespace Mist
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
 		virtual void ImGuiDraw() override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override;
+		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index) const override;
 
 		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
 
@@ -95,7 +95,7 @@ namespace Mist
 	private:
 		virtual void DebugDraw(const RenderContext& context) override;
 	private:
-		tArray<RenderTarget*, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
+		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_debugIndex = 0;

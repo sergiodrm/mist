@@ -4,7 +4,12 @@
 #include "Render/RenderTarget.h"
 #include "Render/Globals.h"
 #include "Render/Texture.h"
+#include "RenderAPI/Device.h"
 
+namespace rendersystem
+{
+    class ShaderProgram;
+}
 
 namespace Mist
 {
@@ -43,18 +48,18 @@ namespace Mist
 		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
 		virtual void ImGuiDraw() override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index = 0) const override;
+		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index = 0) const override;
 
-		static const RenderTarget* GetGBuffer();
+		static render::RenderTargetHandle GetGBuffer();
 
-		static EFormat GetGBufferFormat(EGBufferTarget target);
+		static render::Format GetGBufferFormat(EGBufferTarget target);
 
 	private:
 		void InitPipeline(const RenderContext& renderContext);
 		virtual void DebugDraw(const RenderContext& context) override;
 	public:
-		RenderTarget* m_renderTarget;
-		ShaderProgram* m_gbufferShader;
+		render::RenderTargetHandle m_renderTarget;
+		rendersystem::ShaderProgram* m_gbufferShader;
 		EDebugMode m_debugMode = DEBUG_NONE;
 	};
 }

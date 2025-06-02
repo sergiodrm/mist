@@ -15,6 +15,7 @@
 #include "Application/Application.h"
 #include "Render/RendererBase.h"
 #include "CommandList.h"
+#include "RenderSystem/RenderSystem.h"
 
 
 namespace Mist
@@ -47,20 +48,27 @@ namespace Mist
 			static constexpr index_t MaxLines = 500;
 			tStaticArray<tLineVertex, MaxLines> LineArray;
 			VertexBuffer vb;
+			render::BufferHandle vertexBuffer;
 
 			inline void Reset() { LineArray.Clear(); }
 
 			void Init(const RenderContext& context)
 			{
+#if 0
 				BufferCreateInfo vbInfo;
 				vbInfo.Size = sizeof(tLineVertex) * tLineBatch::MaxLines;
 				vbInfo.Data = nullptr;
 				vb.Init(context, vbInfo);
+#endif // 0
+
+
+				vertexBuffer = render::utils::CreateDynamicVertexBuffer(g_device, sizeof(tLineVertex) * tLineBatch::MaxLines, "DebugRenderLineBatchVB");
 			}
 
 			void Destroy(const RenderContext& context)
 			{
-				vb.Destroy(context);
+				//vb.Destroy(context);
+				vertexBuffer = nullptr; 
 			}
 
 			void PushLineVertex(const glm::vec3& pos, const glm::vec3& color)
@@ -82,7 +90,8 @@ namespace Mist
 				if (!LineArray.IsEmpty())
 				{
 					// Flush lines to vertex buffer
-					GPUBuffer::SubmitBufferToGpu(vb, LineArray.GetData(), sizeof(tLineVertex) * LineArray.GetSize());
+					//GPUBuffer::SubmitBufferToGpu(vb, LineArray.GetData(), sizeof(tLineVertex) * LineArray.GetSize());
+					g_device->WriteBuffer(vertexBuffer, LineArray.GetData(), sizeof(tLineVertex) * LineArray.GetSize());
 					return true;
 				}
 				return false;
@@ -97,42 +106,50 @@ namespace Mist
 			static constexpr index_t MaxViews = 8;
 
 			tStaticArray<tQuadVertex, MaxQuadVertices> QuadArray;
-			tStaticArray<const cTexture*, MaxViews> Textures;
+			tStaticArray<render::TextureHandle, MaxViews> Textures;
 			VertexBuffer vb;
 			IndexBuffer ib;
+			render::BufferHandle vertexBuffer;
+			render::BufferHandle indexBuffer;
 
 			inline  void Reset() { QuadArray.Clear(); Textures.Clear(); }
 
 			void Init(const RenderContext& context)
 			{
-				BufferCreateInfo quadInfo;
-				quadInfo.Size = sizeof(tQuadVertex) * tQuadBatch::MaxQuads;
-				quadInfo.Data = nullptr;
-				vb.Init(context, quadInfo);
-
 				// Init IndexBuffer, we know which indices are to draw a quad
 				constexpr uint32_t indicesPerQuad = 6;
 				constexpr uint32_t indices[] = { 0, 2, 1, 1, 2, 3 };
-				uint32_t indexBuffer[tQuadBatch::MaxQuads * 6];
+				uint32_t buffer[tQuadBatch::MaxQuads * 6];
 				uint32_t vertexOffset = 0;
 				for (uint32_t i = 0; i < tQuadBatch::MaxQuads; ++i)
 				{
 					for (uint32_t j = 0; j < indicesPerQuad; ++j)
-						indexBuffer[(i * indicesPerQuad) + j] = indices[j] + vertexOffset;
+						buffer[(i * indicesPerQuad) + j] = indices[j] + vertexOffset;
 					vertexOffset += 4;
 				}
+#if 0
+				BufferCreateInfo quadInfo;
+				quadInfo.Size = sizeof(tQuadVertex) * tQuadBatch::MaxQuads;
+				quadInfo.Data = nullptr;
+				vb.Init(context, quadInfo);
 				quadInfo.Size = sizeof(uint32_t) * tQuadBatch::MaxQuads * indicesPerQuad;
-				quadInfo.Data = indexBuffer;
+				quadInfo.Data = buffer;
 				ib.Init(context, quadInfo);
+#endif // 0
+
+				vertexBuffer = render::utils::CreateDynamicVertexBuffer(g_device, sizeof(tQuadVertex) * tQuadBatch::MaxQuads, "DebugRenderQuadBatchVB");
+				indexBuffer = render::utils::CreateIndexBuffer(g_device, buffer, sizeof(uint32_t) * tQuadBatch::MaxQuads * indicesPerQuad, nullptr, "DebugRenderQuadBatchIB");
 			}
 
 			void Destroy(const RenderContext& context)
 			{
-				vb.Destroy(context);
-				ib.Destroy(context);
+				//vb.Destroy(context);
+				//ib.Destroy(context);
+				vertexBuffer = nullptr;
+				indexBuffer = nullptr;
 			}
 
-			index_t SubmitQuadTexture(const cTexture* texture)
+			index_t SubmitQuadTexture(render::TextureHandle texture)
 			{
 				for (index_t i = 0; i < Textures.GetSize(); ++i)
 				{
@@ -154,7 +171,8 @@ namespace Mist
 			{
 				if (!QuadArray.IsEmpty())
 				{
-					GPUBuffer::SubmitBufferToGpu(vb, QuadArray.GetData(), sizeof(tQuadVertex) * QuadArray.GetSize());
+					//GPUBuffer::SubmitBufferToGpu(vb, QuadArray.GetData(), sizeof(tQuadVertex) * QuadArray.GetSize());
+					g_device->WriteBuffer(vertexBuffer, QuadArray.GetData(), sizeof(tQuadVertex) * QuadArray.GetSize());
 					return true;
 				}
 				return false;
@@ -166,33 +184,28 @@ namespace Mist
 			tQuadBatch QuadBatch;
 			tLineBatch LineBatch;
 
-			ShaderProgram* m_lineShader;
-			ShaderProgram* m_quadShader;
+			rendersystem::ShaderProgram* m_lineShader;
+			rendersystem::ShaderProgram* m_quadShader;
 		};
 		tDebugRenderPipeline DebugRenderPipeline;
 
 		void Init(const RenderContext& context)
 		{
-			const cTexture* defaultTex = GetTextureCheckerboard4x4(context);
+			//const cTexture* defaultTex = GetTextureCheckerboard4x4(context);
 			//DebugRenderPipeline.QuadBatch.Textures.Clear(defaultTex);
 			DebugRenderPipeline.QuadBatch.Textures.Clear();
-			Renderer* renderer = context.Renderer;
+			//Renderer* renderer = context.Renderer;
 			{
-				tShaderProgramDescription shaderDesc;
-				shaderDesc.VertexShaderFile.Filepath = globals::LineVertexShader;
-				shaderDesc.FragmentShaderFile.Filepath = globals::LineFragmentShader;
-				shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float4, EAttributeType::Float4 });
-				shaderDesc.Topology = PRIMITIVE_TOPOLOGY_LINE_LIST;
-				shaderDesc.RenderTarget = &renderer->GetLDRTarget();
-				DebugRenderPipeline.m_lineShader = ShaderProgram::Create(context, shaderDesc);
+				rendersystem::ShaderBuildDescription shaderDesc;
+				shaderDesc.vsDesc.filePath = "shaders/line.vert";
+				shaderDesc.fsDesc.filePath = "shaders/line.frag";
+				DebugRenderPipeline.m_lineShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 			}
 			{
-				tShaderProgramDescription shaderDesc;
-				shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("screenquad.vert");
-				shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("screenquad.frag");
-				shaderDesc.InputLayout = VertexInputLayout::BuildVertexInputLayout({ EAttributeType::Float2, EAttributeType::Float2, EAttributeType::Int });
-				shaderDesc.RenderTarget = &renderer->GetLDRTarget();
-				DebugRenderPipeline.m_quadShader = ShaderProgram::Create(context, shaderDesc);
+                rendersystem::ShaderBuildDescription shaderDesc;
+                shaderDesc.vsDesc.filePath = "shaders/screenquad.vert";
+                shaderDesc.fsDesc.filePath = "shaders/screenquad.frag";
+                DebugRenderPipeline.m_quadShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 			}
 
 			DebugRenderPipeline.LineBatch.Init(context);
@@ -246,88 +259,63 @@ namespace Mist
 			}
 		}
 
-		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const cTexture& texture, uint32_t view)
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, render::TextureHandle texture, uint32_t view)
 		{
-			if (DebugRenderPipeline.QuadBatch.QuadArray.GetSize() < tQuadBatch::MaxQuadVertices)
-			{
-				index_t viewIndex = DebugRenderPipeline.QuadBatch.SubmitQuadTexture(&texture);
-				if (viewIndex != index_invalid)
-				{
-					glm::vec2 diffs[4] = { {0.f, 0.f}, {size.x, 0.f}, {0.f, size.y}, {size.x, size.y} };
-					index_t offset = DebugRenderPipeline.QuadBatch.QuadArray.GetSize();
-					DebugRenderPipeline.QuadBatch.QuadArray.Resize(offset+4);
-					for (index_t i = 0; i < 4; ++i)
-					{
-						tQuadVertex& vertex = DebugRenderPipeline.QuadBatch.QuadArray[offset + i];
-						vertex.ScreenPosition = { screenPos.x + diffs[i].x, screenPos.y + diffs[i].y };
-						vertex.TexCoords = QuadVertexUVs[i];
-						vertex.TexIndex = viewIndex;
-					}
-				}
-			}
-			else
-				logferror("DebugRender Quad overflow. Increate QuadBatch size (Current %u)\n", tQuadBatch::MaxQuads);
+            if (DebugRenderPipeline.QuadBatch.QuadArray.GetSize() < tQuadBatch::MaxQuadVertices)
+            {
+                index_t viewIndex = DebugRenderPipeline.QuadBatch.SubmitQuadTexture(texture);
+                if (viewIndex != index_invalid)
+                {
+                    glm::vec2 diffs[4] = { {0.f, 0.f}, {size.x, 0.f}, {0.f, size.y}, {size.x, size.y} };
+                    index_t offset = DebugRenderPipeline.QuadBatch.QuadArray.GetSize();
+                    DebugRenderPipeline.QuadBatch.QuadArray.Resize(offset + 4);
+                    for (index_t i = 0; i < 4; ++i)
+                    {
+                        tQuadVertex& vertex = DebugRenderPipeline.QuadBatch.QuadArray[offset + i];
+                        vertex.ScreenPosition = { screenPos.x + diffs[i].x, screenPos.y + diffs[i].y };
+                        vertex.TexCoords = QuadVertexUVs[i];
+                        vertex.TexIndex = viewIndex;
+                    }
+                }
+            }
+            else
+                logferror("DebugRender Quad overflow. Increate QuadBatch size (Current %u)\n", tQuadBatch::MaxQuads);
 		}
 
 		void Draw(const RenderContext& context)
 		{
 			CPU_PROFILE_SCOPE(DebugPass);
-			Renderer* renderer = context.Renderer;
-			//VkCommandBuffer cmd = context.GetFrameContext().GraphicsCommandContext.CommandBuffer;
-            CommandList* commandList = context.CmdList;
-
-			//BeginGPUEvent(context, cmd, "DebugRenderer");
-            commandList->BeginMarker("DebugRenderer");
 
 			// process batches before render passes.
-			commandList->ClearState();
+			g_render->SetDefaultState();
 			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
 			const bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
 
-            GraphicsState state = {};
-            state.Rt = &renderer->GetLDRTarget();
-            commandList->SetGraphicsState(state);
 
 			//renderer->GetLDRTarget().BeginPass(context, cmd);
-			const CameraData& cameraData = *context.GetFrameContext().CameraData;
+			const CameraData& cameraData = *GetCameraData();
 			if (processLine)
 			{
-                state.Program = DebugRenderPipeline.m_lineShader;
-				state.Vbo = DebugRenderPipeline.LineBatch.vb;
-                commandList->SetGraphicsState(state);
-				
-				//DebugRenderPipeline.m_lineShader->UseProgram(context);
-				DebugRenderPipeline.m_lineShader->SetBufferData(context, "camera", &cameraData, sizeof(CameraData));
-				//DebugRenderPipeline.m_lineShader->FlushDescriptors(context);
-				//DebugRenderPipeline.LineBatch.vb.Bind(cmd);
-				//RenderAPI::CmdDraw(cmd, DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
-				commandList->BindProgramDescriptorSets();
-                commandList->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize(), 1, 0, 0);
+				g_render->SetShader(DebugRenderPipeline.m_lineShader);
+				g_render->SetVertexBuffer(DebugRenderPipeline.LineBatch.vertexBuffer);
+				g_render->SetIndexBuffer(nullptr);
+				g_render->SetShaderProperty("camera", &cameraData, sizeof(cameraData));
+				g_render->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize());
 				DebugRenderPipeline.LineBatch.Reset();
 			}
 
 			if (processQuad)
 			{
 				const glm::mat4 orthoproj = glm::ortho(0.f, (float)context.Window->Width, 0.f, (float)context.Window->Height, -1.f, 1.f);
-
-                state.Program = DebugRenderPipeline.m_quadShader;
-                state.Vbo = DebugRenderPipeline.QuadBatch.vb;
-                state.Ibo = DebugRenderPipeline.QuadBatch.ib;
-                commandList->SetGraphicsState(state);
-				//DebugRenderPipeline.m_quadShader->UseProgram(context);
-				DebugRenderPipeline.m_quadShader->BindSampledTextureArray(context, "u_tex", DebugRenderPipeline.QuadBatch.Textures.GetData(), tQuadBatch::MaxViews);
-				DebugRenderPipeline.m_quadShader->SetBufferData(context, "u_camera", &orthoproj, sizeof(orthoproj));
-				//DebugRenderPipeline.m_quadShader->FlushDescriptors(context);
-				//DebugRenderPipeline.QuadBatch.vb.Bind(cmd);
-				//DebugRenderPipeline.QuadBatch.ib.Bind(cmd);
-				//RenderAPI::CmdDrawIndexed(cmd, DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0, 0);
-				commandList->BindProgramDescriptorSets();
-                commandList->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6, 1, 0, 0);
+				g_render->SetShader(DebugRenderPipeline.m_quadShader);
+				g_render->SetVertexBuffer(DebugRenderPipeline.QuadBatch.vertexBuffer);
+				g_render->SetIndexBuffer(DebugRenderPipeline.QuadBatch.indexBuffer);
+				g_render->SetShaderProperty("u_camera", &orthoproj, sizeof(orthoproj));
+				for (uint32_t i = 0; i < DebugRenderPipeline.QuadBatch.Textures.GetSize(); ++i)
+					g_render->SetTextureSlot(DebugRenderPipeline.QuadBatch.Textures[i], 0, i);
+				g_render->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6);
 				DebugRenderPipeline.QuadBatch.Reset();
 			}
-			//renderer->GetLDRTarget().EndPass(cmd);
-			//EndGPUEvent(context, cmd);
-            commandList->EndMarker();
 		}
 	}
 }

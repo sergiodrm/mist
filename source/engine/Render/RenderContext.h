@@ -104,7 +104,6 @@ namespace Mist
 
 		// Scene to draw
 		class Scene* Scene;
-		struct CameraData* CameraData;
 		Renderer* Renderer;
 
 

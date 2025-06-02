@@ -21,15 +21,15 @@ namespace Mist
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
 		virtual void ImGuiDraw() override;
-		virtual const RenderTarget* GetRenderTarget(uint32_t index) const override;
+		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index) const override;
 	protected:
 
 	protected:
 		// Render State
-		ShaderProgram* m_shader;
-		RenderTarget* m_rt;
+		rendersystem::ShaderProgram* m_shader;
+		render::RenderTargetHandle m_rt;
 
-		ShaderProgram* m_skyboxShader;
+		rendersystem::ShaderProgram* m_skyboxShader;
 		cModel* m_skyboxModel;
 	};
 }

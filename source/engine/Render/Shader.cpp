@@ -1,4 +1,5 @@
 // src file for Mist project 
+#if 0
 
 #include "Render/Shader.h"
 
@@ -18,7 +19,9 @@
 
 #include "Utils/TimeUtils.h"
 #include "Utils/FileSystem.h"
+#include "RenderAPI/ShaderCompiler.h"
 
+#if 0
 
 
 #ifdef SHADER_RUNTIME_COMPILATION
@@ -335,6 +338,8 @@ namespace vkutils
 		return "";
 	}
 }
+#endif // 0
+
 
 namespace Mist
 {
@@ -383,20 +388,60 @@ namespace Mist
 		return s;
 	}
 
-	ShaderCompiler::ShaderCompiler(const RenderContext& renderContext) : m_renderContext(renderContext)
-	{}
+	ShaderCompiler::ShaderCompiler(const RenderContext* renderContext) : m_renderContext(renderContext)
+	{
+	}
+
+	ShaderCompiler::ShaderCompiler(render::Device* device)
+		: m_device(device)
+	{
+		check(device);
+	}
 
 	ShaderCompiler::~ShaderCompiler()
 	{
 		ClearCachedData();
 	}
 
+	bool ShaderCompiler::Compile(const ShaderFileDescription& desc, render::ShaderType stage)
+	{
+		check(GetShader(stage) == nullptr);
+		render::shader_compiler::CompiledBinary bin = render::shader_compiler::BuildShader(desc.Filepath.c_str(), stage, &desc.options);
+		if (!bin.IsCompilationSucceed())
+			return false;
+		check(render::shader_compiler::BuildShaderParams(bin, stage, m_properties));
+
+		render::ShaderDescription shaderDesc;
+		shaderDesc.debugName = desc.Filepath.c_str();
+		shaderDesc.name = desc.Filepath.c_str();
+		shaderDesc.type = stage;
+		m_shaders.push_back(m_device->CreateShader(shaderDesc, bin.binary, bin.binaryCount));
+
+		render::shader_compiler::FreeBinary(bin);
+		return true;
+	}
+
+	render::ShaderHandle ShaderCompiler::GetShader(render::ShaderType stage) const
+	{
+		for (uint32_t i = 0; i < (uint32_t)m_shaders.size(); ++i)
+		{
+			check(m_shaders[i]);
+			if (m_shaders[i]->m_description.type == stage)
+				return m_shaders[i];
+		}
+		return nullptr;
+	}
+
 	void ShaderCompiler::ClearCachedData()
 	{
 		for (auto it : m_modules)
 		{
-			vkDestroyShaderModule(m_renderContext.Device, it.CompiledModule, nullptr);
+			vkDestroyShaderModule(m_renderContext->Device, it.CompiledModule, nullptr);
 		}
+		for (uint32_t i = 0; i < (uint32_t)m_shaders.size(); ++i)
+			m_shaders[i] = nullptr;
+		m_properties.params.clear();
+		m_properties.pushConstantMap.clear();
 		m_modules.clear();
 		m_cachedLayoutArray.clear();
 		m_cachedPushConstantArray.clear();
@@ -450,17 +495,17 @@ namespace Mist
 			bin = shader_compiler::Compile(filepath, shaderStage, &compileOptions);
 			if (!bin.IsCompilationSucceed())
 			{
-                logferror("Shader compilation failed (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
+				logferror("Shader compilation failed (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 				if (FileSystem::FileExists(binaryFilepath))
 				{
-                    // Try to load the last compiled binary.
-                    logferror("Loading last compiled binary: %s\n", binaryFilepath);
+					// Try to load the last compiled binary.
+					logferror("Loading last compiled binary: %s\n", binaryFilepath);
 					if (!GetSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount))
 					{
-                        logferror("Failed to load last compiled binary: %s\n", binaryFilepath);
-                        return false;
+						logferror("Failed to load last compiled binary: %s\n", binaryFilepath);
+						return false;
 					}
-                }
+				}
 				else
 				{
 					logferror("Compiled binary not found: %s\n", binaryFilepath);
@@ -469,18 +514,18 @@ namespace Mist
 			}
 			else
 			{
-                // if compilation is succeeded, generate a compiled file.
+				// if compilation is succeeded, generate a compiled file.
 				GenerateCompiledFile(binaryFilepath, bin.binary, bin.binaryCount);
 			}
 		}
 
-        // At this point we must have a valid binary.
+		// At this point we must have a valid binary.
 		check(bin.IsCompilationSucceed());
 
 		// Create vk module
 		CompiledShaderModule data;
 		data.ShaderStage = shaderStage;
-		data.CompiledModule = CompileShaderModule(m_renderContext, bin.binary, bin.binaryCount, data.ShaderStage);
+		data.CompiledModule = CompileShaderModule(*m_renderContext, bin.binary, bin.binaryCount, data.ShaderStage);
 		m_modules.push_back(data);
 		ProcessReflection(shaderStage, bin.binary, bin.binaryCount);
 		// release resources  
@@ -488,7 +533,7 @@ namespace Mist
 
 		char buff[256];
 		sprintf_s(buff, "ShaderModule_(%s)", binaryFilepath);
-		SetVkObjectName(m_renderContext, &data.CompiledModule, VK_OBJECT_TYPE_SHADER_MODULE, buff);
+		SetVkObjectName(*m_renderContext, &data.CompiledModule, VK_OBJECT_TYPE_SHADER_MODULE, buff);
 
 		shaderlogf("Shader compiled successfully (%s: %s)\n", vkutils::GetVulkanShaderStageName(shaderStage), filepath);
 		return true;
@@ -539,6 +584,23 @@ namespace Mist
 					{
 					case DESCRIPTOR_TYPE_UNIFORM_BUFFER: bindingInfo.Type = DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; return;
 					case DESCRIPTOR_TYPE_STORAGE_BUFFER: bindingInfo.Type = DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; return;
+					default:
+						logferror("Trying to set as uniform dynamic an invalid Descriptor [%s]\n", uniformBufferName);
+					}
+				}
+			}
+		}
+		for (uint32_t i = 0; i < (uint32_t)m_properties.params.size(); ++i)
+		{
+			for (uint32_t j = 0; j < (uint32_t)m_properties.params[i].params.size(); ++j)
+			{
+				render::shader_compiler::ShaderPropertyDescription& param = m_properties.params[i].params[j];
+				if (!strcmp(param.name.c_str(), uniformBufferName))
+				{
+					switch (param.type)
+					{
+					case render::ResourceType_ConstantBuffer: param.type = render::ResourceType_VolatileConstantBuffer; return;
+					case DESCRIPTOR_TYPE_STORAGE_BUFFER: param.type = render::ResourceType_DynamicBufferUAV; return;
 					default:
 						logferror("Trying to set as uniform dynamic an invalid Descriptor [%s]\n", uniformBufferName);
 					}
@@ -868,10 +930,10 @@ namespace Mist
 						// created on demmand.
 						check(bindingCount == 1 && binding.Binding == 0);
 						check(binding.ArrayCount <= SHADER_MAX_TEXTURES);
-                        NewShaderParam(binding.Name.c_str(), false, setInfo.SetIndex, binding.Binding);
-                        // with images we dont need to create a buffer info, we just need to create the descriptor set.
+						NewShaderParam(binding.Name.c_str(), false, setInfo.SetIndex, binding.Binding);
+						// with images we dont need to create a buffer info, we just need to create the descriptor set.
 					}
-						break;
+					break;
 					default:
 						break;
 					}
@@ -947,7 +1009,7 @@ namespace Mist
 
 	void tShaderParamAccess::BindTextureArraySlot(const RenderContext& context, VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, VkDescriptorSetLayout setLayout, uint32_t slot, const cTexture* const* textures, uint32_t textureCount, EDescriptorType texType, const Sampler* sampler)
 	{
-        check(texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || texType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		check(texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || texType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 		check(textures && textureCount);
 
 		RenderFrameContext& frameContext = context.GetFrameContext();
@@ -963,12 +1025,12 @@ namespace Mist
 		{
 			check(textures[i]);
 
-            // check if textures has valid usage for storage image and combined image sampler
-            if (texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                check(textures[i]->GetDescription().Usage & IMAGE_USAGE_STORAGE_BIT);
+			// check if textures has valid usage for storage image and combined image sampler
+			if (texType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				check(textures[i]->GetDescription().Usage & IMAGE_USAGE_STORAGE_BIT);
 			else if (texType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-                check(textures[i]->GetDescription().Usage & IMAGE_USAGE_SAMPLED_BIT);
-            VkImageLayout layout = texType == DESCRIPTOR_TYPE_STORAGE_IMAGE ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+				check(textures[i]->GetDescription().Usage & IMAGE_USAGE_SAMPLED_BIT);
+			VkImageLayout layout = texType == DESCRIPTOR_TYPE_STORAGE_IMAGE ? VK_IMAGE_LAYOUT_GENERAL : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			//infos[i].imageLayout = tovk::GetImageLayout(textures[i]->GetImageLayout());
 			infos[i].imageLayout = layout;
 			infos[i].imageView = textures[i]->GetView(0);
@@ -1216,7 +1278,8 @@ namespace Mist
 	ShaderProgram::ShaderProgram()
 		: m_pipeline(VK_NULL_HANDLE)
 		, m_pipelineLayout(VK_NULL_HANDLE)
-	{	}
+	{
+	}
 
 	ShaderProgram* ShaderProgram::Create(const RenderContext& context, const tShaderProgramDescription& description)
 	{
@@ -1292,53 +1355,89 @@ namespace Mist
 	{
 		check(!m_description.VertexShaderFile.Filepath.empty() || !m_description.FragmentShaderFile.Filepath.empty());
 		check(m_description.RenderTarget);
-		
-		// Generate shader module stages
-		ShaderCompiler compiler(context);
-		if (!GenerateShaderModules(compiler))
+
+		// generate shader modules
 		{
-            logferror("Failed to generate shader modules for graphics pipeline\n");
-			compiler.ClearCachedData();
-            return false;
+			bool succeed = false;
+
+			render::Device* device = g_device;
+			ShaderCompiler compiler(device);
+			if (!m_description.VertexShaderFile.Filepath.empty())
+				succeed = compiler.Compile(m_description.VertexShaderFile, render::ShaderType_Vertex);
+			if (succeed && !m_description.FragmentShaderFile.Filepath.empty())
+				succeed = compiler.Compile(m_description.FragmentShaderFile, render::ShaderType_Fragment);
+
+			if (!succeed)
+			{
+				logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
+					m_description.VertexShaderFile.Filepath.empty() ? "none" : m_description.VertexShaderFile.Filepath.c_str(),
+					m_description.FragmentShaderFile.Filepath.empty() ? "none" : m_description.FragmentShaderFile.Filepath.c_str());
+				return false;
+			}
+			// Generate shader reflection data
+			// Override with external info
+			for (const tShaderDynamicBufferDescription& dynBuffer : m_description.DynamicBuffers)
+				compiler.SetUniformBufferAsDynamic(dynBuffer.Name.c_str());
+			m_properties = compiler.GetReflectionProperties();
+
+			if (IsLoaded())
+				Destroy(context);
+
+			m_vs = compiler.GetShader(render::ShaderType_Vertex);
+			m_fs = compiler.GetShader(render::ShaderType_Fragment);
+			m_cs = nullptr;
 		}
 
-		// Prepare pipeline builder
-        // Input configuration
-        RenderPipelineBuilder builder(context);
-        builder.InputDescription = m_description.InputLayout;
-        builder.SubpassIndex = m_description.SubpassIndex;
-        builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
-        builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
-        builder.Rasterizer.frontFace = tovk::GetFrontFace(m_description.FrontFaceMode);
-        builder.DepthStencil.depthWriteEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_WRITE ? VK_TRUE : VK_FALSE;
-        builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
-        builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
-        builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
-        builder.DepthStencil.front = GetStencilOpState(m_description.FrontStencil);
-        builder.DepthStencil.back = GetStencilOpState(m_description.BackStencil);
-        builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
-        builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
-        builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
-        builder.Scissor.offset = { 0, 0 };
-        if (!m_description.DynamicStates.empty())
-        {
-            builder.DynamicStates.resize(m_description.DynamicStates.size());
-            for (uint32_t i = 0; i < (uint32_t)m_description.DynamicStates.size(); ++i)
-                builder.DynamicStates[i] = tovk::GetDynamicState(m_description.DynamicStates[i]);
-        }
-		VkShaderModule vertexModule = compiler.GetCompiledModule(VK_SHADER_STAGE_VERTEX_BIT);
-        VkShaderModule fragmentModule = compiler.GetCompiledModule(VK_SHADER_STAGE_FRAGMENT_BIT);
-		if (vertexModule != VK_NULL_HANDLE)
-			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexModule, m_description.VertexShaderFile.CompileOptions.EntryPointName));
-        if (fragmentModule != VK_NULL_HANDLE)
-			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentModule, m_description.FragmentShaderFile.CompileOptions.EntryPointName));
-
+#if 0
+		// Generate shader module stages
+		ShaderCompiler compiler(&context);
+		if (!GenerateShaderModules(compiler))
+		{
+			logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
+				m_description.VertexShaderFile.Filepath.empty() ? "none" : m_description.VertexShaderFile.Filepath.c_str(),
+				m_description.FragmentShaderFile.Filepath.empty() ? "none" : m_description.FragmentShaderFile.Filepath.c_str());
+			compiler.ClearCachedData();
+			return false;
+		}
 
 		// Generate shader reflection data
 		// Override with external info
 		for (const tShaderDynamicBufferDescription& dynBuffer : m_description.DynamicBuffers)
 			compiler.SetUniformBufferAsDynamic(dynBuffer.Name.c_str());
 		compiler.GenerateReflectionResources(*const_cast<DescriptorLayoutCache*>(context.LayoutCache));
+
+		// Prepare pipeline builder
+// Input configuration
+		RenderPipelineBuilder builder(context);
+		builder.InputDescription = m_description.InputLayout;
+		builder.SubpassIndex = m_description.SubpassIndex;
+		builder.Topology = tovk::GetPrimitiveTopology(m_description.Topology);
+		builder.Rasterizer.cullMode = tovk::GetCullMode(m_description.CullMode);
+		builder.Rasterizer.frontFace = tovk::GetFrontFace(m_description.FrontFaceMode);
+		builder.DepthStencil.depthWriteEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_WRITE ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.depthTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_TEST ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.depthBoundsTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_DEPTH_BOUNDS_TEST ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.stencilTestEnable = m_description.DepthStencilMode & DEPTH_STENCIL_STENCIL_TEST ? VK_TRUE : VK_FALSE;
+		builder.DepthStencil.front = GetStencilOpState(m_description.FrontStencil);
+		builder.DepthStencil.back = GetStencilOpState(m_description.BackStencil);
+		builder.Viewport.width = (float)m_description.RenderTarget->GetWidth();
+		builder.Viewport.height = (float)m_description.RenderTarget->GetHeight();
+		builder.Scissor.extent = { m_description.RenderTarget->GetWidth(), m_description.RenderTarget->GetHeight() };
+		builder.Scissor.offset = { 0, 0 };
+		if (!m_description.DynamicStates.empty())
+		{
+			builder.DynamicStates.resize(m_description.DynamicStates.size());
+			for (uint32_t i = 0; i < (uint32_t)m_description.DynamicStates.size(); ++i)
+				builder.DynamicStates[i] = tovk::GetDynamicState(m_description.DynamicStates[i]);
+		}
+		VkShaderModule vertexModule = compiler.GetCompiledModule(VK_SHADER_STAGE_VERTEX_BIT);
+		VkShaderModule fragmentModule = compiler.GetCompiledModule(VK_SHADER_STAGE_FRAGMENT_BIT);
+		if (vertexModule != VK_NULL_HANDLE)
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_VERTEX_BIT, vertexModule, m_description.VertexShaderFile.CompileOptions.EntryPointName));
+		if (fragmentModule != VK_NULL_HANDLE)
+			builder.ShaderStages.push_back(vkinit::PipelineShaderStageCreateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, fragmentModule, m_description.FragmentShaderFile.CompileOptions.EntryPointName));
+
+
 
 		// Blending info for color attachments
 		uint32_t colorAttachmentCount = m_description.RenderTarget->GetDescription().ColorAttachmentDescriptions.GetSize();
@@ -1368,12 +1467,16 @@ namespace Mist
 			builder.LayoutInfo.pPushConstantRanges = compiler.GetPushConstantArray();
 		}
 
-        // destroy previous resources once we know that we have new valid sources compiled.
-        if (IsLoaded())
-            Destroy(context);
+#endif // 0
 
+		// destroy previous resources once we know that we have new valid sources compiled.
+		if (IsLoaded())
+			Destroy(context);
+
+#if 0
 		// Build the new pipeline
 		builder.Build(m_description.RenderTarget->GetRenderPass(), m_pipeline, m_pipelineLayout);
+
 
 		m_reflectionProperties = compiler.GetReflectionProperties();
 		m_setLayoutArray.resize(compiler.GetDescriptorSetLayoutCount());
@@ -1391,6 +1494,7 @@ namespace Mist
 		SetVkObjectName(context, &m_pipeline, VK_OBJECT_TYPE_PIPELINE, vkName);
 		sprintf_s(vkName, "PipelineLayout_(%s)(%s)", buff[0], buff[1]);
 		SetVkObjectName(context, &m_pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, vkName);
+#endif // 0
 		return true;
 	}
 
@@ -1398,15 +1502,43 @@ namespace Mist
 	{
 		check(!m_description.ComputeShaderFile.Filepath.empty());
 
+		// generate shader modules
+		{
+			bool succeed = false;
+
+			render::Device* device = g_device;
+			ShaderCompiler compiler(device);
+
+			if (!compiler.Compile(m_description.ComputeShaderFile, render::ShaderType_Compute))
+			{
+				logferror("Failed to generate shader modules for compute shader [%s]\n",
+					m_description.ComputeShaderFile.Filepath.empty());
+				return false;
+			}
+			// Generate shader reflection data
+			// Override with external info
+			for (const tShaderDynamicBufferDescription& dynBuffer : m_description.DynamicBuffers)
+				compiler.SetUniformBufferAsDynamic(dynBuffer.Name.c_str());
+			m_properties = compiler.GetReflectionProperties();
+
+			if (IsLoaded())
+				Destroy(context);
+
+			m_vs = nullptr;
+			m_fs = nullptr;
+			m_cs = compiler.GetShader(render::ShaderType_Compute);
+		}
+#if 0
+
 		VkShaderStageFlagBits stage = VK_SHADER_STAGE_COMPUTE_BIT;
-        // Generate shader module stages
-        ShaderCompiler compiler(context);
-        if (!GenerateShaderModules(compiler))
-        {
-            logferror("Failed to generate shader modules for compute pipeline\n");
-            compiler.ClearCachedData();
-            return false;
-        }
+		// Generate shader module stages
+		ShaderCompiler compiler(&context);
+		if (!GenerateShaderModules(compiler))
+		{
+			logferror("Failed to generate shader modules for compute pipeline\n");
+			compiler.ClearCachedData();
+			return false;
+		}
 
 		for (uint32_t i = 0; i < (uint32_t)m_description.DynamicBuffers.size(); ++i)
 			compiler.SetUniformBufferAsDynamic(m_description.DynamicBuffers[i].Name.c_str());
@@ -1437,8 +1569,8 @@ namespace Mist
 		}
 
 		// destroy previous resources once we know that we have new valid sources compiled.
-        if (IsLoaded())
-            Destroy(context);
+		if (IsLoaded())
+			Destroy(context);
 
 		vkcheck(vkCreatePipelineLayout(context.Device, &layoutInfo, nullptr, &m_pipelineLayout));
 		check(m_pipelineLayout != VK_NULL_HANDLE);
@@ -1450,43 +1582,24 @@ namespace Mist
 		vkcheck(vkCreateComputePipelines(context.Device, nullptr, 1, &computeInfo, nullptr, &m_pipeline));
 		check(m_pipeline != VK_NULL_HANDLE);
 
-        m_reflectionProperties = compiler.GetReflectionProperties();
-        m_setLayoutArray.resize(compiler.GetDescriptorSetLayoutCount());
-        for (uint32_t i = 0; i < compiler.GetDescriptorSetLayoutCount(); ++i)
-            m_setLayoutArray[i] = compiler.GetDescriptorSetLayoutArray()[i];
+		m_reflectionProperties = compiler.GetReflectionProperties();
+		m_setLayoutArray.resize(compiler.GetDescriptorSetLayoutCount());
+		for (uint32_t i = 0; i < compiler.GetDescriptorSetLayoutCount(); ++i)
+			m_setLayoutArray[i] = compiler.GetDescriptorSetLayoutArray()[i];
 
-        // Free shader compiler cached data
-        compiler.ClearCachedData();
+		// Free shader compiler cached data
+		compiler.ClearCachedData();
+#endif // 0
+
 		return true;
-	}
-
-	bool ShaderProgram::GenerateShaderModules(ShaderCompiler& compiler)
-	{
-		bool result;
-		switch (m_description.Type)
-		{
-        case tShaderType::Graphics:
-		{
-            if (!m_description.VertexShaderFile.Filepath.empty())
-				result = compiler.ProcessShaderFile(m_description.VertexShaderFile.Filepath.c_str(), VK_SHADER_STAGE_VERTEX_BIT, m_description.VertexShaderFile.CompileOptions);
-            if (!m_description.FragmentShaderFile.Filepath.empty())
-				result = compiler.ProcessShaderFile(m_description.FragmentShaderFile.Filepath.c_str(), VK_SHADER_STAGE_FRAGMENT_BIT, m_description.FragmentShaderFile.CompileOptions)
-					&& result;
-		}
-        break;
-		case tShaderType::Compute:
-        {
-            check(!m_description.ComputeShaderFile.Filepath.empty());
-            result = compiler.ProcessShaderFile(m_description.ComputeShaderFile.Filepath.c_str(), VK_SHADER_STAGE_COMPUTE_BIT, m_description.ComputeShaderFile.CompileOptions);
-        }
-        break;
-		}
-		return result;
 	}
 
 	void ShaderProgram::Destroy(const RenderContext& context)
 	{
 		check(IsLoaded());
+		m_vs = nullptr;
+		m_fs = nullptr;
+		m_cs = nullptr;
 		vkDestroyPipelineLayout(context.Device, m_pipelineLayout, nullptr);
 		vkDestroyPipeline(context.Device, m_pipeline, nullptr);
 		m_pipeline = VK_NULL_HANDLE;
@@ -1495,7 +1608,7 @@ namespace Mist
 
 	bool ShaderProgram::Reload(const RenderContext& context)
 	{
-        // try to reload pipeline from files.
+		// try to reload pipeline from files.
 		// if failed, then we must have previously loaded pipeline. Throw exception otherwise.
 		switch (m_description.Type)
 		{
@@ -1516,19 +1629,19 @@ namespace Mist
 
 	uint32_t ShaderProgram::FindTextureSlot(const char* textureName, EDescriptorType type) const
 	{
-        const tShaderParam& param = GetParam(textureName);
-        check(param.Binding == 0);
-        // integrity check
-        for (uint32_t i = 0; i < m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
-        {
-            if (m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex == param.SetIndex)
-            {
-                check(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray.size() == 1);
-                check(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[0].Type == type);
-                check(!strcmp(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[0].Name.c_str(), textureName));
-                break;
-            }
-        }
+		const tShaderParam& param = GetParam(textureName);
+		check(param.Binding == 0);
+		// integrity check
+		for (uint32_t i = 0; i < m_reflectionProperties.DescriptorSetInfoArray.size(); ++i)
+		{
+			if (m_reflectionProperties.DescriptorSetInfoArray[i].SetIndex == param.SetIndex)
+			{
+				check(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray.size() == 1);
+				check(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[0].Type == type);
+				check(!strcmp(m_reflectionProperties.DescriptorSetInfoArray[i].BindingArray[0].Name.c_str(), textureName));
+				break;
+			}
+		}
 		return param.SetIndex;
 	}
 
@@ -1581,7 +1694,7 @@ namespace Mist
 
 	void ShaderProgram::BindSampledTexture(const RenderContext& context, const char* uniformName, const cTexture& texture)
 	{
-        BindTexture(context, uniformName, texture, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+		BindTexture(context, uniformName, texture, DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 	}
 
 	void ShaderProgram::BindSampledTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount)
@@ -1591,43 +1704,43 @@ namespace Mist
 
 	void ShaderProgram::BindStorageTexture(const RenderContext& context, const char* uniformName, const cTexture& texture)
 	{
-        BindTexture(context, uniformName, texture, DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		BindTexture(context, uniformName, texture, DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	}
 
 	void ShaderProgram::BindStorageTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount)
 	{
-        BindTextureArray(context, uniformName, textureArray, textureCount, DESCRIPTOR_TYPE_STORAGE_IMAGE);
+		BindTextureArray(context, uniformName, textureArray, textureCount, DESCRIPTOR_TYPE_STORAGE_IMAGE);
 	}
 
 	void ShaderProgram::BindTexture(const RenderContext& context, const char* uniformName, const cTexture& texture, EDescriptorType texType)
 	{
-        uint32_t textureSlot = FindTextureSlot(uniformName, texType);
-        m_paramAccess.BindTextureSlot(
-            context,
-            GetCommandBuffer(context),
-            m_bindPoint,
-            m_pipelineLayout,
-            GetDescriptorSetLayout(textureSlot),
-            textureSlot,
-            texture,
+		uint32_t textureSlot = FindTextureSlot(uniformName, texType);
+		m_paramAccess.BindTextureSlot(
+			context,
+			GetCommandBuffer(context),
+			m_bindPoint,
+			m_pipelineLayout,
+			GetDescriptorSetLayout(textureSlot),
+			textureSlot,
+			texture,
 			texType,
-            m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+			m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::BindTextureArray(const RenderContext& context, const char* uniformName, const cTexture* const* textureArray, uint32_t textureCount, EDescriptorType texType)
 	{
-        uint32_t textureSlot = FindTextureSlot(uniformName, texType);
-        m_paramAccess.BindTextureArraySlot(
-            context,
-            GetCommandBuffer(context),
-            m_bindPoint,
-            m_pipelineLayout,
-            GetDescriptorSetLayout(textureSlot),
-            textureSlot,
+		uint32_t textureSlot = FindTextureSlot(uniformName, texType);
+		m_paramAccess.BindTextureArraySlot(
+			context,
+			GetCommandBuffer(context),
+			m_bindPoint,
+			m_pipelineLayout,
+			GetDescriptorSetLayout(textureSlot),
+			textureSlot,
 			textureArray,
-            textureCount,
+			textureCount,
 			texType,
-            m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
+			m_sampler != VK_NULL_HANDLE ? &m_sampler : nullptr);
 	}
 
 	void ShaderProgram::FlushDescriptors(const RenderContext& context)
@@ -1729,13 +1842,13 @@ namespace Mist
 			const ShaderFileDescription* descs[] = { &description.VertexShaderFile, &description.FragmentShaderFile };
 			GenerateKey(key, descs, 2);
 		}
-			break;
+		break;
 		case tShaderType::Compute:
 		{
 			const ShaderFileDescription* descs[] = { &description.ComputeShaderFile };
 			GenerateKey(key, descs, 1);
 		}
-			break;
+		break;
 		default:
 			check(false && "Invalid shader type.");
 			break;
@@ -1812,3 +1925,5 @@ namespace Mist
 #endif // SHADER_RUNTIME_COMPILATION
 	}
 }
+
+#endif // 0

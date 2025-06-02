@@ -9,10 +9,15 @@
 #include "Render/RenderTarget.h"
 #include "Render/Texture.h"
 #include <glm/glm.hpp>
+#include "RenderAPI/Device.h"
+
+namespace rendersystem
+{
+    class ShaderProgram;
+}
 
 namespace Mist
 {
-	class ComputeShader;
 	struct RenderFrameContext;
 
 	struct ParameterUBO
@@ -57,13 +62,13 @@ namespace Mist
 		void ResetParticles(const RenderContext& context);
 
 	private:
-		ShaderProgram* m_computeShader;
+		rendersystem::ShaderProgram* m_computeShader;
 		VkDescriptorSet m_singleBufferDescriptorSet;
-		VertexBuffer m_particlesBuffer;
-		cTexture* m_circleGradientTexture;
+		render::BufferHandle m_particlesBuffer;
+		render::TextureHandle m_circleGradientTexture;
 
-		ShaderProgram* m_graphicsShader;
-		RenderTarget* m_renderTarget;
+		rendersystem::ShaderProgram* m_graphicsShader;
+		render::RenderTargetHandle m_renderTarget;
 
 		ParameterUBO m_params;
 		int32_t m_flags;
@@ -94,12 +99,12 @@ namespace Mist
         const RenderContext* m_context;
 		uint32_t m_width;
 		uint32_t m_height;
-		VertexBuffer m_buffers[2];
+		render::BufferHandle m_buffers[2];
 		VkDescriptorSet m_bufferBinding[2];
 		VkDescriptorSet m_drawBinding[2];
-		RenderTarget* m_rt;
-        ShaderProgram* m_computeShader;
-		ShaderProgram* m_drawShader;
+		render::RenderTargetHandle m_rt;
+        rendersystem::ShaderProgram* m_computeShader;
+		rendersystem::ShaderProgram* m_drawShader;
 
 		uint64_t m_counter;
 		uint64_t m_period;

@@ -14,13 +14,14 @@
 #define CGLTF_IMPLEMENTATION
 #pragma warning(disable:4996)
 #include <gltf/cgltf.h>
+#undef CGLTF_IMPLEMENTATION
 #include "Texture.h"
 #include "Material.h"
 #include "Utils/GenericUtils.h"
 #include "Utils/TimeUtils.h"
 #include "Utils/FileSystem.h"
 #include "VulkanRenderEngine.h"
-#undef CGLTF_IMPLEMENTATION
+#include "RenderSystem/TextureLoader.h"
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
 #define GLTF_LOAD_GEOMETRY_NORMAL 0x02
@@ -300,7 +301,7 @@ namespace gltf_api
 			indicesOut[i] = (uint32_t)cgltf_accessor_read_index(primitive.indices, i) + offset;
 	}
 
-	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, Mist::cTexture** texOut)
+	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, render::TextureHandle* texOut)
 	{
 		if (!texView.texture)
 			return false;
@@ -308,9 +309,9 @@ namespace gltf_api
 		check(texView.scale == 1.f && !texView.has_transform);
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
-		check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
+		//check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
+		check(rendersystem::textureloader::LoadTextureFromFile(texOut, Mist::g_device, texturePath));
 		loadmeshlogf("Load texture: %s\n", texView.texture->image->uri);
-		(*texOut)->CreateView(context, Mist::tViewDescription());
 		return true;
 	}
 
@@ -401,7 +402,7 @@ namespace Mist
 	void cModel::Destroy(const RenderContext& context)
 	{
 		for (index_t i = 0; i < m_meshes.GetSize(); ++i)
-			m_meshes[i].Destroy(context);
+			m_meshes[i].Destroy(/*context*/);
 		for (index_t i = 0; i < m_materials.GetSize(); ++i)
 			m_materials[i].Destroy(context);
 		m_nodes.Delete();
@@ -488,7 +489,7 @@ namespace Mist
 
 				loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
 
-				tFixedHeapArray<PrimitiveMeshData>& primitives = mesh.PrimitiveArray;
+				tFixedHeapArray<PrimitiveMeshData>& primitives = mesh.primitiveArray;
 				primitives.Allocate((index_t)node.mesh->primitives_count);
 				primitives.Resize((index_t)node.mesh->primitives_count);
 				loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
@@ -539,8 +540,10 @@ namespace Mist
 
 				//BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
 
-				mesh.SetupIndexBuffer(context, tempIndices.data(), (uint32_t)tempIndices.size());
-				mesh.SetupVertexBuffer(context, tempVertices.data(), (uint32_t)tempVertices.size() * sizeof(Vertex));
+				//mesh.SetupIndexBuffer(context, tempIndices.data(), (uint32_t)tempIndices.size());
+				//mesh.SetupVertexBuffer(context, tempVertices.data(), (uint32_t)tempVertices.size() * sizeof(Vertex));
+				mesh.vb = render::utils::CreateVertexBuffer(g_device, tempVertices.data(), tempVertices.size() * sizeof(Vertex));
+				mesh.ib = render::utils::CreateIndexBuffer(g_device, tempIndices.data(), tempIndices.size() * sizeof(uint32_t));
 				tempIndices.clear();
 				tempVertices.clear();
 			}
@@ -588,15 +591,15 @@ namespace Mist
 						if (ImGui::TreeNode(buff, m_meshes[node.MeshId].GetName()))
 						{
 							cMesh& mesh = m_meshes[node.MeshId];
-							ImGui::Text("Primitives: %5d", mesh.PrimitiveArray.GetSize());
-							ImGui::Text("Triangles:  %5d", mesh.IndexCount / 3);
-							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.IndexCount / 3.f * sizeof(Vertex) / 1024.f);
+							ImGui::Text("Primitives: %5d", mesh.primitiveArray.GetSize());
+							ImGui::Text("Triangles:  %5d", mesh.indexCount / 3);
+							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.indexCount / 3.f * sizeof(Vertex) / 1024.f);
 							sprintf_s(buff, "##prim%d", i);
 							if (ImGui::TreeNode(buff, "Primitives"))
 							{
-								for (index_t i = 0; i < mesh.PrimitiveArray.GetSize(); ++i)
+								for (index_t i = 0; i < mesh.primitiveArray.GetSize(); ++i)
 								{
-									PrimitiveMeshData& primitive = mesh.PrimitiveArray[i];
+									PrimitiveMeshData& primitive = mesh.primitiveArray[i];
 									ImGui::Text("Material:   %s", primitive.Material ? primitive.Material->GetName() : "none");
 									ImGui::Text("Triangles: %4d", primitive.Count/3);
 									int flags = primitive.RenderFlags;
@@ -626,7 +629,7 @@ namespace Mist
 					cMaterial& material = m_materials[i];
 					for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
 						ImGui::Text("%s: %s", 
-							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ?material.m_textures[j]->GetName() : "none");
+							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ?material.m_textures[j]->m_description.debugName.c_str() : "none");
 					ImGui::ColorEdit3("Albedo", &material.m_albedo[0]);
 					ImGui::DragFloat("Metallic", &material.m_metallicFactor, 0.05f, 0.f, 1.f);
 					ImGui::DragFloat("Roughness", &material.m_roughnessFactor, 0.05f, 0.f, 1.f);

@@ -167,7 +167,7 @@ workspace "Mist"
         links { "MistEngine" }
         files { "source/test/**.h", "source/test/**.cpp"}
 
-        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE" }
+        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE", "RBE_VK" }
         includedirs {
             "source/test/",
             "%{includes.mist}",

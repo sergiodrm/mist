@@ -20,6 +20,7 @@
 #include "GBuffer.h"
 #include "DeferredLighting.h"
 #include "Utils/GenericUtils.h"
+#include "RenderSystem/RenderSystem.h"
 
 #define BLOOM_NAME_INVOCATION_X "BLOOM_INVOCATIONS_X"
 #define BLOOM_NAME_INVOCATION_Y "BLOOM_INVOCATIONS_Y"
@@ -59,6 +60,19 @@ namespace Mist
 			for (uint32_t i = 0; i < (uint32_t)m_renderTargetArray.size(); ++i)
 			{
 				check(width && height);
+
+				render::TextureDescription textureDesc;
+				textureDesc.isRenderTarget = true;
+				textureDesc.extent = { width, height, 1 };
+				textureDesc.memoryUsage = render::MemoryUsage_Gpu;
+				textureDesc.format = render::Format_R16G16B16A16_SFloat;
+				m_renderTargetTexturesArray[i] = g_device->CreateTexture(textureDesc);
+
+				render::RenderTargetDescription rtDesc;
+				rtDesc.AddColorAttachment(m_renderTargetTexturesArray[i]);
+				m_renderTargetArray[i] = g_device->CreateRenderTarget(rtDesc);
+
+#if 0
 				RenderTargetDescription rtdesc;
 				rtdesc.RenderArea.extent = { .width = width, .height = height };
 				rtdesc.RenderArea.offset = { 0, 0 };
@@ -66,11 +80,19 @@ namespace Mist
 				rtdesc.ResourceName.Fmt("Bloom_%d_RT", i);
 				rtdesc.ClearOnLoad = false;
 				m_renderTargetArray[i] = RenderTarget::Create(context, rtdesc);
+#endif // 0
 
 				width >>= 1;
 				height >>= 1;
 			}
 
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.type = rendersystem::ShaderProgram_Graphics;
+			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+			shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
+			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_DOWNSAMPLE");
+			m_downsampleShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+#if 0
 			tShaderDynamicBufferDescription dynamicDesc;
 			dynamicDesc.Name = "u_BloomDownsampleParams";
 			dynamicDesc.IsShared = false;
@@ -87,11 +109,20 @@ namespace Mist
 			shaderDesc.RenderTarget = m_renderTargetArray[0];
 			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
 			m_downsampleShader = ShaderProgram::Create(context, shaderDesc);
+#endif // 0
+
 		}
 
 		// Upscale
 		{
 			// Create shader without BLOOM_DOWNSCALE macro
+            rendersystem::ShaderBuildDescription shaderDesc;
+            shaderDesc.type = rendersystem::ShaderProgram_Graphics;
+            shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+            shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
+            shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_UPSAMPLE");
+            m_upsampleShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+#if 0
 			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
 			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
@@ -109,15 +140,23 @@ namespace Mist
 				.DstColor = BLEND_FACTOR_ONE,
 				.ColorOp = BLEND_OP_ADD,
 				.SrcAlpha = BLEND_FACTOR_ONE,
-				.DstAlpha= BLEND_FACTOR_ZERO,
+				.DstAlpha = BLEND_FACTOR_ZERO,
 				.AlphaOp = BLEND_OP_ADD,
 				.WriteMask = COLOR_COMPONENT_R_BIT | COLOR_COMPONENT_G_BIT | COLOR_COMPONENT_B_BIT,
 			};
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			m_upsampleShader = ShaderProgram::Create(context, shaderDesc);
+#endif // 0
+
 		}
 
 		{
+            rendersystem::ShaderBuildDescription shaderDesc;
+            shaderDesc.type = rendersystem::ShaderProgram_Graphics;
+            shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+            shaderDesc.fsDesc.filePath = "shaders/mix.frag";
+            m_composeShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+#if 0
 			check(m_composeTarget && "Bloom needs compose target set to initialization.");
 			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
@@ -137,23 +176,34 @@ namespace Mist
 			};
 			shaderDesc.ColorAttachmentBlendingArray.push_back(blending);
 			m_composeShader = ShaderProgram::Create(context, shaderDesc);
+#endif // 0
+
 		}
 
 
         {
-            tShaderProgramDescription desc;
-            desc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-            desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
-            //desc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
-            //desc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
-            //desc.DynamicBuffers.push_back(dynamicDesc);
-            desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "BLOOM_FILTER" });
-            desc.RenderTarget = m_renderTargetArray[0];
-            desc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-            m_filterShader = ShaderProgram::Create(context, desc);
+            rendersystem::ShaderBuildDescription shaderDesc;
+            shaderDesc.type = rendersystem::ShaderProgram_Graphics;
+            shaderDesc.vsDesc.filePath = "shaders/quad.vert";
+            shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
+            shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_FILTER");
+            m_filterShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+#if 0
+			tShaderProgramDescription desc;
+			desc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
+			desc.FragmentShaderFile.Filepath = SHADER_FILEPATH("bloom.frag");
+			//desc.DynamicStates.push_back(DYNAMIC_STATE_VIEWPORT);
+			//desc.DynamicStates.push_back(DYNAMIC_STATE_SCISSOR);
+			//desc.DynamicBuffers.push_back(dynamicDesc);
+			desc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "BLOOM_FILTER" });
+			desc.RenderTarget = m_renderTargetArray[0];
+			desc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
+			m_filterShader = ShaderProgram::Create(context, desc);
+#endif // 0
+
         }
 
-#if 1
+#if 0
 		// Tex resolutions for downsampler
 		tArray<glm::vec2, BLOOM_MIPMAP_LEVELS> texSizes;
 		for (uint32_t i = 0; i < (uint32_t)texSizes.size(); ++i)
@@ -177,6 +227,101 @@ namespace Mist
 	void BloomEffect::Draw(const RenderContext& context)
 	{
 		CPU_PROFILE_SCOPE(Bloom);
+
+		/**
+		 * Filtering
+		 */
+		render::RenderTargetHandle rt = m_renderTargetArray[0];
+		g_render->SetRenderTarget(rt);
+		g_render->SetShader(m_filterShader);
+		g_render->SetTextureSlot("u_tex", m_inputTarget);
+        g_render->SetSampler("u_tex", render::Filter_Linear,
+            render::Filter_Linear,
+            render::SamplerAddressMode_ClampToEdge,
+            render::SamplerAddressMode_ClampToEdge,
+            render::SamplerAddressMode_ClampToEdge);
+        struct
+        {
+            glm::vec2 resolution;
+            glm::vec2 padding;
+            glm::vec3 curve;
+            float threshold;
+        } params{ {rt->m_info.extent.width, rt->m_info.extent.height}, {}};
+        params.threshold = m_threshold;
+        params.curve[0] = params.threshold - m_knee;
+        params.curve[1] = m_knee * 2.f;
+        params.curve[2] = 0.25f / m_knee;
+		g_render->SetShaderProperty("u_filterParams", &params, sizeof(params));
+		g_render->DrawFullscreenQuad();
+
+		/**
+		 * Downsample
+		 */
+		g_render->SetDefaultState();
+		g_render->SetShader(m_downsampleShader);
+		for (uint32_t i = 1; i < BLOOM_MIPMAP_LEVELS; ++i)
+		{
+			rt = m_renderTargetArray[i];
+
+			g_render->SetRenderTarget(rt);
+			if (m_config.BloomMode)
+			{
+				g_render->SetViewport(0.f, 0.f, (float)rt->m_info.extent.width, (float)rt->m_info.extent.height);
+				g_render->SetScissor(0.f, (float)rt->m_info.extent.width, 0.f, (float)rt->m_info.extent.height);
+
+				render::TextureHandle textureInput = m_renderTargetTexturesArray[i - 1];
+				g_render->SetTextureSlot("u_tex", textureInput);
+				g_render->SetSampler("u_tex", render::Filter_Linear,
+					render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
+
+				glm::vec2 resolution = { (float)rt->m_info.extent.width, (float)rt->m_info.extent.height };
+				g_render->SetShaderProperty("u_BloomDownsampleParams", &resolution, sizeof(resolution));
+				g_render->DrawFullscreenQuad();
+			}
+		}
+
+		/**
+		 * Upsample
+		 */
+		g_render->SetDefaultState();
+		g_render->SetShader(m_upsampleShader);
+        for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
+        {
+            rt = m_renderTargetArray[i];
+			g_render->SetRenderTarget(rt);
+
+            if (m_config.BloomMode)
+            {
+                g_render->SetViewport(0.f, 0.f, (float)rt->m_info.extent.width, (float)rt->m_info.extent.height);
+                g_render->SetScissor(0.f, (float)rt->m_info.extent.width, 0.f, (float)rt->m_info.extent.height);
+                
+                render::TextureHandle textureInput = m_renderTargetTexturesArray[i + 1];
+                g_render->SetTextureSlot("u_tex", textureInput);
+                g_render->SetSampler("u_tex", render::Filter_Linear,
+                    render::Filter_Linear,
+                    render::SamplerAddressMode_ClampToEdge,
+                    render::SamplerAddressMode_ClampToEdge,
+                    render::SamplerAddressMode_ClampToEdge);
+
+                g_render->SetShaderProperty("u_BloomUpsampleParams", &m_config.UpscaleFilterRadius, sizeof(m_config.UpscaleFilterRadius));
+				g_render->DrawFullscreenQuad();
+            }
+        }
+
+		/**
+		 * Composition
+		 */
+        check(m_composeTarget);
+		g_render->SetShader(m_composeShader);
+		g_render->SetRenderTarget(m_composeTarget);
+		g_render->SetTextureSlot("u_tex0", m_blendTexture);
+		g_render->SetTextureSlot("u_tex1", m_renderTargetTexturesArray[0]);
+		g_render->DrawFullscreenQuad();
+		
+#if 0
 		CommandList* commandList = context.CmdList;
 
 		commandList->BeginMarker("BloomFragment");
@@ -185,11 +330,11 @@ namespace Mist
 		commandList->BeginMarker("Bloom filter");
 		RenderTarget* rt = m_renderTargetArray[0];
 		commandList->SetGraphicsState({ .Program = m_filterShader, .Rt = rt });
-		m_filterShader->SetSampler(context, 
-			FILTER_LINEAR, 
+		m_filterShader->SetSampler(context,
 			FILTER_LINEAR,
-			SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 
-			SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 
+			FILTER_LINEAR,
+			SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+			SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
 			SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 		m_filterShader->BindSampledTexture(context, "u_tex", *m_inputTarget);
 		struct
@@ -223,8 +368,8 @@ namespace Mist
 
 			if (m_config.BloomMode)
 			{
-                commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
-                commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
+				commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
+				commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
 
 				const cTexture* textureInput = m_renderTargetArray[i - 1]->GetTexture();
 				m_downsampleShader->SetSampler(context, FILTER_LINEAR, FILTER_LINEAR,
@@ -242,18 +387,18 @@ namespace Mist
 		// Upsample blending to downscale results
 		commandList->BeginMarker("Bloom Upsample");
 		GpuProf_Begin(context, "Bloom Upsample");
-        state = {};
+		state = {};
 		for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
 		{
 			ShaderProgram* shader = m_upsampleShader;
-            state.Rt = m_renderTargetArray[i];
+			state.Rt = m_renderTargetArray[i];
 			state.Program = shader;
 			commandList->SetGraphicsState(state);
 
 			if (m_config.BloomMode)
 			{
-                commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
-                commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
+				commandList->SetViewport(0.f, 0.f, (float)state.Rt->GetWidth(), (float)state.Rt->GetHeight());
+				commandList->SetScissor(0, 0, state.Rt->GetWidth(), state.Rt->GetHeight());
 				shader->SetSampler(context, FILTER_LINEAR, FILTER_LINEAR,
 					SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 				shader->BindSampledTexture(context, "u_tex", *m_renderTargetArray[i + 1]->GetTexture());
@@ -267,17 +412,19 @@ namespace Mist
 
 		// Mix with output texture
 		check(m_composeTarget);
-        commandList->BeginMarker("Bloom mix");
+		commandList->BeginMarker("Bloom mix");
 		GpuProf_Begin(context, "Bloom mix");
-        commandList->SetGraphicsState({ .Program = m_composeShader, .Rt = m_composeTarget });
+		commandList->SetGraphicsState({ .Program = m_composeShader, .Rt = m_composeTarget });
 		m_composeShader->BindSampledTexture(context, "u_tex0", m_blendTexture ? *m_blendTexture : *GetTextureCheckerboard4x4(context));
 		m_composeShader->BindSampledTexture(context, "u_tex1", *m_renderTargetArray[0]->GetTexture());
 		commandList->BindProgramDescriptorSets();
 		CmdDrawFullscreenQuad(commandList);
 		GpuProf_End(context);
-        commandList->EndMarker();
+		commandList->EndMarker();
 
 		commandList->EndMarker();
+#endif // 0
+
 
         // Debug
         if (CVar_ShowBloomTex.Get())
@@ -289,7 +436,7 @@ namespace Mist
             float w = h * aspectRatio;
             for (uint32_t i = 0; i < m_renderTargetArray.size(); ++i)
             {
-				DebugRender::DrawScreenQuad({ x, y }, { w, h }, *m_renderTargetArray[i]->GetTexture()); 
+				DebugRender::DrawScreenQuad({ x, y }, { w, h }, m_renderTargetArray[i]->m_description.colorAttachments[0].texture);
 				y += h;
             }
         }
@@ -299,9 +446,16 @@ namespace Mist
 	{
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 		{
-			RenderTarget::Destroy(context, m_renderTargetArray[i]);
 			m_renderTargetArray[i] = nullptr;
+			m_renderTargetTexturesArray[i] = nullptr;
 		}
+		delete m_downsampleShader;
+		delete m_upsampleShader;
+		delete m_filterShader;
+		delete m_composeShader;
+		m_composeTarget = nullptr;
+		m_blendTexture = nullptr;
+		m_inputTarget = nullptr;	
 	}
 
 	void BloomEffect::ImGuiDraw()
