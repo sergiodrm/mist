@@ -181,6 +181,7 @@ namespace Mist
 	void GPUParticleSystem::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDraw);
+		return;
         
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
