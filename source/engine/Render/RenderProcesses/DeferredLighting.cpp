@@ -226,16 +226,14 @@ namespace Mist
 			g_render->SetTextureSlot("u_GBufferNormal", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
 			g_render->SetTextureSlot("u_GBufferAlbedo", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
 			g_render->SetTextureSlot("u_ssao", m_ssaoRenderTarget->m_description.colorAttachments[0].texture);
-			char buff[32];
+			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-			{
-				sprintf_s(buff, "u_shadowMap%d", i);
-				g_render->SetTextureSlot(buff, m_shadowMapRenderTargetArray[i]->m_description.depthStencilAttachment.texture);
-			}
+				shadowMapTextures[i] = m_shadowMapRenderTargetArray[i]->m_description.depthStencilAttachment.texture;
+			g_render->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
 			g_render->SetTextureSlot("u_GBufferDepth", *m_gbufferRenderTarget->m_description.depthStencilAttachment.texture);
 
 			// Use shared buffer for avoiding doing this here (?)
-			const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)frameContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
+			const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
 			tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 				shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
@@ -249,7 +247,6 @@ namespace Mist
 
 		{
 			check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
-			commandList->BeginMarker("Skybox");
 			g_render->SetShader(m_skyboxShader);
 			g_render->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
 			g_render->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
@@ -266,6 +263,7 @@ namespace Mist
 
 		m_bloomEffect.m_composeTarget = m_lightingOutput;
 		m_bloomEffect.m_inputTarget = m_lightingOutput->m_description.colorAttachments[0].texture;
+		m_bloomEffect.m_blendTexture = m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture; //temp, TODO: need a default texture for dummy slot.
 		m_bloomEffect.Draw(renderContext);
 
 		{
