@@ -85,50 +85,6 @@ namespace rendersystem
         BindingLayoutCache m_layoutCache;
     };
 
-    class ShaderMemoryPool
-    {
-        struct Chunk
-        {
-            render::BufferHandle buffer;
-            uint64_t pointer;
-            uint64_t submissionId;
-        };
-    public:
-        struct MemoryAllocation
-        {
-            uint32_t chunkIndex;
-            uint64_t pointer;
-            uint64_t size;
-
-            static MemoryAllocation InvalidAllocation() { return { UINT32_MAX, UINT32_MAX, UINT32_MAX }; }
-            inline bool IsValid() const { return chunkIndex != UINT32_MAX && pointer != UINT32_MAX && size != UINT32_MAX; }
-        };
-        ShaderMemoryPool(render::Device* device, uint64_t minChunkSize = 1 << 16);
-        ~ShaderMemoryPool();
-
-        MemoryAllocation Allocate(const char* id, uint64_t size);
-        MemoryAllocation Find(const char* id) const;
-        void Write(const MemoryAllocation& allocation, const void* src, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
-        void Submit(uint64_t submissionId);
-
-
-        inline render::BufferHandle GetBuffer(uint32_t chunkIndex) const { return m_pool[chunkIndex].buffer; }
-
-    private:
-        uint32_t GetFreeChunk(uint64_t size);
-        uint32_t CreateChunk(uint64_t size);
-
-    private:
-
-        render::Device* m_device;
-        Mist::tDynArray<Chunk> m_pool;
-        Mist::tDynArray<uint32_t> m_submitted;
-        Mist::tDynArray<uint32_t> m_toSubmit;
-        Mist::tMap<Mist::tString, MemoryAllocation> m_allocations;
-        uint32_t m_currentChunk;
-        uint64_t m_minChunkSize;
-    };
-
     class ShaderMemoryContext
     {
     public:
@@ -164,14 +120,14 @@ namespace rendersystem
         Mist::tMap<Mist::String, PropertyMemory> m_properties;
     };
 
-    class ShaderMemoryPool_2
+    class ShaderMemoryPool
     {
     public:
-        ShaderMemoryPool_2(render::Device* device);
+        ShaderMemoryPool(render::Device* device);
 
         uint32_t CreateContext();
         ShaderMemoryContext* GetContext(uint32_t context);
-        void Submit(uint64_t submissionId);
+        void Submit(uint64_t submissionId, uint32_t* contexts, uint32_t count);
         void ProcessInFlight();
 
     private:
@@ -405,6 +361,7 @@ namespace rendersystem
     public:
         static constexpr uint32_t MaxTextureSlots = 8;
         static constexpr uint32_t MaxTextureBindingsPerSlot = 8;
+        static constexpr uint32_t MaxTextureArrayCount = 8;
 
         void Init(IWindow* window);
         void Destroy();
@@ -466,12 +423,17 @@ namespace rendersystem
         void SetShader(ShaderProgram* shader);
         void SetTextureSlot(render::TextureHandle texture, uint32_t set, uint32_t binding = 0);
         void SetTextureSlot(const char* id, render::TextureHandle texture);
-        void SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding = 0);
+        void SetTextureSlot(const render::TextureHandle* textures, uint32_t count, uint32_t set, uint32_t binding = 0);
+        void SetTextureSlot(const char* id, const render::TextureHandle* textures, uint32_t count);
+        void SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding = 0, uint32_t samplerIndex = 0);
+        void SetSampler(render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding = 0);
         void SetSampler(const char* id, render::SamplerHandle sample);
+        void SetSampler(const char* id, render::SamplerHandle* sample, uint32_t count);
         void SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter,
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
-            render::SamplerAddressMode addressModeW);
+            render::SamplerAddressMode addressModeW,
+            uint32_t samplerIndex = 0);
         void SetShaderProperty(const char* id, const void* param, uint64_t size);
         void SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout);
         void SetTextureAsResourceBinding(render::TextureHandle texture);
@@ -484,7 +446,7 @@ namespace rendersystem
         void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
 
-        ShaderMemoryPool_2* GetMemoryPool() const { return m_memoryPool2; }
+        ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool2; }
 
         // Utilities
         void DrawFullscreenQuad();
@@ -550,13 +512,12 @@ namespace rendersystem
         Mist::tMap<render::GraphicsPipelineDescription, render::GraphicsPipelineHandle> m_psoMap;
         BindingCache* m_bindingCache;
         SamplerCache* m_samplerCache;
-        ShaderMemoryPool* m_memoryPool;
-        ShaderMemoryPool_2* m_memoryPool2;
+        ShaderMemoryPool* m_memoryPool2;
 
         // Shader memory context and textures
         uint32_t m_memoryContextId;
-        render::TextureHandle m_textureSlots[MaxTextureSlots][MaxTextureBindingsPerSlot];
-        render::SamplerHandle m_samplerSlots[MaxTextureSlots][MaxTextureBindingsPerSlot];
+        render::TextureHandle m_textureSlots[MaxTextureSlots][MaxTextureBindingsPerSlot][MaxTextureArrayCount];
+        render::SamplerHandle m_samplerSlots[MaxTextureSlots][MaxTextureBindingsPerSlot][MaxTextureArrayCount];
         ShaderProgram* m_program;
 
         render::GraphicsPipelineDescription m_psoDesc;

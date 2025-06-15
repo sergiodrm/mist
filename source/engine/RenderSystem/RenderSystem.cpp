@@ -13,16 +13,23 @@ namespace rendersystem
 {
     render::BindingLayoutHandle BindingLayoutCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
     {
-        if (m_cache.contains(desc))
-            return m_cache.at(desc);
-        m_cache[desc] = m_device->CreateBindingLayout(desc);
-        return m_cache.at(desc);
+		auto it = m_cache.find(desc);
+		if (it != m_cache.end())
+			return it->second;
+        logfdebug("[%20s -> %3d]\n", "BindingLayoutCache", m_cache.size());
+        render::BindingLayoutHandle handle = m_device->CreateBindingLayout(desc);
+        m_cache[desc] = handle;
+        return handle;
     }
 
     render::BindingSetHandle BindingCache::GetCachedBindingSet(const render::BindingSetDescription& desc)
     {
-        if (m_cache.contains(desc))
-            return m_cache.at(desc);
+        auto it = m_cache.find(desc);
+        if (it != m_cache.end())
+        {
+            logfdebug("[%20s -> %3d] Reuse cached binding set\n", "BindingSetCache", m_cache.size());
+            return it->second;
+        }
         render::BindingLayoutDescription layoutDesc;
         for (uint32_t i = 0; i < desc.bindingItems.GetSize(); ++i)
         {
@@ -30,7 +37,7 @@ namespace rendersystem
             switch (item.type)
             {
             case render::ResourceType_TextureSRV:
-                layoutDesc.PushTextureSRV(item.shaderStages);
+                layoutDesc.PushTextureSRV(item.shaderStages, item.textures.GetSize());
                 break;
             case render::ResourceType_TextureUAV:
                 layoutDesc.PushTextureUAV(item.shaderStages);
@@ -50,152 +57,23 @@ namespace rendersystem
             }
         }
         render::BindingLayoutHandle layout = m_layoutCache.GetCachedLayout(layoutDesc);
-        m_cache[desc] = m_device->CreateBindingSet(desc, layout);
-        return m_cache.at(desc);
-    }
-
-    ShaderMemoryPool::ShaderMemoryPool(render::Device* device, uint64_t minChunkSize)
-        : m_device(device), m_currentChunk(UINT32_MAX)
-    {
-        check(device);
-        m_minChunkSize = m_device->AlignUniformSize(minChunkSize);
-        static constexpr uint64_t initialSize = 5;
-        m_pool.reserve(initialSize);
-        m_submitted.reserve(initialSize);
-        m_toSubmit.reserve(initialSize);
-    }
-
-    ShaderMemoryPool::~ShaderMemoryPool()
-    {
-        m_pool.clear();
-        m_submitted.clear();
-        m_toSubmit.clear();
-        m_allocations.clear();
-    }
-
-    ShaderMemoryPool::MemoryAllocation ShaderMemoryPool::Allocate(const char* id, uint64_t size)
-    {
-        size = m_device->AlignUniformSize(size);
-
-        // check if already allocated. This must be on the same frame before submit, so in allocation maps should not be stored chunk reference with valid submission id (buffer in flight).
-        auto it = m_allocations.find(id);
-        if (it != m_allocations.end())
+        render::BindingSetHandle handle = m_device->CreateBindingSet(desc, layout);
+        m_cache[desc] = handle;
+        logfdebug("[%20s -> %3d]\n", "BindingSetCache", m_cache.size());
+        for (uint32_t i = 0; i < desc.bindingItems.GetSize(); ++i)
         {
-            MemoryAllocation& allocation = it->second;
-            // if allocation is valid, there is an alloc not submitted yet.
-            if (allocation.IsValid())
+            const render::BindingSetItem& b = desc.bindingItems[i];
+            switch (b.type)
             {
-                Chunk& chunk = m_pool[allocation.chunkIndex];
-                check(chunk.submissionId == UINT64_MAX && chunk.buffer->m_description.size >= size);
-                return allocation;
+            case render::ResourceType_VolatileConstantBuffer:
+            case render::ResourceType_ConstantBuffer:
+                logfdebug("* Constant buffer [%2d; %2d; size: %4d; offset: %4d; buffer: 0x%p]\n", b.binding, b.shaderStages, b.bufferRange.size, b.bufferRange.offset, b.buffer.GetPtr());
+                break;
+            case render::ResourceType_TextureSRV:
+                logfdebug("* Texture SRV     [%2d; %2d; %2d]\n", b.binding, b.shaderStages, b.textures.GetSize());
             }
         }
-
-        // No created or allocation caducated.
-        if (m_currentChunk != UINT32_MAX)
-        {
-            Chunk& chunk = m_pool[m_currentChunk];
-            check(chunk.submissionId == UINT64_MAX);
-            if (chunk.pointer + size <= chunk.buffer->m_description.size)
-            {
-                // current chunk has space enough
-                MemoryAllocation allocation;
-                allocation.chunkIndex = m_currentChunk;
-                allocation.pointer = chunk.pointer;
-                allocation.size = size;
-                chunk.pointer += size;
-                m_allocations[id] = allocation;
-                return allocation;
-            }
-
-            m_toSubmit.push_back(m_currentChunk);
-            m_currentChunk = UINT32_MAX;
-        }
-        check(m_currentChunk == UINT32_MAX);
-        m_currentChunk = GetFreeChunk(size);
-        Chunk& chunk = m_pool[m_currentChunk];
-        check(chunk.buffer && chunk.pointer == 0 && chunk.submissionId == UINT64_MAX);
-
-        MemoryAllocation allocation;
-        allocation.chunkIndex = m_currentChunk;
-        allocation.pointer = chunk.pointer;
-        allocation.size = size;
-        m_allocations[id] = allocation;
-        chunk.pointer += size;
-        return allocation;
-    }
-
-    ShaderMemoryPool::MemoryAllocation ShaderMemoryPool::Find(const char* id) const
-    {
-        return m_allocations.contains(id) ? m_allocations.at(id) : MemoryAllocation::InvalidAllocation();
-    }
-
-    void ShaderMemoryPool::Write(const MemoryAllocation& allocation, const void* src, uint64_t size, uint64_t srcOffset, uint64_t dstOffset)
-    {
-        check(allocation.IsValid() && src && size);
-        Chunk& chunk = m_pool[allocation.chunkIndex];
-        check(chunk.submissionId == UINT64_MAX);
-        m_device->WriteBuffer(chunk.buffer, src, size, srcOffset, dstOffset + allocation.pointer);
-    }
-
-    void ShaderMemoryPool::Submit(uint64_t submissionId)
-    {
-        // Submit id into used buffers
-        for (uint32_t i = 0; i < (uint32_t)m_toSubmit.size(); ++i)
-        {
-            Chunk& chunk = m_pool[m_toSubmit[i]];
-            check(chunk.submissionId == UINT64_MAX);
-            m_submitted.push_back(m_toSubmit[i]);
-            chunk.submissionId = submissionId;
-        }
-        m_toSubmit.clear();
-        // Reset allocation map
-        for (auto it = m_allocations.begin(); it != m_allocations.end(); ++it)
-        {
-            it->second = MemoryAllocation::InvalidAllocation();
-        }
-    }
-
-    uint32_t ShaderMemoryPool::GetFreeChunk(uint64_t size)
-    {
-        // search into submitted if there is one already finished
-        uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
-        for (uint32_t i = (uint32_t)m_submitted.size() - 1; i < (uint32_t)m_submitted.size(); --i)
-        {
-            uint32_t chunkIndex = m_submitted[i];
-            Chunk& chunk = m_pool[chunkIndex];
-            check(chunk.submissionId != UINT64_MAX);
-            if (chunk.submissionId <= lastFinishedId && chunk.buffer->m_description.size >= size)
-            {
-                chunk.pointer = 0;
-                chunk.submissionId = UINT64_MAX;
-                // take last value in vector and replace current index.
-                if (i == (uint32_t)m_submitted.size() - 1)
-                    m_submitted.pop_back();
-                else
-                {
-                    m_submitted[i] = m_submitted.back();
-                    m_submitted.pop_back();
-                }
-                return chunkIndex;
-            }
-        }
-        return CreateChunk(size);
-    }
-
-    uint32_t ShaderMemoryPool::CreateChunk(uint64_t size)
-    {
-        size = m_device->AlignUniformSize(size);
-        render::BufferDescription desc;
-        desc.size = size;
-        desc.bufferUsage = render::BufferUsage_UniformBuffer;
-        desc.memoryUsage = render::MemoryUsage_CpuToGpu;
-        Chunk chunk;
-        chunk.buffer = m_device->CreateBuffer(desc);
-        chunk.pointer = 0;
-        chunk.submissionId = UINT64_MAX;
-        m_pool.push_back(chunk);
-        return (uint32_t)m_pool.size() - 1;
+        return handle;
     }
 
     void RenderSystem::Init(IWindow* window)
@@ -265,10 +143,9 @@ namespace rendersystem
             m_renderContext.cmd = m_cmd;
         }
         {
-            m_memoryPool = _new ShaderMemoryPool(m_device);
             m_bindingCache = _new BindingCache(m_device);
             m_samplerCache = _new SamplerCache(m_device);
-            m_memoryPool2 = _new ShaderMemoryPool_2(m_device);
+            m_memoryPool2 = _new ShaderMemoryPool(m_device);
         }
 
         ui::Init(m_device, m_ldrRt, window->GetWindowNative());
@@ -360,7 +237,6 @@ namespace rendersystem
         DestroyScreenQuad();
         ui::Destroy();
         delete m_bindingCache;
-        delete m_memoryPool;
         delete m_memoryPool2;
         delete m_samplerCache;
         m_psoMap.clear();
@@ -398,10 +274,13 @@ namespace rendersystem
 
     render::GraphicsPipelineHandle RenderSystem::GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt)
     {
-        if (m_psoMap.contains(psoDesc))
-            return m_psoMap[psoDesc];
-        m_psoMap[psoDesc] = m_device->CreateGraphicsPipeline(psoDesc, rt);
-        return m_psoMap.at(psoDesc);
+        auto it = m_psoMap.find(psoDesc);
+        if (it != m_psoMap.end())
+            return it->second;
+        render::GraphicsPipelineHandle handle = m_device->CreateGraphicsPipeline(psoDesc, rt);
+        m_psoMap[psoDesc] = handle;
+        logfdebug("[%20s -> %3d]\n", "GraphicsPipelineCache", m_psoMap.size());
+        return handle;
     }
 
     render::BindingSetHandle RenderSystem::GetBindingSet(const render::BindingSetDescription& desc)
@@ -454,8 +333,11 @@ namespace rendersystem
         {
             for (uint32_t j = 0; j < MaxTextureBindingsPerSlot; ++j)
             {
-                m_textureSlots[i][j] = nullptr;
-                m_samplerSlots[i][j] = nullptr;
+                for (uint32_t k = 0; k < MaxTextureArrayCount; ++k)
+                {
+                    m_textureSlots[i][j][k] = nullptr;
+                    m_samplerSlots[i][j][k] = nullptr;
+                }
             }
         }
         m_cmd->ClearState();
@@ -564,17 +446,47 @@ namespace rendersystem
             break;
         }
         m_program = shader;
+
+        // reserve shader properties in current shader context memory
+        ShaderMemoryContext* memoryContext = m_memoryPool2->GetContext(m_memoryContextId);
+        check(memoryContext);
+        const render::shader_compiler::ShaderReflectionProperties& properties = *m_program->m_properties;
+        for (uint32_t i = 0; i < (uint32_t)properties.params.size(); ++i)
+        {
+            for (uint32_t j = 0; j < (uint32_t)properties.params[i].params.size(); ++j)
+            {
+                const render::shader_compiler::ShaderPropertyDescription& property = properties.params[i].params[j];
+                switch (property.type)
+                {
+                case render::ResourceType_ConstantBuffer:
+                case render::ResourceType_VolatileConstantBuffer:
+                //case render::ResourceType_BufferUAV:
+                //case render::ResourceType_DynamicBufferUAV:
+                    memoryContext->ReserveProperty(property.name.c_str(), property.size);
+                    break;
+                }
+            }
+        }
     }
 
     void RenderSystem::SetTextureSlot(render::TextureHandle texture, uint32_t set, uint32_t binding)
     {
-        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
-        m_textureSlots[set][binding] = texture;
-
-        if (texture->m_layout != render::ImageLayout_ShaderReadOnly)
+        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot && texture);
+        m_textureSlots[set][binding][0] = texture;
+        for (uint32_t i = 1; i < MaxTextureArrayCount; ++i)
         {
-            check(!m_cmd->IsInsideRenderPass());
-            m_cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
+            if (m_textureSlots[set][binding][i] != nullptr)
+                m_textureSlots[set][binding][i] = nullptr;
+            else
+                break;
+        }
+
+        if (texture->GetLayoutAt(0, 0) != render::ImageLayout_ShaderReadOnly)
+        {
+            if (render::utils::IsDepthStencilFormat(texture->m_description.format))
+                m_cmd->RequireTextureState({ texture, render::ImageLayout_DepthStencilReadOnly });
+            else
+                m_cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
         }
     }
 
@@ -584,30 +496,70 @@ namespace rendersystem
         uint32_t setIndex;
         const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
         check(property && setIndex != UINT32_MAX);
+        check(property->arrayCount == 1);
         SetTextureSlot(texture, setIndex, property->binding);
     }
 
-    void RenderSystem::SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding)
-    {
+	void RenderSystem::SetTextureSlot(const render::TextureHandle* textures, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
+	{
+        check(count <= MaxTextureArrayCount);
         check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
-        m_samplerSlots[set][binding] = sampler;
+        for (uint32_t i = 0; i < count; ++i)
+            m_textureSlots[set][binding][i] = textures[i];
+	}
+
+    void RenderSystem::SetTextureSlot(const char* id, const render::TextureHandle* textures, uint32_t count)
+    {
+        check(textures && count);
+        if (count == 1)
+        {
+            SetTextureSlot(id, *textures);
+        }
+        else
+        {
+		    check(m_program);
+		    uint32_t setIndex;
+		    const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+		    check(property && setIndex != UINT32_MAX);
+            check(count <= property->arrayCount);
+            SetTextureSlot(textures, count, setIndex, property->binding);
+        }
+    }
+
+	void RenderSystem::SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding, uint32_t samplerIndex)
+    {
+        check(samplerIndex < MaxTextureArrayCount);
+        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
+        m_samplerSlots[set][binding][samplerIndex] = sampler;
     }
 
     void RenderSystem::SetSampler(const char* id, render::SamplerHandle sampler)
     {
-        check(m_program);
-        uint32_t setIndex;
-        const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
-        check(property && setIndex != UINT32_MAX);
-        SetSampler(sampler, setIndex, property->binding);
+        SetSampler(id, &sampler, 1);
     }
 
-    void RenderSystem::SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW)
+    void RenderSystem::SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW, uint32_t samplerIndex)
     {
         SetSampler(id, GetSampler(minFilter, magFilter, addressModeU, addressModeV, addressModeW));
     }
 
-    void RenderSystem::SetShaderProperty(const char* id, const void* param, uint64_t size)
+	void RenderSystem::SetSampler(const char* id, render::SamplerHandle* sampler, uint32_t count)
+	{
+        check(m_program);
+        uint32_t setIndex;
+        const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+        check(property && setIndex != UINT32_MAX);
+        check(property->arrayCount >= count);
+        SetSampler(sampler, count, setIndex, property->binding);
+	}
+
+	void RenderSystem::SetSampler(render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
+	{
+        for (uint32_t i = 0; i < count; ++i)
+            SetSampler(sampler[i], set, binding, i);
+	}
+
+	void RenderSystem::SetShaderProperty(const char* id, const void* param, uint64_t size)
     {
         check(id && *id && param && size);
         ShaderMemoryContext* context = m_memoryPool2->GetContext(m_memoryContextId);
@@ -616,11 +568,8 @@ namespace rendersystem
 
     void RenderSystem::SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout)
     {
-        if (texture->m_layout != layout)
-        {
-            check(!m_cmd->IsInsideRenderPass());
-            m_cmd->RequireTextureState({ texture, layout });
-        }
+        //check(!m_cmd->IsInsideRenderPass());
+        m_cmd->RequireTextureState({ texture, layout });
     }
 
     void RenderSystem::SetTextureAsResourceBinding(render::TextureHandle texture)
@@ -689,6 +638,8 @@ namespace rendersystem
 
     void RenderSystem::DrawDrawList(const DrawList& list)
     {
+#if 0
+
         render::RenderTargetHandle rt = m_ldrRt;
         render::GraphicsPipelineDescription psoDesc;
         psoDesc.renderState.viewportState.viewport = rt->m_info.GetViewport();
@@ -794,6 +745,8 @@ namespace rendersystem
         // flush transform buffer
         if (m_transforms.count)
             m_memoryPool->Write(transformAllocation, m_transforms.data, m_transforms.count * sizeof(glm::mat4));
+#endif // 0
+
     }
 
     void RenderSystem::InitScreenQuad()
@@ -854,7 +807,7 @@ namespace rendersystem
         SetDefaultState();
         SetRenderTarget(m_presentRts[m_swapchainIndex]);
         SetShader(m_screenQuadCopy.shader);
-        SetTextureSlot("u_tex", texture);
+        SetTextureSlot("tex", texture);
         DrawFullscreenQuad();
         ClearState();
     }
@@ -891,46 +844,46 @@ namespace rendersystem
         // Bind descriptors sets and memory before draw call
         const render::shader_compiler::ShaderReflectionProperties* properties = m_program->m_properties;
         check(properties->pushConstantMap.empty());
+        m_psoDesc.bindingLayouts.Resize((uint32_t)properties->params.size());
         for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
         {
             const render::shader_compiler::ShaderPropertySetDescription& paramSet = properties->params[i];
             render::BindingSetDescription desc;
             for (uint32_t j = 0; j < (uint32_t)paramSet.params.size(); ++j)
             {
-                const render::shader_compiler::ShaderPropertyDescription& param = paramSet.params[j];
-                switch (param.type)
+                const render::shader_compiler::ShaderPropertyDescription& property = paramSet.params[j];
+                switch (property.type)
                 {
                 case render::ResourceType_TextureSRV:
                 case render::ResourceType_TextureUAV:
                 {
-                    check(paramSet.setIndex < MaxTextureSlots && param.binding < MaxTextureBindingsPerSlot);
-                    render::TextureHandle tex = m_textureSlots[paramSet.setIndex][param.binding];
-                    render::SamplerHandle sampler = m_samplerSlots[paramSet.setIndex][param.binding];
-                    if (!tex)
+                    check(paramSet.setIndex < MaxTextureSlots && property.binding < MaxTextureBindingsPerSlot);
+                    check(property.arrayCount <= MaxTextureArrayCount);
+                    render::TextureHandle* tex = m_textureSlots[paramSet.setIndex][property.binding];
+                    render::SamplerHandle* sampler = m_samplerSlots[paramSet.setIndex][property.binding];
+                    Mist::tStaticArray<render::TextureSubresourceRange, MaxTextureArrayCount> subresources;
+
+                    for (uint32_t k = 0; k < property.arrayCount; ++k)
                     {
-                        // TODO: get default texture
-                        logferror("Texture not bound (%s) [%d, %d]\n", param.name.c_str(), paramSet.setIndex, param.binding);
-                        unreachable_code();
+                        check(tex[k]);
+                        if (!sampler[k])
+                            sampler[k] = GetSampler(render::Filter_Linear, render::Filter_Linear,
+                                render::SamplerAddressMode_ClampToEdge,
+                                render::SamplerAddressMode_ClampToEdge,
+                                render::SamplerAddressMode_ClampToEdge);
+                        subresources.Push(render::TextureSubresourceRange::AllSubresources());
                     }
-                    if (!sampler)
-                    {
-                        sampler = GetSampler(render::Filter_Linear, render::Filter_Linear,
-                            render::SamplerAddressMode_ClampToEdge,
-                            render::SamplerAddressMode_ClampToEdge,
-                            render::SamplerAddressMode_ClampToEdge);
-                    }
-                    check(tex && sampler);
-                    if (param.type == render::ResourceType_TextureSRV)
-                        desc.PushTextureSRV(param.binding, tex.GetPtr(), sampler, param.stage);
+                    if (property.type == render::ResourceType_TextureSRV)
+                        desc.PushTextureSRV(property.binding, tex, sampler, property.stage, subresources.GetData(), property.arrayCount);
                     else
-                        desc.PushTextureUAV(param.binding, tex.GetPtr(), param.stage);
+                        desc.PushTextureUAV(property.binding, tex, property.stage, subresources.GetData(), property.arrayCount);
                 }
                 break;
                 case render::ResourceType_ConstantBuffer:
                 {
-                    const ShaderMemoryContext::PropertyMemory* property = memoryContext->GetProperty(param.name.c_str());
-                    check(property && property->buffer && property->size >= param.size);
-                    desc.PushConstantBuffer(param.binding, property->buffer.GetPtr(), param.stage, render::BufferRange(property->offset, property->size));
+                    const ShaderMemoryContext::PropertyMemory* propertyMemory = memoryContext->GetProperty(property.name.c_str());
+                    check(propertyMemory && propertyMemory->buffer && propertyMemory->size >= property.size);
+                    desc.PushConstantBuffer(property.binding, propertyMemory->buffer.GetPtr(), property.stage, render::BufferRange(propertyMemory->offset, propertyMemory->size));
                 }
                 break;
                 case render::ResourceType_VolatileConstantBuffer:
@@ -951,7 +904,8 @@ namespace rendersystem
             }
             render::BindingSetHandle set = GetBindingSet(desc);
             m_renderContext.graphicsState.bindings.SetBindingSlot(paramSet.setIndex, set);
-            m_psoDesc.bindingLayouts.Push(set->m_layout);
+            check(paramSet.setIndex < m_psoDesc.bindingLayouts.GetSize());
+            m_psoDesc.bindingLayouts[paramSet.setIndex] = set->m_layout;
         }
 
         // Process graphics pipeline
@@ -1001,7 +955,7 @@ namespace rendersystem
         uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
         m_device->Present(m_frameSyncronization[GetFrameIndex()].renderQueueSemaphore);
 
-        m_memoryPool->Submit(submissionId);
+        m_memoryPool2->Submit(submissionId, &m_memoryContextId, 1);
         m_frameSyncronization[GetFrameIndex()].submission = submissionId;
     }
 
@@ -1336,10 +1290,11 @@ namespace rendersystem
         check(m_pointer == m_device->AlignUniformSize(m_pointer));
         check(size);
         size = m_device->AlignUniformSize(size);
-        if (m_properties.contains(id))
+        auto it = m_properties.find(id);
+        if (it != m_properties.end())
         {
             // if already created, see if there is a buffer binded to the property
-            PropertyMemory& p = m_properties.at(id);
+            PropertyMemory& p = it->second;
             if (p.buffer)
             {
                 // if there is a buffer, override property (new property instance)
@@ -1374,9 +1329,10 @@ namespace rendersystem
 
     const ShaderMemoryContext::PropertyMemory* ShaderMemoryContext::GetProperty(const char* id) const
     {
-        if (!m_properties.contains(id))
+        auto it = m_properties.find(id);
+        if (it == m_properties.end())
             return nullptr;
-        return &m_properties.at(id);
+        return &it->second;
     }
 
     void ShaderMemoryContext::FlushMemory()
@@ -1390,9 +1346,11 @@ namespace rendersystem
 
         for (auto it = m_properties.begin(); it != m_properties.end(); ++it)
         {
-            check(it->second.buffer == nullptr);
-            it->second.buffer = buffer;
+            //check(it->second.buffer == nullptr);
+            if (!it->second.buffer)
+                it->second.buffer = buffer;
         }
+
         m_pointer = 0;
     }
 
@@ -1441,7 +1399,7 @@ namespace rendersystem
         return (uint32_t)m_buffers.size() - 1;
     }
 
-    ShaderMemoryPool_2::ShaderMemoryPool_2(render::Device* device)
+    ShaderMemoryPool::ShaderMemoryPool(render::Device* device)
         : m_device(device)
     {
         check(m_device);
@@ -1450,63 +1408,58 @@ namespace rendersystem
         m_freeContexts.reserve(10);
     }
 
-    uint32_t ShaderMemoryPool_2::CreateContext()
+    uint32_t ShaderMemoryPool::CreateContext()
     {
         uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
-        for (uint32_t i = (uint32_t)m_freeContexts.size() - 1; i < (uint32_t)m_freeContexts.size(); --i)
-        {
-            uint32_t index = m_freeContexts[i];
-            if (m_contexts[index].m_submissionId <= lastFinishedId)
-            {
-                if (i != (uint32_t)m_freeContexts.size() - 1)
-                    m_freeContexts[i] = m_freeContexts.back();
-                m_freeContexts.pop_back();
 
-                m_usedContexts.push_back(index);
-                m_contexts[index].m_submissionId = UINT64_MAX;
-                return index;
-            }
+        if (!m_freeContexts.empty())
+        {
+            uint32_t index = m_freeContexts[m_freeContexts.size() - 1];
+            check(index < (uint32_t)m_contexts.size() && m_contexts[index].m_submissionId == UINT64_MAX);
+            m_freeContexts.pop_back();
+            return index;
         }
 
         m_contexts.push_back(ShaderMemoryContext(m_device));
-        m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
+        //m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
         uint32_t index = (uint32_t)m_contexts.size() - 1;
         m_contexts[index].m_submissionId = UINT64_MAX;
         return index;
     }
 
-    ShaderMemoryContext* ShaderMemoryPool_2::GetContext(uint32_t context)
+    ShaderMemoryContext* ShaderMemoryPool::GetContext(uint32_t context)
     {
         check(context < (uint32_t)m_contexts.size());
         // integrity check: only must return used buffers with invalid submission id
-        bool valid = false;
         for (uint32_t i = 0; i < (uint32_t)m_usedContexts.size(); ++i)
-        {
-            if (m_usedContexts[i] == context)
-            {
-                valid = m_contexts[i].m_submissionId == UINT64_MAX;
-                break;
-            }
-        }
-        check(valid);
+            check(m_usedContexts[i] != context);
+        check(m_contexts[context].m_submissionId == UINT64_MAX);
 
         return &m_contexts[context];
     }
 
-    void ShaderMemoryPool_2::Submit(uint64_t submissionId)
+    void ShaderMemoryPool::Submit(uint64_t submissionId, uint32_t* contexts, uint32_t count)
     {
-        for (uint32_t i = 0; i < (uint32_t)m_usedContexts.size(); ++i)
+        for (uint32_t i = 0; i < count; ++i)
         {
-            uint32_t index = m_usedContexts[i];
-            check(m_contexts[index].m_submissionId == UINT64_MAX);
+            // integrity check
+            uint32_t index = contexts[i];
+            check(index < (uint32_t)m_contexts.size() && m_contexts[index].m_submissionId == UINT64_MAX);
+            for (uint32_t j = 0; j < (uint32_t)m_usedContexts.size(); ++j)
+                check(m_usedContexts[j] != index);
+
             m_contexts[index].m_submissionId = submissionId;
+            m_usedContexts.push_back(index);
+            contexts[i] = UINT32_MAX;
         }
     }
 
-    void ShaderMemoryPool_2::ProcessInFlight()
+    void ShaderMemoryPool::ProcessInFlight()
     {
         // iterates over used contexts and store those which have finished submission id
         const uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
+        logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
+            lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
         for (uint32_t i = (uint32_t)m_usedContexts.size() - 1; i < (uint32_t)m_usedContexts.size(); --i)
         {
             uint32_t index = m_usedContexts[i];
@@ -1519,6 +1472,8 @@ namespace rendersystem
                 m_contexts[index].m_submissionId = UINT64_MAX;
             }
         }
+		logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
+			lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
     }
 
     SamplerCache::SamplerCache(render::Device* device)
@@ -1534,8 +1489,10 @@ namespace rendersystem
 
     render::SamplerHandle SamplerCache::GetSampler(const render::SamplerDescription& desc)
     {
-        if (m_samplers.contains(desc))
-            return m_samplers.at(desc);
+        auto it = m_samplers.find(desc);
+        if (it != m_samplers.end())
+            return it->second;
+        logfdebug("[%20s -> %3d]\n", "SamplerCache", m_samplers.size());
         render::SamplerHandle sampler = m_device->CreateSampler(desc);
         m_samplers[desc] = sampler;
         return sampler;
