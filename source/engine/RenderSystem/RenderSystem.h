@@ -446,7 +446,7 @@ namespace rendersystem
         void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
 
-        ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool2; }
+        ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool; }
 
         // Utilities
         void DrawFullscreenQuad();
@@ -512,7 +512,7 @@ namespace rendersystem
         Mist::tMap<render::GraphicsPipelineDescription, render::GraphicsPipelineHandle> m_psoMap;
         BindingCache* m_bindingCache;
         SamplerCache* m_samplerCache;
-        ShaderMemoryPool* m_memoryPool2;
+        ShaderMemoryPool* m_memoryPool;
 
         // Shader memory context and textures
         uint32_t m_memoryContextId;

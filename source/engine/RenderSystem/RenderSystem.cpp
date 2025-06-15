@@ -145,7 +145,7 @@ namespace rendersystem
         {
             m_bindingCache = _new BindingCache(m_device);
             m_samplerCache = _new SamplerCache(m_device);
-            m_memoryPool2 = _new ShaderMemoryPool(m_device);
+            m_memoryPool = _new ShaderMemoryPool(m_device);
         }
 
         ui::Init(m_device, m_ldrRt, window->GetWindowNative());
@@ -237,7 +237,7 @@ namespace rendersystem
         DestroyScreenQuad();
         ui::Destroy();
         delete m_bindingCache;
-        delete m_memoryPool2;
+        delete m_memoryPool;
         delete m_samplerCache;
         m_psoMap.clear();
         m_cmd = nullptr;
@@ -448,7 +448,7 @@ namespace rendersystem
         m_program = shader;
 
         // reserve shader properties in current shader context memory
-        ShaderMemoryContext* memoryContext = m_memoryPool2->GetContext(m_memoryContextId);
+        ShaderMemoryContext* memoryContext = m_memoryPool->GetContext(m_memoryContextId);
         check(memoryContext);
         const render::shader_compiler::ShaderReflectionProperties& properties = *m_program->m_properties;
         for (uint32_t i = 0; i < (uint32_t)properties.params.size(); ++i)
@@ -562,7 +562,7 @@ namespace rendersystem
 	void RenderSystem::SetShaderProperty(const char* id, const void* param, uint64_t size)
     {
         check(id && *id && param && size);
-        ShaderMemoryContext* context = m_memoryPool2->GetContext(m_memoryContextId);
+        ShaderMemoryContext* context = m_memoryPool->GetContext(m_memoryContextId);
         context->WriteProperty(id, param, size);
     }
 
@@ -838,7 +838,7 @@ namespace rendersystem
         m_psoDesc.bindingLayouts.Clear();
 
         // Flush memory before process bindings
-        ShaderMemoryContext* memoryContext = m_memoryPool2->GetContext(m_memoryContextId);
+        ShaderMemoryContext* memoryContext = m_memoryPool->GetContext(m_memoryContextId);
         memoryContext->FlushMemory();
 
         // Bind descriptors sets and memory before draw call
@@ -935,8 +935,8 @@ namespace rendersystem
             m_device->WaitForSubmissionId(m_frameSyncronization[GetFrameIndex()].submission);
 
         commandQueue->ProcessInFlightCommands();
-        m_memoryPool2->ProcessInFlight();
-        m_memoryContextId = m_memoryPool2->CreateContext();
+        m_memoryPool->ProcessInFlight();
+        m_memoryContextId = m_memoryPool->CreateContext();
         m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
         commandQueue->AddWaitSemaphore(presentSemaphore, 0);
         commandQueue->AddSignalSemaphore(renderSemaphore, 0);
@@ -955,7 +955,7 @@ namespace rendersystem
         uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
         m_device->Present(m_frameSyncronization[GetFrameIndex()].renderQueueSemaphore);
 
-        m_memoryPool2->Submit(submissionId, &m_memoryContextId, 1);
+        m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
         m_frameSyncronization[GetFrameIndex()].submission = submissionId;
     }
 
