@@ -554,7 +554,7 @@ namespace Mist
 					ImGui::NextColumn();
 					if (ImGui::BeginChild("Child_mem"))
 					{
-						auto lmbShowMemStat = [](const char* label, uint32_t allocated, uint32_t maxAllocated)
+						auto lmbShowMemStat = [](const char* label, uint64_t allocated, uint64_t maxAllocated)
 							{
 								ImGui::Text("%15s", label);
 								ImGui::NextColumn();

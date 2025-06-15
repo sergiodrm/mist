@@ -1,0 +1,13 @@
+
+[submodule "source/thirdparty/imgui"]
+	path = source/thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
+
+[submodule "source/thirdparty/yaml-cpp"]
+	path = source/thirdparty/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
+	
+[submodule "source/thirdparty/cppcoda"]
+	path = source/thirdparty/cppcoda
+	url = https://github.com/sergiodrm/cppcoda.git
