@@ -192,6 +192,8 @@ namespace Mist
 
 	void* Realloc(void* p, size_t size, const char* file, int line)
 	{
+		if (!p)
+			return Malloc(size, file, line);
 #ifdef MEM_BLOCK_HEADER_INTENSIVE_CHECK
 		IntegrityCheck(SystemMemStats);
 #endif // MEM_BLOCK_HEADER_INTENSIVE_CHECK
