@@ -858,9 +858,7 @@ namespace Mist
 									g_render->SetShaderProperty("u_Camera", &viewRenderInfo.view, sizeof(CameraData));
                                     g_render->SetShaderProperty("u_depthInfo", &viewRenderInfo.shadowMap, sizeof(tShadowMapData));
                                     g_render->SetShaderProperty("u_env", &viewRenderInfo.environment, sizeof(EnvironmentData));
-                                    g_render->SetTextureSlot("u_ShadowMap0", viewRenderInfo.shadowMapTextures[0]);
-                                    g_render->SetTextureSlot("u_ShadowMap1", viewRenderInfo.shadowMapTextures[1]);
-                                    g_render->SetTextureSlot("u_ShadowMap2", viewRenderInfo.shadowMapTextures[2]);
+									g_render->SetTextureSlot("u_ShadowMap", viewRenderInfo.shadowMapTextures, Mist::CountOf(viewRenderInfo.shadowMapTextures));
 									g_render->SetTextureSlot("u_cubemap", viewRenderInfo.cubemapTex);
                                     currentShader = shader;
                                 }
