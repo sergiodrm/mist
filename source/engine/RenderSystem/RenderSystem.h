@@ -161,7 +161,7 @@ namespace rendersystem
         Mist::tDynArray<render::BufferHandle> m_buffers;
         Mist::tDynArray<uint32_t> m_freeBuffers;
         Mist::tDynArray<uint32_t> m_usedBuffers;
-        Mist::tMap<Mist::tString, PropertyMemory> m_properties;
+        Mist::tMap<Mist::String, PropertyMemory> m_properties;
     };
 
     class ShaderMemoryPool_2
@@ -194,7 +194,7 @@ namespace rendersystem
         render::Device* m_device;
         HeapArray<render::TextureHandle> m_textures;
         uint32_t m_pushIndex;
-        Mist::tMap<Mist::tString, uint32_t> m_map;
+        Mist::tMap<Mist::String, uint32_t> m_map;
     };
 
     class SamplerCache
@@ -224,7 +224,7 @@ namespace rendersystem
 
     struct ShaderDynamicBufferDescription
     {
-        Mist::tString name;
+        Mist::String name;
         uint32_t count;
 
         inline bool operator ==(const ShaderDynamicBufferDescription& other) const

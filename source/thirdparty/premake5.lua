@@ -32,3 +32,9 @@ project "YamlCpp"
     includedirs { "%{includes.yaml}" }
     targetdir "%{dependenciesTargetDir}"
     defines { "YAML_CPP_STATIC_DEFINE" }
+    
+project "cppcoda"
+    kind "StaticLib"
+    cppdialect "C++20"
+    files { "cppcoda/cppcoda/**.h", "cppcoda/cppcoda/**.cpp" }
+    targetdir "%{dependenciesTargetDir}"

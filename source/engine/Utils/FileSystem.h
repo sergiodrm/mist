@@ -122,8 +122,8 @@ namespace Mist
 			*value = 0;
 			if (m_keyValueMap.contains(key))
 			{
-				const tString& str = m_values[m_keyValueMap.at(key)];
-				check((index_t)str.size() <= N);
+				const String& str = m_values[m_keyValueMap.at(key)];
+				check((index_t)str.getLength() <= N);
 				strcpy_s(value, str.c_str());
 				return true;
 			}
@@ -141,9 +141,9 @@ namespace Mist
 
 		void InsertValue(const char* key, const char* value);
 	private:
-		tMap<tString, index_t> m_keyValueMap;
-		tDynArray<tString> m_values;
-		tDynArray<tString> m_keys;
+		tMap<String, index_t> m_keyValueMap;
+		tDynArray<String> m_values;
+		tDynArray<String> m_keys;
 	};
 }
 

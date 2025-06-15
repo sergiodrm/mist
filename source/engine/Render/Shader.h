@@ -55,7 +55,7 @@ namespace Mist
 	{
 		bool IsShared = true;
 		uint32_t ElemCount = 0;
-		tString Name;
+		String Name;
 	};
 
 	struct tShaderProgramDescription
@@ -104,7 +104,7 @@ namespace Mist
 
 	private:
 		uint32_t m_batchId = UINT32_MAX;
-		tMap<tString, tShaderParam> m_paramMap;
+		tMap<String, tShaderParam> m_paramMap;
 		bool m_dirty;
 	};
 
@@ -211,7 +211,7 @@ namespace Mist
 
 	private:
 		tDynArray<ShaderProgram*> m_shaderArray;
-		tMap<tString, uint32_t> m_indexMap;
+		tMap<String, uint32_t> m_indexMap;
 	};
 }
 #endif // 0

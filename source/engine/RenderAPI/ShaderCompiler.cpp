@@ -299,15 +299,16 @@ namespace render
             if (!HandleError(prepRes, "preprocess"))
                 return CompiledBinary();
 
-            Mist::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
+            Mist::String preprocessSource(prepRes.cbegin());
 #ifdef SHADER_DUMP_PREPROCESS_RESULT
             Mist::Logf(Mist::LogLevel::Debug, "Preprocessed source:\n\n%s\n\n", preprocessSource.c_str());
 #endif
-            shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, path, entryPoint, options);
+            shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.getLength(), kind, path, entryPoint, options);
             if (!HandleError(result, "assembly"))
                 return CompiledBinary();
-            Mist::tString assemble{ result.begin(), result.end() };
-            shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble.c_str(), assemble.size());
+            Mist::String assemble(result.cbegin());
+            check(assemble.getLength() + 1 == assemble.getCapacity());
+            shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble.c_str(), assemble.getCapacity());
             if (!HandleError(spv, "assembly to spv"))
                 return CompiledBinary();
 

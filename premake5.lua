@@ -106,12 +106,14 @@ workspace "Mist"
             "%{includes.vkbootstrap}",
             "%{includes.vulkan}",
             "%{includes.yaml}",
+            "%{includes.cppcoda}",
         }
         links {
             "glm",
             "ImGui",
             "VkBootstrap",
             "YamlCpp",
+            "cppcoda",
             "%{libs.vulkan}",
             "%{libs.sdl}",
         }
@@ -131,7 +133,7 @@ workspace "Mist"
                 "%{libs.spirvcrossutild}",
                 "%{libs.glslangd}",
                 "%{libs.shadercd}",
-                "%{libs.shadercutild}",
+                "%{libs.shadercutild}"
             }
             targetsuffix "d"
             
@@ -150,7 +152,7 @@ workspace "Mist"
                 "%{libs.spirvcrossutil}",
                 "%{libs.glslang}",
                 "%{libs.shaderc}",
-                "%{libs.shadercutil}",
+                "%{libs.shadercutil}"
             }
         
     
@@ -178,6 +180,7 @@ workspace "Mist"
             "%{includes.vkbootstrap}",
             "%{includes.sdl}",
             "%{includes.stbimage}",
+            "%{includes.cppcoda}",
             "%{includes.imgui}/backends",
         }
 

@@ -541,7 +541,7 @@ namespace Mist
 			imageDesc.Format = description.Format;
 			imageDesc.Usage = imageUsage | description.AdditionalUsage;
 			imageDesc.SampleCount = SAMPLE_COUNT_1_BIT;
-			imageDesc.DebugName = std::format("%s_%s_AttachmentTexture_%d", GetName(), IsDepthFormat(description.Format) ? "Depth" : "Color", 0);
+			imageDesc.DebugName.setFmt("%s_%s_AttachmentTexture_%d", GetName(), IsDepthFormat(description.Format) ? "Depth" : "Color", 0);
 			attachment.Tex = cTexture::Create(renderContext, imageDesc);
 
 			if (!m_description.ClearOnLoad)

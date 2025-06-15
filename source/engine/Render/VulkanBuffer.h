@@ -144,7 +144,7 @@ namespace Mist
 		const RenderContext* m_context;
 
 		// Uniform buffer management
-		tMap<tString, ItemMapInfo> m_infoMap;
+		tMap<String, ItemMapInfo> m_infoMap;
 		uint32_t m_freeMemoryOffset;
 		uint32_t m_maxMemoryAllocated;
 		AllocatedBuffer m_buffer;
@@ -153,6 +153,6 @@ namespace Mist
 
 		// Storage buffers management
 		tDynArray<AllocatedBuffer> m_storageBuffers;
-		tMap<tString, ItemMapInfo> m_storageBufferMap;
+		tMap<String, ItemMapInfo> m_storageBufferMap;
 	};
 }

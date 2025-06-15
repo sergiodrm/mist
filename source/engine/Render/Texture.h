@@ -45,7 +45,7 @@ namespace Mist
 		EImageLayout InitialLayout = IMAGE_LAYOUT_UNDEFINED;
 		VkImageCreateFlags Flags = 0;
 		SamplerDescription SamplerDesc;
-		tString DebugName;
+		String DebugName;
 
 		inline bool operator==(const ImageDescription& other) const 
 		{ 

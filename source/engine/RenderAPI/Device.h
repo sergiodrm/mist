@@ -50,7 +50,7 @@ namespace render
         size_t size;
         BufferUsage bufferUsage;
         MemoryUsage memoryUsage;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         inline bool operator==(const BufferDescription& other) const
         {
@@ -73,7 +73,7 @@ namespace render
         ImageDimension dimension = ImageDimension_2D;
         Extent3D extent = {0,0,1};
         MemoryUsage memoryUsage = MemoryUsage_Gpu;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         bool isShaderResource = true;
         bool isRenderTarget = false;
@@ -188,7 +188,7 @@ namespace render
         float minLod = 0.f;
         float maxLod = 0.f;
         float maxAnisotropy = 1.f;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         inline bool operator==(const SamplerDescription& other) const
         {
@@ -637,9 +637,9 @@ namespace render
     struct ShaderDescription
     {
         ShaderType type = ShaderType_None;
-        Mist::tString name;
-        Mist::tString entryPoint = "main";
-        Mist::tString debugName;
+        Mist::String name;
+        Mist::String entryPoint = "main";
+        Mist::String debugName;
     };
 
     class Shader final : public Mist::Ref<Shader>
@@ -715,7 +715,7 @@ namespace render
         static constexpr uint32_t MaxRenderAttachments = 8;
         Mist::tStaticArray<RenderTargetAttachment, MaxRenderAttachments> colorAttachments;
         RenderTargetAttachment depthStencilAttachment;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         RenderTargetDescription& AddColorAttachment(TextureHandle texture, TextureSubresourceRange range = TextureSubresourceRange{0,1,0,1});
         RenderTargetDescription& SetDepthStencilAttachment(TextureHandle texture, TextureSubresourceRange range = TextureSubresourceRange{ 0,1,0,1 });
@@ -958,7 +958,7 @@ namespace render
     {
         static constexpr uint32_t MaxBindings = 16;
         Mist::tStaticArray<BindingLayoutItem, MaxBindings> bindings;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         BindingLayoutDescription& PushTextureSRV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0, shaderType)); return *this; }
         BindingLayoutDescription& PushTextureUAV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0, shaderType)); return *this; }
@@ -1050,7 +1050,7 @@ namespace render
     struct BindingSetDescription
     {
         BindingSetItemArray bindingItems;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         BindingSetDescription()
         {
@@ -1182,7 +1182,7 @@ namespace render
         RenderState renderState;
         VertexInputLayout vertexInputLayout;
         BindingLayoutArray bindingLayouts;
-        Mist::tString debugName;
+        Mist::String debugName;
 
         inline bool operator==(const GraphicsPipelineDescription& desc) const
         {
@@ -1218,7 +1218,7 @@ namespace render
     {
         ShaderHandle computeShader;
         BindingLayoutArray bindingLayouts;
-        Mist::tString debugName;
+        Mist::String debugName;
     };
 
     class ComputePipeline : public Mist::Ref<ComputePipeline>
@@ -1498,7 +1498,7 @@ namespace render
 
     struct DeviceDescription
     {
-        Mist::tString name;
+        Mist::String name;
         bool enableValidationLayer;
         const void* windowHandle;
     };

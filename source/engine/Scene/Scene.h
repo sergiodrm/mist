@@ -277,7 +277,7 @@ namespace Mist
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr index_t MaxNodeLevel = 16;
 		cAssetPath m_sceneFile;
-		tFixedHeapArray<tString> m_names;
+		tFixedHeapArray<String> m_names;
 		tFixedHeapArray<Hierarchy> m_hierarchy;
 		tFixedHeapArray<TransformComponent> m_transformComponents;
 		tMap<index_t, MeshComponent> m_meshComponentMap;

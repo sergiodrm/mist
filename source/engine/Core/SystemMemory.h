@@ -81,6 +81,29 @@ namespace Mist
 		}
 	};
 
+	class CodaAllocator
+	{
+	public:
+		static void* allocate(size_t size)
+		{
+			void* ptr = Malloc(size, __FILE__ " " __FUNCTION__, __LINE__);
+			assert(ptr);
+			return ptr;
+		}
+
+		static void* reallocate(void* p, size_t size)
+		{
+			void* ptr = Realloc(p, size, __FILE__, __LINE__);
+			assert(ptr);
+			return ptr;
+		}
+
+		static void release(void* p)
+		{
+			Free(p);
+		}
+	};
+
 #if 0
 	template <class T, class U>
 	bool operator ==(const tStdAllocator<T>&, const tStdAllocator<U>&) { return true; }

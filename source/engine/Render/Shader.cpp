@@ -208,14 +208,14 @@ namespace shader_compiler
 		if (!HandleError(prepRes, "preprocess"))
 			return tCompilationResult();
 
-		Mist::tString preprocessSource{ prepRes.cbegin(), prepRes.cend() };
+		Mist::String preprocessSource{ prepRes.cbegin(), prepRes.cend() };
 #ifdef SHADER_DUMP_PREPROCESS_RESULT
 		Mist::Logf(Mist::LogLevel::Debug, "Preprocessed source:\n\n%s\n\n", preprocessSource.c_str());
 #endif
 		shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.size(), kind, filepath, entryPoint, options);
 		if (!HandleError(result, "assembly"))
 			return tCompilationResult();
-		Mist::tString assemble{ result.begin(), result.end() };
+		Mist::String assemble{ result.begin(), result.end() };
 		shaderc::SpvCompilationResult spv = compiler.AssembleToSpv(assemble.c_str(), assemble.size());
 		if (!HandleError(spv, "assembly to spv"))
 			return tCompilationResult();
@@ -1131,7 +1131,7 @@ namespace Mist
 	{
 		loginfo("param access table:\n");
 		logfinfo("Batch id: %d\n", m_batchId);
-		tMap<tString, tShaderParam>::iterator it = m_paramMap.begin();
+		tMap<String, tShaderParam>::iterator it = m_paramMap.begin();
 		while (it != m_paramMap.end())
 		{
 			logfinfo("> key: %s | param: %s (set: %d, binding: %d)\n", it->first.c_str(), it->second.Name.CStr(), it->second.SetIndex, it->second.Binding);

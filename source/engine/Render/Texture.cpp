@@ -140,7 +140,7 @@ namespace Mist
 		m_description = desc;
 		check(CreateImage(context, desc, m_image));
 		m_layout = IMAGE_LAYOUT_UNDEFINED;
-		check(!desc.DebugName.empty());
+		check(!desc.DebugName.isEmpty());
 		SetName(desc.DebugName.c_str());
 		SetVkObjectName(context, &m_image.Image, VK_OBJECT_TYPE_IMAGE, GetName());
 		m_sampler = CreateSampler(context, desc.SamplerDesc);

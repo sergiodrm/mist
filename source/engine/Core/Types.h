@@ -11,6 +11,8 @@
 #include "Core/SystemMemory.h"
 #include "Core/Debug.h"
 
+#include "codastring.h"
+
 #define DELETE_COPY_CONSTRUCTORS(_type) \
 	_type(const _type&) = delete; \
 	_type(_type&&) = delete; \
@@ -27,7 +29,8 @@ namespace Mist
 	using tArray = std::array<T, N>;
 	template <typename Key_t, typename Value_t, typename Hasher_t = std::hash<Key_t>, typename EqualTo = std::equal_to<Key_t>>
 	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo, Mist::tStdAllocator<std::pair<const Key_t, Value_t>>>;
-	using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
+	//using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
+	using String = coda::string_base<Mist::CodaAllocator>;
 
 	typedef uint16_t index_t;
 	typedef uint32_t lindex_t;
@@ -290,10 +293,11 @@ namespace Mist
 			At(item2) = temp;
 		}
 	protected:
-		inline uint32_t GetOffset(uint32_t index) const { return index * sizeof(T); }
+		inline uint32_t GetOffset(uint32_t index) const { return index /** sizeof(T)*/; }
 
 	private:
-		uint8_t Data[Size * sizeof(T)];
+		//uint8_t Data[Size * sizeof(T)];
+		T Data[Size];
 		uint32_t PushIndex = 0;
 	};
 
@@ -646,5 +650,22 @@ namespace Mist
 
 	private:
 		std::atomic<size_t> m_counter;
+	};
+}
+
+/**
+ * hash functions
+ */
+
+namespace std
+{
+	// temp
+	template <>
+	struct hash<Mist::String>
+	{
+		size_t operator()(const Mist::String& str) const
+		{
+			return std::hash<std::string>()(str.c_str());
+		}
 	};
 }

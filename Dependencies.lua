@@ -14,6 +14,7 @@ includes["vkbootstrap"] = "%{wks.location}/source/thirdparty/vkbootstrap"
 includes["vma"] = "%{wks.location}/source/thirdparty/vma"
 includes["vulkan"] = "%{VulkanSdk}/Include"
 includes["yaml"] = "%{wks.location}/source/thirdparty/yaml-cpp/include"
+includes["cppcoda"] = "%{wks.location}/source/thirdparty/cppcoda/cppcoda"
 
 includes["mist"] = "%{wks.location}/source/engine"
 
