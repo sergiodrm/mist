@@ -162,12 +162,16 @@ namespace render
         TextureSubresourceRange range = TextureSubresourceRange::AllSubresources();
         ImageDimension dimension = ImageDimension_Undefined;
         Format format = Format_Undefined;
+        bool viewOnlyDepth = false;
+        bool viewOnlyStencil = false;
 
         inline bool operator==(const TextureViewDescription& other) const
         {
             return range == other.range &&
                 dimension == other.dimension &&
-                format == other.format;
+                format == other.format &&
+                viewOnlyDepth == other.viewOnlyDepth &&
+                viewOnlyStencil == other.viewOnlyStencil;
         }
 
         inline bool operator!=(const TextureViewDescription& other) const
@@ -596,12 +600,17 @@ namespace render
         size_t GetImageSize() const;
 
         TextureView* GetView(const TextureViewDescription& viewDescription);
+        ImageLayout GetLayoutAt(uint32_t layer = 0, uint32_t mipLevel = 0) const
+        {
+            TextureSubresourceRange r{mipLevel, 1, layer, 1};
+            return m_layouts.at(r);
+        }
 
         TextureDescription m_description;
         Alloc m_alloc;
         VkImage m_image;
         bool m_owner;
-        ImageLayout m_layout;
+        Mist::tMap<TextureSubresourceRange, ImageLayout> m_layouts;
         Mist::tMap<TextureViewDescription, TextureView> m_views;
         typedef Mist::tMap<TextureViewDescription, TextureView>::iterator ViewIterator;
     private:
@@ -931,14 +940,16 @@ namespace render
         ResourceType type = ResourceType_None;
         uint32_t binding = 0;
         uint64_t size = 0;
+        uint64_t arrayCount = 0;
         ShaderType shaderType = ShaderType_None;
 
         BindingLayoutItem() = default;
-        BindingLayoutItem(ResourceType _type, uint32_t _binding, uint64_t _size, ShaderType _shaderType)
+        BindingLayoutItem(ResourceType _type, uint32_t _binding, uint64_t _size, ShaderType _shaderType, uint64_t _arrayCount)
             : type(_type),
             binding(_binding),
             size(_size),
-            shaderType(_shaderType)
+            shaderType(_shaderType),
+            arrayCount(_arrayCount)
         { }
 
         inline bool operator==(const BindingLayoutItem& other) const
@@ -960,11 +971,11 @@ namespace render
         Mist::tStaticArray<BindingLayoutItem, MaxBindings> bindings;
         Mist::String debugName;
 
-        BindingLayoutDescription& PushTextureSRV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0, shaderType)); return *this; }
-        BindingLayoutDescription& PushTextureUAV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0, shaderType)); return *this; }
-        BindingLayoutDescription& PushConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_ConstantBuffer, bindings.GetSize(), size, shaderType)); return *this; }
-        BindingLayoutDescription& PushVolatileConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size, shaderType)); return *this; }
-        BindingLayoutDescription& PushBufferUAV(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size, shaderType)); return *this; }
+        BindingLayoutDescription& PushTextureSRV(ShaderType shaderType, uint64_t arrayCount) { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0, shaderType, arrayCount)); return *this; }
+        BindingLayoutDescription& PushTextureUAV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0, shaderType, 1)); return *this; }
+        BindingLayoutDescription& PushConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_ConstantBuffer, bindings.GetSize(), size, shaderType, 1)); return *this; }
+        BindingLayoutDescription& PushVolatileConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size, shaderType, 1)); return *this; }
+        BindingLayoutDescription& PushBufferUAV(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size, shaderType, 1)); return *this; }
 
         inline bool operator==(const BindingLayoutDescription& other) const { return utils::EqualArrays(bindings.GetData(), bindings.GetSize(), other.bindings.GetData(), other.bindings.GetSize()); }
         inline bool operator!=(const BindingLayoutDescription& other) const { return !(*this == other); }
@@ -998,45 +1009,46 @@ namespace render
     struct BindingSetItem
     {
         static constexpr uint32_t MaxBindingSets = 32;
+        static constexpr uint32_t MaxBindingTexturesPerBinding = 8;
 
         // Resource can be buffer or texture or sampler
-        union
-        {
-            Buffer* buffer;
-            Texture* texture;
-            void* resource;
-        };
+        BufferHandle buffer;
+        Mist::tStaticArray<TextureHandle, MaxBindingTexturesPerBinding> textures;
         // Sampler handle used for TextureSRV
-        SamplerHandle sampler;
+        Mist::tStaticArray<SamplerHandle, MaxBindingTexturesPerBinding> samplers;
 
         uint32_t binding;
         ResourceType type;
         ImageDimension dimension;
         ShaderType shaderStages;
 
-        union
-        {
-            TextureSubresourceRange textureSubresources;
-            BufferRange bufferRange;
-        };
+        Mist::tStaticArray<TextureSubresourceRange, MaxBindingTexturesPerBinding> textureSubresources;
+        BufferRange bufferRange;
 
-        BindingSetItem() {}
+        BindingSetItem() : buffer (nullptr) {}
         ~BindingSetItem() {}
 
-        static BindingSetItem CreateTextureSRVItem(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages,
+        static BindingSetItem CreateTextureSRVItem(uint32_t slot, TextureHandle texture, SamplerHandle sampler, ShaderType shaderStages,
             TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined);
-        static BindingSetItem CreateTextureUAVItem(uint32_t slot, Texture* texture, ShaderType shaderStages,
+		static BindingSetItem CreateTextureSRVItem(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages,
+			TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined);
+        static BindingSetItem CreateTextureUAVItem(uint32_t slot, TextureHandle texture, ShaderType shaderStages,
             TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined);
+		static BindingSetItem CreateTextureUAVItem(uint32_t slot, TextureHandle* textures, ShaderType shaderStages,
+			TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined);
         static BindingSetItem CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
         static BindingSetItem CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
         static BindingSetItem CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
 
         inline bool operator==(const BindingSetItem& other) const
         {
-            return resource == other.resource &&
+            return buffer == other.buffer &&
                 binding == other.binding &&
                 type == other.type &&
-                (textureSubresources == other.textureSubresources || bufferRange == other.bufferRange);
+                shaderStages == other.shaderStages &&
+                (utils::EqualArrays(textureSubresources.GetData(), textureSubresources.GetSize(), other.textureSubresources.GetData(), other.textureSubresources.GetSize()) || bufferRange == other.bufferRange)
+                && utils::EqualArrays(textures.GetData(), textures.GetSize(), other.textures.GetData(), other.textures.GetSize())
+                && utils::EqualArrays(samplers.GetData(), samplers.GetSize(), other.samplers.GetData(), other.samplers.GetSize());
         }
 
         inline bool operator!=(const BindingSetItem& other) const
@@ -1062,9 +1074,21 @@ namespace render
             return *this;
         }
 
+        BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
+        {
+            bindingItems.Push(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, shaderStages, subresources, count, dimension));
+            return *this;
+        }
+
         BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
         {
             bindingItems.Push(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStages, subresource, dimension));
+            return *this;
+        }
+
+        BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
+        {
+            bindingItems.Push(BindingSetItem::CreateTextureUAVItem(slot, textures, shaderStages, subresources, count, dimension));
             return *this;
         }
 
@@ -1354,7 +1378,7 @@ namespace render
     {
         TextureHandle texture;
         ImageLayout newLayout;
-        TextureSubresourceRange subresources = TextureSubresourceRange::AllSubresources();
+        TextureSubresourceRange subresources = {0,1,0,1};
     };
 
     class TransferMemory
@@ -1621,10 +1645,14 @@ namespace render
             void Init(Device* device);
             void Destroy(bool waitForSubmission = true);
 
+            void SetTextureLayout(TextureHandle texture, ImageLayout layout, uint32_t layer = 0, uint32_t mipLevel = 0);
             void WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize);
             void WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
             void Blit(const BlitDescription& desc);
             uint64_t Submit(bool waitForSubmission = true);
+
+        private:
+            void BeginRecording();
 
         private:
             Device* m_device;
@@ -1813,19 +1841,23 @@ namespace std
             size_t seed = 0;
             Mist::HashCombine(seed, item.binding);
             Mist::HashCombine(seed, item.type);
-            Mist::HashCombine(seed, item.resource);
             switch (item.type)
             {
             case render::ResourceType_TextureSRV:
             case render::ResourceType_TextureUAV:
-                Mist::HashCombine(seed, item.sampler.GetPtr());
                 Mist::HashCombine(seed, item.dimension);
-                Mist::HashCombine(seed, item.textureSubresources);
+                for (uint32_t i = 0; i < item.textures.GetSize(); ++i)
+                {
+                    Mist::HashCombine(seed, item.samplers[i].GetPtr());
+                    Mist::HashCombine(seed, item.textures[i].GetPtr());
+                    Mist::HashCombine(seed, item.textureSubresources[i]);
+                }
                 break;
             case render::ResourceType_ConstantBuffer:
             case render::ResourceType_VolatileConstantBuffer:
             case render::ResourceType_BufferUAV:
                 Mist::HashCombine(seed, item.bufferRange);
+                Mist::HashCombine(seed, item.buffer.GetPtr());
                 break;
             default:
                 unreachable_code();
@@ -1862,6 +1894,10 @@ namespace std
             case render::ResourceType_VolatileConstantBuffer:
             case render::ResourceType_BufferUAV:
                 Mist::HashCombine(seed, item.size);
+                break;
+            case render::ResourceType_TextureSRV:
+            case render::ResourceType_TextureUAV:
+                Mist::HashCombine(seed, item.arrayCount);
                 break;
             }
             return seed;

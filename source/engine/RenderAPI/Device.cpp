@@ -156,6 +156,10 @@ namespace render
         viewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
         viewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
         viewInfo.subresourceRange = utils::ConvertImageSubresourceRange(description.range, description.format);
+        if (description.viewOnlyDepth && utils::IsDepthFormat(description.format))
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        else if (description.viewOnlyStencil && utils::IsStencilFormat(description.format))
+            viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
         vkcheck(vkCreateImageView(m_device->GetContext().device, &viewInfo, m_device->GetContext().allocationCallbacks, &view.m_view));
 
         m_views.insert({ description, view });
@@ -740,6 +744,7 @@ namespace render
     {
         check(IsRecording());
         EndRenderPass();
+        FlushRequiredStates();
         m_currentCommandBuffer->End();
     }
 
@@ -776,7 +781,13 @@ namespace render
 
                     // set required texture states
                     for (uint32_t textureIndex = 0; textureIndex < (uint32_t)setsToBind.m_slots[i].set->m_textures.size(); ++textureIndex)
-                        m_requiredStates.push_back({ setsToBind.m_slots[i].set->m_textures[textureIndex], render::ImageLayout_ShaderReadOnly });
+                    {
+                        TextureBarrier barrier;
+                        barrier.texture = setsToBind.m_slots[i].set->m_textures[textureIndex];
+                        barrier.newLayout = utils::IsDepthStencilFormat(barrier.texture->m_description.format) ? render::ImageLayout_DepthStencilReadOnly : render::ImageLayout_ShaderReadOnly;
+                        barrier.subresources = { 0,1,0,1 };
+                        RequireTextureState(barrier);
+                    }
                 }
                 else
                 {
@@ -805,6 +816,10 @@ namespace render
     {
         check(AllowsCommandType(Queue_Graphics));
 
+        // End render pass at the beginning, just in case there are some texture required states pending to flush.
+        if (m_graphicsState.rt != state.rt)
+            EndRenderPass();
+
         if (m_graphicsState.pipeline != state.pipeline && state.pipeline)
         {
             state.pipeline->UsePipeline(m_currentCommandBuffer);
@@ -820,8 +835,6 @@ namespace render
         BindSets(state.bindings, m_graphicsState.bindings);
         m_graphicsState.bindings = state.bindings;
 
-        if (m_graphicsState.rt != state.rt)
-            EndRenderPass();
         if (!m_graphicsState.rt && state.rt)
             BeginRenderPass(state.rt);
         m_graphicsState = state;
@@ -919,21 +932,25 @@ namespace render
 
     void CommandList::SetTextureState(const TextureBarrier* barriers, uint32_t count)
     {
-        check(!IsInsideRenderPass());
         static constexpr uint32_t MaxBarriers = 16;
         check(count <= MaxBarriers);
         Mist::tStaticArray<VkImageMemoryBarrier2, MaxBarriers> imageBarriers;
         for (uint32_t i = 0; i < count; ++i)
         {
-            if (barriers[i].texture->m_layout != barriers[i].newLayout)
+            //TextureSubresourceRange range = barriers[i].subresources.Resolve(barriers[i].texture->m_description);
+            TextureSubresourceRange range = barriers[i].subresources;
+            check(barriers[i].texture->m_layouts.contains(range));
+            if (barriers[i].texture->m_layouts.at(range) != barriers[i].newLayout)
             {
                 check(barriers[i].newLayout != ImageLayout_Undefined);
                 imageBarriers.Push(utils::ConvertImageBarrier(barriers[i]));
-                barriers[i].texture->m_layout = barriers[i].newLayout;
+                barriers[i].texture->m_layouts[range] = barriers[i].newLayout;
             }
         }
         if (!imageBarriers.IsEmpty())
         {
+            // Pipeline barriers can't be done inside a render pass.
+			check(!IsInsideRenderPass());
             VkDependencyInfo depInfo = { .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .pNext = nullptr };
             depInfo.imageMemoryBarrierCount = imageBarriers.GetSize();
             depInfo.pImageMemoryBarriers = imageBarriers.GetData();
@@ -982,6 +999,8 @@ namespace render
 
     void CommandList::WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize)
     {
+        FlushRequiredStates();
+
         const TextureDescription& description = texture->m_description;
         check(description.layers > layer && description.mipLevels > mipLevel);
         uint32_t mipWidth, mipHeight, mipDepth;
@@ -996,7 +1015,6 @@ namespace render
         transferMemory.Write(data, dataSize, 0);
         transferMemory.UnmapMemory();
 
-        ImageLayout oldLayout = texture->m_layout;
         TextureBarrier barrier;
         barrier.texture = texture;
         barrier.newLayout = ImageLayout_TransferDst;
@@ -1004,6 +1022,7 @@ namespace render
         barrier.subresources.countLayers = 1;
         barrier.subresources.baseMipLevel = mipLevel;
         barrier.subresources.countMipLevels = 1;
+        ImageLayout oldLayout = texture->m_layouts.at(barrier.subresources);
         SetTextureState(barrier);
 
         VkBufferImageCopy copyRegion
@@ -1034,7 +1053,6 @@ namespace render
     {
         check(desc.src && desc.dst);
 
-        ImageLayout oldLayouts[2] = { desc.src->m_layout, desc.dst->m_layout };
         TextureBarrier barriers[2];
         barriers[0].texture = desc.src;
         barriers[0].newLayout = ImageLayout_TransferSrc;
@@ -1048,6 +1066,7 @@ namespace render
         barriers[1].subresources.baseMipLevel = desc.dstSubresource.mipLevel;
         barriers[1].subresources.countMipLevels = 1;
         barriers[1].subresources.countLayers = desc.dstSubresource.layerCount;
+        ImageLayout oldLayouts[2] = { desc.src->m_layouts.at(barriers[0].subresources), desc.dst->m_layouts.at(barriers[1].subresources) };
         SetTextureState(barriers, 2);
 
         VkImageBlit blit;
@@ -1107,7 +1126,6 @@ namespace render
 
     void CommandList::FlushRequiredStates()
     {
-        check(!IsInsideRenderPass());
         SetTextureState(m_requiredStates.data(), (uint32_t)m_requiredStates.size());
         m_requiredStates.clear();
     }
@@ -1257,7 +1275,18 @@ namespace render
             .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
         };
 
-        texture->m_layout = ImageLayout_Undefined;
+		for (uint32_t i = 0; i < description.layers; ++i)
+		{
+			for (uint32_t mip = 0; mip < description.mipLevels; ++mip)
+			{
+				TextureSubresourceRange range;
+				range.baseLayer = i;
+				range.countLayers = 1;
+				range.baseMipLevel = mip;
+				range.countMipLevels = 1;
+				texture->m_layouts[range] = ImageLayout_Undefined;
+			}
+		}
 
         VkImageCreateInfo imageInfo = { .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, .pNext = nullptr };
         imageInfo.imageType = utils::ConvertImageType(description.dimension);
@@ -1273,7 +1302,7 @@ namespace render
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = utils::ConvertImageUsage(utils::GetImageUsage(texture->m_description));
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        imageInfo.initialLayout = utils::ConvertImageLayout(texture->m_layout);
+        imageInfo.initialLayout = utils::ConvertImageLayout(ImageLayout_Undefined);
         imageInfo.pQueueFamilyIndices = nullptr;
         imageInfo.queueFamilyIndexCount = 0;
 
@@ -1311,7 +1340,18 @@ namespace render
         texture->m_alloc = nullptr;
         texture->m_image = image;
         texture->m_owner = false;
-        texture->m_layout = ImageLayout_Undefined;
+        for (uint32_t i = 0; i < description.layers; ++i)
+        {
+            for (uint32_t mip = 0; mip < description.mipLevels; ++mip)
+            {
+                TextureSubresourceRange range;
+                range.baseLayer = i;
+                range.countLayers = 1;
+                range.baseMipLevel = mip;
+                range.countMipLevels = 1;
+                texture->m_layouts[range] = ImageLayout_Undefined;
+            }
+        }
         SetDebugName(texture, description.debugName.c_str());
         m_textureTracking.push_back(texture);
         return TextureHandle(texture);
@@ -1744,10 +1784,11 @@ namespace render
         for (uint32_t i = 0; i < description.bindings.GetSize(); ++i)
         {
             const BindingLayoutItem& binding = description.bindings[i];
+            check(binding.arrayCount > 0);
             VkDescriptorSetLayoutBinding& b = bindings.Push();
             b.binding = binding.binding;
             b.descriptorType = utils::ConvertToDescriptorType(binding.type);
-            b.descriptorCount = 1;
+            b.descriptorCount = binding.arrayCount;
             b.stageFlags = utils::ConvertShaderStage(binding.shaderType);
             b.pImmutableSamplers = nullptr;
         }
@@ -1869,12 +1910,12 @@ namespace render
         Mist::tStaticArray<VkDescriptorImageInfo, BindingSetItem::MaxBindingSets> imageInfos;
 
         auto fillWriteDescriptorSet = [&](uint32_t binding, VkDescriptorType type,
-            VkDescriptorImageInfo* imageInfo, VkDescriptorBufferInfo* bufferInfo)
+            VkDescriptorImageInfo* imageInfo, VkDescriptorBufferInfo* bufferInfo, uint32_t descriptorCount = 1)
             {
                 VkWriteDescriptorSet& w = writes.Push();
                 w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
                 w.pNext = nullptr;
-                w.descriptorCount = 1;
+                w.descriptorCount = descriptorCount;
                 w.dstArrayElement = 0;
                 w.descriptorType = type;
                 w.dstSet = bindingSet->m_set;
@@ -1890,7 +1931,7 @@ namespace render
             check(item.binding < layout->m_description.bindings.GetSize());
             const BindingLayoutItem& layoutItem = layout->m_description.bindings[item.binding];
 
-            check(item.resource);
+            check(item.buffer || !item.textures.IsEmpty());
             check(utils::ConvertToDescriptorType(item.type) == utils::ConvertToDescriptorType(layoutItem.type)
                 && item.binding == layoutItem.binding);
 
@@ -1899,26 +1940,40 @@ namespace render
             case ResourceType_TextureSRV:
             case ResourceType_TextureUAV:
             {
-                check(item.type == ResourceType_TextureUAV || item.sampler);
-                TextureHandle texture = item.texture;
-                bindingSet->m_textures.push_back(texture);
-                if (item.sampler)
-                    bindingSet->m_samplers.push_back(item.sampler);
+                check(item.type == ResourceType_TextureUAV || (item.samplers.GetSize() == item.textures.GetSize() && item.samplers.GetSize() == item.textureSubresources.GetSize()));
 
-                TextureViewDescription viewDescription;
-                viewDescription.dimension = item.dimension;
-                viewDescription.range = item.textureSubresources.Resolve(texture->m_description);
-                viewDescription.format = texture->m_description.format;
-                TextureView* view = texture->GetView(viewDescription);
-                check(view && view->m_view != VK_NULL_HANDLE);
+                uint32_t baseImageInfo = imageInfos.GetSize();
+                for (uint32_t j = 0; j < item.textures.GetSize(); ++j)
+                {
+                    // cache resources
+                    TextureHandle texture = item.textures[j];
+                    SamplerHandle sampler = nullptr;
+                    bindingSet->m_textures.push_back(texture);
+                    if (item.type == ResourceType_TextureSRV)
+                    {
+                        sampler = item.samplers[j];
+                        bindingSet->m_samplers.push_back(sampler);
+                    }
 
-                VkDescriptorImageInfo& imageInfo = imageInfos.Push();
-                imageInfo.imageLayout = item.type == ResourceType_TextureSRV ?
-                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
-                imageInfo.imageView = view->m_view;
-                imageInfo.sampler = item.sampler ? item.sampler->m_sampler : VK_NULL_HANDLE;
+                    // generate texture view
+                    TextureViewDescription viewDescription;
+                    viewDescription.dimension = item.dimension;
+                    viewDescription.range = item.textureSubresources[j].Resolve(texture->m_description);
+                    viewDescription.format = texture->m_description.format;
+                    if (utils::IsDepthFormat(texture->m_description.format))
+                        viewDescription.viewOnlyDepth = true;
+                    TextureView* view = texture->GetView(viewDescription);
+                    check(view && view->m_view != VK_NULL_HANDLE);
 
-                fillWriteDescriptorSet(layoutItem.binding, utils::ConvertToDescriptorType(layoutItem.type), &imageInfo, nullptr);
+                    // generate image info for descriptor
+                    VkDescriptorImageInfo& imageInfo = imageInfos.Push();
+                    imageInfo.imageLayout = item.type == ResourceType_TextureSRV ?
+                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_GENERAL;
+                    imageInfo.imageView = view->m_view;
+                    imageInfo.sampler = sampler ? sampler->m_sampler : VK_NULL_HANDLE;
+                }
+                fillWriteDescriptorSet(layoutItem.binding, utils::ConvertToDescriptorType(layoutItem.type), 
+                    imageInfos.GetData() + baseImageInfo, nullptr, item.textures.GetSize());
             }
             break;
             case ResourceType_ConstantBuffer:
@@ -2495,33 +2550,63 @@ namespace render
         return range;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, TextureHandle texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
     {
         BindingSetItem item;
-        item.texture = texture;
-        item.sampler = sampler;
+        item.textures.Push(texture);
+        item.samplers.Push(sampler);
         item.binding = slot;
-        item.textureSubresources = subresource;
+        item.textureSubresources.Push(subresource);
         item.dimension = dimension;
         item.type = ResourceType_TextureSRV;
         item.shaderStages = shaderStages;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension)
     {
         BindingSetItem item;
-        item.texture = texture;
-        item.sampler = nullptr;
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            item.textures.Push(textures[i]);
+            item.samplers.Push(samplers[i]);
+            item.textureSubresources.Push(subresources[i]);
+        }
         item.binding = slot;
-        item.textureSubresources = subresource;
+        item.dimension = dimension;
+        item.type = ResourceType_TextureSRV;
+        item.shaderStages = shaderStages;
+        return item;
+    }
+
+    BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, TextureHandle texture, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
+    {
+        BindingSetItem item;
+		item.textures.Push(texture);
+        item.binding = slot;
+        item.textureSubresources.Push(subresource);
         item.dimension = dimension;
         item.type = ResourceType_TextureUAV;
         item.shaderStages = shaderStages;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
+	BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension /*= ImageDimension_Undefined*/)
+	{
+		BindingSetItem item;
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			item.textures.Push(textures[i]);
+			item.textureSubresources.Push(subresources[i]);
+		}
+		item.binding = slot;
+		item.dimension = dimension;
+		item.type = ResourceType_TextureUAV;
+		item.shaderStages = shaderStages;
+		return item;
+	}
+
+	BindingSetItem BindingSetItem::CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
@@ -2639,6 +2724,7 @@ namespace render
             check(!m_device && !m_cmd && device);
             m_device = device;
             m_cmd = m_device->CreateCommandList();
+            BeginRecording();
         }
 
         void UploadContext::Destroy(bool waitForSubmission)
@@ -2650,25 +2736,27 @@ namespace render
             m_device = nullptr;
         }
 
+        void UploadContext::SetTextureLayout(TextureHandle texture, ImageLayout layout, uint32_t layer, uint32_t mipLevel)
+        {
+            TextureBarrier barrier;
+            barrier.texture = texture;
+            barrier.newLayout = layout;
+            barrier.subresources = { mipLevel, 1, layer, 1 };
+            m_cmd->RequireTextureState(barrier);
+        }
+
         void UploadContext::WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize)
         {
-            if (!m_cmd->IsRecording())
-                m_cmd->BeginRecording();
             m_cmd->WriteTexture(texture, mipLevel, layer, data, dataSize);
         }
 
         void UploadContext::WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset, uint64_t dstOffset)
         {
-            if (!m_cmd->IsRecording())
-                m_cmd->BeginRecording();
-
             m_cmd->WriteBuffer(buffer, data, dataSize, srcOffset, dstOffset);
         }
 
         void UploadContext::Blit(const BlitDescription& desc)
         {
-            if (!m_cmd->IsRecording())
-                m_cmd->BeginRecording();
             m_cmd->BlitTexture(desc);
         }
 
@@ -2683,7 +2771,13 @@ namespace render
             return submission;
         }
 
-        ShaderHandle BuildShader(Device* device, const char* filepath, ShaderType type)
+		void UploadContext::BeginRecording()
+		{
+			if (!m_cmd->IsRecording())
+				m_cmd->BeginRecording();
+		}
+
+		ShaderHandle BuildShader(Device* device, const char* filepath, ShaderType type)
         {
             shader_compiler::CompiledBinary bin = shader_compiler::Compile(filepath, type);
             check(bin.IsCompilationSucceed());
