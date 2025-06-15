@@ -80,6 +80,8 @@ namespace Mist
 		{
 			check(stats.MemTraceIndex < stats.MemTraceSize);
 			trace = &stats.MemTraceArray[stats.MemTraceIndex++];
+			if (stats.MemTraceIndex > stats.MemTraceSize * 3 / 4)
+				logfwarn("MemTraceIndex close to overflow: %d/%d\n", stats.MemTraceIndex, stats.MemTraceSize);
 		}
 		check(trace);
 		trace->Data = p;
