@@ -661,7 +661,7 @@ namespace Mist
 		PROFILE_SCOPE_LOG(LoadSkybox, "LoadSkybox");
 
 #ifdef RENDER_BACKEND_TEST
-		return true;
+		//return true;
 #endif
 
 		// descriptors generator
@@ -689,15 +689,19 @@ namespace Mist
 		uint64_t textureSize = textureData[0].width * textureData[0].height * sizeof(uint8_t) * textureData[0].channels;
 
 		render::TextureDescription texDesc;
-		texDesc.extent = { textureData[0].width, textureData[0].height };
+		texDesc.extent = { textureData[0].width, textureData[0].height, 1 };
 		texDesc.format = render::Format_R8G8B8A8_UNorm;
 		texDesc.layers = Skybox::COUNT;
+		texDesc.dimension = render::ImageDimension_Cube;
 		texDesc.debugName = "cubemap";
 		skybox.texture = g_device->CreateTexture(texDesc);
 
 		render::utils::UploadContext upload(g_device);
 		for (uint32_t i = 0; i < Skybox::COUNT; ++i)
+		{
 			upload.WriteTexture(skybox.texture, 0, i, pixelsArray[i], textureSize);
+			upload.SetTextureLayout(skybox.texture, render::ImageLayout_ShaderReadOnly, i);
+		}
 		upload.Submit();
 		return true;
 	}

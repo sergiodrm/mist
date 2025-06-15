@@ -72,7 +72,7 @@ namespace render
 
         VkImageMemoryBarrier2 ConvertImageBarrier(const TextureBarrier& barrier)
         {
-            ImageLayoutState oldState = ConvertImageLayoutState(barrier.texture->m_layout);
+            ImageLayoutState oldState = ConvertImageLayoutState(barrier.texture->m_layouts.at(barrier.subresources));
             ImageLayoutState newState = ConvertImageLayoutState(barrier.newLayout);
             VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2, nullptr };
             imageBarrier.image = barrier.texture->m_image;
@@ -790,11 +790,11 @@ namespace render
             {
             case ImageDimension_1D:
             case ImageDimension_1DArray: return VK_IMAGE_TYPE_1D;
+            case ImageDimension_Cube:
+            case ImageDimension_CubeArray: 
             case ImageDimension_2D:
             case ImageDimension_2DArray: return VK_IMAGE_TYPE_2D;
-            case ImageDimension_3D:
-            case ImageDimension_Cube:
-            case ImageDimension_CubeArray: return VK_IMAGE_TYPE_3D;
+            case ImageDimension_3D: return VK_IMAGE_TYPE_3D;
             case ImageDimension_MaxEnum: return VK_IMAGE_TYPE_MAX_ENUM;
             }
             unreachable_code();
