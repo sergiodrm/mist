@@ -1462,6 +1462,9 @@ namespace render
         inline bool IsRecording() const { return m_currentCommandBuffer != nullptr; }
         void EndRecording();
 
+        void BeginMarker(const char* name, Color color = Color::White());
+        void EndMarker();
+
         // Graphics
         void SetGraphicsState(const GraphicsState& state);
         void ClearColor(float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);

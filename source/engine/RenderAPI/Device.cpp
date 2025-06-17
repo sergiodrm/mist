@@ -748,6 +748,28 @@ namespace render
         m_currentCommandBuffer->End();
     }
 
+    void CommandList::BeginMarker(const char* name, Color color)
+    {
+		check(m_device && IsRecording());
+        const VulkanContext& context = m_device->GetContext();
+        check(context.pfn_vkCmdBeginDebugUtilsLabelEXT);
+        VkDebugUtilsLabelEXT label{ .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pNext = nullptr };
+        label.color[0] = color.r;
+        label.color[1] = color.g;
+        label.color[2] = color.b;
+        label.color[3] = color.a;
+        label.pLabelName = name;
+        context.pfn_vkCmdBeginDebugUtilsLabelEXT(m_currentCommandBuffer->cmd, &label);
+    }
+
+    void CommandList::EndMarker()
+    {
+		check(m_device && IsRecording());
+		const VulkanContext& context = m_device->GetContext();
+		check(context.pfn_vkCmdEndDebugUtilsLabelEXT);
+        context.pfn_vkCmdEndDebugUtilsLabelEXT(m_currentCommandBuffer->cmd);
+    }
+
     void CommandList::BindSets(const BindingSetVector& setsToBind, const BindingSetVector& currentBinding)
     {
         check(IsRecording());
