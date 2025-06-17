@@ -55,7 +55,7 @@ namespace Mist
 		virtual void Draw(const RenderContext& context, const RenderFrameContext& frameContext) override;
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
-		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index) const override;
+		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 	private:
 		rendersystem::ShaderProgram* m_ssaoShader;
 		render::RenderTargetHandle m_rt;

@@ -323,6 +323,15 @@ namespace Mist
 		loginfo("Shutdown render engine.\n");
 
 #ifdef RENDER_BACKEND_TEST
+		g_device->WaitIdle();
+		if (m_scene)
+		{
+			m_scene->Destroy();
+			delete m_scene;
+			m_scene = nullptr;
+		}
+		DebugRender::Destroy(m_renderContext);
+		m_renderer.Destroy(m_renderContext);
 		g_device = nullptr;
 		g_render = nullptr;
 		m_renderSystem->Destroy();
@@ -335,19 +344,12 @@ namespace Mist
 
 		FullscreenQuad.Destroy(m_renderContext);
 
-		if (m_scene)
-		{
-			m_scene->Destroy();
-			delete m_scene;
-			m_scene = nullptr;
-		}
 
 		m_gol->Destroy();
 		delete m_gol;
 		m_gpuParticleSystem.Destroy(m_renderContext);
 
 		ui::Destroy(m_renderContext);
-		DebugRender::Destroy(m_renderContext);
 #if defined(MIST_CUBEMAP)
 		m_cubemapPipeline.Destroy(m_renderContext);
 #endif // defined(MIST_CUBEMAP)

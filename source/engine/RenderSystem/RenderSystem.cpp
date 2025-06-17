@@ -239,6 +239,7 @@ namespace rendersystem
         delete m_bindingCache;
         delete m_memoryPool;
         delete m_samplerCache;
+        m_psoDesc = {};
         m_psoMap.clear();
         m_cmd = nullptr;
         m_renderContext.cmd = nullptr;
@@ -321,7 +322,8 @@ namespace rendersystem
         SetViewport(0.f, 0.f,
             m_renderResolution.width,
             m_renderResolution.height);
-        SetScissor(0.f, 0.f, 0.f, 0.f);
+		SetScissor(0.f, m_renderResolution.width,
+            0.f, m_renderResolution.height);
     }
 
     void RenderSystem::ClearState()
@@ -1335,7 +1337,16 @@ namespace rendersystem
         return &it->second;
     }
 
-    void ShaderMemoryContext::FlushMemory()
+	void ShaderMemoryContext::BeginFrame()
+	{
+        uint32_t size = (uint32_t)m_usedBuffers.size();
+        m_freeBuffers.resize(size);
+        for (uint32_t i = 0; i < size; ++i)
+            m_freeBuffers[size - i - 1] = m_usedBuffers[i];
+        m_usedBuffers.clear();
+	}
+
+	void ShaderMemoryContext::FlushMemory()
     {
         if (!m_pointer)
             return;
@@ -1412,18 +1423,23 @@ namespace rendersystem
     {
         uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
 
+        uint32_t index = UINT32_MAX;
         if (!m_freeContexts.empty())
         {
-            uint32_t index = m_freeContexts[m_freeContexts.size() - 1];
+            index = m_freeContexts[m_freeContexts.size() - 1];
             check(index < (uint32_t)m_contexts.size() && m_contexts[index].m_submissionId == UINT64_MAX);
             m_freeContexts.pop_back();
-            return index;
+        }
+        else
+        {
+            m_contexts.push_back(ShaderMemoryContext(m_device));
+            //m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
+            index = (uint32_t)m_contexts.size() - 1;
+            m_contexts[index].m_submissionId = UINT64_MAX;
         }
 
-        m_contexts.push_back(ShaderMemoryContext(m_device));
-        //m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
-        uint32_t index = (uint32_t)m_contexts.size() - 1;
-        m_contexts[index].m_submissionId = UINT64_MAX;
+        check(index < (uint32_t)m_contexts.size());
+        m_contexts[index].BeginFrame();
         return index;
     }
 

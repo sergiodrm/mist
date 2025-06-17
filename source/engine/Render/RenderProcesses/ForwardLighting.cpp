@@ -160,11 +160,11 @@ namespace Mist
 		ImGui::End();
 	}
 
-	render::RenderTargetHandle ForwardLighting::GetRenderTarget(uint32_t index) const
+	render::RenderTarget* ForwardLighting::GetRenderTarget(uint32_t index) const
 	{
 #ifdef MIST_DISABLE_FORWARD
         return nullptr;
 #endif
-		return m_rt;
+		return m_rt.GetPtr();
 	}
 }

@@ -48,9 +48,9 @@ namespace Mist
 		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
 		virtual void ImGuiDraw() override;
-		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index = 0) const override;
+		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const override;
 
-		static render::RenderTargetHandle GetGBuffer();
+		static render::RenderTarget* GetGBuffer();
 
 		static render::Format GetGBufferFormat(EGBufferTarget target);
 

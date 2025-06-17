@@ -101,6 +101,7 @@ namespace rendersystem
         void WriteProperty(const char* id, const void* data, uint64_t size);
         const PropertyMemory* GetProperty(const char* id) const;
 
+        void BeginFrame();
         void FlushMemory();
         static constexpr uint64_t MinTempBufferSize() { return (1 << 14); }
     private:
@@ -369,6 +370,9 @@ namespace rendersystem
         void BeginFrame();
         void Draw();
         void EndFrame();
+
+        inline render::RenderTargetHandle GetLDRTarget() const { return m_ldrRt; }
+        inline render::TextureHandle GetLDRTexture() const { return m_ldrTexture; }
 
         inline const render::Extent2D& GetRenderResolution() const { return m_renderResolution; }
         inline const render::Extent2D& GetBackbufferResolution() const { return m_backbufferResolution; }

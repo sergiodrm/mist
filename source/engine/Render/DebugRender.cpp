@@ -216,6 +216,9 @@ namespace Mist
 		{
 			DebugRenderPipeline.QuadBatch.Destroy(context);
 			DebugRenderPipeline.LineBatch.Destroy(context);
+
+			delete DebugRenderPipeline.m_lineShader;
+			delete DebugRenderPipeline.m_quadShader;
 		}
 
 		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
@@ -291,8 +294,8 @@ namespace Mist
 			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
 			const bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
 
-
 			//renderer->GetLDRTarget().BeginPass(context, cmd);
+			g_render->SetRenderTarget(g_render->GetLDRTarget());
 			const CameraData& cameraData = *GetCameraData();
 			if (processLine)
 			{

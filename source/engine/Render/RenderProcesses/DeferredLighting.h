@@ -24,7 +24,7 @@ namespace Mist
 		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
-		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput; }
+		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput.GetPtr(); }
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw(const RenderContext& context) override;
 		render::RenderTargetHandle m_lightingOutput;

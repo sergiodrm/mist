@@ -51,7 +51,9 @@ namespace Mist
 	}
 
 	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
-	{	}
+	{	
+		delete m_shader;
+	}
 
 	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
 	{
@@ -437,10 +439,10 @@ namespace Mist
 		ImGui::End();
 	}
 
-	render::RenderTargetHandle ShadowMapProcess::GetRenderTarget(uint32_t index) const
+	render::RenderTarget* ShadowMapProcess::GetRenderTarget(uint32_t index) const
 	{
 		check(index < globals::MaxShadowMapAttachments);
-		return m_shadowMapTargetArray[index];
+		return m_shadowMapTargetArray[index].GetPtr();
 	}
 
 	void ShadowMapProcess::DebugDraw(const RenderContext& context)

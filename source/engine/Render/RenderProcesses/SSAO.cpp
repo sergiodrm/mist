@@ -173,11 +173,11 @@ namespace Mist
 			{ scale * (float)tex->m_description.extent.width, scale * (float)tex->m_description.extent.height }, tex);
 	}
 
-	render::RenderTargetHandle SSAO::GetRenderTarget(uint32_t index) const
+	render::RenderTarget* SSAO::GetRenderTarget(uint32_t index) const
 	{
 		if (m_mode == SSAO_NoBlur || m_mode == SSAO_Disabled)
-			return m_rt;
-		return m_blurRT;
+			return m_rt.GetPtr();
+		return m_blurRT.GetPtr();
 	}
 
 }

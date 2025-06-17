@@ -87,7 +87,7 @@ namespace Mist
 		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
 		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
 		virtual void ImGuiDraw() override;
-		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index) const override;
+		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
 		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
 

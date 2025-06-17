@@ -180,6 +180,8 @@ namespace Mist
 		m_ssaoRenderTarget = nullptr;
 		for (uint32_t i = 0; i < m_shadowMapRenderTargetArray.size(); ++i)
 			m_shadowMapRenderTargetArray[i] = nullptr;
+		//m_ssaoRenderTarget = nullptr;
+		//m_gbufferRenderTarget = nullptr;
 	}
 
 	void DeferredLighting::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -274,7 +276,7 @@ namespace Mist
 				float gamma;
 				float exposure;
 			} params{ CVar_GammaCorrection.Get(), CVar_Exposure.Get() };
-			render::RenderTargetHandle rt = renderContext.Renderer->GetLDRTarget();
+			render::RenderTargetHandle rt = g_render->GetLDRTarget();
 			g_render->SetShader(m_hdrShader);
 			g_render->SetRenderTarget(rt);
 			g_render->SetShaderProperty("u_HdrParams", &params, sizeof(params));

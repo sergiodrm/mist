@@ -49,8 +49,10 @@ namespace Mist
 		check(g_gbuffer == this);
 		//RenderTarget::Destroy(renderContext, m_renderTarget);
 
+		//check(m_renderTarget.GetRefCounter() == 1);
 		m_renderTarget = nullptr;
 		g_gbuffer = nullptr;
+		delete m_gbufferShader;
 	}
 
 	void GBuffer::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -98,12 +100,12 @@ namespace Mist
 		ImGui::End();
 	}
 
-	render::RenderTargetHandle GBuffer::GetRenderTarget(uint32_t index) const
+	render::RenderTarget* GBuffer::GetRenderTarget(uint32_t index) const
 	{
-		return m_renderTarget;
+		return m_renderTarget.GetPtr();
 	}
 
-	render::RenderTargetHandle GBuffer::GetGBuffer()
+	render::RenderTarget* GBuffer::GetGBuffer()
 	{
 		check(g_gbuffer);
 		return g_gbuffer->GetRenderTarget();

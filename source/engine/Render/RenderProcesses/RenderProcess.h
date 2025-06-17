@@ -50,6 +50,7 @@ namespace Mist
 	class RenderProcess
 	{
 	public:
+		virtual ~RenderProcess() {}
 		virtual RenderProcessType GetProcessType() const = 0;
 		virtual void Init(const RenderContext& context) = 0;
 		virtual void Destroy(const RenderContext& context) = 0;
@@ -60,6 +61,6 @@ namespace Mist
 		virtual void ImGuiDraw() {}
 		virtual void DebugDraw(const RenderContext& context) {}
 
-		virtual render::RenderTargetHandle GetRenderTarget(uint32_t index = 0) const = 0;
+		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const = 0;
 	};
 }
