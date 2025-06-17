@@ -322,9 +322,7 @@ namespace Mist
 		{
 			m_models.Push();
 			model = &m_models.GetBack();
-#ifndef RENDER_BACKEND_TEST
 			check(model->LoadModel(context, filepath));
-#endif
 		}
 		check(model);
 		return (index_t)(model-m_models.GetData());
