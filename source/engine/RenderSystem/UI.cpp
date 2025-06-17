@@ -227,6 +227,7 @@ namespace rendersystem
                     ImGui::RenderPlatformWindowsDefault();
                 }
                 cmd->ClearState();
+                cmd->EndMarker();
                 //EndGPUEvent(context, cmd);
             }
 
