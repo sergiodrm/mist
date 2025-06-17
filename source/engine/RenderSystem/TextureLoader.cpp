@@ -58,6 +58,7 @@ namespace rendersystem
     {
         bool LoadTextureData_u8(TextureData* out, const char* filepath, bool flipVertical)
         {
+            PROFILE_SCOPE_LOGF(LoadTextureData_u8, "LoadTexture_u8 (%s)", filepath);
             check(out);
             Mist::cAssetPath assetPath(filepath);
             stbi_set_flip_vertically_on_load(flipVertical);
@@ -97,6 +98,7 @@ namespace rendersystem
                 return false;
             }
 
+            PROFILE_SCOPE_LOGF(CreateAndFillTexture, "Create and fill texture from file (%s)", filepath);
             render::TextureDescription desc;
             desc.extent = { data.width, data.height, 1 };
             desc.format = render::Format_R8G8B8A8_UNorm;
