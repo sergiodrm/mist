@@ -950,8 +950,10 @@ namespace rendersystem
     {
         ui::EndFrame(m_renderContext.cmd);
 
+        BeginMarker("CopyToPresent");
         CopyToPresentRt(m_ldrTexture);
         m_renderContext.cmd->SetTextureState(render::TextureBarrier{ m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc });
+        EndMarker();
         m_renderContext.cmd->EndRecording();
 
         uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();

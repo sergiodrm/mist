@@ -213,6 +213,7 @@ namespace rendersystem
                 //commandList->EndMarker();
                 //renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
 
+                cmd->BeginMarker("ImGui");
                 render::GraphicsState state{};
                 state.rt = m_rt;
                 cmd->ClearState();
@@ -254,7 +255,7 @@ namespace rendersystem
 
         void Init(render::Device* device, render::RenderTargetHandle rt, void* windowHandle)
         {
-            check(device, rt, windowHandle);
+            check(device && rt && windowHandle);
             g_imgui.Init(device, rt, windowHandle);
         }
 

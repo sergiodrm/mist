@@ -78,7 +78,11 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(RendererDraw);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
+		{
+			g_render->BeginMarker(RenderProcessNames[i]);
 			m_processArray[i]->Draw(context, frameContext);
+			g_render->EndMarker();
+		}
 	}
 
 	void Renderer::ImGuiDraw()

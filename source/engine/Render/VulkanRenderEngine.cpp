@@ -501,12 +501,19 @@ namespace Mist
 
 		g_render->BeginFrame();
 
+		g_render->BeginMarker("Renderer");
 		m_renderer.Draw(m_renderContext, frameContext);
+		g_render->EndMarker();
+
+		g_render->BeginMarker("Test compute shaders");
 		m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
 		m_gpuParticleSystem.Draw(m_renderContext, frameContext);
 		m_gol->Compute();
+		g_render->EndMarker();
 
+		g_render->BeginMarker("Debug render");
 		DebugRender::Draw(m_renderContext);
+		g_render->EndMarker();
 		
 		g_render->EndFrame();
 	}
