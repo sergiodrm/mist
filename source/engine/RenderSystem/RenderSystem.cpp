@@ -961,6 +961,16 @@ namespace rendersystem
         m_frameSyncronization[GetFrameIndex()].submission = submissionId;
     }
 
+    void RenderSystem::BeginMarker(const char* name, render::Color color)
+    {
+        m_cmd->BeginMarker(name, color);
+    }
+
+    void RenderSystem::EndMarker()
+    {
+        m_cmd->EndMarker();
+    }
+
     TextureCache::TextureCache(render::Device* device)
         : m_device(device), m_pushIndex(0)
     {

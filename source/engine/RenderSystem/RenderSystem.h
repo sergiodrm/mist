@@ -371,6 +371,9 @@ namespace rendersystem
         void Draw();
         void EndFrame();
 
+        void BeginMarker(const char* name, render::Color color = render::Color::White());
+        void EndMarker();
+
         inline render::RenderTargetHandle GetLDRTarget() const { return m_ldrRt; }
         inline render::TextureHandle GetLDRTexture() const { return m_ldrTexture; }
 
