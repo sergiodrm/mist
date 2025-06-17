@@ -910,6 +910,19 @@ namespace rendersystem
             m_psoDesc.bindingLayouts[paramSet.setIndex] = set->m_layout;
         }
 
+        // Fill default blend states
+        if (m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize() > m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize())
+        {
+            logfwarn("Render state with diry info from previous states (BlendStates %d > Current color attachments %d)\n",
+                m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize(),
+                m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
+            m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
+        }
+        else if (m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize() < m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize())
+        {
+            m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
+        }
+
         // Process graphics pipeline
         render::GraphicsPipelineHandle pso = GetPso(m_psoDesc, m_renderContext.graphicsState.rt);
         m_renderContext.graphicsState.pipeline = pso;
@@ -1337,7 +1350,7 @@ namespace rendersystem
         ReserveProperty(id, size);
         const PropertyMemory* property = GetProperty(id);
         check(property);
-        check(!property->buffer && property->size <= size);
+        check(!property->buffer && property->size >= size);
         Write(data, size, 0, property->offset);
     }
 
