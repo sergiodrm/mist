@@ -31,6 +31,13 @@ namespace Mist
 #undef _X_
 	};
 
+	static const char* const RenderProcessNames[] =
+	{
+#define _X_(x) #x,
+		RENDER_PROCESS_LIST
+#undef _X_
+	};
+
 #define RenderFlagList \
 	_X_(None, 0) \
 	_X_(Fixed, 1) \
