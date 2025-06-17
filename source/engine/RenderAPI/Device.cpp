@@ -1102,9 +1102,11 @@ namespace render
             desc.dst->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit,
             utils::ConvertFilter(desc.filter));
 
-        barriers[0].newLayout = oldLayouts[0];
-        barriers[1].newLayout = oldLayouts[1];
-        SetTextureState(barriers, 2);
+        //if (oldLayouts[0] != ImageLayout_Undefined)
+        //    barriers[0].newLayout = oldLayouts[0];
+        //if (oldLayouts[1] != ImageLayout_Undefined)
+        //    barriers[1].newLayout = oldLayouts[1];
+        //SetTextureState(barriers, 2);
     }
 
     void CommandList::BeginRenderPass(render::RenderTargetHandle rt)
