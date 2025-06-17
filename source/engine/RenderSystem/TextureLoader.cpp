@@ -23,17 +23,22 @@ namespace rendersystem
             upload.Init(device);
         }
 
-        int32_t width = Mist::limits_cast<int32_t>(texture->m_description.extent.width);
-        int32_t height = Mist::limits_cast<int32_t>(texture->m_description.extent.height);
+        int32_t width = static_cast<int32_t>(texture->m_description.extent.width);
+        int32_t height = static_cast<int32_t>(texture->m_description.extent.height);
         for (uint32_t i = 1; i < texture->m_description.mipLevels; ++i)
         {
+            /**
+			 * Message: vkCmdBlitImage(): pRegions[0] srcOffsets[0].z is 0 and srcOffsets[1].z is 0 but srcImage is VK_IMAGE_TYPE_2D.
+                The Vulkan spec states: If srcImage is of type VK_IMAGE_TYPE_1D or VK_IMAGE_TYPE_2D, then for each element of pRegions, srcOffsets[0].z must be 0 and srcOffsets[1].z must be 1 
+                (https://vulkan.lunarg.com/doc/view/1.4.313.1/windows/antora/spec/latest/chapters/copies.html#VUID-vkCmdBlitImage-srcImage-00247)
+             */
             render::BlitDescription blit;
             blit.src = texture;
             blit.dst = texture;
-            blit.srcOffsets[0] = { 0,0,0 };
-            blit.srcOffsets[1] = { width, height, 0 };
+            blit.srcOffsets[0] = { 0, 0, 0 };
+            blit.srcOffsets[1] = { width, height, 1 };
             blit.dstOffsets[0] = { 0, 0, 0 };
-            blit.dstOffsets[1] = { __max(1, width >> 1), __max(1, height >> 1), 0 };
+            blit.dstOffsets[1] = { __max(1, width >> 1), __max(1, height >> 1), 1 };
             blit.filter = render::Filter_Linear;
             blit.srcSubresource.mipLevel = i - 1;
             blit.srcSubresource.layer = 0;
