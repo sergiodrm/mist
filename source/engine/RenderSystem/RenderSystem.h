@@ -503,6 +503,7 @@ namespace rendersystem
         render::TextureHandle m_ldrTexture;
         render::TextureHandle m_depthTexture;
         render::RenderTargetHandle m_ldrRt;
+        render::TextureHandle m_defaultTexture;
         // Present render targets
         Mist::tDynArray<render::RenderTargetHandle> m_presentRts;
 

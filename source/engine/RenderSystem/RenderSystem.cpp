@@ -139,6 +139,17 @@ namespace rendersystem
             }
         }
         {
+            render::TextureDescription desc;
+            desc.extent = {2, 2, 1};
+            desc.debugName = "default_texture";
+            desc.isShaderResource = true;
+            desc.format = render::Format_R8G8B8A8_UNorm;
+            m_defaultTexture = m_device->CreateTexture(desc);
+            render::utils::UploadContext upload(m_device);
+            float data[] = { 0xffffffff, 0x00000000, 0xffffffff, 0x00000000 };
+            upload.WriteTexture(m_defaultTexture, 0, 0, data, sizeof(data));
+        }
+        {
             m_cmd = m_device->CreateCommandList();
             m_renderContext.cmd = m_cmd;
         }
@@ -239,6 +250,7 @@ namespace rendersystem
         delete m_bindingCache;
         delete m_memoryPool;
         delete m_samplerCache;
+        m_defaultTexture = nullptr;
         m_psoDesc = {};
         m_psoMap.clear();
         m_cmd = nullptr;
@@ -867,7 +879,12 @@ namespace rendersystem
 
                     for (uint32_t k = 0; k < property.arrayCount; ++k)
                     {
+#if 0
                         check(tex[k]);
+#endif // 0
+                        if (!tex[k])
+                            tex[k] = m_defaultTexture;
+
                         if (!sampler[k])
                             sampler[k] = GetSampler(render::Filter_Linear, render::Filter_Linear,
                                 render::SamplerAddressMode_ClampToEdge,
