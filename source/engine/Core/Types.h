@@ -197,20 +197,10 @@ namespace Mist
 
 		tThisType& operator=(const tThisType& other)
 		{
-			if (PushIndex == other.PushIndex)
-			{
-				for (uint32_t i = 0; i < other.GetSize(); ++i)
-					At(i) = other.At(i);
-			}
-			else if (PushIndex < other.PushIndex)
-			{
-                for (uint32_t i = PushIndex; i < other.GetSize(); ++i)
-                    Push(other.At(i));
-			}
-			else
-			{
-				Resize(other.PushIndex);
-			}
+			Clear();
+			Resize(other.PushIndex);
+			for (uint32_t i = 0; i < GetSize(); ++i)
+				At(i) = other.At(i);
             return *this;
 		}
 
