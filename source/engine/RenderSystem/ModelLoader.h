@@ -2,6 +2,7 @@
 
 #include "Core/Types.h"
 #include "RenderAPI/Types.h"
+#if 0
 
 namespace render
 {
@@ -17,3 +18,4 @@ namespace rendersystem
         bool LoadModelFromFile(render::Device* device, const char* filepath, Model* outModel);
     }
 }
+#endif // 0

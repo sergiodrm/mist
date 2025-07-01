@@ -1,3 +1,4 @@
+#if 0
 #include "ModelLoader.h"
 
 //#define CGLTF_IMPLEMENTATION
@@ -374,7 +375,7 @@ namespace gltfapi
         for (uint32_t i = 0; i < attributeCount; ++i)
         {
             const cgltf_attribute& attribute = primitive.attributes[i];
-            check(Mist::limits_cast<uint32_t>(attribute.data->count) <= bufferCount-bufferOffset);
+            check(Mist::limits_cast<uint32_t>(attribute.data->count) <= bufferCount - bufferOffset);
             check(Mist::limits_cast<uint32_t>(attribute.data->count) == primitive.attributes[0].data->count);
             ReadAttributeArray(buffer, bufferCount, bufferOffset, attribute);
         }
@@ -575,7 +576,7 @@ namespace rendersystem
             outModel->meshes.Reserve((uint32_t)data->meshes_count);
             HeapArray<Vertex> buffer;
             HeapArray<uint32_t> indices;
-            
+
             loadmeshlog("Loading meshes\n");
             for (uint32_t i = 0; i < outModel->meshes.count; ++i)
             {
@@ -605,7 +606,7 @@ namespace rendersystem
                 for (uint32_t j = 0; j < indices.count; ++j)
                     indices.data[j] = UINT32_MAX;
 
-                loadmeshlogf("* mesh: %s (%d) [primitives: %d; indices: %d; vertices: %d: tris: %d]\n", mesh.name, i, 
+                loadmeshlogf("* mesh: %s (%d) [primitives: %d; indices: %d; vertices: %d: tris: %d]\n", mesh.name, i,
                     mesh.primitives_count, indexCount, vertexCount, indexCount / 3);
 
                 uint32_t indexOffset = 0;
@@ -758,5 +759,6 @@ namespace rendersystem
 #endif // 0
 
         }
+    }
 }
-}
+#endif // 0
