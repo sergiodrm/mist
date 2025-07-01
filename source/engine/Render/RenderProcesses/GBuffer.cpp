@@ -73,6 +73,8 @@ namespace Mist
 		{
 			g_render->SetShader(m_gbufferShader);
 			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+			g_render->ClearColor();
+			g_render->ClearDepthStencil();
 			frameContext.Scene->Draw(renderContext, nullptr, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
 		}
 		else

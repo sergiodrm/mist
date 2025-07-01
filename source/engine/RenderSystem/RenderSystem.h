@@ -255,6 +255,11 @@ namespace rendersystem
             render::CommandListHandle cmd;
             uint32_t memoryContextId;
             render::GraphicsState graphicsState;
+            bool pendingClearColor;
+            float clearColor[4];
+            bool pendingClearDepthStencil;
+            float clearDepth;
+            uint32_t clearStencil;
         };
     public:
         static constexpr uint32_t MaxTextureSlots = 8;

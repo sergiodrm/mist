@@ -642,6 +642,22 @@ namespace rendersystem
         DrawIndexed(6);
     }
 
+    void RenderSystem::ClearColor(float r, float g, float b, float a)
+    {
+        m_renderContext.pendingClearColor = true;
+        m_renderContext.clearColor[0] = r;
+        m_renderContext.clearColor[1] = g;
+        m_renderContext.clearColor[2] = b;
+        m_renderContext.clearColor[3] = a;
+    }
+
+    void RenderSystem::ClearDepthStencil(float depth, uint32_t stencil)
+    {
+        m_renderContext.pendingClearDepthStencil = true;
+        m_renderContext.clearDepth = depth;
+        m_renderContext.clearStencil = stencil;
+    }
+
     render::RenderTargetBlendState& RenderSystem::GetPsoBlendStateAttachment(uint32_t attachment)
     {
         check(attachment < m_psoDesc.renderState.blendState.renderTargetBlendStates.GetCapacity());

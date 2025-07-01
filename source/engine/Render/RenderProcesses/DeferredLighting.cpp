@@ -279,11 +279,14 @@ namespace Mist
 				float exposure;
 			} params{ CVar_GammaCorrection.Get(), CVar_Exposure.Get() };
 			render::RenderTargetHandle rt = g_render->GetLDRTarget();
+
 			g_render->SetShader(m_hdrShader);
 			g_render->SetRenderTarget(rt);
+			g_render->ClearColor();
 			g_render->SetShaderProperty("u_HdrParams", &params, sizeof(params));
 			g_render->SetTextureSlot("u_hdrtex", m_lightingOutput->m_description.colorAttachments[0].texture);
 			g_render->DrawFullscreenQuad();
+			g_render->SetDefaultState();
 		}
 		g_render->ClearState();
 	}
