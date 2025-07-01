@@ -243,114 +243,6 @@ namespace rendersystem
         ShaderBuildDescription* m_description;
     };
 
-    /**
-     * fixed render pipeline
-     * 
-     * set material
-     * - set shaders
-     * - set textures: only write descriptors
-     * - set buffers: 
-     *  - write cpu buffers 
-     */
-
-    struct Vertex
-    {
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec2 texCoord0;
-        glm::vec2 texCoord1;
-        glm::vec4 tangent;
-        glm::vec4 vertexColor;
-    };
-
-    struct ScreenVertex
-    {
-        glm::vec3 position;
-        glm::vec2 texCoords0;
-        glm::vec2 texCoords1;
-    };
-
-    struct Primitive
-    {
-        uint32_t first;
-        uint32_t count;
-        uint32_t mesh;
-        uint32_t material;
-    };
-
-    struct MaterialTextureMap
-    {
-        render::TextureHandle albedo;
-        render::TextureHandle normal;
-        render::TextureHandle metallicRoughness;
-        render::TextureHandle emissive;
-        render::TextureHandle occlusion;
-    };
-
-    struct Material
-    {
-        render::DepthStencilState depthStencilState;
-        render::ShaderHandle vs;
-        render::ShaderHandle fs;
-
-        float albedo[4];
-        float roughness;
-        float metallic;
-        float emissive[4];
-
-        MaterialTextureMap textureMap;
-    };
-
-    struct Mesh
-    {
-        HeapArray<Primitive> primitives;
-        render::BufferHandle vb;
-        render::BufferHandle ib;
-        render::VertexInputLayout inputLayout;
-
-        void Release()
-        {
-            primitives.Release();
-        }
-    };
-
-    struct Model
-    {
-        HeapArray<Mesh> meshes;
-        HeapArray<Material> materials;
-
-        void Release()
-        {
-            for (uint32_t i = 0; i < meshes.count; ++i)
-                meshes.data[i].Release();
-            meshes.Release();
-            materials.Release();
-        }
-    };
-
-    struct ModelInstance
-    {
-        uint32_t model = UINT32_MAX;
-        glm::mat4 transform = glm::mat4(1.f);
-    };
-
-
-    struct DrawList
-    {
-        glm::mat4 view;
-        glm::mat4 projection;
-
-        HeapArray<Model> models;
-        HeapArray<ModelInstance> modelInstances;
-
-        void Release()
-        {
-            for (uint32_t i = 0; i < models.count; ++i)
-                models.data[i].Release();
-            modelInstances.Release();
-        }
-    };
-
     class RenderSystem
     {
         struct RenderContext
@@ -462,7 +354,6 @@ namespace rendersystem
 
         render::RenderTargetBlendState& GetPsoBlendStateAttachment(uint32_t attachment);
 
-        void DrawDrawList(const DrawList& list);
 
         void InitScreenQuad();
         void DestroyScreenQuad();
@@ -479,8 +370,6 @@ namespace rendersystem
         uint32_t m_swapchainIndex;
         // Frame counter
         uint64_t m_frame;
-        // Testing draw list architecture
-        DrawList m_drawList;
         // Store transform block data 
         HeapArray<glm::mat4> m_transforms;
 

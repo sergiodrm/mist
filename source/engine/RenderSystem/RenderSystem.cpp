@@ -16,7 +16,7 @@ namespace rendersystem
 		auto it = m_cache.find(desc);
 		if (it != m_cache.end())
 			return it->second;
-        logfdebug("[%20s -> %3d]\n", "BindingLayoutCache", m_cache.size());
+        //logfdebug("[%20s -> %3d]\n", "BindingLayoutCache", m_cache.size());
         render::BindingLayoutHandle handle = m_device->CreateBindingLayout(desc);
         m_cache[desc] = handle;
         return handle;
@@ -27,7 +27,7 @@ namespace rendersystem
         auto it = m_cache.find(desc);
         if (it != m_cache.end())
         {
-            logfdebug("[%20s -> %3d] Reuse cached binding set\n", "BindingSetCache", m_cache.size());
+            //logfdebug("[%20s -> %3d] Reuse cached binding set\n", "BindingSetCache", m_cache.size());
             return it->second;
         }
         render::BindingLayoutDescription layoutDesc;
@@ -59,6 +59,7 @@ namespace rendersystem
         render::BindingLayoutHandle layout = m_layoutCache.GetCachedLayout(layoutDesc);
         render::BindingSetHandle handle = m_device->CreateBindingSet(desc, layout);
         m_cache[desc] = handle;
+#if 0
         logfdebug("[%20s -> %3d]\n", "BindingSetCache", m_cache.size());
         for (uint32_t i = 0; i < desc.bindingItems.GetSize(); ++i)
         {
@@ -73,6 +74,8 @@ namespace rendersystem
                 logfdebug("* Texture SRV     [%2d; %2d; %2d]\n", b.binding, b.shaderStages, b.textures.GetSize());
             }
         }
+#endif // 0
+
         return handle;
     }
 
@@ -80,6 +83,7 @@ namespace rendersystem
     {
         PROFILE_SCOPE_LOG(Init, "RenderSystem_Init");
         m_frame = 0;
+        m_swapchainIndex = UINT32_MAX;
         {
             render::DeviceDescription desc;
             desc.enableValidationLayer = true;
@@ -244,7 +248,6 @@ namespace rendersystem
         m_device->WaitIdle();
         ClearState();
         m_memoryContextId = UINT32_MAX;
-        m_drawList.Release();
         DestroyScreenQuad();
         ui::Destroy();
         delete m_bindingCache;
@@ -275,14 +278,11 @@ namespace rendersystem
         state.rt = m_ldrRt;
         m_cmd->SetGraphicsState(state);
         m_cmd->ClearColor(0.2f, 0.2f, 0.2f, 1.f);
-        DrawDrawList(m_drawList);
         //EndFrame();
     }
 
     void RenderSystem::SetViewProjection(const glm::mat4& view, const glm::mat4& projection)
     {
-        m_drawList.view = view;
-        m_drawList.projection = projection;
     }
 
     render::GraphicsPipelineHandle RenderSystem::GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt)
@@ -292,7 +292,7 @@ namespace rendersystem
             return it->second;
         render::GraphicsPipelineHandle handle = m_device->CreateGraphicsPipeline(psoDesc, rt);
         m_psoMap[psoDesc] = handle;
-        logfdebug("[%20s -> %3d]\n", "GraphicsPipelineCache", m_psoMap.size());
+        //logfdebug("[%20s -> %3d]\n", "GraphicsPipelineCache", m_psoMap.size());
         return handle;
     }
 
@@ -650,119 +650,6 @@ namespace rendersystem
         return m_psoDesc.renderState.blendState.renderTargetBlendStates[attachment];
     }
 
-    void RenderSystem::DrawDrawList(const DrawList& list)
-    {
-#if 0
-
-        render::RenderTargetHandle rt = m_ldrRt;
-        render::GraphicsPipelineDescription psoDesc;
-        psoDesc.renderState.viewportState.viewport = rt->m_info.GetViewport();
-        psoDesc.renderState.viewportState.scissor = rt->m_info.GetScissor();
-        psoDesc.renderState.blendState.renderTargetBlendStates.Push(render::RenderTargetBlendState());
-
-        render::BindingSetHandle viewProjectionSet;
-        render::BindingSetHandle modelTransformSet;
-
-        struct
-        {
-            glm::mat4 view;
-            glm::mat4 projection;
-            glm::mat4 viewProjection;
-            glm::mat4 invView;
-            glm::mat4 invViewProjection;
-        } viewProjectionData;
-        viewProjectionData.view = list.view;
-        viewProjectionData.projection = list.projection;
-        viewProjectionData.viewProjection = list.projection * list.view;
-        viewProjectionData.invView = glm::inverse(list.view);
-        viewProjectionData.invViewProjection = list.projection * viewProjectionData.invView;
-
-        ShaderMemoryPool::MemoryAllocation viewProjAllocation = m_memoryPool->Allocate("viewProjection", sizeof(viewProjectionData));
-        m_memoryPool->Write(viewProjAllocation, &viewProjectionData, sizeof(viewProjectionData));
-        render::BindingSetDescription viewProjSetDesc;
-        viewProjSetDesc.PushConstantBuffer(0, m_memoryPool->GetBuffer(viewProjAllocation.chunkIndex).GetPtr(), render::ShaderType_Vertex, render::BufferRange(viewProjAllocation.pointer, viewProjAllocation.size));
-        render::BindingSetHandle viewProjSet = m_bindingCache->GetCachedBindingSet(viewProjSetDesc);
-
-        if (m_transforms.count < list.modelInstances.count)
-        {
-            m_transforms.Release();
-            m_transforms.Reserve(list.modelInstances.count);
-        }
-        uint64_t transformSize = m_transforms.count * sizeof(glm::mat4);
-        ShaderMemoryPool::MemoryAllocation transformAllocation = m_memoryPool->Allocate("transforms", transformSize);
-        render::BindingSetDescription transformSetDesc;
-        transformSetDesc.PushVolatileConstantBuffer(0, m_memoryPool->GetBuffer(transformAllocation.chunkIndex).GetPtr(), render::ShaderType_Vertex, render::BufferRange(transformAllocation.pointer, sizeof(glm::mat4)/*transformAllocation.size*/));
-        render::BindingSetHandle transformSet = m_bindingCache->GetCachedBindingSet(transformSetDesc);
-
-        render::GraphicsState state;
-        state.rt = rt;
-        m_cmd->SetGraphicsState(state);
-        m_cmd->ClearDepthStencil();
-
-        for (uint32_t i = 0; i < list.modelInstances.count; ++i)
-        {
-            ModelInstance& instance = list.modelInstances.data[i];
-            check(instance.model < list.models.count);
-            Model& model = list.models.data[instance.model];
-
-            static constexpr float dt = 0.033f;
-            Mist::tAngles rot(90.f * dt * static_cast<float>(rand() % 100) * 0.01f, 45.f * dt * static_cast<float>(rand() % 100) * 0.01f, 0.f);
-            //instance.transform = instance.transform * rot.ToMat4();
-
-            m_transforms.data[i] = instance.transform;
-            for (uint32_t j = 0; j < model.meshes.count; ++j)
-            {
-                Mesh& mesh = model.meshes.data[j];
-                uint32_t lastMaterial = UINT32_MAX;
-                state.indexBuffer = mesh.ib;
-                state.vertexBuffer = mesh.vb;
-                psoDesc.vertexInputLayout = mesh.inputLayout;
-                for (uint32_t k = 0; k < mesh.primitives.count; ++k)
-                {
-                    Primitive& primitive = mesh.primitives.data[k];
-                    if (lastMaterial != primitive.material)
-                    {
-                        lastMaterial = primitive.material;
-                        Material& material = model.materials.data[primitive.material];
-                        psoDesc.vertexShader = material.vs;
-                        psoDesc.fragmentShader = material.fs;
-                        psoDesc.renderState.depthStencilState = material.depthStencilState;
-
-                        char buff[32];
-                        sprintf_s(buff, "%p", &material);
-                        ShaderMemoryPool::MemoryAllocation materialAllocation = m_memoryPool->Allocate(buff, sizeof(material.albedo));
-                        m_memoryPool->Write(materialAllocation, &material.albedo, sizeof(material.albedo));
-
-                        render::BindingSetDescription desc;
-                        desc.PushConstantBuffer(0, m_memoryPool->GetBuffer(materialAllocation.chunkIndex).GetPtr(), render::ShaderType_Fragment, render::BufferRange(materialAllocation.pointer, materialAllocation.size));
-                        render::BindingSetHandle set = m_bindingCache->GetCachedBindingSet(desc);
-
-                        psoDesc.bindingLayouts.Clear();
-                        psoDesc.bindingLayouts.Push(viewProjSet->m_layout);
-                        psoDesc.bindingLayouts.Push(transformSet->m_layout);
-                        psoDesc.bindingLayouts.Push(set->m_layout);
-                        state.bindings.Clear();
-                        state.bindings.SetBindingSlot(0, viewProjSet);
-                        uint32_t bindingOffset = Mist::limits_cast<uint32_t>(m_device->AlignUniformSize(i * sizeof(glm::mat4)));
-                        state.bindings.SetBindingSlot(1, transformSet, &bindingOffset, 1);
-                        state.bindings.SetBindingSlot(2, set);
-
-                        state.pipeline = GetPso(psoDesc, state.rt);
-                        m_cmd->SetGraphicsState(state);
-                    }
-
-                    m_cmd->DrawIndexed(primitive.count, 1, primitive.first, 0, 0);
-                }
-            }
-        }
-
-        // flush transform buffer
-        if (m_transforms.count)
-            m_memoryPool->Write(transformAllocation, m_transforms.data, m_transforms.count * sizeof(glm::mat4));
-#endif // 0
-
-    }
-
     void RenderSystem::InitScreenQuad()
     {
         PROFILE_SCOPE_LOG(InitScreenQuad, "RenderSystem_InitScreenQuad");
@@ -930,9 +817,12 @@ namespace rendersystem
         // Fill default blend states
         if (m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize() > m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize())
         {
-            logfwarn("Render state with diry info from previous states (BlendStates %d > Current color attachments %d)\n",
+#if 0
+            logfwarn("Render state with dirty info from previous states (BlendStates %d > Current color attachments %d)\n",
                 m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize(),
                 m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
+#endif // 0
+
             m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
         }
         else if (m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize() < m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize())
@@ -1584,8 +1474,8 @@ namespace rendersystem
     {
         // iterates over used contexts and store those which have finished submission id
         const uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
-        logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
-            lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
+        //logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
+        //    lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
         for (uint32_t i = (uint32_t)m_usedContexts.size() - 1; i < (uint32_t)m_usedContexts.size(); --i)
         {
             uint32_t index = m_usedContexts[i];
@@ -1598,8 +1488,8 @@ namespace rendersystem
                 m_contexts[index].m_submissionId = UINT64_MAX;
             }
         }
-		logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
-			lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
+		//logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
+		//	lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
     }
 
     SamplerCache::SamplerCache(render::Device* device)
