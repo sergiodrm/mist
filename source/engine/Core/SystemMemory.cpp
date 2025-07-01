@@ -6,11 +6,13 @@
 #include "Core/Console.h"
 
 #define MEM_BLOCK_HEADER
-#define MEM_BLOCK_HEADER_INTENSIVE_CHECK
+//#define MEM_BLOCK_HEADER_INTENSIVE_CHECK
 
-#if defined(MEM_BLOCK_HEADER_INTENSIVE_CHECK) && !defined(MEM_BLOCK_HEADER)
+#if defined(MEM_BLOCK_HEADER_INTENSIVE_CHECK)
 #define MEM_BLOCK_HEADER
 #endif
+
+#define MEM_TRACE_ON
 
 #define MEM_BLOCK_HEADER_MASK 0x0F
 
@@ -51,7 +53,7 @@ namespace Mist
 
     void IntegrityCheck(tSystemMemStats& stats)
     {
-#ifdef MEM_BLOCK_HEADER
+#if defined(MEM_BLOCK_HEADER) && defined(MEM_TRACE_ON)
         for (uint32_t i = 0; i < stats.MemTraceIndex; ++i)
         {
             const void* d = stats.MemTraceArray[i].Data;
@@ -67,33 +69,38 @@ namespace Mist
 
 	void AddMemTrace(tSystemMemStats& stats, const void* p, uint32_t size, const char* file, uint32_t line)
 	{
+#ifdef MEM_TRACE_ON
 		check(p && size && file);
 		tSystemAllocTrace* trace = nullptr;
 		if (stats.FreeIndicesIndex)
 		{
-			unsigned int i = stats.FreeIndicesArray[stats.FreeIndicesIndex-1];
-			stats.FreeIndicesArray[stats.FreeIndicesIndex-1] = UINT32_MAX;
+			unsigned int i = stats.FreeIndicesArray[stats.FreeIndicesIndex - 1];
+			stats.FreeIndicesArray[stats.FreeIndicesIndex - 1] = UINT32_MAX;
 			--stats.FreeIndicesIndex;
 			trace = &stats.MemTraceArray[i];
 		}
 		else
 		{
-			check(stats.MemTraceIndex < stats.MemTraceSize);
-			trace = &stats.MemTraceArray[stats.MemTraceIndex++];
+			//check(stats.MemTraceIndex < stats.MemTraceSize);
+			if (stats.MemTraceIndex < stats.MemTraceSize)
+				trace = &stats.MemTraceArray[stats.MemTraceIndex++];
 			if (stats.MemTraceIndex > stats.MemTraceSize * 3 / 4)
 				logfwarn("MemTraceIndex close to overflow: %d/%d\n", stats.MemTraceIndex, stats.MemTraceSize);
 		}
-		check(trace);
+		//check(trace);
+		if (!trace) return;
 		trace->Data = p;
 		trace->Size = size;
 		trace->Line = line;
 		strcpy_s(trace->File, file);
 		stats.Allocated += size;
 		stats.MaxAllocated = __max(stats.Allocated, stats.MaxAllocated);
+#endif // MEM_TRACE_ON
 	}
 
 	bool RemoveMemTrace(tSystemMemStats& stats, const void* p)
 	{
+#ifdef MEM_TRACE_ON
 		for (uint32_t i = 0; i < stats.MemTraceIndex; ++i)
 		{
 			if (stats.MemTraceArray[i].Data == p)
@@ -110,6 +117,8 @@ namespace Mist
 				return true;
 			}
 		}
+#endif // MEM_TRACE_ON
+
 		return false;
 	}
 
@@ -125,6 +134,12 @@ namespace Mist
 					memStats.MemTraceArray[i].File, 
 					memStats.MemTraceArray[i].Line);
 		}
+	}
+
+	void DumpStats(const tSystemMemStats& memStats)
+	{
+		logfinfo("Num allocations %6d/%6d | Num free indices %6d | Bytes allocated %10d | Max bytes allocated %d\n",
+			memStats.MemTraceIndex, memStats.MemTraceSize, memStats.FreeIndicesIndex, memStats.Allocated, memStats.MaxAllocated);
 	}
 
 	void DumpMemoryStats(const tSystemMemStats& memStats)
@@ -147,6 +162,11 @@ namespace Mist
 		DumpMemoryTrace(SystemMemStats);
 	}
 
+	void ExecCommand_DumpMemoryStats(const char* command)
+	{
+		DumpMemoryStats();
+	}
+
 	void InitSytemMemory()
 	{
 		SystemMemStats.MemTraceArray = new tSystemAllocTrace[tSystemMemStats::MemTraceSize];
@@ -154,6 +174,7 @@ namespace Mist
 		SystemMemStats.MemTraceIndex = 0;
 		SystemMemStats.FreeIndicesIndex = 0;
 		AddConsoleCommand("c_memorydump", &ExecCommand_DumpMemoryTrace);
+		AddConsoleCommand("c_memorystats", &ExecCommand_DumpMemoryStats);
 	}
 
 	void TerminateSystemMemory()
@@ -179,7 +200,7 @@ namespace Mist
 		IntegrityCheck(SystemMemStats);
 #endif // MEM_BLOCK_HEADER_INTENSIVE_CHECK
 
-#ifdef MEM_BLOCK_HEADER
+#if defined(MEM_BLOCK_HEADER) && defined(MEM_TRACE_ON)
 		void* p = malloc(size + sizeof(BlockHeader));
 		check(p);
 		void* ret = InitBlockHeader(p);
@@ -187,7 +208,7 @@ namespace Mist
 #else
 		void* ret = malloc(size);
 		check(ret);
-#endif // MEM_BLOCK_HEADER
+#endif // MEM_BLOCK_HEADER && MEM_TRACE_ON
 		AddMemTrace(SystemMemStats, ret, (uint32_t)size, file, line);
 		return ret;
 	}
@@ -200,7 +221,7 @@ namespace Mist
 		IntegrityCheck(SystemMemStats);
 #endif // MEM_BLOCK_HEADER_INTENSIVE_CHECK
 		check(p);
-#ifdef MEM_BLOCK_HEADER
+#if defined(MEM_BLOCK_HEADER) && defined(MEM_TRACE_ON)
 		void* r = nullptr;
 		if (RemoveMemTrace(SystemMemStats, p))
 		{
@@ -229,7 +250,7 @@ namespace Mist
 #ifdef MEM_BLOCK_HEADER_INTENSIVE_CHECK
 		IntegrityCheck(SystemMemStats);
 #endif // MEM_BLOCK_HEADER_INTENSIVE_CHECK
-#ifdef MEM_BLOCK_HEADER
+#if defined(MEM_BLOCK_HEADER) && defined(MEM_TRACE_ON)
 		if (RemoveMemTrace(SystemMemStats, p))
 		{
 			check(BlockHeaderCheck(GetBlockHeader(p)));

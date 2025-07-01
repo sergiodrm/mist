@@ -26,8 +26,8 @@ namespace Mist
 
 	struct tSystemMemStats
 	{
-		unsigned int Allocated = 0;
-		unsigned int MaxAllocated = 0;
+		size_t Allocated = 0;
+		size_t MaxAllocated = 0;
 		static constexpr size_t MemTraceSize = 2048 * 8;
 		tSystemAllocTrace* MemTraceArray = nullptr;
 		unsigned int MemTraceIndex = 0;
