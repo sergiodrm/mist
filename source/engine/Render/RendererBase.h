@@ -27,6 +27,7 @@ namespace Mist
 		void Destroy(const RenderContext& context);
 		void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext);
 		void Draw(const RenderContext& context, const RenderFrameContext& frameContext);
+		void DebugRender();
 		void ImGuiDraw();
 
 		const RenderProcess* GetRenderProcess(RenderProcessType type) const;

@@ -447,8 +447,9 @@ namespace Mist
 
 	void ShadowMapProcess::DebugDraw(const RenderContext& context)
 	{
-		float w = (float)context.Window->Width;
-		float h = (float)context.Window->Height;
+		render::Extent2D extent = g_render->GetBackbufferResolution();
+		float w = (float)extent.width;
+		float h = (float)extent.height;
 		switch (m_debugMode)
 		{
 		case DEBUG_NONE:

@@ -315,8 +315,10 @@ namespace Mist
 				g_render->SetIndexBuffer(DebugRenderPipeline.QuadBatch.indexBuffer);
 				g_render->SetShaderProperty("u_camera", &orthoproj, sizeof(orthoproj));
 				for (uint32_t i = 0; i < DebugRenderPipeline.QuadBatch.Textures.GetSize(); ++i)
-					g_render->SetTextureSlot(DebugRenderPipeline.QuadBatch.Textures[i], 0, i);
+					g_render->SetTextureSlot(DebugRenderPipeline.QuadBatch.Textures[i], 1, i);
+				g_render->SetDepthEnable(false, false);
 				g_render->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6);
+				g_render->SetDefaultState();
 				DebugRenderPipeline.QuadBatch.Reset();
 			}
 		}

@@ -67,11 +67,6 @@ namespace Mist
 			for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 				m_processArray[i]->UpdateRenderData(context, frameContext);
 		}
-		{
-			CPU_PROFILE_SCOPE(RendererDebugDraw);
-			for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
-				m_processArray[i]->DebugDraw(context);
-		}
 	}
 
 	void Renderer::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
@@ -83,6 +78,14 @@ namespace Mist
 			m_processArray[i]->Draw(context, frameContext);
 			g_render->EndMarker();
 		}
+	}
+
+	void Renderer::DebugRender()
+	{
+		RenderContext c;
+		CPU_PROFILE_SCOPE(RendererDebugDraw);
+		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
+			m_processArray[i]->DebugDraw(c);
 	}
 
 	void Renderer::ImGuiDraw()

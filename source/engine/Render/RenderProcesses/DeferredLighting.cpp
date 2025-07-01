@@ -261,6 +261,8 @@ namespace Mist
 			render::TextureHandle cubemapTexture = renderContext.GetFrameContext().Scene->GetSkyboxTexture();
             g_render->SetTextureSlot("u_cubemap", cubemapTexture);
 			g_render->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
+			g_render->ClearState();
+			g_render->SetDefaultState();
 		}
 
 		m_bloomEffect.m_composeTarget = m_lightingOutput;

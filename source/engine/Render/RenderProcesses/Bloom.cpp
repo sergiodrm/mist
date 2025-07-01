@@ -320,6 +320,8 @@ namespace Mist
 		g_render->SetTextureSlot("u_tex0", m_blendTexture);
 		g_render->SetTextureSlot("u_tex1", m_renderTargetTexturesArray[0]);
 		g_render->DrawFullscreenQuad();
+		g_render->ClearState();
+		g_render->SetDefaultState();
 		
 #if 0
 		CommandList* commandList = context.CmdList;
