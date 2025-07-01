@@ -496,10 +496,12 @@ namespace Mist
 		frameContext.Scene = static_cast<Scene*>(m_scene);
 		m_renderContext.Queue->ProcessInFlightCommands();
 #endif // 0
+		//DumpMemoryStats();
 		RenderFrameContext& frameContext = GetFrameContext();
 		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 
 		g_render->BeginFrame();
+		ImGuiDraw();
 
 		g_render->BeginMarker("Renderer");
 		m_renderer.Draw(m_renderContext, frameContext);
@@ -512,6 +514,7 @@ namespace Mist
 		g_render->EndMarker();
 
 		g_render->BeginMarker("Debug render");
+		m_renderer.DebugRender();
 		DebugRender::Draw(m_renderContext);
 		g_render->EndMarker();
 		
@@ -534,7 +537,6 @@ namespace Mist
 			// Render engine imgui calls
 			GpuProf_ImGuiDraw(m_renderContext);
 
-#if !defined(RENDER_BACKEND_TEST)
 			m_renderer.ImGuiDraw();
 			m_gpuParticleSystem.ImGuiDraw();
 			m_gol->ImGuiDraw();
@@ -545,6 +547,7 @@ namespace Mist
 			if (CVar_ShowImGuiDemo.Get())
 				ImGui::ShowDemoWindow();
 
+#if !defined(RENDER_BACKEND_TEST)
 			RenderTarget::ImGuiRenderTargets();
 #endif
 			tApplication::ImGuiDraw();
