@@ -48,6 +48,9 @@ namespace rendersystem
             blit.dstSubresource.layerCount = 1;
             uploadContext->Blit(blit);
 
+            // Restore shader read only layout for dst mip
+            uploadContext->SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, 0, i);
+
             // Update dimensions
             width = __max(1, width >> 1);
             height = __max(1, height >> 1);
@@ -114,6 +117,7 @@ namespace rendersystem
                 uploadContext->Init(device);
             }
             upload.WriteTexture(texture, 0, 0, data.u8data, data.width * data.height * sizeof(stbi_uc) * data.channels);
+            upload.SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, 0, 0);
             if (calculateMipLevels)
                 GenerateMipMaps(device, texture, uploadContext);
 
