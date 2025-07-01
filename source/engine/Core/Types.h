@@ -21,16 +21,28 @@
 
 #define ZeroMem(ptr, size) memset(ptr, 0, size)
 
+//#define STD_ALLOCATION_TRACKING
+
 namespace Mist
 {
-	template <typename T>
-	using tDynArray = std::vector<T, Mist::tStdAllocator<T>>;
 	template <typename T, size_t N>
 	using tArray = std::array<T, N>;
+#ifdef STD_ALLOCATION_TRACKING
+	template <typename T>
+	using tDynArray = std::vector<T, Mist::tStdAllocator<T>>;
 	template <typename Key_t, typename Value_t, typename Hasher_t = std::hash<Key_t>, typename EqualTo = std::equal_to<Key_t>>
 	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo, Mist::tStdAllocator<std::pair<const Key_t, Value_t>>>;
 	//using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
 	using String = coda::string_base<Mist::CodaAllocator>;
+#else
+	template <typename T>
+	using tDynArray = std::vector<T>;
+	template <typename Key_t, typename Value_t, typename Hasher_t = std::hash<Key_t>, typename EqualTo = std::equal_to<Key_t>>
+	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo>;
+	//using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
+	//using String = coda::string_base<Mist::CodaAllocator>;
+	using String = coda::string;
+#endif
 
 	typedef uint16_t index_t;
 	typedef uint32_t lindex_t;
