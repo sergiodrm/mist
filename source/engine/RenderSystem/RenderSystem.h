@@ -354,6 +354,8 @@ namespace rendersystem
 
         // Utilities
         void DrawFullscreenQuad();
+        void ClearColor(float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
+        void ClearDepthStencil(float depth = 1.f, uint32_t stencil = 0);
 
     private:
 
@@ -364,6 +366,7 @@ namespace rendersystem
         void DestroyScreenQuad();
 
         void CopyToPresentRt(render::TextureHandle texture);
+        const render::RenderTargetHandle& GetPresentRt() const { check(m_swapchainIndex < (uint32_t)m_presentRts.size()); return m_presentRts[m_swapchainIndex]; }
 
         void ImGuiDraw();
         void FlushBeforeDraw();
@@ -382,12 +385,13 @@ namespace rendersystem
         render::Extent2D m_backbufferResolution;
 
         // Syncronization objects. One per frame in flight.
-        struct
+        struct FrameSyncContext
         {
             render::SemaphoreHandle renderQueueSemaphore;
             render::SemaphoreHandle presentSemaphore;
             uint64_t submission = 0;
         } m_frameSyncronization[8];
+        inline FrameSyncContext& GetFrameSyncContext() { return m_frameSyncronization[GetFrameIndex()]; }
 
         // Command list with transfer, graphics and compute commands
         render::CommandListHandle m_cmd;

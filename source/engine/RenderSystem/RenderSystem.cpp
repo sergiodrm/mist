@@ -706,10 +706,11 @@ namespace rendersystem
     {
         ClearState();
         SetDefaultState();
-        SetRenderTarget(m_presentRts[m_swapchainIndex]);
+        SetRenderTarget(GetPresentRt());
         SetShader(m_screenQuadCopy.shader);
         SetTextureSlot("tex", texture);
         DrawFullscreenQuad();
+        SetDefaultState();
         ClearState();
     }
 
@@ -846,6 +847,7 @@ namespace rendersystem
 
     void RenderSystem::BeginFrame()
     {
+        check(m_swapchainIndex == UINT32_MAX);
         m_frame++;
 
         ui::BeginFrame();
@@ -854,20 +856,20 @@ namespace rendersystem
         ClearState();
         m_renderContext.cmd->ResetStats();
 
+
+        FrameSyncContext& sync = GetFrameSyncContext();
+
+        // wait for last frame before acquire swapchain image
+        m_device->WaitForSubmissionId(sync.submission);
+
+        m_swapchainIndex = m_device->AcquireSwapchainIndex(sync.presentSemaphore);
+
         render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
-
-        render::SemaphoreHandle presentSemaphore = m_frameSyncronization[GetFrameIndex()].presentSemaphore;
-        render::SemaphoreHandle renderSemaphore = m_frameSyncronization[GetFrameIndex()].renderQueueSemaphore;
-
-        if (m_frameSyncronization[GetFrameIndex()].submission)
-            m_device->WaitForSubmissionId(m_frameSyncronization[GetFrameIndex()].submission);
-
         commandQueue->ProcessInFlightCommands();
         m_memoryPool->ProcessInFlight();
         m_memoryContextId = m_memoryPool->CreateContext();
-        m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
-        commandQueue->AddWaitSemaphore(presentSemaphore, 0);
-        commandQueue->AddSignalSemaphore(renderSemaphore, 0);
+        commandQueue->AddWaitSemaphore(sync.presentSemaphore, 0);
+        commandQueue->AddSignalSemaphore(sync.renderQueueSemaphore, 0);
 
         m_renderContext.cmd->BeginRecording();
     }
@@ -876,17 +878,20 @@ namespace rendersystem
     {
         ui::EndFrame(m_renderContext.cmd);
 
+        FrameSyncContext& sync = GetFrameSyncContext();
+
         BeginMarker("CopyToPresent");
         CopyToPresentRt(m_ldrTexture);
-        m_renderContext.cmd->SetTextureState(render::TextureBarrier{ m_presentRts[m_swapchainIndex]->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc });
+        m_renderContext.cmd->SetTextureState(render::TextureBarrier{ GetPresentRt()->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc});
         EndMarker();
         m_renderContext.cmd->EndRecording();
 
         uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
-        m_device->Present(m_frameSyncronization[GetFrameIndex()].renderQueueSemaphore);
+        m_device->Present(sync.renderQueueSemaphore);
 
         m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
-        m_frameSyncronization[GetFrameIndex()].submission = submissionId;
+        sync.submission = submissionId;
+        m_swapchainIndex = UINT32_MAX;
     }
 
     void RenderSystem::BeginMarker(const char* name, render::Color color)
