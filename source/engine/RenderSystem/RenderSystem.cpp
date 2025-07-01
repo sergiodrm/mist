@@ -858,7 +858,16 @@ namespace rendersystem
         m_renderContext.graphicsState.pipeline = pso;
 
         m_renderContext.cmd->SetGraphicsState(m_renderContext.graphicsState);
-
+        if (m_renderContext.pendingClearColor)
+        {
+            m_renderContext.pendingClearColor = false;
+            m_renderContext.cmd->ClearColor(m_renderContext.clearColor[0], m_renderContext.clearColor[1], m_renderContext.clearColor[2], m_renderContext.clearColor[3]);
+        }
+        if (m_renderContext.pendingClearDepthStencil)
+        {
+            m_renderContext.pendingClearDepthStencil = false;
+            m_renderContext.cmd->ClearDepthStencil(m_renderContext.clearDepth, m_renderContext.clearStencil);
+        }
     }
 
     void RenderSystem::BeginFrame()
