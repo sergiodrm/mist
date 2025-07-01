@@ -46,7 +46,7 @@ layout (set = 6, binding = 0) uniform samplerCube u_cubemap;
 
 vec3 ComputeNormalMapping(vec3 normal)
 {
-    if (bool(u_material.data.Flags & MATERIAL_FLAG_HAS_NORMAL_MAP))
+    if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_NORMAL_MAP))
     {
         vec3 normalValue = texture(u_Textures[MATERIAL_TEXTURE_NORMAL], inTexCoords).rgb;
         normalValue = normalize(normalValue*2.f - vec3(1.f));
