@@ -774,18 +774,58 @@ namespace render
     {
         check(IsRecording());
 
-        auto bindSetsFn = [&](uint32_t firstSet, const VkDescriptorSet* sets, uint32_t setCount, const uint32_t* offsets, uint32_t offsetCount)
+        class BindingQueue
+        {
+        public:
+            BindingQueue(CommandList* _cmd) : m_cmd(_cmd) {}
+            ~BindingQueue()
             {
-                check(firstSet != UINT32_MAX);
-                FlushRequiredStates();
-                VkPipelineBindPoint bindPoint = m_graphicsState.pipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
-                VkPipelineLayout layout = m_graphicsState.pipeline ? m_graphicsState.pipeline->m_pipelineLayout : m_computeState.pipeline->m_pipelineLayout;
-                vkCmdBindDescriptorSets(m_currentCommandBuffer->cmd, bindPoint, layout, firstSet, setCount, sets, offsetCount, offsets);
-            };
+                FlushStoredBindings();
+            }
 
-        Mist::tStaticArray<VkDescriptorSet, BindingSetVector::MaxSets> vksets;
-        Mist::tStaticArray<uint32_t, BindingSetVector::MaxDynamicsPerSet> offsets;
-        uint32_t firstSet = UINT32_MAX;
+            void FlushStoredBindings()
+            {
+                if (!m_vksets.IsEmpty())
+                {
+                    // flush sets
+					check(m_firstSet != UINT32_MAX);
+					m_cmd->FlushRequiredStates();
+					VkPipelineBindPoint bindPoint = m_cmd->m_graphicsState.pipeline ? VK_PIPELINE_BIND_POINT_GRAPHICS : VK_PIPELINE_BIND_POINT_COMPUTE;
+					VkPipelineLayout layout = m_cmd->m_graphicsState.pipeline ? m_cmd->m_graphicsState.pipeline->m_pipelineLayout : m_cmd->m_computeState.pipeline->m_pipelineLayout;
+					vkCmdBindDescriptorSets(m_cmd->m_currentCommandBuffer->cmd, bindPoint, layout, m_firstSet, m_vksets.GetSize(), m_vksets.GetData(), m_offsets.GetSize(), m_offsets.GetData());
+
+                    // clear queue
+                    m_vksets.Clear();
+                    m_offsets.Clear();
+                    m_firstSet = UINT32_MAX;
+                    m_lastSetStored = UINT32_MAX;
+                }
+            }
+
+            void Push(uint32_t setIndex, VkDescriptorSet set, const uint32_t* offsets, uint32_t offsetCount)
+            {
+                if (m_lastSetStored != UINT32_MAX && setIndex - m_lastSetStored > 1)
+                {
+                    FlushStoredBindings();
+                }
+                m_lastSetStored = setIndex;
+
+                if (m_firstSet == UINT32_MAX)
+                    m_firstSet = setIndex;
+
+                m_vksets.Push(set);
+                for (uint32_t i = 0; i < offsetCount; ++i)
+                    m_offsets.Push(offsets[i]);
+            }
+
+        private:
+            CommandList* m_cmd;
+			Mist::tStaticArray<VkDescriptorSet, BindingSetVector::MaxSets> m_vksets;
+			Mist::tStaticArray<uint32_t, BindingSetVector::MaxDynamicsPerSet> m_offsets;
+            uint32_t m_firstSet = UINT32_MAX;
+            uint32_t m_lastSetStored = UINT32_MAX;
+        } queue(this);
+
         for (uint32_t i = 0; i < BindingSetVector::MaxSets; ++i)
         {
             if (setsToBind.m_slots[i].set != currentBinding.m_slots[i].set ||
@@ -793,13 +833,7 @@ namespace render
             {
                 if (setsToBind.m_slots[i].set)
                 {
-                    // cache set and offsets
-                    vksets.Push(setsToBind.m_slots[i].set->m_set);
-                    for (uint32_t j = 0; j < setsToBind.m_slots[i].offsets.GetSize(); ++j)
-                        offsets.Push(setsToBind.m_slots[i].offsets[j]);
-                    // mark as the first one if there is no one
-                    if (firstSet == UINT32_MAX)
-                        firstSet = i;
+                    queue.Push(i, setsToBind.m_slots[i].set->m_set, setsToBind.m_slots[i].offsets.GetData(), setsToBind.m_slots[i].offsets.GetSize());
 
                     // set required texture states
                     for (uint32_t textureIndex = 0; textureIndex < (uint32_t)setsToBind.m_slots[i].set->m_textures.size(); ++textureIndex)
@@ -811,27 +845,9 @@ namespace render
                         RequireTextureState(barrier);
                     }
                 }
-                else
-                {
-                    // if not set in this slot, we need to flush those already processed.
-                    if (!vksets.IsEmpty())
-                    {
-                        bindSetsFn(firstSet, vksets.GetData(), vksets.GetSize(), offsets.GetData(), offsets.GetSize());
-                        firstSet = UINT32_MAX;
-                        vksets.Clear();
-                        offsets.Clear();
-                    }
-                }
             }
-        }
-        if (!vksets.IsEmpty())
-        {
-            bindSetsFn(firstSet, vksets.GetSize() ? vksets.GetData() : nullptr, vksets.GetSize(), 
-                offsets.GetSize() ? offsets.GetData() : nullptr, offsets.GetSize());
-            firstSet = UINT32_MAX;
-            vksets.Clear();
-            offsets.Clear();
-        }
+		}
+		queue.FlushStoredBindings();
     }
 
     void CommandList::SetGraphicsState(const GraphicsState& state)
