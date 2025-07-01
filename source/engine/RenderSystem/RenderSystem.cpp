@@ -717,19 +717,25 @@ namespace rendersystem
     {
         //ImGui::SetNextWindowPos(ImVec2(500, 500));
         ImGui::Begin("Render system");
-        ImGui::Text("Tris:          %4d", m_cmd->GetStats().tris);
-        ImGui::Text("DrawCalls:     %4d", m_cmd->GetStats().drawCalls);
-        ImGui::Text("Pipelines:     %4d", m_cmd->GetStats().pipelines);
-        ImGui::Text("Rts:           %4d", m_cmd->GetStats().rts);
+        ImGui::Text("Tris:          %7d", m_cmd->GetStats().tris);
+        ImGui::Text("DrawCalls:     %7d", m_cmd->GetStats().drawCalls);
+        ImGui::Text("Pipelines:     %7d", m_cmd->GetStats().pipelines);
+        ImGui::Text("Rts:           %7d", m_cmd->GetStats().rts);
         const render::MemoryContext& memstats = m_device->GetContext().memoryContext;
-        ImGui::Text("Buffers:       %4d (%6d b/%6d b)", memstats.bufferStats.allocationCounts,
+        ImGui::Text("Buffers:       %7d (%9d b/%9d b)", memstats.bufferStats.allocationCounts,
             memstats.bufferStats.currentAllocated, memstats.bufferStats.maxAllocated);
-        ImGui::Text("Images:        %4d (%6d b/%6d b)", memstats.imageStats.allocationCounts,
+        ImGui::Text("Images:        %7d (%9d b/%9d b)", memstats.imageStats.allocationCounts,
             memstats.imageStats.currentAllocated, memstats.imageStats.maxAllocated);
         const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
-        ImGui::Text("CB total:      %4d", queue->GetTotalCommandBuffers());
-        ImGui::Text("CB submitted:  %4d", queue->GetSubmittedCommandBuffersCount());
-        ImGui::Text("CB pool:       %4d", queue->GetPoolCommandBuffersCount());
+        ImGui::Text("CB total:      %7d", queue->GetTotalCommandBuffers());
+        ImGui::Text("CB submitted:  %7d", queue->GetSubmittedCommandBuffersCount());
+        ImGui::Text("CB pool:       %7d", queue->GetPoolCommandBuffersCount());
+        ImGui::Text("Pso cache:     %7d | %7d", m_psoMap.size(), m_psoMap.max_size());
+        ImGui::Text("Pso lf:        %.4f", m_psoMap.load_factor());
+        ImGui::Text("Binding cache: %7d", m_bindingCache->GetCacheSize());
+        ImGui::Text("Binding lf:    %.4f", m_bindingCache->GetLoadFactor());
+        ImGui::Text("Sampler cache: %7d", m_samplerCache->GetCacheSize());
+        ImGui::Text("Sampler lf:    %.4f", m_samplerCache->GetLoadFactor());
         ImGui::End();
     }
 
@@ -1508,7 +1514,7 @@ namespace rendersystem
         auto it = m_samplers.find(desc);
         if (it != m_samplers.end())
             return it->second;
-        logfdebug("[%20s -> %3d]\n", "SamplerCache", m_samplers.size());
+        //logfdebug("[%20s -> %3d]\n", "SamplerCache", m_samplers.size());
         render::SamplerHandle sampler = m_device->CreateSampler(desc);
         m_samplers[desc] = sampler;
         return sampler;

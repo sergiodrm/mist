@@ -78,7 +78,9 @@ namespace rendersystem
         BindingCache(render::Device* device) : m_device(device), m_layoutCache(device) {}
         ~BindingCache() { m_cache.clear(); }
         render::BindingSetHandle GetCachedBindingSet(const render::BindingSetDescription& desc);
-
+        uint32_t GetCacheSize() const { return (uint32_t)m_cache.size(); }
+        float GetLoadFactor() const { return m_cache.load_factor(); }
+        float GetMaxLoadFactor() const { return m_cache.max_load_factor(); }
     private:
         render::Device* m_device;
         Mist::tMap<render::BindingSetDescription, render::BindingSetHandle> m_cache;
@@ -160,6 +162,9 @@ namespace rendersystem
         SamplerCache(render::Device* device);
         ~SamplerCache();
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);
+        uint32_t GetCacheSize() const { return m_samplers.size(); }
+        float GetLoadFactor() const { return m_samplers.load_factor(); }
+        float GetMaxLoadFactor() const { return m_samplers.max_load_factor(); }
     public:
         render::Device* m_device;
         Mist::tMap<render::SamplerDescription, render::SamplerHandle> m_samplers;
