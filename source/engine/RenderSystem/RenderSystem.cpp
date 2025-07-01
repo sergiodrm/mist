@@ -1157,14 +1157,82 @@ namespace rendersystem
                 const render::shader_compiler::VertexInputAttribute& att = m_properties.inputLayout.attributes[i];
                 render::Format format = render::Format_Undefined;
                 check(att.size == sizeof(uint32_t)*8);
-                if (att.count == 1)
-                    format = render::Format_R32_SFloat;
-                else if (att.count == 2)
-                    format = render::Format_R32G32_SFloat;
-                else if (att.count == 3)
-                    format = render::Format_R32G32B32_SFloat;
-                else if (att.count == 4)
-                    format = render::Format_R32G32B32A32_SFloat;
+                switch (att.type)
+                {
+                case render::shader_compiler::AttributeType_Short:
+                    if (att.count == 1)
+                        format = render::Format_R16_SInt;
+                    else if (att.count == 2)
+                        format = render::Format_R16G16_SInt;
+                    else if (att.count == 3)
+                        format = render::Format_R16G16B16_SInt;
+                    else if (att.count == 4)
+                        format = render::Format_R16G16B16A16_SInt;
+                    break;
+                case render::shader_compiler::AttributeType_UShort:
+					if (att.count == 1)
+						format = render::Format_R16_UInt;
+					else if (att.count == 2)
+						format = render::Format_R16G16_UInt;
+					else if (att.count == 3)
+						format = render::Format_R16G16B16_UInt;
+					else if (att.count == 4)
+						format = render::Format_R16G16B16A16_UInt;
+                    break;
+                case render::shader_compiler::AttributeType_Int:
+					if (att.count == 1)
+						format = render::Format_R32_SInt;
+					else if (att.count == 2)
+						format = render::Format_R32G32_SInt;
+					else if (att.count == 3)
+						format = render::Format_R32G32B32_SInt;
+					else if (att.count == 4)
+						format = render::Format_R32G32B32A32_SInt;
+                    break;
+                case render::shader_compiler::AttributeType_UInt:
+					if (att.count == 1)
+						format = render::Format_R32_UInt;
+					else if (att.count == 2)
+						format = render::Format_R32G32_UInt;
+					else if (att.count == 3)
+						format = render::Format_R32G32B32_UInt;
+					else if (att.count == 4)
+						format = render::Format_R32G32B32A32_UInt;
+                    break;
+                case render::shader_compiler::AttributeType_Int64:
+					if (att.count == 1)
+						format = render::Format_R64_SInt;
+					else if (att.count == 2)
+						format = render::Format_R64G64_SInt;
+					else if (att.count == 3)
+						format = render::Format_R64G64B64_SInt;
+					else if (att.count == 4)
+						format = render::Format_R64G64B64A64_SInt;
+                    break;
+                case render::shader_compiler::AttributeType_UInt64:
+					if (att.count == 1)
+						format = render::Format_R64_UInt;
+					else if (att.count == 2)
+						format = render::Format_R64G64_UInt;
+					else if (att.count == 3)
+						format = render::Format_R64G64B64_UInt;
+					else if (att.count == 4)
+						format = render::Format_R64G64B64A64_UInt;
+                    break;
+                case render::shader_compiler::AttributeType_Float:
+                    if (att.count == 1)
+                        format = render::Format_R32_SFloat;
+                    else if (att.count == 2)
+                        format = render::Format_R32G32_SFloat;
+                    else if (att.count == 3)
+                        format = render::Format_R32G32B32_SFloat;
+                    else if (att.count == 4)
+                        format = render::Format_R32G32B32A32_SFloat;
+                    break;
+                default:
+                    // the rest of the formats are not supported so far.
+                    break;
+                }
                 check(format != render::Format_Undefined);
                 attributes[att.location] = { format };
             }

@@ -92,8 +92,27 @@ namespace render
             inline bool operator!=(const CompilationOptions& other) const { return !(*this == other); }
         };
 
+        enum AttributeType
+        {
+			AttributeType_Unknown,
+			AttributeType_Boolean,
+			AttributeType_SByte,
+			AttributeType_UByte,
+			AttributeType_Short,
+			AttributeType_UShort,
+			AttributeType_Int,
+			AttributeType_UInt,
+			AttributeType_Int64,
+			AttributeType_UInt64,
+			AttributeType_AtomicCounter,
+			AttributeType_Half,
+			AttributeType_Float,
+			AttributeType_Double,
+        };
+
         struct VertexInputAttribute
         {
+            AttributeType type = AttributeType_Unknown;
             size_t size = 0;
             size_t count = 0;
             size_t location = 0;

@@ -49,6 +49,68 @@ namespace render
             //strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
         }
 
+        AttributeType ConvertAttributeType(spirv_cross::SPIRType::BaseType type)
+        {
+            switch (type)
+            {
+                case spirv_cross::SPIRType::BaseType::Unknown: return AttributeType_Unknown;
+                case spirv_cross::SPIRType::BaseType::Boolean: return AttributeType_Boolean;
+                case spirv_cross::SPIRType::BaseType::SByte: return AttributeType_SByte;
+                case spirv_cross::SPIRType::BaseType::UByte: return AttributeType_UByte;
+                case spirv_cross::SPIRType::BaseType::Short: return AttributeType_Short;
+                case spirv_cross::SPIRType::BaseType::UShort: return AttributeType_UShort;
+                case spirv_cross::SPIRType::BaseType::Int: return AttributeType_Int;
+                case spirv_cross::SPIRType::BaseType::UInt: return AttributeType_UInt;
+                case spirv_cross::SPIRType::BaseType::Int64: return AttributeType_Int64;
+                case spirv_cross::SPIRType::BaseType::UInt64: return AttributeType_UInt64;
+                case spirv_cross::SPIRType::BaseType::AtomicCounter: return AttributeType_AtomicCounter;
+                case spirv_cross::SPIRType::BaseType::Half: return AttributeType_Half;
+                case spirv_cross::SPIRType::BaseType::Float: return AttributeType_Float;
+                case spirv_cross::SPIRType::BaseType::Double: return AttributeType_Double;
+                case spirv_cross::SPIRType::BaseType::Void: 
+                case spirv_cross::SPIRType::BaseType::Struct: 
+                case spirv_cross::SPIRType::BaseType::Image: 
+                case spirv_cross::SPIRType::BaseType::SampledImage: 
+                case spirv_cross::SPIRType::BaseType::Sampler: 
+                case spirv_cross::SPIRType::BaseType::AccelerationStructure: 
+                case spirv_cross::SPIRType::BaseType::RayQuery: 
+                case spirv_cross::SPIRType::BaseType::ControlPointArray: 
+                case spirv_cross::SPIRType::BaseType::Interpolant: 
+                case spirv_cross::SPIRType::BaseType::Char: 
+                case spirv_cross::SPIRType::BaseType::MeshGridProperties: 
+				case spirv_cross::SPIRType::BaseType::BFloat16:
+                default:
+                    break;
+            }
+            unreachable_code();
+            return AttributeType_Unknown;
+        }
+
+        const char* ConvertAttributeTypeToStr(AttributeType type)
+        {
+            switch (type)
+            {
+            case AttributeType_Unknown: return "AttributeType_Unknown";
+            case AttributeType_Boolean: return "AttributeType_Boolean";
+            case AttributeType_SByte: return "AttributeType_SByte";
+            case AttributeType_UByte: return "AttributeType_UByte";
+            case AttributeType_Short: return "AttributeType_Short";
+            case AttributeType_UShort: return "AttributeType_UShort";
+            case AttributeType_Int: return "AttributeType_Int";
+            case AttributeType_UInt: return "AttributeType_UInt";
+            case AttributeType_Int64: return "AttributeType_Int64";
+            case AttributeType_UInt64: return "AttributeType_UInt64";
+            case AttributeType_AtomicCounter: return "AttributeType_AtomicCounter";
+            case AttributeType_Half: return "AttributeType_Half";
+            case AttributeType_Float: return "AttributeType_Float";
+            case AttributeType_Double: return "AttributeType_Double";
+            default:
+                break;
+            }
+            unreachable_code();
+            return "";
+        }
+
         class ShaderIncluder : public shaderc::CompileOptions::IncluderInterface
         {
         public:
@@ -501,11 +563,14 @@ namespace render
                     spirv_cross::SPIRType type = compiler.get_type(resource.type_id);
 
                     VertexInputAttribute attribute;
+                    attribute.type = ConvertAttributeType(type.basetype);
                     attribute.location = compiler.get_decoration(resource.id, spv::DecorationLocation);
                     attribute.count = type.vecsize;
                     attribute.size = type.width;
-                    logfinfo("location: %d; size: %d; count: %d;\n", attribute.location, attribute.size, attribute.count);
+                    logfinfo("location: %d; size: %d; count: %d; type: %d (%s)\n", attribute.location, attribute.size, attribute.count, attribute.type, ConvertAttributeTypeToStr(attribute.type));
                     outProperties.inputLayout.attributes.push_back(attribute);
+                    check(attribute.type == AttributeType_Float
+                        || (attribute.type >= AttributeType_Short && attribute.type <= AttributeType_UInt64));
                 }
             }
 
