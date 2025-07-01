@@ -27,21 +27,21 @@ void main()
 	outPosition.rgb = inWorldPos;
 	
 	// Normals
-	if (bool(u_material.data.Flags & MATERIAL_FLAG_HAS_NORMAL_MAP))
+	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_NORMAL_MAP))
 		outNormal.rgb = inTBN * normalize(texture(u_Textures[MATERIAL_TEXTURE_NORMAL], inUV).xyz * 2.0 - vec3(1.0));
 	else
 		outNormal.rgb = normalize(inNormal);
 	// Metallic and Roughness
-	if (bool(u_material.data.Flags & MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP))
+	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP))
 	{
 		vec3 mr = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inUV).rgb;
-		outNormal.a = mr.g * u_material.data.Roughness;
-		outPosition.a = mr.b * u_material.data.Metallic;
+		outNormal.a = mr.g * u_material.data.MetallicRoughness.b;
+		outPosition.a = mr.b * u_material.data.MetallicRoughness.r;
 	}
 	else
 	{
-		outNormal.a = u_material.data.Roughness;
-		outPosition.a = u_material.data.Metallic;
+		outNormal.a = u_material.data.MetallicRoughness.b;
+		outPosition.a = u_material.data.MetallicRoughness.r;
 	}
 
 	// Albedo and emissive
