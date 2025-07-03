@@ -218,9 +218,12 @@ namespace Mist
 			rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
 
 			// Composition
+			g_render->BeginMarker("Deferred lighting");
+			g_render->ClearState();
 			g_render->SetDefaultState();
 			g_render->SetShader(shader);
 			g_render->SetRenderTarget(m_lightingOutput);
+			g_render->SetDepthEnable(true, false);
 			
 			///////////////////////////////////////////////////////////commandList->ClearColor();
 
@@ -245,10 +248,12 @@ namespace Mist
 			env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
 			g_render->SetShaderProperty("u_env", &env, sizeof(env));
 			g_render->DrawFullscreenQuad();
+			g_render->EndMarker();
 		}
 
 		{
 			check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
+			g_render->BeginMarker("Sky");
 			g_render->SetShader(m_skyboxShader);
 			g_render->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
 			g_render->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
@@ -263,6 +268,7 @@ namespace Mist
 			g_render->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
 			g_render->ClearState();
 			g_render->SetDefaultState();
+			g_render->EndMarker();
 		}
 
 		m_bloomEffect.m_composeTarget = m_lightingOutput;
@@ -272,6 +278,7 @@ namespace Mist
 
 		{
 			CPU_PROFILE_SCOPE(CpuHDR);
+			g_render->BeginMarker("HDR");
 			// HDR and tone mapping
 			struct
 			{
@@ -283,10 +290,12 @@ namespace Mist
 			g_render->SetShader(m_hdrShader);
 			g_render->SetRenderTarget(rt);
 			g_render->ClearColor();
+			g_render->SetDepthEnable(false, false);
 			g_render->SetShaderProperty("u_HdrParams", &params, sizeof(params));
 			g_render->SetTextureSlot("u_hdrtex", m_lightingOutput->m_description.colorAttachments[0].texture);
 			g_render->DrawFullscreenQuad();
 			g_render->SetDefaultState();
+			g_render->EndMarker();
 		}
 		g_render->ClearState();
 	}
