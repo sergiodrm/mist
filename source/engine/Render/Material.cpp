@@ -202,13 +202,8 @@ namespace Mist
         CommandList* cmd = context.CmdList;
         cmd->BindDescriptorSets(&m_textureSet, 1, shader.GetParam("u_Textures").SetIndex);
 #elif 1
-        for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
-        {
-            if (m_textures[i])
-                g_render->SetTextureSlot(m_textures[i], slot, i);
-            if (m_samplers[i])
-                g_render->SetSampler(m_samplers[i], slot, i);
-        }
+        g_render->SetTextureSlot(m_textures, MATERIAL_TEXTURE_COUNT, slot);
+        g_render->SetSampler(m_samplers, MATERIAL_TEXTURE_COUNT, slot);
 #else
         cTexture* textures[MATERIAL_TEXTURE_COUNT];
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
