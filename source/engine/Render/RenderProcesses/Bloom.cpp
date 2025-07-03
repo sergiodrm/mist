@@ -30,6 +30,7 @@
 namespace Mist
 {
     CIntVar CVar_ShowBloomTex("r_showbloomtex", 0);
+	CIntVar CVar_EnableBloom("r_enableBloom", 0);
 
 	struct WorkgroupSize
     {
@@ -228,9 +229,15 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(Bloom);
 
+		if (!CVar_EnableBloom.Get())
+			return;
+
+		g_render->BeginMarker("Bloom");
+
 		/**
 		 * Filtering
 		 */
+		g_render->BeginMarker("Filter");
 		render::RenderTargetHandle rt = m_renderTargetArray[0];
 		g_render->SetRenderTarget(rt);
 		g_render->SetShader(m_filterShader);
@@ -253,10 +260,12 @@ namespace Mist
         params.curve[2] = 0.25f / m_knee;
 		g_render->SetShaderProperty("u_filterParams", &params, sizeof(params));
 		g_render->DrawFullscreenQuad();
+		g_render->EndMarker();
 
 		/**
 		 * Downsample
 		 */
+		g_render->BeginMarker("Downsampling");
 		g_render->SetDefaultState();
 		g_render->SetShader(m_downsampleShader);
 		for (uint32_t i = 1; i < BLOOM_MIPMAP_LEVELS; ++i)
@@ -282,10 +291,12 @@ namespace Mist
 				g_render->DrawFullscreenQuad();
 			}
 		}
+		g_render->EndMarker();
 
 		/**
 		 * Upsample
 		 */
+		g_render->BeginMarker("Upsampling");
 		g_render->SetDefaultState();
 		g_render->SetShader(m_upsampleShader);
         for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
@@ -310,18 +321,25 @@ namespace Mist
 				g_render->DrawFullscreenQuad();
             }
         }
+		g_render->EndMarker();
 
 		/**
 		 * Composition
 		 */
+		g_render->BeginMarker("Composition");
         check(m_composeTarget);
+		g_render->SetDefaultState();
 		g_render->SetShader(m_composeShader);
 		g_render->SetRenderTarget(m_composeTarget);
+		g_render->SetDepthEnable(false, false);
 		g_render->SetTextureSlot("u_tex0", m_blendTexture);
 		g_render->SetTextureSlot("u_tex1", m_renderTargetTexturesArray[0]);
 		g_render->DrawFullscreenQuad();
 		g_render->ClearState();
 		g_render->SetDefaultState();
+		g_render->EndMarker();
+
+		g_render->EndMarker();
 		
 #if 0
 		CommandList* commandList = context.CmdList;
