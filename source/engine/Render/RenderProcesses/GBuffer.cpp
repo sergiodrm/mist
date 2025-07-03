@@ -85,7 +85,7 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth", "Emissive", "All"};
+		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth", "All"};
 		static int index = 0;
 		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
@@ -133,11 +133,13 @@ namespace Mist
 			pos = { x, y };
 			size = { w * 0.25f, ydiff };
 			static_assert(RT_COUNT > 0);
-			for (uint32_t i = RT_POSITION; i < RT_COUNT; ++i)
+			for (uint32_t i = RT_POSITION; i < RT_DEPTH_STENCIL; ++i)
 			{
 				DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[i].texture);
 				pos.y += ydiff;
 			}
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.depthStencilAttachment.texture);
+			pos.y += ydiff;
 		}
 			break;
 		case DEBUG_POSITION:
