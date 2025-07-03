@@ -52,20 +52,12 @@ namespace Mist
 
 			inline void Reset() { LineArray.Clear(); }
 
-			void Init(const RenderContext& context)
+			void Init()
 			{
-#if 0
-				BufferCreateInfo vbInfo;
-				vbInfo.Size = sizeof(tLineVertex) * tLineBatch::MaxLines;
-				vbInfo.Data = nullptr;
-				vb.Init(context, vbInfo);
-#endif // 0
-
-
 				vertexBuffer = render::utils::CreateDynamicVertexBuffer(g_device, sizeof(tLineVertex) * tLineBatch::MaxLines, "DebugRenderLineBatchVB");
 			}
 
-			void Destroy(const RenderContext& context)
+			void Destroy()
 			{
 				//vb.Destroy(context);
 				vertexBuffer = nullptr; 
@@ -85,7 +77,7 @@ namespace Mist
 				PushLineVertex(end, color);
 			}
 
-			bool Flush(const RenderContext& context)
+			bool Flush()
 			{
 				if (!LineArray.IsEmpty())
 				{
@@ -114,7 +106,7 @@ namespace Mist
 
 			inline  void Reset() { QuadArray.Clear(); Textures.Clear(); }
 
-			void Init(const RenderContext& context)
+			void Init()
 			{
 				// Init IndexBuffer, we know which indices are to draw a quad
 				constexpr uint32_t indicesPerQuad = 6;
@@ -141,7 +133,7 @@ namespace Mist
 				indexBuffer = render::utils::CreateIndexBuffer(g_device, buffer, sizeof(uint32_t) * tQuadBatch::MaxQuads * indicesPerQuad, nullptr, "DebugRenderQuadBatchIB");
 			}
 
-			void Destroy(const RenderContext& context)
+			void Destroy()
 			{
 				//vb.Destroy(context);
 				//ib.Destroy(context);
@@ -167,12 +159,16 @@ namespace Mist
 				return index;
 			}
 
-			bool Flush(const RenderContext& context)
+			bool Flush()
 			{
 				if (!QuadArray.IsEmpty())
 				{
-					//GPUBuffer::SubmitBufferToGpu(vb, QuadArray.GetData(), sizeof(tQuadVertex) * QuadArray.GetSize());
 					g_device->WriteBuffer(vertexBuffer, QuadArray.GetData(), sizeof(tQuadVertex) * QuadArray.GetSize());
+					for (uint32_t i = 0; i < Textures.GetSize(); ++i)
+					{
+						if (Textures[i])
+							g_render->SetTextureAsResourceBinding(Textures[i]);
+					}
 					return true;
 				}
 				return false;
@@ -189,7 +185,7 @@ namespace Mist
 		};
 		tDebugRenderPipeline DebugRenderPipeline;
 
-		void Init(const RenderContext& context)
+		void Init()
 		{
 			//const cTexture* defaultTex = GetTextureCheckerboard4x4(context);
 			//DebugRenderPipeline.QuadBatch.Textures.Clear(defaultTex);
@@ -208,14 +204,14 @@ namespace Mist
                 DebugRenderPipeline.m_quadShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
 			}
 
-			DebugRenderPipeline.LineBatch.Init(context);
-			DebugRenderPipeline.QuadBatch.Init(context);
+			DebugRenderPipeline.LineBatch.Init();
+			DebugRenderPipeline.QuadBatch.Init();
 		}
 
-		void Destroy(const RenderContext& context)
+		void Destroy()
 		{
-			DebugRenderPipeline.QuadBatch.Destroy(context);
-			DebugRenderPipeline.LineBatch.Destroy(context);
+			DebugRenderPipeline.QuadBatch.Destroy();
+			DebugRenderPipeline.LineBatch.Destroy();
 
 			delete DebugRenderPipeline.m_lineShader;
 			delete DebugRenderPipeline.m_quadShader;
@@ -262,7 +258,7 @@ namespace Mist
 			}
 		}
 
-		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, render::TextureHandle texture, uint32_t view)
+		void DrawScreenQuad(const glm::vec2& screenPos, const glm::vec2& size, const render::TextureHandle& texture, uint32_t view)
 		{
             if (DebugRenderPipeline.QuadBatch.QuadArray.GetSize() < tQuadBatch::MaxQuadVertices)
             {
@@ -285,17 +281,19 @@ namespace Mist
                 logferror("DebugRender Quad overflow. Increate QuadBatch size (Current %u)\n", tQuadBatch::MaxQuads);
 		}
 
-		void Draw(const RenderContext& context)
+		void Draw(const render::RenderTargetHandle& rt)
 		{
 			CPU_PROFILE_SCOPE(DebugPass);
 
-			// process batches before render passes.
+			g_render->ClearState();
 			g_render->SetDefaultState();
-			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush(context);
-			const bool processLine = DebugRenderPipeline.LineBatch.Flush(context);
+			// process batches before render passes.
+			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush();
+			const bool processLine = DebugRenderPipeline.LineBatch.Flush();
 
-			//renderer->GetLDRTarget().BeginPass(context, cmd);
-			g_render->SetRenderTarget(g_render->GetLDRTarget());
+			g_render->SetRenderTarget(rt);
+			g_render->SetBlendEnable(true);
+
 			const CameraData& cameraData = *GetCameraData();
 			if (processLine)
 			{
@@ -309,7 +307,8 @@ namespace Mist
 
 			if (processQuad)
 			{
-				const glm::mat4 orthoproj = glm::ortho(0.f, (float)context.Window->Width, 0.f, (float)context.Window->Height, -1.f, 1.f);
+				render::Extent2D extent = g_render->GetBackbufferResolution();
+				const glm::mat4 orthoproj = glm::ortho(0.f, (float)extent.width, 0.f, (float)extent.height, -1.f, 1.f);
 				g_render->SetShader(DebugRenderPipeline.m_quadShader);
 				g_render->SetVertexBuffer(DebugRenderPipeline.QuadBatch.vertexBuffer);
 				g_render->SetIndexBuffer(DebugRenderPipeline.QuadBatch.indexBuffer);
