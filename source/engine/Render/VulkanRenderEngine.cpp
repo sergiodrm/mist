@@ -291,7 +291,7 @@ namespace Mist
 
 		m_renderContext.Renderer = &m_renderer;
 		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
-		DebugRender::Init(m_renderContext);
+		DebugRender::Init();
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
 		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
@@ -330,7 +330,7 @@ namespace Mist
 			delete m_scene;
 			m_scene = nullptr;
 		}
-		DebugRender::Destroy(m_renderContext);
+		DebugRender::Destroy();
 		m_renderer.Destroy(m_renderContext);
 		g_device = nullptr;
 		g_render = nullptr;
@@ -515,7 +515,7 @@ namespace Mist
 
 		g_render->BeginMarker("Debug render");
 		m_renderer.DebugRender();
-		DebugRender::Draw(m_renderContext);
+		DebugRender::Draw(g_render->GetLDRTarget());
 		g_render->EndMarker();
 		
 		g_render->EndFrame();
