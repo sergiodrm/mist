@@ -423,6 +423,8 @@ namespace rendersystem
         void ClearColor(float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
         void ClearDepthStencil(float depth = 1.f, uint32_t stencil = 0);
 
+        void DumpState();
+
     private:
 
         render::RenderTargetBlendState& GetPsoBlendStateAttachment(uint32_t attachment);

@@ -15,6 +15,7 @@
 #include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
+#include "RenderSystem/RenderSystem.h"
 
 
 #pragma comment(lib,"Dbghelp.lib")
@@ -108,6 +109,7 @@ namespace win
 			}
 			else
 			{
+#if 0
 				//failed to get line
 				Mist::Logf(Mist::LogLevel::Debug, "%s, address 0x%0X.", pSymbol->Name, pSymbol->Address);
 				hModule = NULL;
@@ -119,6 +121,8 @@ namespace win
 				if (hModule != NULL)GetModuleFileNameA(hModule, module, MaxNameLen);
 
 				printf("in %s\n", module);
+#endif // 0
+
 			}
 
 			free(line);
@@ -155,6 +159,7 @@ namespace win
 bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
 	Mist::Debug::PrintCallstack();
+	g_render->DumpState();
 	logerror("============================================================\n\n");
     logferror("Frame: %d\n", Mist::tApplication::GetFrame());
 	logferror("Check failed: %s\n\n", txt);

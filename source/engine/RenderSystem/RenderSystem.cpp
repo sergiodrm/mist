@@ -670,6 +670,23 @@ namespace rendersystem
         m_renderContext.clearStencil = stencil;
     }
 
+    void RenderSystem::DumpState()
+    {
+        logerror("====== RENDER SYSTEM ======\n");
+        logferror("* render frame: %lld\n", m_frame);
+        logferror("* swapchain index: %lld\n", m_swapchainIndex);
+        if (m_swapchainIndex != UINT32_MAX)
+        {
+            logerror("* frame syncronization context:\n");
+            logerror("\t* present semaphore: 0x%p\n", GetFrameSyncContext().presentSemaphore->m_semaphore);
+            logerror("\t* render semaphore: 0x%p\n", GetFrameSyncContext().renderQueueSemaphore->m_semaphore);
+        }
+        logferror("* Binding cache count: %lld\n", m_bindingCache->GetCacheSize());
+        logferror("* Pso cache count: %lld\n", m_psoMap.size());
+        logerror("===========================\n");
+
+    }
+
     render::RenderTargetBlendState& RenderSystem::GetPsoBlendStateAttachment(uint32_t attachment)
     {
         check(attachment < m_psoDesc.renderState.blendState.renderTargetBlendStates.GetCapacity());
