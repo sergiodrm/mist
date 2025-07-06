@@ -1439,6 +1439,8 @@ namespace render
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
         samplerInfo.flags = 0;
+        samplerInfo.minLod = description.minLod == FLT_MAX ? 0.f : description.minLod;
+        samplerInfo.maxLod = description.maxLod == FLT_MAX ? VK_LOD_CLAMP_NONE : description.maxLod;
 
         vkcheck(vkCreateSampler(m_context->device, &samplerInfo, m_context->allocationCallbacks, &sampler->m_sampler));
         SetDebugName(sampler, description.debugName.c_str());

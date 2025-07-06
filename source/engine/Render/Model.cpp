@@ -22,6 +22,7 @@
 #include "Utils/FileSystem.h"
 #include "VulkanRenderEngine.h"
 #include "RenderSystem/TextureLoader.h"
+#include "RenderSystem/RenderSystem.h"
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
 #define GLTF_LOAD_GEOMETRY_NORMAL 0x02
@@ -31,6 +32,21 @@
 #define GLTF_LOAD_GEOMETRY_JOINTS 0x20
 #define GLTF_LOAD_GEOMETRY_WEIGHTS 0x40
 #define GLTF_LOAD_GEOMETRY_ALL 0xff
+
+// https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_sampler_magfilter
+#define GLTF_DEFAULT_SAMPLER 10497
+#define GLTF_MAG_FILTER_NEAREST 9728
+#define GLTF_MAG_FILTER_LINEAR 9729
+#define GLTF_MIN_FILTER_NEAREST GLTF_MAG_FILTER_NEAREST
+#define GLTF_MIN_FILTER_LINEAR GLTF_MAG_FILTER_LINEAR
+#define GLTF_MIN_FILTER_NEAREST_MIPMAP_NEAREST 9984
+#define GLTF_MIN_FILTER_LINEAR_MIPMAP_NEAREST 9985
+#define GLTF_MIN_FILTER_NEAREST_MIPMAP_LINEAR 9986
+#define GLTF_MIN_FILTER_LINEAR_MIPMAP_LINEAR 9987
+#define GLTF_WRAPPER_CLAMP_TO_EDGE 33071
+#define GLTF_WRAPPER_MIRRORED_REPEAT 33648
+#define GLTF_WRAPPER_REPEAT 10497
+
 
 //#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
@@ -301,7 +317,72 @@ namespace gltf_api
 			indicesOut[i] = (uint32_t)cgltf_accessor_read_index(primitive.indices, i) + offset;
 	}
 
-	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, render::TextureHandle* texOut)
+	render::Filter GetSamplerMagFilter(int filter)
+	{
+		switch (filter)
+		{
+		case GLTF_MAG_FILTER_NEAREST:
+			return render::Filter_Nearest;
+		case GLTF_MAG_FILTER_LINEAR:
+			return render::Filter_Linear;
+		}
+		return render::Filter_Linear;
+	}
+
+	void GetSamplerMinFilterAndMipmapMode(int mode, render::Filter* minFilterOut, render::Filter* mipmapModeOut)
+	{
+		switch (mode)
+		{
+		case GLTF_MIN_FILTER_NEAREST:
+			*minFilterOut = render::Filter_Nearest;
+			break;
+		case GLTF_MIN_FILTER_LINEAR:
+			*minFilterOut = render::Filter_Linear;
+			break;
+		case GLTF_MIN_FILTER_LINEAR_MIPMAP_NEAREST:
+			*minFilterOut = render::Filter_Linear;
+			*mipmapModeOut = render::Filter_Nearest;
+			break;
+		case GLTF_MIN_FILTER_LINEAR_MIPMAP_LINEAR:
+			*minFilterOut = render::Filter_Linear;
+			*mipmapModeOut = render::Filter_Linear;
+			break;
+		case GLTF_MIN_FILTER_NEAREST_MIPMAP_NEAREST:
+			*minFilterOut = render::Filter_Nearest;
+			*mipmapModeOut = render::Filter_Nearest;
+			break;
+		case GLTF_MIN_FILTER_NEAREST_MIPMAP_LINEAR:
+			*minFilterOut = render::Filter_Nearest;
+			*mipmapModeOut = render::Filter_Linear;
+			break;
+		}
+	}
+
+	render::SamplerAddressMode GetSamplerAddressMode(int mode)
+	{
+		switch (mode)
+		{
+		case GLTF_WRAPPER_CLAMP_TO_EDGE: return render::SamplerAddressMode_ClampToEdge;
+		case GLTF_WRAPPER_MIRRORED_REPEAT: return render::SamplerAddressMode_MirrorRepeat;
+		case GLTF_WRAPPER_REPEAT: return render::SamplerAddressMode_Repeat;
+		}
+		return render::SamplerAddressMode_Repeat;
+	}
+
+	render::SamplerHandle LoadSampler(rendersystem::RenderSystem* renderSystem, const cgltf_sampler* sampler)
+	{
+		render::SamplerDescription desc;
+		GetSamplerMinFilterAndMipmapMode(sampler->min_filter, &desc.minFilter, &desc.mipmapMode);
+		desc.magFilter = GetSamplerMagFilter(sampler->mag_filter);
+		desc.addressModeU = GetSamplerAddressMode(sampler->wrap_s);
+		desc.addressModeV = GetSamplerAddressMode(sampler->wrap_t);
+		desc.addressModeW = GetSamplerAddressMode(sampler->wrap_t);
+		if (sampler->name && sampler->name[0])
+			desc.debugName = sampler->name;
+		return renderSystem->GetSampler(desc);
+	}
+
+	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, render::TextureHandle* texOut, render::SamplerHandle* samplerOut)
 	{
 		if (!texView.texture)
 			return false;
@@ -311,6 +392,8 @@ namespace gltf_api
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
 		//check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
 		check(rendersystem::textureloader::LoadTextureFromFile(texOut, Mist::g_device, texturePath));
+		if (texView.texture->sampler)
+			*samplerOut = LoadSampler(Mist::g_render, texView.texture->sampler);
 		loadmeshlogf("Load texture: %s\n", texView.texture->image->uri);
 		return true;
 	}
@@ -327,7 +410,8 @@ namespace gltf_api
 			material.m_flags |= Mist::MATERIAL_FLAG_EMISSIVE;
 			ToVec3(material.m_emissiveFactor, cgltfmtl.emissive_factor);
 			material.m_emissiveStrength = cgltfmtl.emissive_strength.emissive_strength;
-			if (LoadTexture(context, rootAssetPath, cgltfmtl.emissive_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_EMISSIVE]))
+			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_EMISSIVE;
+			if (LoadTexture(context, rootAssetPath, cgltfmtl.emissive_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
 			{
 				material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 			}
@@ -339,7 +423,8 @@ namespace gltf_api
 		{
 			material.m_metallicFactor = cgltfmtl.pbr_metallic_roughness.metallic_factor;
 			material.m_roughnessFactor = cgltfmtl.pbr_metallic_roughness.roughness_factor;
-			if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS]))
+			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS;
+			if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
 			{
 				material.m_flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
 			}
@@ -352,13 +437,13 @@ namespace gltf_api
 			material.m_flags |= Mist::MATERIAL_FLAG_UNLIT;
 		}
 		// Normal
-		if (LoadTexture(context, rootAssetPath, cgltfmtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL]))
+		if (LoadTexture(context, rootAssetPath, cgltfmtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL], &material.m_samplers[Mist::MATERIAL_TEXTURE_NORMAL]))
 		{
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
 		}
 		// Albedo
 		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
-		if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO]))
+		if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 	}
 

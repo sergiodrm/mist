@@ -189,10 +189,12 @@ namespace render
         SamplerAddressMode addressModeV = SamplerAddressMode_ClampToEdge;
         SamplerAddressMode addressModeW = SamplerAddressMode_ClampToEdge;
         float mipLodBias = 0.f;
-        float minLod = 0.f;
-        float maxLod = 0.f;
+        float minLod = FLT_MAX;
+        float maxLod = FLT_MAX;
         float maxAnisotropy = 1.f;
         Mist::String debugName;
+
+        void SetAllLODs() { minLod = FLT_MAX; maxLod = FLT_MAX; }
 
         inline bool operator==(const SamplerDescription& other) const
         {
