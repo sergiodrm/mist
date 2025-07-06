@@ -840,7 +840,8 @@ namespace render
                     {
                         TextureBarrier barrier;
                         barrier.texture = setsToBind.m_slots[i].set->m_textures[textureIndex];
-                        barrier.newLayout = utils::IsDepthStencilFormat(barrier.texture->m_description.format) ? render::ImageLayout_DepthStencilReadOnly : render::ImageLayout_ShaderReadOnly;
+                        barrier.newLayout = render::ImageLayout_ShaderReadOnly;
+                        //barrier.newLayout = utils::IsDepthStencilFormat(barrier.texture->m_description.format) ? render::ImageLayout_DepthStencilReadOnly : render::ImageLayout_ShaderReadOnly;
                         barrier.subresources = { 0,1,0,1 };
                         RequireTextureState(barrier);
                     }
