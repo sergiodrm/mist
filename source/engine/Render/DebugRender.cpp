@@ -300,8 +300,11 @@ namespace Mist
 				g_render->SetShader(DebugRenderPipeline.m_lineShader);
 				g_render->SetVertexBuffer(DebugRenderPipeline.LineBatch.vertexBuffer);
 				g_render->SetIndexBuffer(nullptr);
+				g_render->SetPrimitive(render::PrimitiveType_LineList);
+				g_render->SetDepthEnable(false, false);
 				g_render->SetShaderProperty("camera", &cameraData, sizeof(cameraData));
 				g_render->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize());
+				g_render->SetDefaultState();
 				DebugRenderPipeline.LineBatch.Reset();
 			}
 
@@ -311,6 +314,7 @@ namespace Mist
 				const glm::mat4 orthoproj = glm::ortho(0.f, (float)extent.width, 0.f, (float)extent.height, -1.f, 1.f);
 				g_render->SetShader(DebugRenderPipeline.m_quadShader);
 				g_render->SetVertexBuffer(DebugRenderPipeline.QuadBatch.vertexBuffer);
+				g_render->SetPrimitive(render::PrimitiveType_TriangleList);
 				g_render->SetIndexBuffer(DebugRenderPipeline.QuadBatch.indexBuffer);
 				g_render->SetShaderProperty("u_camera", &orthoproj, sizeof(orthoproj));
 				for (uint32_t i = 0; i < DebugRenderPipeline.QuadBatch.Textures.GetSize(); ++i)
