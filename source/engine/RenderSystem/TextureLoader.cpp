@@ -4,6 +4,20 @@
 #include "stb_image.h"
 #include "Core/Logger.h"
 
+//#define TEXLOAD_DUMP_INFO
+#ifdef TEXLOAD_DUMP_INFO
+#define texloadlabel "[texture loader] "
+#define texloadlog(fmt) loginfo(texloadlabel fmt)
+#define texloadlogf(fmt, ...) logfinfo(texloadlabel fmt, __VA_ARGS__)
+#define profile_texload_scope(scope_name, msg) PROFILE_SCOPE_LOG(scope_name, msg)
+#define profile_texload_scope_f(scope_name, fmt, ...) PROFILE_SCOPE_LOGF(scope_name, fmt, __VA_ARGS__)
+#else
+#define texloadlog(fmt) DUMMY_MACRO
+#define texloadlogf(fmt, ...) DUMMY_MACRO
+#define profile_texload_scope(scope_name, msg) DUMMY_MACRO
+#define profile_texload_scope_f(scope_name, fmt, ...) DUMMY_MACRO
+#endif
+
 namespace rendersystem
 {
     uint32_t CalculateMipLevels(uint32_t width, uint32_t height)
@@ -61,7 +75,7 @@ namespace rendersystem
     {
         bool LoadTextureData_u8(TextureData* out, const char* filepath, bool flipVertical)
         {
-            PROFILE_SCOPE_LOGF(LoadTextureData_u8, "LoadTexture_u8 (%s)", filepath);
+            profile_texload_scope_f(LoadTextureData_u8, "LoadTexture_u8 (%s)", filepath);
             check(out);
             Mist::cAssetPath assetPath(filepath);
             stbi_set_flip_vertically_on_load(flipVertical);
@@ -91,7 +105,7 @@ namespace rendersystem
 
         bool LoadTextureFromFile(render::TextureHandle* textureOut, render::Device* device, const char* filepath, bool flipVertical, bool calculateMipLevels, render::utils::UploadContext* uploadContext)
         {
-            PROFILE_SCOPE_LOGF(LoadTextureFromFile, "Load texture from file (%s)", filepath);
+            profile_texload_scope_f(LoadTextureFromFile, "Load texture from file (%s)", filepath);
             check(textureOut && device);
 
             TextureData data;
@@ -101,7 +115,7 @@ namespace rendersystem
                 return false;
             }
 
-            PROFILE_SCOPE_LOGF(CreateAndFillTexture, "Create and fill texture from file (%s)", filepath);
+            profile_texload_scope_f(CreateAndFillTexture, "Create and fill texture from file (%s)", filepath);
             render::TextureDescription desc;
             desc.extent = { data.width, data.height, 1 };
             desc.format = render::Format_R8G8B8A8_UNorm;

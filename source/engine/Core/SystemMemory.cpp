@@ -67,7 +67,7 @@ namespace Mist
     void SysMem_IntegrityCheck() { IntegrityCheck(SystemMemStats); }
 
 
-	void AddMemTrace(tSystemMemStats& stats, const void* p, uint32_t size, const char* file, uint32_t line)
+	void AddMemTrace(tSystemMemStats& stats, const void* p, size_t size, const char* file, uint32_t line)
 	{
 #ifdef MEM_TRACE_ON
 		check(p && size && file);
@@ -124,11 +124,11 @@ namespace Mist
 
 	void DumpMemoryTrace(const tSystemMemStats& memStats)
 	{
-		logfinfo("Allocated: %d bytes | MaxAllocated: %d bytes\n", memStats.Allocated, memStats.MaxAllocated);
+		logfinfo("Allocated: %9lld bytes | MaxAllocated: %9lld bytes\n", memStats.Allocated, memStats.MaxAllocated);
 		for (uint32_t i = 0; i < memStats.MemTraceSize; ++i)
 		{
 			if (memStats.MemTraceArray[i].Data)
-				logfinfo("[%d] Memory trace: 0x%p | %d bytes | %s (%d)\n", i, 
+				logfinfo("[%4d] 0x%p | %9lld bytes | %256s (%5d)\n", i, 
 					memStats.MemTraceArray[i].Data, 
 					memStats.MemTraceArray[i].Size, 
 					memStats.MemTraceArray[i].File, 
@@ -145,8 +145,8 @@ namespace Mist
 	void DumpMemoryStats(const tSystemMemStats& memStats)
 	{
 		loginfo("****************** Host memory stats ******************\n");
-		logfinfo("Current bytes allocated:		%8d bytes\n", memStats.Allocated);
-		logfinfo("    Max bytes allocated:		%8d bytes\n", memStats.MaxAllocated);
+		logfinfo("Current bytes allocated:		%8lld bytes\n", memStats.Allocated);
+		logfinfo("    Max bytes allocated:		%8lld bytes\n", memStats.MaxAllocated);
 		logfinfo("Memory trace registered:		%8d/%8d\n", memStats.MemTraceIndex, memStats.MemTraceSize);
 		logfinfo("Free indices availables:		%8d\n", memStats.FreeIndicesIndex);
 		loginfo("*******************************************************\n");
@@ -209,7 +209,7 @@ namespace Mist
 		void* ret = malloc(size);
 		check(ret);
 #endif // MEM_BLOCK_HEADER && MEM_TRACE_ON
-		AddMemTrace(SystemMemStats, ret, (uint32_t)size, file, line);
+		AddMemTrace(SystemMemStats, ret, size, file, line);
 		return ret;
 	}
 
@@ -233,7 +233,7 @@ namespace Mist
 		else
 			r = realloc(p, size);
 		check(size < UINT32_MAX);
-		AddMemTrace(SystemMemStats, r, (uint32_t)size, file, line);
+		AddMemTrace(SystemMemStats, r, size, file, line);
 		check(r);
 		return r;
 #else

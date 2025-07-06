@@ -17,9 +17,13 @@
 #define shaderlabel "[shaders] "
 #define shaderlog(fmt) loginfo(shaderlabel fmt)
 #define shaderlogf(fmt, ...) logfinfo(shaderlabel fmt, __VA_ARGS__)
+#define profile_shader_scope(scope_name, msg) PROFILE_SCOPE_LOG(scope_name, msg)
+#define profile_shader_scope_f(scope_name, fmt, ...) PROFILE_SCOPE_LOGF(scope_name, fmt, __VA_ARGS__)
 #else
 #define shaderlog(fmt) DUMMY_MACRO
 #define shaderlogf(fmt, ...) DUMMY_MACRO
+#define profile_shader_scope(scope_name, msg) DUMMY_MACRO
+#define profile_shader_scope_f(scope_name, fmt, ...) DUMMY_MACRO
 #endif
 
 namespace render
@@ -247,7 +251,7 @@ namespace render
 
         bool WriteCompiledBinaryToFile(const char* binaryFilepath, uint32_t* binaryData, size_t binaryCount)
         {
-            PROFILE_SCOPE_LOGF(WriteCompiledBinaryToFile, "Write file with binary spv shader %s", binaryFilepath);
+            profile_shader_scope_f(WriteCompiledBinaryToFile, "Write file with binary spv shader %s", binaryFilepath);
             check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
             char dir[256];
             Mist::FileSystem::GetDirectoryFromFilepath(binaryFilepath, dir, Mist::CountOf(dir));
@@ -258,7 +262,8 @@ namespace render
             size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
             check(writtenCount == binaryCount);
             fclose(f);
-            shaderlogf("Shader binary compiled written: %s [%u bytes]\n", binaryFilepath, writtenCount * sizeof(uint32_t));
+            //shaderlogf("Shader binary compiled written: %s [%u bytes]\n", binaryFilepath, writtenCount * sizeof(uint32_t));
+            logfok("Shader binary compiled written: %s [%u bytes]\n", binaryFilepath, writtenCount * sizeof(uint32_t));
             return true;
         }
 
@@ -317,14 +322,14 @@ namespace render
         {
             check(filepath && *filepath && compileOptions);
             Mist::cAssetPath assetPath(filepath);
-            PROFILE_SCOPE_LOGF(ShouldRecompileShaderFile, "Build shader dependency (%s)", assetPath);
+            profile_shader_scope_f(ShouldRecompileShaderFile, "Build shader dependency (%s)", assetPath);
 
             return ContainsNewerFileInIncludes_Recursive(assetPath, filepath, compileOptions);
         }
 
         CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions)
         {
-            PROFILE_SCOPE_LOGF(Compile, "Compile shader (%s)", filepath);
+            profile_shader_scope_f(Compile, "Compile shader (%s)", filepath);
             char* source;
             size_t s;
             Mist::cAssetPath path(filepath);
@@ -397,7 +402,7 @@ namespace render
         CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions, bool forceCompilation)
         {
             Mist::cAssetPath assetPath(filepath);
-            PROFILE_SCOPE_LOGF(ProcessShaderFile, "Shader file process (%s)", assetPath);
+            profile_shader_scope_f(ProcessShaderFile, "Shader file process (%s)", assetPath);
             shaderlogf("Compiling shader: [%s]\n", assetPath);
 
             CompilationOptions defaultOptions;
@@ -418,7 +423,7 @@ namespace render
             }
             else
             {
-                PROFILE_SCOPE_LOG(ShaderCompilation, "Compile shader");
+                profile_shader_scope_f(ShaderCompilation, "Compile shader");
                 if (forceCompilation)
                     logfwarn("Force shader recompilation: %s\n", assetPath);
                 else
@@ -453,12 +458,13 @@ namespace render
             // At this point we must have a valid binary.
             check(bin.IsCompilationSucceed());
 
-            shaderlogf("Shader compiled successfully (%s)\n", assetPath);
+            logfok("Shader built successfully (%s; %lld bytes)\n", assetPath, bin.binaryCount * sizeof(uint32_t));
             return bin;
         }
 
         bool BuildShaderParams(const CompiledBinary& bin, ShaderType stage, ShaderReflectionProperties& outProperties)
         {
+            profile_shader_scope(BuildShaderParams, "Build shader param reflection");
             auto processSpirvResource = [](ShaderReflectionProperties& properties, 
                 const spirv_cross::CompilerGLSL& compiler, 
                 const spirv_cross::Resource& resource, 

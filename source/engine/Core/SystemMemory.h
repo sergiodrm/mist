@@ -19,7 +19,7 @@ namespace Mist
 	struct tSystemAllocTrace
 	{
 		const void* Data = nullptr;
-		unsigned int Size = 0;
+		size_t Size = 0;
 		unsigned int Line = 0;
 		char File[512];
 	};

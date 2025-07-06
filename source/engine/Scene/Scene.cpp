@@ -316,7 +316,6 @@ namespace Mist
 
 	index_t Scene::LoadModel(const RenderContext& context, const char* filepath)
 	{
-		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		cModel* model = GetModel(filepath);
 		if (!model)
 		{
@@ -657,10 +656,6 @@ namespace Mist
 	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
 		PROFILE_SCOPE_LOG(LoadSkybox, "LoadSkybox");
-
-#ifdef RENDER_BACKEND_TEST
-		//return true;
-#endif
 
 		// descriptors generator
 		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
