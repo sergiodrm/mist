@@ -380,6 +380,7 @@ namespace rendersystem
 
         void SetFillMode(render::RasterFillMode mode = render::RasterFillMode_Fill);
         void SetCullMode(render::RasterCullMode mode = render::RasterCullMode_Back);
+        void SetPrimitive(render::PrimitiveType type = render::PrimitiveType_TriangleList);
 
         
         /**

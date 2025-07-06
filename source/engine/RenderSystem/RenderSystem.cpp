@@ -351,6 +351,7 @@ namespace rendersystem
             m_renderResolution.height);
 		SetScissor(0.f, m_renderResolution.width,
             0.f, m_renderResolution.height);
+        SetPrimitive();
     }
 
     void RenderSystem::ClearState()
@@ -455,6 +456,12 @@ namespace rendersystem
     void RenderSystem::SetCullMode(render::RasterCullMode mode)
     {
         m_psoDesc.renderState.rasterState.cullMode = mode;
+    }
+
+    void RenderSystem::SetPrimitive(render::PrimitiveType type)
+    {
+        check(type < render::PrimitiveType_MaxEnum);
+        m_psoDesc.primitiveType = type;
     }
 
     void RenderSystem::SetShader(ShaderProgram* shader)
