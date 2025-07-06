@@ -51,15 +51,15 @@ namespace Mist
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/deferred.frag";
-			m_lightingShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_lightingShader = g_render->CreateShader(shaderDesc);
 			shaderDesc.fsDesc.options.PushMacroDefinition("DEFERRED_APPLY_FOG");
-			m_lightingFogShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_lightingFogShader = g_render->CreateShader(shaderDesc);
 		}
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
 			shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
-            m_skyboxShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_skyboxShader = g_render->CreateShader(shaderDesc);
 		}
 		{
 			render::TextureDescription texDesc;
@@ -76,7 +76,7 @@ namespace Mist
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/hdr.frag";
-			m_hdrShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_hdrShader = g_render->CreateShader(shaderDesc);
 		}
 #if 0
 		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
@@ -171,10 +171,10 @@ namespace Mist
 		m_skyModel = nullptr;
 		m_bloomEffect.Destroy(renderContext);
 
-		delete m_hdrShader;
-		delete m_lightingShader;
-		delete m_lightingFogShader;
-		delete m_skyboxShader;
+		g_render->DestroyShader(&m_hdrShader);
+		g_render->DestroyShader(&m_lightingShader);
+		g_render->DestroyShader(&m_lightingFogShader);
+		g_render->DestroyShader(&m_skyboxShader);
 		m_lightingOutput = nullptr;
 		m_hdrOutput = nullptr;
 		m_ssaoRenderTarget = nullptr;

@@ -47,12 +47,12 @@ namespace Mist
 	{
 		rendersystem::ShaderBuildDescription shaderDesc;
 		shaderDesc.vsDesc.filePath = "shaders/depth.vert";
-		m_shader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+		m_shader = g_render->CreateShader(shaderDesc);
 	}
 
 	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
 	{	
-		delete m_shader;
+		g_render->DestroyShader(&m_shader);
 	}
 
 	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)

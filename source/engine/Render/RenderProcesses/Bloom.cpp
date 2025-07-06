@@ -92,7 +92,7 @@ namespace Mist
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
 			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_DOWNSAMPLE");
-			m_downsampleShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_downsampleShader = g_render->CreateShader(shaderDesc);
 #if 0
 			tShaderDynamicBufferDescription dynamicDesc;
 			dynamicDesc.Name = "u_BloomDownsampleParams";
@@ -122,7 +122,7 @@ namespace Mist
             shaderDesc.vsDesc.filePath = "shaders/quad.vert";
             shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
             shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_UPSAMPLE");
-            m_upsampleShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_upsampleShader = g_render->CreateShader(shaderDesc);
 #if 0
 			tShaderProgramDescription shaderDesc;
 			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
@@ -156,7 +156,7 @@ namespace Mist
             shaderDesc.type = rendersystem::ShaderProgram_Graphics;
             shaderDesc.vsDesc.filePath = "shaders/quad.vert";
             shaderDesc.fsDesc.filePath = "shaders/mix.frag";
-            m_composeShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_composeShader = g_render->CreateShader(shaderDesc);
 #if 0
 			check(m_composeTarget && "Bloom needs compose target set to initialization.");
 			tShaderProgramDescription shaderDesc;
@@ -188,7 +188,7 @@ namespace Mist
             shaderDesc.vsDesc.filePath = "shaders/quad.vert";
             shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
             shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_FILTER");
-            m_filterShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_filterShader = g_render->CreateShader(shaderDesc);
 #if 0
 			tShaderProgramDescription desc;
 			desc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
@@ -469,10 +469,10 @@ namespace Mist
 			m_renderTargetArray[i] = nullptr;
 			m_renderTargetTexturesArray[i] = nullptr;
 		}
-		delete m_downsampleShader;
-		delete m_upsampleShader;
-		delete m_filterShader;
-		delete m_composeShader;
+		g_render->DestroyShader(&m_downsampleShader);
+		g_render->DestroyShader(&m_upsampleShader);
+		g_render->DestroyShader(&m_filterShader);
+		g_render->DestroyShader(&m_composeShader);
 		m_composeTarget = nullptr;
 		m_blendTexture = nullptr;
 		m_inputTarget = nullptr;	

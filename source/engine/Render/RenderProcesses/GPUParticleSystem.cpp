@@ -53,13 +53,13 @@ namespace Mist
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.csDesc.filePath = "shaders/particles.comp";
 			shaderDesc.type = rendersystem::ShaderProgram_Compute;
-			m_computeShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_computeShader = g_render->CreateShader(shaderDesc);
 		}
 		{
             rendersystem::ShaderBuildDescription shaderDesc;
             shaderDesc.vsDesc.filePath = "shaders/particles.vert";
             shaderDesc.fsDesc.filePath = "shaders/particles.frag";
-            m_graphicsShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_graphicsShader = g_render->CreateShader(shaderDesc);
 		}
 
 		render::BufferDescription bufferDesc;
@@ -208,6 +208,8 @@ namespace Mist
 	{
 		m_renderTarget = nullptr;
 		m_particlesBuffer = nullptr;
+		g_render->DestroyShader(&m_graphicsShader);
+		g_render->DestroyShader(&m_computeShader);
 	}
 
 	void GPUParticleSystem::ImGuiDraw()

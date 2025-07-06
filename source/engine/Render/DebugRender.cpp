@@ -195,13 +195,13 @@ namespace Mist
 				rendersystem::ShaderBuildDescription shaderDesc;
 				shaderDesc.vsDesc.filePath = "shaders/line.vert";
 				shaderDesc.fsDesc.filePath = "shaders/line.frag";
-				DebugRenderPipeline.m_lineShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+				DebugRenderPipeline.m_lineShader = g_render->CreateShader(shaderDesc);
 			}
 			{
                 rendersystem::ShaderBuildDescription shaderDesc;
                 shaderDesc.vsDesc.filePath = "shaders/screenquad.vert";
                 shaderDesc.fsDesc.filePath = "shaders/screenquad.frag";
-                DebugRenderPipeline.m_quadShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+                DebugRenderPipeline.m_quadShader = g_render->CreateShader(shaderDesc);
 			}
 
 			DebugRenderPipeline.LineBatch.Init();
@@ -213,8 +213,8 @@ namespace Mist
 			DebugRenderPipeline.QuadBatch.Destroy();
 			DebugRenderPipeline.LineBatch.Destroy();
 
-			delete DebugRenderPipeline.m_lineShader;
-			delete DebugRenderPipeline.m_quadShader;
+			g_render->DestroyShader(&DebugRenderPipeline.m_lineShader);
+			g_render->DestroyShader(&DebugRenderPipeline.m_quadShader);
 		}
 
 		void DrawLine3D(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)

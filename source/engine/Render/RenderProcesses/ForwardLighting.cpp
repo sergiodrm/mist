@@ -74,14 +74,14 @@ namespace Mist
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-			m_shader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_shader = g_render->CreateShader(shaderDesc);
 		}
 
 		{
             rendersystem::ShaderBuildDescription shaderDesc;
             shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
             shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
-            m_shader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_shader = g_render->CreateShader(shaderDesc);
 
 			m_skyboxModel = _new cModel();
 			m_skyboxModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
@@ -98,8 +98,8 @@ namespace Mist
 		m_skyboxModel = nullptr;
 
 		m_rt = nullptr;
-		delete m_shader;
-		delete m_skyboxShader;
+		g_render->DestroyShader(&m_shader);
+		g_render->DestroyShader(&m_skyboxShader);
 	}
 
 	void ForwardLighting::InitFrameData(const RenderContext& context, const Renderer& renderFrame, uint32_t frameIndex, UniformBufferMemoryPool& buffer)

@@ -52,7 +52,7 @@ namespace Mist
 		//check(m_renderTarget.GetRefCounter() == 1);
 		m_renderTarget = nullptr;
 		g_gbuffer = nullptr;
-		delete m_gbufferShader;
+		g_render->DestroyShader(&m_gbufferShader);
 	}
 
 	void GBuffer::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
@@ -184,7 +184,7 @@ namespace Mist
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
 			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-			m_gbufferShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_gbufferShader = g_render->CreateShader(shaderDesc);
 		}
 	}
 

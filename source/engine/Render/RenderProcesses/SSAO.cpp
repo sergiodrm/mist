@@ -68,7 +68,7 @@ namespace Mist
             shaderDesc.vsDesc.filePath = "shaders/quad.vert";
             shaderDesc.fsDesc.filePath = "shaders/ssao.frag";
             shaderDesc.fsDesc.options.PushMacroDefinition("KERNEL_SIZE", SSAO_KERNEL_SAMPLES);
-            m_ssaoShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+            m_ssaoShader = g_render->CreateShader(shaderDesc);
         }
 
 		{
@@ -86,14 +86,14 @@ namespace Mist
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/ssaoblur.frag";
-			m_blurShader = _new rendersystem::ShaderProgram(g_device, shaderDesc);
+			m_blurShader = g_render->CreateShader(shaderDesc);
 		}
 	}
 
 	void SSAO::Destroy(const RenderContext& renderContext)
 	{
-		delete m_blurShader;
-		delete m_ssaoShader;
+		g_render->DestroyShader(&m_blurShader);
+		g_render->DestroyShader(&m_ssaoShader);
 		m_rt = nullptr;
 		m_blurRT = nullptr;
 	}
