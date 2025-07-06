@@ -1258,12 +1258,12 @@ namespace Mist
 
 			InitRenderPass();
 
-			UniformBufferMemoryPool* buffer = frameContext.GlobalBuffer;
-			check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
+			//UniformBufferMemoryPool* buffer = frameContext.GlobalBuffer;
+			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_ENV_DATA, &m_environmentData, sizeof(EnvironmentData)));
 			//check(buffer->SetUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount() * sizeof(glm::mat4)));
 			//check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, GetRawGlobalTransforms(), GetRenderObjectCount(), sizeof(glm::mat4), 0));
-			check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, m_renderTransforms.GetData(), m_renderTransforms.GetSize(), sizeof(glm::mat4), 0));
-			check(buffer->SetDynamicUniform(renderContext, "u_material", m_materials.GetData(), m_materials.GetSize(), sizeof(sMaterialRenderData), 0));
+			//check(buffer->SetDynamicUniform(renderContext, UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY, m_renderTransforms.GetData(), m_renderTransforms.GetSize(), sizeof(glm::mat4), 0));
+			//check(buffer->SetDynamicUniform(renderContext, "u_material", m_materials.GetData(), m_materials.GetSize(), sizeof(sMaterialRenderData), 0));
 		}
 	}
 
