@@ -133,7 +133,7 @@ namespace render
                 char* sourceName = _new char[result->source_name_length];
                 strcpy_s(sourceName, result->source_name_length, path.c_str());
                 result->source_name = sourceName;
-                logfok("Read include shader: %s (%d bytes) from %s\n", sourceName, result->source_name_length, requestingSource);
+                shaderlogf("Read include shader: %s (%d bytes) from %s\n", sourceName, result->source_name_length, requestingSource);
                 return result;
             }
 
@@ -262,11 +262,14 @@ namespace render
             return true;
         }
 
-        bool ContainsNewerFileInIncludes_Recursive(const char* filepath, const CompilationOptions* options)
+        bool ContainsNewerFileInIncludes_Recursive(const Mist::cAssetPath& rootPath, const char* filepath, const CompilationOptions* options)
         {
+            // current dependency path
             Mist::cAssetPath assetPath(filepath);
+
+            // binary filepath from root. We need to compare include files with the final result.
             char binaryFilepath[1024];
-            GenerateSpvFileName(binaryFilepath, assetPath, *options);
+            GenerateSpvFileName(binaryFilepath, rootPath, *options);
 
             if (Mist::FileSystem::IsFileNewerThanOther(assetPath, binaryFilepath))
                 return true;
@@ -299,10 +302,10 @@ namespace render
                 ++it;
                 // Build complete asset path and register it.
                 // Keep building dependencies inside current dependency.
-                if (ContainsNewerFileInIncludes_Recursive(dependencyPath, options))
+                if (ContainsNewerFileInIncludes_Recursive(rootPath, dependencyPath, options))
                 {
                     containsNewerFile = true;
-                    logfwarn("Shader dependency newer than compiled binary (%s)\n", dependencyPath);
+                    logfwarn("Shader dependency newer than compiled binary (%s > %s)\n", dependencyPath, rootPath);
                     break;
                 }
             }
@@ -316,7 +319,7 @@ namespace render
             Mist::cAssetPath assetPath(filepath);
             PROFILE_SCOPE_LOGF(ShouldRecompileShaderFile, "Build shader dependency (%s)", assetPath);
 
-            return ContainsNewerFileInIncludes_Recursive(filepath, compileOptions);
+            return ContainsNewerFileInIncludes_Recursive(assetPath, filepath, compileOptions);
         }
 
         CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions)
@@ -567,7 +570,6 @@ namespace render
                     attribute.location = compiler.get_decoration(resource.id, spv::DecorationLocation);
                     attribute.count = type.vecsize;
                     attribute.size = type.width;
-                    logfinfo("location: %d; size: %d; count: %d; type: %d (%s)\n", attribute.location, attribute.size, attribute.count, attribute.type, ConvertAttributeTypeToStr(attribute.type));
                     outProperties.inputLayout.attributes.push_back(attribute);
                     check(attribute.type == AttributeType_Float
                         || (attribute.type >= AttributeType_Short && attribute.type <= AttributeType_UInt64));
