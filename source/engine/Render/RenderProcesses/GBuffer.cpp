@@ -22,8 +22,9 @@ namespace Mist
 	{
 		check(g_gbuffer == nullptr);
 		g_gbuffer = this;
-		uint32_t width = 1920;
-		uint32_t height = 1080;
+		render::Extent2D extent = g_render->GetBackbufferResolution();
+		uint32_t width = extent.width;
+		uint32_t height = extent.height;
 
 		render::TextureHandle textures[RT_COUNT];
 		render::RenderTargetDescription rtDesc;
