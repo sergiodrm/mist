@@ -221,8 +221,9 @@ namespace rendersystem
 
     class ShaderProgram
     {
-    public:
+        friend class RenderSystem;
         ShaderProgram(render::Device* device, const ShaderBuildDescription& description);
+    public:
         ~ShaderProgram();
         void Reload();
         bool IsLoaded() const;
@@ -246,6 +247,58 @@ namespace rendersystem
         render::VertexInputLayout m_inputLayout;
         render::shader_compiler::ShaderReflectionProperties* m_properties;
         ShaderBuildDescription* m_description;
+    };
+
+    class ShaderDb
+    {
+    public:
+        ShaderDb()
+        {
+            m_programs.reserve(10);
+        }
+
+        ~ShaderDb()
+        {
+            check(m_programs.empty());
+        }
+
+        ShaderDb(const ShaderDb&) = delete;
+        ShaderDb(ShaderDb&&) = delete;
+        ShaderDb& operator=(const ShaderDb&) = delete;
+        ShaderDb& operator=(ShaderDb&&) = delete;
+
+        void AddProgram(ShaderProgram* program)
+        {
+            check(program);
+            m_programs.push_back(program);
+        }
+
+        void RemoveProgram(ShaderProgram* program)
+        {
+            for (uint32_t i = (uint32_t)m_programs.size()-1; i < (uint32_t)m_programs.size(); --i)
+            {
+                if (program == m_programs[i])
+                {
+                    if (i != (uint32_t)m_programs.size() - 1)
+                        m_programs[i] = m_programs.back();
+                    m_programs.pop_back();
+                    return;
+                }
+            }
+            unreachable_code();
+        }
+
+        void ReloadAll()
+        {
+            for (uint32_t i = 0; i < (uint32_t)m_programs.size(); ++i)
+            {
+                m_programs[i]->Reload();
+                check(m_programs[i]->IsLoaded());
+            }
+        }
+
+
+        Mist::tDynArray<ShaderProgram*> m_programs;
     };
 
     class RenderSystem
@@ -285,6 +338,9 @@ namespace rendersystem
         void SetViewProjection(const glm::mat4& view, const glm::mat4& projection);
 
         render::Device* GetDevice() const { return m_device; }
+        ShaderProgram* CreateShader(const ShaderBuildDescription& desc);
+        void DestroyShader(ShaderProgram** shader);
+        inline void ReloadAllShaders() { m_shaderDb.ReloadAll(); }
 
         inline uint64_t GetFrameIndex() const { return m_frame % m_device->GetSwapchain().images.size(); }
         render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
@@ -330,19 +386,24 @@ namespace rendersystem
          * TODO: bindings, set shader constants and textures
          */
         void SetShader(ShaderProgram* shader);
-        void SetTextureSlot(render::TextureHandle texture, uint32_t set, uint32_t binding = 0);
-        void SetTextureSlot(const char* id, render::TextureHandle texture);
+        void SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding = 0, uint32_t textureIndex = 0);
+        void SetTextureSlot(const char* id, const render::TextureHandle& texture);
         void SetTextureSlot(const render::TextureHandle* textures, uint32_t count, uint32_t set, uint32_t binding = 0);
         void SetTextureSlot(const char* id, const render::TextureHandle* textures, uint32_t count);
-        void SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding = 0, uint32_t samplerIndex = 0);
-        void SetSampler(render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding = 0);
-        void SetSampler(const char* id, render::SamplerHandle sample);
-        void SetSampler(const char* id, render::SamplerHandle* sample, uint32_t count);
+        void SetSampler(const render::SamplerHandle& sampler, uint32_t set, uint32_t binding = 0, uint32_t samplerIndex = 0);
+        void SetSampler(const render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding = 0);
+        void SetSampler(const char* id, const render::SamplerHandle& sample);
+        void SetSampler(const char* id, const render::SamplerHandle* sample, uint32_t count);
         void SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter,
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW,
             uint32_t samplerIndex = 0);
+        void SetSampler(render::Filter minFilter, render::Filter magFilter,
+            render::SamplerAddressMode addressModeU,
+            render::SamplerAddressMode addressModeV,
+            render::SamplerAddressMode addressModeW,
+            uint32_t set, uint32_t binding = 0, uint32_t samplerIndex = 0);
         void SetShaderProperty(const char* id, const void* param, uint64_t size);
         void SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout);
         void SetTextureAsResourceBinding(render::TextureHandle texture);
@@ -432,6 +493,8 @@ namespace rendersystem
         ShaderProgram* m_program;
 
         render::GraphicsPipelineDescription m_psoDesc;
+
+        ShaderDb m_shaderDb;
     };
 }
 

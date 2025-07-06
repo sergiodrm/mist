@@ -285,6 +285,21 @@ namespace rendersystem
     {
     }
 
+    ShaderProgram* RenderSystem::CreateShader(const ShaderBuildDescription& desc)
+    {
+        ShaderProgram* shader = _new ShaderProgram(m_device, desc);
+        m_shaderDb.AddProgram(shader);
+        return shader;
+    }
+
+    void RenderSystem::DestroyShader(ShaderProgram** shader)
+    {
+        check(shader && *shader);
+        m_shaderDb.RemoveProgram(*shader);
+        delete *shader;
+        *shader = nullptr;
+    }
+
     render::GraphicsPipelineHandle RenderSystem::GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt)
     {
         auto it = m_psoMap.find(psoDesc);
@@ -483,28 +498,20 @@ namespace rendersystem
         }
     }
 
-    void RenderSystem::SetTextureSlot(render::TextureHandle texture, uint32_t set, uint32_t binding)
+    void RenderSystem::SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t textureIndex)
     {
-        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot && texture);
-        m_textureSlots[set][binding][0] = texture;
-        for (uint32_t i = 1; i < MaxTextureArrayCount; ++i)
+        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot && textureIndex < MaxTextureArrayCount && texture);
+        m_textureSlots[set][binding][textureIndex] = texture;
+        if (render::utils::IsDepthStencilFormat(texture->m_description.format))
         {
-            if (m_textureSlots[set][binding][i] != nullptr)
-                m_textureSlots[set][binding][i] = nullptr;
-            else
-                break;
-        }
-
-        if (texture->GetLayoutAt(0, 0) != render::ImageLayout_ShaderReadOnly)
-        {
-            if (render::utils::IsDepthStencilFormat(texture->m_description.format))
+            if (texture->GetLayoutAt(0, 0) != render::ImageLayout_DepthStencilReadOnly)
                 m_cmd->RequireTextureState({ texture, render::ImageLayout_DepthStencilReadOnly });
-            else
-                m_cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
         }
+        else if (texture->GetLayoutAt(0, 0) != render::ImageLayout_ShaderReadOnly)
+            m_cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
     }
 
-    void RenderSystem::SetTextureSlot(const char* id, render::TextureHandle texture)
+    void RenderSystem::SetTextureSlot(const char* id, const render::TextureHandle& texture)
     {
         check(m_program);
         uint32_t setIndex;
@@ -540,14 +547,14 @@ namespace rendersystem
         }
     }
 
-	void RenderSystem::SetSampler(render::SamplerHandle sampler, uint32_t set, uint32_t binding, uint32_t samplerIndex)
+	void RenderSystem::SetSampler(const render::SamplerHandle& sampler, uint32_t set, uint32_t binding, uint32_t samplerIndex)
     {
         check(samplerIndex < MaxTextureArrayCount);
         check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
         m_samplerSlots[set][binding][samplerIndex] = sampler;
     }
 
-    void RenderSystem::SetSampler(const char* id, render::SamplerHandle sampler)
+    void RenderSystem::SetSampler(const char* id, const render::SamplerHandle& sampler)
     {
         SetSampler(id, &sampler, 1);
     }
@@ -557,7 +564,12 @@ namespace rendersystem
         SetSampler(id, GetSampler(minFilter, magFilter, addressModeU, addressModeV, addressModeW));
     }
 
-	void RenderSystem::SetSampler(const char* id, render::SamplerHandle* sampler, uint32_t count)
+    void RenderSystem::SetSampler(render::Filter minFilter, render::Filter magFilter, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW, uint32_t set, uint32_t binding, uint32_t samplerIndex)
+    {
+        SetSampler(GetSampler(minFilter, magFilter, addressModeU, addressModeV, addressModeW), set, binding, samplerIndex);
+    }
+
+	void RenderSystem::SetSampler(const char* id, const render::SamplerHandle* sampler, uint32_t count)
 	{
         check(m_program);
         uint32_t setIndex;
@@ -567,7 +579,7 @@ namespace rendersystem
         SetSampler(sampler, count, setIndex, property->binding);
 	}
 
-	void RenderSystem::SetSampler(render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
+	void RenderSystem::SetSampler(const render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
 	{
         for (uint32_t i = 0; i < count; ++i)
             SetSampler(sampler[i], set, binding, i);
@@ -753,6 +765,7 @@ namespace rendersystem
         ImGui::Text("Binding lf:    %.4f", m_bindingCache->GetLoadFactor());
         ImGui::Text("Sampler cache: %7d", m_samplerCache->GetCacheSize());
         ImGui::Text("Sampler lf:    %.4f", m_samplerCache->GetLoadFactor());
+        ImGui::Text("Shaders:       %7d", m_shaderDb.m_programs.size());
         ImGui::End();
     }
 
@@ -797,9 +810,9 @@ namespace rendersystem
 
                         if (!sampler[k])
                             sampler[k] = GetSampler(render::Filter_Linear, render::Filter_Linear,
-                                render::SamplerAddressMode_ClampToEdge,
-                                render::SamplerAddressMode_ClampToEdge,
-                                render::SamplerAddressMode_ClampToEdge);
+                                render::SamplerAddressMode_Repeat,
+                                render::SamplerAddressMode_Repeat,
+                                render::SamplerAddressMode_Repeat);
                         subresources.Push(render::TextureSubresourceRange::AllSubresources());
                     }
                     if (property.type == render::ResourceType_TextureSRV)
@@ -1173,17 +1186,19 @@ namespace rendersystem
     };
 
     ShaderProgram::ShaderProgram(render::Device* device, const ShaderBuildDescription& description)
-        : m_device(device)
+        : m_device(device), m_properties(nullptr)
     {
         m_description = _new ShaderBuildDescription(description);
-        m_properties = _new render::shader_compiler::ShaderReflectionProperties();
         Reload();
     }
 
     ShaderProgram::~ShaderProgram()
     {
-        delete m_properties;
+        if (m_properties)
+            delete m_properties;
+        m_properties = nullptr;
         delete m_description;
+        m_description = nullptr;
     }
 
     void ShaderProgram::Reload()
@@ -1270,6 +1285,8 @@ namespace rendersystem
         for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
             compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
 
+        check(!m_properties);
+        m_properties = _new render::shader_compiler::ShaderReflectionProperties();
         const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
         m_properties->params = std::move(prop.params);
         m_properties->pushConstantMap = std::move(prop.pushConstantMap);
@@ -1309,9 +1326,10 @@ namespace rendersystem
 
     ShaderProgram* ShaderProgramCache::GetOrCreateShader(render::Device* device, const ShaderBuildDescription& desc)
     {
+        check(false);
         if (m_shaders.contains(desc))
             return m_shaders.at(desc);
-        ShaderProgram* shader = _new ShaderProgram(device, desc);
+        ShaderProgram* shader = nullptr;// _new ShaderProgram(device, desc);
         m_shaders[desc] = shader;
         return shader;
     }
