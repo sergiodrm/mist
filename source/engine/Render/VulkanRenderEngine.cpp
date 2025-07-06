@@ -445,6 +445,8 @@ namespace Mist
 		{
 			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
 		}
+#else
+		g_render->ReloadAllShaders();
 #endif // 0
 
 		logok("Shader reloaded.\n");
