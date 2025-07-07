@@ -35,7 +35,7 @@ void main()
 	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP))
 	{
 		vec3 mr = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inUV).rgb;
-		outNormal.a = mr.g * u_material.data.MetallicRoughness.b;
+		outNormal.a = mr.g * u_material.data.MetallicRoughness.g;
 		outPosition.a = mr.b * u_material.data.MetallicRoughness.r;
 	}
 	else
