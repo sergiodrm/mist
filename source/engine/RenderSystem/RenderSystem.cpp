@@ -9,6 +9,8 @@
 #include <imgui.h>
 #include "Utils/TimeUtils.h"
 
+Mist::CIntVar CVar_ForceFrameSync("r_forceframesync", 0);
+
 namespace rendersystem
 {
     render::BindingLayoutHandle BindingLayoutCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
@@ -681,7 +683,7 @@ namespace rendersystem
     {
         logerror("====== RENDER SYSTEM ======\n");
         logferror("* render frame: %lld\n", m_frame);
-        logferror("* swapchain index: %lld\n", m_swapchainIndex);
+        logferror("* swapchain index: %d\n", m_swapchainIndex);
         if (m_swapchainIndex != UINT32_MAX)
         {
             logerror("* frame syncronization context:\n");
@@ -891,8 +893,7 @@ namespace rendersystem
         }
 
         // Process graphics pipeline
-        render::GraphicsPipelineHandle pso = GetPso(m_psoDesc, m_renderContext.graphicsState.rt);
-        m_renderContext.graphicsState.pipeline = pso;
+        m_renderContext.graphicsState.pipeline = GetPso(m_psoDesc, m_renderContext.graphicsState.rt);
 
         m_renderContext.cmd->SetGraphicsState(m_renderContext.graphicsState);
         if (m_renderContext.pendingClearColor)
@@ -918,6 +919,8 @@ namespace rendersystem
         ClearState();
         m_renderContext.cmd->ResetStats();
 
+        if (CVar_ForceFrameSync.Get())
+            m_device->WaitIdle();
 
         FrameSyncContext& sync = GetFrameSyncContext();
 
@@ -934,6 +937,7 @@ namespace rendersystem
         commandQueue->AddSignalSemaphore(sync.renderQueueSemaphore, 0);
 
         m_renderContext.cmd->BeginRecording();
+        BeginMarker("Frame"); // frame marker
     }
 
     void RenderSystem::EndFrame()
@@ -946,6 +950,8 @@ namespace rendersystem
         CopyToPresentRt(m_ldrTexture);
         m_renderContext.cmd->SetTextureState(render::TextureBarrier{ GetPresentRt()->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc});
         EndMarker();
+
+        EndMarker(); // frame marker
         m_renderContext.cmd->EndRecording();
 
         uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
