@@ -2335,7 +2335,7 @@ namespace render
 
         // Find best surface format
         const ColorSpace desiredColorSpace = ColorSpace_SRGB;
-        const Format desiredFormat = Format_R8G8B8A8_SRGB;
+        const Format desiredFormat = Format_R8G8B8A8_UNorm;
         uint32_t formatSelectedIndex = UINT32_MAX;
         for (uint32_t i = 0; i < formats.GetSize(); ++i)
         {
