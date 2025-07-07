@@ -220,7 +220,7 @@ namespace Mist
 
     sMaterialRenderData cMaterial::GetRenderData() const
     {
-        sMaterialRenderData data;
+        sMaterialRenderData data = {};
         data.Emissive = glm::vec4(m_emissiveFactor.x, m_emissiveFactor.y, m_emissiveFactor.z, m_emissiveStrength);
         data.Albedo = glm::vec4(m_albedo.x, m_albedo.y, m_albedo.z, 1.f);
         data.Metallic = m_metallicFactor;
