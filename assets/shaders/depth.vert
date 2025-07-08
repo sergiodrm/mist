@@ -1,9 +1,6 @@
 #version 460
 
-layout (location = 0) in vec3 a_Position;
-layout (location = 1) in vec3 LSNormal;
-layout (location = 2) in vec3 VIColor;
-layout (location = 3) in vec2 TexCoords;
+#include <shaders/includes/vertex_mesh.glsl>
 
 layout (std140, set = 0, binding = 0) uniform UBO
 {
@@ -17,5 +14,5 @@ layout (std140, set = 1, binding = 0) uniform Model
 
 void main()
 {
-    gl_Position = u_ubo.DepthVP * u_model.Mat * vec4(a_Position, 1.f);
+    gl_Position = u_ubo.DepthVP * u_model.Mat * vec4(inPosition, 1.f);
 }
