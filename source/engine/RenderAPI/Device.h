@@ -1832,8 +1832,10 @@ namespace std
             Mist::HashCombine(seed, desc.primitiveType);
             Mist::HashCombine(seed, desc.renderState);
             Mist::HashCombine(seed, desc.vertexInputLayout);
-            Mist::HashCombine(seed, desc.vertexShader->m_description);
-            Mist::HashCombine(seed, desc.fragmentShader->m_description);
+            if (desc.vertexShader)
+                Mist::HashCombine(seed, desc.vertexShader->m_description);
+            if (desc.fragmentShader)
+                Mist::HashCombine(seed, desc.fragmentShader->m_description);
             return seed;
         }
     };
