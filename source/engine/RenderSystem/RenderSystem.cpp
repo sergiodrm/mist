@@ -1489,8 +1489,23 @@ namespace rendersystem
                 return index;
             }
         }
-        m_buffers.push_back(render::utils::CreateUniformBuffer(m_device, size, "ShaderMemoryContext_UB"));
+        m_buffers.emplace_back(render::utils::CreateUniformBuffer(m_device, size, "ShaderMemoryContext_UB"));
         return (uint32_t)m_buffers.size() - 1;
+    }
+
+    void ShaderMemoryContext::Invalidate()
+    {
+        m_device = nullptr;
+        if (m_tempBuffer)
+            Mist::Free(m_tempBuffer);
+        m_tempBuffer = nullptr;
+        m_pointer = 0;
+        m_size = 0;
+        m_submissionId = UINT64_MAX;
+        m_buffers.clear();
+        m_properties.clear();
+        m_freeBuffers.clear();
+        m_usedBuffers.clear();
     }
 
     ShaderMemoryPool::ShaderMemoryPool(render::Device* device)
@@ -1515,7 +1530,7 @@ namespace rendersystem
         }
         else
         {
-            m_contexts.push_back(ShaderMemoryContext(m_device));
+            m_contexts.emplace_back(m_device);
             //m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
             index = (uint32_t)m_contexts.size() - 1;
             m_contexts[index].m_submissionId = UINT64_MAX;
@@ -1548,7 +1563,7 @@ namespace rendersystem
                 check(m_usedContexts[j] != index);
 
             m_contexts[index].m_submissionId = submissionId;
-            m_usedContexts.push_back(index);
+            m_usedContexts.emplace_back(index);
             contexts[i] = UINT32_MAX;
         }
     }
@@ -1567,7 +1582,7 @@ namespace rendersystem
                 if (i != (uint32_t)m_usedContexts.size() - 1)
                     m_usedContexts[i] = m_usedContexts.back();
                 m_usedContexts.pop_back();
-                m_freeContexts.push_back(index);
+                m_freeContexts.emplace_back(index);
                 m_contexts[index].m_submissionId = UINT64_MAX;
             }
         }
