@@ -629,6 +629,7 @@ namespace Mist
 				//mesh.SetupVertexBuffer(context, tempVertices.data(), (uint32_t)tempVertices.size() * sizeof(Vertex));
 				mesh.vb = render::utils::CreateVertexBuffer(g_device, tempVertices.data(), tempVertices.size() * sizeof(Vertex));
 				mesh.ib = render::utils::CreateIndexBuffer(g_device, tempIndices.data(), tempIndices.size() * sizeof(uint32_t));
+				mesh.indexCount = Mist::limits_cast<uint32_t>(tempIndices.size());
 				tempIndices.clear();
 				tempVertices.clear();
 			}
