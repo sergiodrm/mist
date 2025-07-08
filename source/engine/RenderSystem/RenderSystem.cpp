@@ -227,6 +227,13 @@ namespace rendersystem
         *shader = nullptr;
     }
 
+    void RenderSystem::ReloadAllShaders()
+    {
+        m_device->WaitIdle();
+        m_shaderDb.ReloadAll();
+        m_psoMap.clear();
+    }
+
     render::GraphicsPipelineHandle RenderSystem::GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt)
     {
         auto it = m_psoMap.find(psoDesc);

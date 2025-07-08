@@ -340,7 +340,7 @@ namespace rendersystem
         render::Device* GetDevice() const { return m_device; }
         ShaderProgram* CreateShader(const ShaderBuildDescription& desc);
         void DestroyShader(ShaderProgram** shader);
-        inline void ReloadAllShaders() { m_shaderDb.ReloadAll(); }
+        void ReloadAllShaders();
 
         inline uint64_t GetFrameIndex() const { return m_frame % m_device->GetSwapchain().images.size(); }
         render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
