@@ -1303,6 +1303,73 @@ namespace rendersystem
         check(MinTempBufferSize() == m_device->AlignUniformSize(MinTempBufferSize()));
     }
 
+    ShaderMemoryContext::~ShaderMemoryContext()
+    {
+        Invalidate();
+    }
+
+    ShaderMemoryContext::ShaderMemoryContext(const ShaderMemoryContext& other)
+    {
+        // copy constructor must be done over empty objects.
+        // just allowing use the class inside std containers.
+        check(other.m_device);
+        check(other.m_properties.empty());
+        check(other.m_buffers.empty());
+        check(other.m_freeBuffers.empty());
+        check(other.m_usedBuffers.empty());
+
+        Invalidate();
+        m_device = other.m_device;
+        m_pointer = other.m_pointer;
+        if (other.m_size)
+        {
+            ResizeTempBuffer(other.m_size);
+            memcpy_s(m_tempBuffer, m_size, other.m_tempBuffer, other.m_size);
+        }
+        m_submissionId = other.m_submissionId;
+    }
+
+    ShaderMemoryContext::ShaderMemoryContext(ShaderMemoryContext&& rvl)
+    {
+        check(rvl.m_device);
+        Invalidate();
+        m_device = rvl.m_device;
+        m_buffers = std::move(rvl.m_buffers);
+        m_freeBuffers = std::move(rvl.m_freeBuffers);
+        m_usedBuffers = std::move(rvl.m_usedBuffers);
+        m_properties = std::move(rvl.m_properties);
+        m_pointer = rvl.m_pointer;
+        m_tempBuffer = rvl.m_tempBuffer;
+        rvl.m_tempBuffer = nullptr;
+        m_size = rvl.m_size;
+        m_submissionId = rvl.m_submissionId;
+        rvl.Invalidate();
+    }
+
+    ShaderMemoryContext& ShaderMemoryContext::operator=(const ShaderMemoryContext& other)
+    {
+        new(this)ShaderMemoryContext(other);
+        return *this;
+    }
+
+    ShaderMemoryContext& ShaderMemoryContext::operator=(ShaderMemoryContext&& rvl)
+    {
+		check(rvl.m_device);
+		Invalidate();
+		m_device = rvl.m_device;
+		m_buffers = std::move(rvl.m_buffers);
+		m_freeBuffers = std::move(rvl.m_freeBuffers);
+		m_usedBuffers = std::move(rvl.m_usedBuffers);
+		m_properties = std::move(rvl.m_properties);
+		m_pointer = rvl.m_pointer;
+		m_tempBuffer = rvl.m_tempBuffer;
+		rvl.m_tempBuffer = nullptr;
+		m_size = rvl.m_size;
+		m_submissionId = rvl.m_submissionId;
+		rvl.Invalidate();
+        return *this;
+    }
+
     void ShaderMemoryContext::ReserveProperty(const char* id, uint64_t size)
     {
         check(m_pointer == m_device->AlignUniformSize(m_pointer));

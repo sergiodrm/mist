@@ -98,6 +98,11 @@ namespace rendersystem
         };
 
         ShaderMemoryContext(render::Device* device);
+        ~ShaderMemoryContext();
+        ShaderMemoryContext(const ShaderMemoryContext& other);
+        ShaderMemoryContext(ShaderMemoryContext&& rvl);
+        ShaderMemoryContext& operator=(const ShaderMemoryContext& other);
+        ShaderMemoryContext& operator=(ShaderMemoryContext&& rvl);
 
         void ReserveProperty(const char* id, uint64_t size);
         void WriteProperty(const char* id, const void* data, uint64_t size);
@@ -110,6 +115,7 @@ namespace rendersystem
         void ResizeTempBuffer(uint64_t size);
         void Write(const void* data, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
         uint32_t GetOrCreateBuffer(uint64_t size);
+        void Invalidate();
     public:
         render::Device* m_device;
         uint8_t* m_tempBuffer = nullptr;
