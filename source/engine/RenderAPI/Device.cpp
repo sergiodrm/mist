@@ -301,7 +301,9 @@ namespace render
         if (m_description.depthStencilAttachment.IsValid())
         {
             VkClearAttachment clear;
-            clear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+            clear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            if (utils::IsDepthStencilFormat(m_description.depthStencilAttachment.texture->m_description.format))
+                clear.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
             clear.clearValue.depthStencil.depth = depth;
             clear.clearValue.depthStencil.stencil = stencil;
             clear.colorAttachment = 0;
@@ -1528,7 +1530,7 @@ namespace render
             TextureHandle texture = rta.texture;
 
             Format format = texture->m_description.format;
-            check(format != Format_Undefined);
+            check(format != Format_Undefined && utils::IsDepthFormat(format));
 
             VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             if (rta.isReadOnly)
