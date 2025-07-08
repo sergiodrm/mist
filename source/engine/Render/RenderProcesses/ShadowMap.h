@@ -90,6 +90,7 @@ namespace Mist
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
 		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
+		void CollectLightData(const Scene& scene);
 
 		ShadowMapPipeline m_shadowMapPipeline;
 	private:

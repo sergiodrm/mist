@@ -315,59 +315,7 @@ namespace Mist
 	void ShadowMapProcess::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
 	{
 		Scene& scene = *renderFrameContext.Scene;
-		
-		// Update shadow map matrix
-		if (GUseCameraForShadowMapping)
-		{
-			m_shadowMapPipeline.SetDepthVP(0, GetCameraData()->ViewProjection);
-		}
-		else
-		{
-			float shadowMapIndex = 0.f;
-			glm::mat4 invView = GetCameraData()->InvView;
-			glm::mat4 cameraProj = GetCameraData()->Projection;
-
-			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
-			uint32_t count = scene.GetRenderObjectCount();
-			m_lightCount = 0;
-			for (uint32_t i = 0; i < count; ++i)
-			{
-				const LightComponent* light = scene.GetLight(i);
-				if (light && light->Type != ELightType::Point && light->ProjectShadows)
-				{
-					const TransformComponent& t = scene.GetTransform(i);
-					switch (light->Type)
-					{
-					case ELightType::Directional:
-						if (m_debugDirParams.show)
-						{
-							m_debugDirParams.pos = glm::vec3(0.f);
-							m_debugDirParams.rot = t.Rotation;
-							for (uint32_t j = 0; j< CountOf(m_debugDirParams.clips); ++j)
-								m_debugDirParams.clips[j] = m_shadowMapPipeline.m_orthoParams[j];
-						}
-						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, invView, cameraProj, t.Rotation);
-						break;
-					case ELightType::Spot:
-					{
-						if (m_debugLightParams.show)
-						{
-							m_debugLightParams.pos = t.Position;
-							m_debugLightParams.rot = t.Rotation;
-							m_debugLightParams.cutoff = light->OuterCutoff;
-						}
-						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, invView, t.Position, t.Rotation, light->OuterCutoff, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
-					}
-						break;
-					default:
-						check(false && "Unreachable");
-					}
-				}
-			}
-			check(m_lightCount <= globals::MaxShadowMapAttachments);
-		}
-
-		m_shadowMapPipeline.FlushToUniformBuffer(renderContext, renderFrameContext.GlobalBuffer);
+		CollectLightData(scene);
 
 #if 0
 		// Update light VP matrix for lighting pass
@@ -398,10 +346,13 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
 			g_render->SetRenderTarget(m_shadowMapTargetArray[i]);
+			g_render->ClearDepthStencil();
+			g_render->SetDepthEnable();
 			if (i < m_lightCount)
 				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
 		}
 		g_render->ClearState();
+		g_render->SetDefaultState();
 	}
 
 	void ShadowMapProcess::ImGuiDraw()
@@ -443,6 +394,60 @@ namespace Mist
 	{
 		check(index < globals::MaxShadowMapAttachments);
 		return m_shadowMapTargetArray[index].GetPtr();
+	}
+
+	void ShadowMapProcess::CollectLightData(const Scene& scene)
+	{
+		// Update shadow map matrix
+		if (GUseCameraForShadowMapping)
+		{
+			m_shadowMapPipeline.SetDepthVP(0, GetCameraData()->ViewProjection);
+		}
+		else
+		{
+			float shadowMapIndex = 0.f;
+			glm::mat4 invView = GetCameraData()->InvView;
+			glm::mat4 cameraProj = GetCameraData()->Projection;
+
+			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
+			uint32_t count = scene.GetRenderObjectCount();
+			m_lightCount = 0;
+			for (uint32_t i = 0; i < count; ++i)
+			{
+				const LightComponent* light = scene.GetLight(i);
+				if (light && light->Type != ELightType::Point && light->ProjectShadows)
+				{
+					const TransformComponent& t = scene.GetTransform(i);
+					switch (light->Type)
+					{
+					case ELightType::Directional:
+						if (m_debugDirParams.show)
+						{
+							m_debugDirParams.pos = glm::vec3(0.f);
+							m_debugDirParams.rot = t.Rotation;
+							for (uint32_t j = 0; j < CountOf(m_debugDirParams.clips); ++j)
+								m_debugDirParams.clips[j] = m_shadowMapPipeline.m_orthoParams[j];
+						}
+						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, invView, cameraProj, t.Rotation);
+						break;
+					case ELightType::Spot:
+					{
+						if (m_debugLightParams.show)
+						{
+							m_debugLightParams.pos = t.Position;
+							m_debugLightParams.rot = t.Rotation;
+							m_debugLightParams.cutoff = light->OuterCutoff;
+						}
+						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, invView, t.Position, t.Rotation, light->OuterCutoff, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
+					}
+					break;
+					default:
+						check(false && "Unreachable");
+					}
+				}
+			}
+			check(m_lightCount <= globals::MaxShadowMapAttachments);
+		}
 	}
 
 	void ShadowMapProcess::DebugDraw(const RenderContext& context)

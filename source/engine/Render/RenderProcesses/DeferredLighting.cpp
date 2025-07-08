@@ -244,8 +244,7 @@ namespace Mist
 				shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
 			g_render->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
 
-			EnvironmentData env = frameContext.Scene->GetEnvironmentData();
-			env.ViewPosition = glm::vec3(0.f, 0.f, 0.f);
+			const EnvironmentData& env = frameContext.Scene->GetEnvironmentData();
 			g_render->SetShaderProperty("u_env", &env, sizeof(env));
 			g_render->DrawFullscreenQuad();
 			g_render->EndMarker();
