@@ -857,7 +857,8 @@ namespace rendersystem
         FrameSyncContext& sync = GetFrameSyncContext();
 
         // wait for last frame before acquire swapchain image
-        m_device->WaitForSubmissionId(sync.submission);
+        if (sync.submission)
+            m_device->WaitForSubmissionId(sync.submission);
 
         m_swapchainIndex = m_device->AcquireSwapchainIndex(sync.presentSemaphore);
 
