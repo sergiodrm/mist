@@ -30,7 +30,7 @@
 namespace Mist
 {
     CIntVar CVar_ShowBloomTex("r_showbloomtex", 0);
-	CIntVar CVar_EnableBloom("r_enableBloom", 0);
+	CIntVar CVar_EnableBloom("r_enableBloom", 1);
 
 	struct WorkgroupSize
     {
@@ -240,6 +240,8 @@ namespace Mist
 		g_render->BeginMarker("Filter");
 		render::RenderTargetHandle rt = m_renderTargetArray[0];
 		g_render->SetRenderTarget(rt);
+		g_render->SetViewport(0.f, 0.f, rt->m_info.extent.width, rt->m_info.extent.height);
+		g_render->SetScissor(0.f, rt->m_info.extent.width, 0.f, rt->m_info.extent.height);
 		g_render->SetShader(m_filterShader);
 		g_render->SetTextureSlot("u_tex", m_inputTarget);
         g_render->SetSampler("u_tex", render::Filter_Linear,
@@ -334,6 +336,9 @@ namespace Mist
 		g_render->SetDepthEnable(false, false);
 		g_render->SetTextureSlot("u_tex0", m_blendTexture);
 		g_render->SetTextureSlot("u_tex1", m_renderTargetTexturesArray[0]);
+		g_render->SetBlendEnable(true);
+		g_render->SetBlendFactor(render::BlendFactor_One, render::BlendFactor_One);
+		g_render->SetDepthEnable(false, false);
 		g_render->DrawFullscreenQuad();
 		g_render->ClearState();
 		g_render->SetDefaultState();
