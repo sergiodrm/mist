@@ -459,6 +459,7 @@ namespace rendersystem
         // Device context. Communication with render api.
         render::Device* m_device;
         uint32_t m_swapchainIndex;
+        Mist::tCircularBuffer<uint32_t, 6> m_swapchainHistoric;
         // Frame counter
         uint64_t m_frame;
         // Store transform block data 
@@ -470,14 +471,17 @@ namespace rendersystem
         // Syncronization objects. One per frame in flight.
         struct FrameSyncContext
         {
-            render::SemaphoreHandle renderQueueSemaphore;
-            render::SemaphoreHandle presentSemaphore;
-            uint64_t submission = 0;
-        } m_frameSyncronization[8];
-        inline FrameSyncContext& GetFrameSyncContext() { return m_frameSyncronization[GetFrameIndex()]; }
+            static constexpr uint32_t Count = 8;
+            render::SemaphoreHandle renderQueueSemaphores[Count];
+            render::SemaphoreHandle presentSemaphores[Count];
+            uint64_t presentSubmission[Count];
+        } m_frameSyncronization;
+        inline const render::SemaphoreHandle& GetPresentSemaphore() const { return m_frameSyncronization.presentSemaphores[m_frame % FrameSyncContext::Count]; }
+        inline const render::SemaphoreHandle& GetRenderSemaphore() const { check(m_swapchainIndex < FrameSyncContext::Count); return m_frameSyncronization.renderQueueSemaphores[m_swapchainIndex]; }
+        inline uint64_t GetPresentSubmissionId() const { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count]; }
+        inline uint64_t SetPresentSubmissionId(uint64_t submission) { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count] = submission; }
 
         // Command list with transfer, graphics and compute commands
-        render::CommandListHandle m_cmd;
         RenderContext m_renderContext;
 
         // Render targets and other resources.

@@ -124,7 +124,7 @@ namespace rendersystem
             m_ldrRt = m_device->CreateRenderTarget(desc);
         }
         {
-            check(swapchain.images.size() <= Mist::CountOf(m_frameSyncronization));
+            check(swapchain.images.size() <= FrameSyncContext::Count);
             m_presentRts.resize(swapchain.images.size());
             char buff[256];
             for (uint32_t i = 0; i < (uint32_t)swapchain.images.size(); ++i)
@@ -134,14 +134,18 @@ namespace rendersystem
                 desc.AddColorAttachment(texture);
                 desc.debugName = "RT_PRESENT";
                 m_presentRts[i] = m_device->CreateRenderTarget(desc);
+            }
+            for (uint32_t i = 0; i < FrameSyncContext::Count; ++i)
+            {
+				sprintf_s(buff, "render semaphore %d", i);
+				m_frameSyncronization.renderQueueSemaphores[i] = m_device->CreateRenderSemaphore();
+				m_device->SetDebugName(m_frameSyncronization.renderQueueSemaphores[i].GetPtr(), buff);
 
-                sprintf_s(buff, "render semaphore %d", i);
-                m_frameSyncronization[i].renderQueueSemaphore = m_device->CreateRenderSemaphore();
-                m_device->SetDebugName(m_frameSyncronization[i].renderQueueSemaphore.GetPtr(), buff);
+				sprintf_s(buff, "present semaphore %d", i);
+				m_frameSyncronization.presentSemaphores[i] = m_device->CreateRenderSemaphore();
+				m_device->SetDebugName(m_frameSyncronization.presentSemaphores[i].GetPtr(), buff);
 
-                sprintf_s(buff, "present semaphore %d", i);
-                m_frameSyncronization[i].presentSemaphore = m_device->CreateRenderSemaphore();
-                m_device->SetDebugName(m_frameSyncronization[i].presentSemaphore.GetPtr(), buff);
+                m_frameSyncronization.presentSubmission[i] = 0;
             }
         }
         {
@@ -156,8 +160,7 @@ namespace rendersystem
             upload.WriteTexture(m_defaultTexture, 0, 0, data, sizeof(data));
         }
         {
-            m_cmd = m_device->CreateCommandList();
-            m_renderContext.cmd = m_cmd;
+            m_renderContext.cmd = m_device->CreateCommandList();
         }
         {
             m_bindingCache = _new BindingCache(m_device);
@@ -183,12 +186,12 @@ namespace rendersystem
         m_defaultTexture = nullptr;
         m_psoDesc = {};
         m_psoMap.clear();
-        m_cmd = nullptr;
         m_renderContext.cmd = nullptr;
-        for (uint32_t i = 0; i < (uint32_t)m_device->GetSwapchain().images.size(); ++i)
+        //for (uint32_t i = 0; i < (uint32_t)m_device->GetSwapchain().images.size(); ++i)
+        for (uint32_t i = 0; i < FrameSyncContext::Count; ++i)
         {
-            m_frameSyncronization[i].renderQueueSemaphore = nullptr;
-            m_frameSyncronization[i].presentSemaphore = nullptr;
+            m_frameSyncronization.renderQueueSemaphores[i] = nullptr;
+            m_frameSyncronization.presentSemaphores[i] = nullptr;
         }
         m_ldrRt = nullptr;
         m_depthTexture = nullptr;
@@ -304,7 +307,7 @@ namespace rendersystem
                 }
             }
         }
-        m_cmd->ClearState();
+        m_renderContext.cmd->ClearState();
     }
 
     void RenderSystem::SetDepthEnable(bool testing, bool writing)
@@ -446,10 +449,10 @@ namespace rendersystem
         if (render::utils::IsDepthStencilFormat(texture->m_description.format))
         {
             if (texture->GetLayoutAt(0, 0) != render::ImageLayout_DepthStencilReadOnly)
-                m_cmd->RequireTextureState({ texture, render::ImageLayout_DepthStencilReadOnly });
+                m_renderContext.cmd->RequireTextureState({ texture, render::ImageLayout_DepthStencilReadOnly });
         }
         else if (texture->GetLayoutAt(0, 0) != render::ImageLayout_ShaderReadOnly)
-            m_cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
+            m_renderContext.cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
     }
 
     void RenderSystem::SetTextureSlot(const char* id, const render::TextureHandle& texture)
@@ -535,8 +538,8 @@ namespace rendersystem
 
     void RenderSystem::SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout)
     {
-        //check(!m_cmd->IsInsideRenderPass());
-        m_cmd->RequireTextureState({ texture, layout });
+        //check(!m_renderContext.cmd->IsInsideRenderPass());
+        m_renderContext.cmd->RequireTextureState({ texture, layout });
     }
 
     void RenderSystem::SetTextureAsResourceBinding(render::TextureHandle texture)
@@ -619,8 +622,13 @@ namespace rendersystem
         if (m_swapchainIndex != UINT32_MAX)
         {
             logerror("* frame syncronization context:\n");
-            logerror("\t* present semaphore: 0x%p\n", GetFrameSyncContext().presentSemaphore->m_semaphore);
-            logerror("\t* render semaphore: 0x%p\n", GetFrameSyncContext().renderQueueSemaphore->m_semaphore);
+            logferror("\t* swapchains: %d %d %d %d %d %d\n",
+                m_swapchainHistoric.Get(0),
+                m_swapchainHistoric.Get(1),
+                m_swapchainHistoric.Get(2),
+                m_swapchainHistoric.Get(3),
+                m_swapchainHistoric.Get(4),
+                m_swapchainHistoric.Get(5));
         }
         logferror("* Binding cache count: %lld\n", m_bindingCache->GetCacheSize());
         logferror("* Pso cache count: %lld\n", m_psoMap.size());
@@ -639,7 +647,7 @@ namespace rendersystem
     void RenderSystem::InitScreenQuad()
     {
         PROFILE_SCOPE_LOG(InitScreenQuad, "RenderSystem_InitScreenQuad");
-        m_cmd->BeginRecording();
+        m_renderContext.cmd->BeginRecording();
 
         float quadVertices[] =
         {
@@ -656,16 +664,16 @@ namespace rendersystem
         bufferDescription.memoryUsage = render::MemoryUsage_Gpu;
         bufferDescription.bufferUsage = render::BufferUsage_VertexBuffer;
         m_screenQuadCopy.vb = m_device->CreateBuffer(bufferDescription);
-        m_cmd->WriteBuffer(m_screenQuadCopy.vb, quadVertices, sizeof(quadVertices));
+        m_renderContext.cmd->WriteBuffer(m_screenQuadCopy.vb, quadVertices, sizeof(quadVertices));
 
         // Index buffer
         bufferDescription.size = sizeof(quadIndices);
         bufferDescription.bufferUsage = render::BufferUsage_IndexBuffer;
         m_screenQuadCopy.ib = m_device->CreateBuffer(bufferDescription);
-        m_cmd->WriteBuffer(m_screenQuadCopy.ib, quadIndices, sizeof(quadIndices));
+        m_renderContext.cmd->WriteBuffer(m_screenQuadCopy.ib, quadIndices, sizeof(quadIndices));
 
-        m_cmd->EndRecording();
-        uint64_t submissionId = m_cmd->ExecuteCommandList();
+        m_renderContext.cmd->EndRecording();
+        uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
         check(m_device->WaitForSubmissionId(submissionId));
 
         // Sampler
@@ -704,26 +712,40 @@ namespace rendersystem
     {
         //ImGui::SetNextWindowPos(ImVec2(500, 500));
         ImGui::Begin("Render system");
-        ImGui::Text("Tris:          %7d", m_cmd->GetStats().tris);
-        ImGui::Text("DrawCalls:     %7d", m_cmd->GetStats().drawCalls);
-        ImGui::Text("Pipelines:     %7d", m_cmd->GetStats().pipelines);
-        ImGui::Text("Rts:           %7d", m_cmd->GetStats().rts);
+        ImGui::SeparatorText("Draw stats");
+        ImGui::Text("Tris:              %7d", m_renderContext.cmd->GetStats().tris);
+        ImGui::Text("DrawCalls:         %7d", m_renderContext.cmd->GetStats().drawCalls);
+        ImGui::Text("Pipelines:         %7d", m_renderContext.cmd->GetStats().pipelines);
+        ImGui::Text("Render targets:    %7d", m_renderContext.cmd->GetStats().rts);
+        ImGui::Text("Swapchains:        %1d %1d %1d %1d %1d %1d",
+            m_swapchainHistoric.Get(0),
+            m_swapchainHistoric.Get(1),
+            m_swapchainHistoric.Get(2),
+            m_swapchainHistoric.Get(3),
+            m_swapchainHistoric.Get(4),
+            m_swapchainHistoric.Get(5));
+
+        ImGui::SeparatorText("Gpu memory");
         const render::MemoryContext& memstats = m_device->GetContext().memoryContext;
-        ImGui::Text("Buffers:       %7d (%9d b/%9d b)", memstats.bufferStats.allocationCounts,
+        ImGui::Text("Buffers:           %7d (%9d b/%9d b)", memstats.bufferStats.allocationCounts,
             memstats.bufferStats.currentAllocated, memstats.bufferStats.maxAllocated);
-        ImGui::Text("Images:        %7d (%9d b/%9d b)", memstats.imageStats.allocationCounts,
+        ImGui::Text("Images:            %7d (%9d b/%9d b)", memstats.imageStats.allocationCounts,
             memstats.imageStats.currentAllocated, memstats.imageStats.maxAllocated);
+
+        ImGui::SeparatorText("Command buffer");
         const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
-        ImGui::Text("CB total:      %7d", queue->GetTotalCommandBuffers());
-        ImGui::Text("CB submitted:  %7d", queue->GetSubmittedCommandBuffersCount());
-        ImGui::Text("CB pool:       %7d", queue->GetPoolCommandBuffersCount());
-        ImGui::Text("Pso cache:     %7d | %7d", m_psoMap.size(), m_psoMap.max_size());
-        ImGui::Text("Pso lf:        %.4f", m_psoMap.load_factor());
-        ImGui::Text("Binding cache: %7d", m_bindingCache->GetCacheSize());
-        ImGui::Text("Binding lf:    %.4f", m_bindingCache->GetLoadFactor());
-        ImGui::Text("Sampler cache: %7d", m_samplerCache->GetCacheSize());
-        ImGui::Text("Sampler lf:    %.4f", m_samplerCache->GetLoadFactor());
-        ImGui::Text("Shaders:       %7d", m_shaderDb.m_programs.size());
+        ImGui::Text("CB total:          %7d", queue->GetTotalCommandBuffers());
+        ImGui::Text("CB submitted:      %7d", queue->GetSubmittedCommandBuffersCount());
+        ImGui::Text("CB pool:           %7d", queue->GetPoolCommandBuffersCount());
+
+        ImGui::SeparatorText("Cache state");
+        ImGui::Text("Pso cache:         %7d", m_psoMap.size());
+        ImGui::Text("Pso lf:            %.4f", m_psoMap.load_factor());
+        ImGui::Text("Binding cache:     %7d", m_bindingCache->GetCacheSize());
+        ImGui::Text("Binding lf:        %.4f", m_bindingCache->GetLoadFactor());
+        ImGui::Text("Sampler cache:     %7d", m_samplerCache->GetCacheSize());
+        ImGui::Text("Sampler lf:        %.4f", m_samplerCache->GetLoadFactor());
+        ImGui::Text("Shaders:           %7d", m_shaderDb.m_programs.size());
         ImGui::End();
     }
 
@@ -854,20 +876,21 @@ namespace rendersystem
         if (CVar_ForceFrameSync.Get())
             m_device->WaitIdle();
 
-        FrameSyncContext& sync = GetFrameSyncContext();
+        const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 
         // wait for last frame before acquire swapchain image
-        if (sync.submission)
-            m_device->WaitForSubmissionId(sync.submission);
+        if (GetPresentSubmissionId())
+            m_device->WaitForSubmissionId(GetPresentSubmissionId());
 
-        m_swapchainIndex = m_device->AcquireSwapchainIndex(sync.presentSemaphore);
+        m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
+        const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
 
         render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
         commandQueue->ProcessInFlightCommands();
         m_memoryPool->ProcessInFlight();
         m_memoryContextId = m_memoryPool->CreateContext();
-        commandQueue->AddWaitSemaphore(sync.presentSemaphore, 0);
-        commandQueue->AddSignalSemaphore(sync.renderQueueSemaphore, 0);
+        commandQueue->AddWaitSemaphore(presentSemaphore, 0);
+        commandQueue->AddSignalSemaphore(renderSemaphore, 0);
 
         m_renderContext.cmd->BeginRecording();
         BeginMarker("Frame"); // frame marker
@@ -876,8 +899,6 @@ namespace rendersystem
     void RenderSystem::EndFrame()
     {
         ui::EndFrame(m_renderContext.cmd);
-
-        FrameSyncContext& sync = GetFrameSyncContext();
 
         BeginMarker("CopyToPresent");
         CopyToPresentRt(m_ldrTexture);
@@ -888,21 +909,25 @@ namespace rendersystem
         m_renderContext.cmd->EndRecording();
 
         uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
-        m_device->Present(sync.renderQueueSemaphore);
+
+		const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
+		const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
+        m_device->Present(renderSemaphore);
 
         m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
-        sync.submission = submissionId;
+        SetPresentSubmissionId(submissionId);
+        m_swapchainHistoric.Push(m_swapchainIndex);
         m_swapchainIndex = UINT32_MAX;
     }
 
     void RenderSystem::BeginMarker(const char* name, render::Color color)
     {
-        m_cmd->BeginMarker(name, color);
+        m_renderContext.cmd->BeginMarker(name, color);
     }
 
     void RenderSystem::EndMarker()
     {
-        m_cmd->EndMarker();
+        m_renderContext.cmd->EndMarker();
     }
 
     TextureCache::TextureCache(render::Device* device)
