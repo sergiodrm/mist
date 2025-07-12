@@ -76,11 +76,15 @@ namespace Mist
 			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 			g_render->ClearColor();
 			g_render->ClearDepthStencil();
+			g_render->SetStencilEnable(true);
+			g_render->SetStencilMask(0xff, 0xff, 1);
+			g_render->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 			frameContext.Scene->Draw(renderContext, nullptr, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
 		}
 		else
 			frameContext.Scene->RenderPipelineDraw(renderContext, RenderFlags_Fixed);
 		g_render->ClearState();
+		g_render->SetDefaultState();
 	}
 
 	void GBuffer::ImGuiDraw()

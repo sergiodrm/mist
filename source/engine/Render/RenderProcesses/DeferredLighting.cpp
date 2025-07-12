@@ -254,6 +254,11 @@ namespace Mist
 			check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
 			g_render->BeginMarker("Sky");
 			g_render->SetShader(m_skyboxShader);
+			g_render->SetStencilEnable(true);
+			g_render->SetStencilMask(0xff, 0x00, 0x00);
+			g_render->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
+			g_render->SetDepthEnable(false, false);
+			g_render->SetCullMode(render::RasterCullMode_Front);
 			g_render->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
 			g_render->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
             glm::mat4 viewRot = GetCameraData()->InvView;
