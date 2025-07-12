@@ -639,7 +639,7 @@ namespace render
             {
                 m_currentChunkIndex = i;
                 Chunk& currentChunk = m_pool[i];
-                currentChunk.version = 0;
+                currentChunk.version = UINT64_MAX;
                 currentChunk.pointer = 0;
                 break;
             }
@@ -647,11 +647,11 @@ namespace render
 
         // Add completed chunk to the pool
         if (chunkToSubmit != InvalidChunkIndex)
-            m_submittedChunkIndices.push_back(chunkToSubmit);
+            m_submittedChunkIndices.emplace_back(chunkToSubmit);
         
         if (m_currentChunkIndex == InvalidChunkIndex)
         {
-            m_pool.push_back(CreateChunk(alignedSize));
+            m_pool.emplace_back(CreateChunk(alignedSize));
             m_currentChunkIndex = (uint32_t)m_pool.size() - 1;
         }
 
@@ -667,14 +667,14 @@ namespace render
     {
         if (m_currentChunkIndex != InvalidChunkIndex)
         {
-            m_submittedChunkIndices.push_back(m_currentChunkIndex);
+            m_submittedChunkIndices.emplace_back(m_currentChunkIndex);
             m_currentChunkIndex = InvalidChunkIndex;
         }
 
         for (uint32_t i = 0; i < (uint32_t)m_submittedChunkIndices.size(); ++i)
         {
             uint32_t index = m_submittedChunkIndices[i];
-            if (m_pool[index].version == 0)
+            if (m_pool[index].version == UINT64_MAX)
                 m_pool[index].version = submissionId;
         }
     }
@@ -2459,6 +2459,7 @@ namespace render
         uint64_t id = cmd->ExecuteCommandList();
         check(WaitForSubmissionId(id));
         cmd = nullptr;
+        delete[] swapchainImages;
     }
 
     void Device::DestroyMemoryContext()

@@ -1410,7 +1410,7 @@ namespace render
         struct Chunk
         {
             BufferHandle buffer = nullptr;
-            uint64_t version = 0;
+            uint64_t version = UINT64_MAX;
             uint64_t pointer = 0;
         };
 
