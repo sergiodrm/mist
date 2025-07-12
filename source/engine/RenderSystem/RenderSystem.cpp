@@ -203,12 +203,6 @@ namespace rendersystem
 
     void RenderSystem::Draw()
     {
-        //BeginFrame();
-        render::GraphicsState state;
-        state.rt = m_ldrRt;
-        m_cmd->SetGraphicsState(state);
-        m_cmd->ClearColor(0.2f, 0.2f, 0.2f, 1.f);
-        //EndFrame();
     }
 
     void RenderSystem::SetViewProjection(const glm::mat4& view, const glm::mat4& projection)
