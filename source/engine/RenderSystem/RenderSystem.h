@@ -371,6 +371,14 @@ namespace rendersystem
             render::StencilOp depthFail = render::StencilOp_Keep,
             render::StencilOp pass = render::StencilOp_Keep,
             render::CompareOp compareOp = render::CompareOp_Always);
+        inline void SetStencilOpFrontAndBack(render::StencilOp fail = render::StencilOp_Keep,
+            render::StencilOp depthFail = render::StencilOp_Keep,
+            render::StencilOp pass = render::StencilOp_Keep,
+            render::CompareOp compareOp = render::CompareOp_Always)
+        {
+			SetStencilOpFront(fail, depthFail, pass, compareOp);
+			SetStencilOpBack(fail, depthFail, pass, compareOp);
+        }
 
         void SetBlendEnable(bool enabled = false, uint32_t attachment = 0);
         void SetBlendFactor(render::BlendFactor srcBlend = render::BlendFactor_One,
