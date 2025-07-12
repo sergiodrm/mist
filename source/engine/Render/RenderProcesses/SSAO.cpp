@@ -105,15 +105,19 @@ namespace Mist
 
 	void SSAO::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
 	{
-		m_uboData.Projection = GetCameraData()->Projection;
-		m_uboData.InverseProjection = glm::inverse(m_uboData.Projection);
 	}
 
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuSSAO);
+		m_uboData.Projection = GetCameraData()->Projection;
+		m_uboData.InverseProjection = glm::inverse(m_uboData.Projection);
+
+		g_render->SetDefaultState();
+		g_render->ClearState();
 		g_render->SetShader(m_ssaoShader);
 		g_render->SetRenderTarget(m_rt);
+		g_render->SetDepthEnable(false, false);
 		m_uboData.Bypass = m_mode == SSAO_Disabled ? 0.f : 1.f;
 		g_render->SetShaderProperty("u_ssao", &m_uboData, sizeof(m_uboData));
 
