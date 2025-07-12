@@ -1,7 +1,5 @@
 #version 460
 
-
-
 layout(location = 0) in vec2 inTexCoords;
 layout(location = 0) out vec4 outColor;
 
@@ -15,16 +13,23 @@ layout(set = 0, binding = 1) uniform ShadowMapInfo
 layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
 layout(set = 2, binding = 0) uniform sampler2D u_GBufferNormal;
 layout(set = 3, binding = 0) uniform sampler2D u_GBufferAlbedo;
+layout(set = 4, binding = 0) uniform sampler2D u_GBufferEmissive;
 // SSAO texture
-layout(set = 4, binding = 0) uniform sampler2D u_ssao;
+layout(set = 5, binding = 0) uniform sampler2D u_ssao;
 // Shadow map textures
-layout(set = 5, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
-layout(set = 6, binding = 0) uniform sampler2D u_GBufferDepth;
+layout(set = 6, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
+layout(set = 7, binding = 0) uniform sampler2D u_GBufferDepth;
 
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #define ENVIRONMENT_DATA u_env.data
 #include <shaders/includes/environment_data.glsl>
+
+#define GBUFFER_POSITION_TEX u_GBufferPosition
+#define GBUFFER_NORMAL_TEX u_GBufferNormal
+#define GBUFFER_ALBEDO_TEX u_GBufferAlbedo
+#define GBUFFER_EMISSIVE_TEX u_GBufferEmissive
+#include <shaders/includes/gbuffer_read.glsl>
 
 layout (std140, set = 0, binding = 0) uniform EnvBlock
 {
@@ -59,17 +64,12 @@ vec4 ApplyFog(vec4 lightingColor, vec4 fogColor)
 
 void main()
 {
-    vec4 gbufferPos = texture(u_GBufferPosition, inTexCoords);
-    vec4 gbufferNormal = texture(u_GBufferNormal, inTexCoords);
-	vec3 fragPos = gbufferPos.rgb;
-	vec3 fragNormal = normalize(gbufferNormal.xyz);
-	vec4 fragColor = texture(u_GBufferAlbedo, inTexCoords);
-    float metallic = gbufferPos.a;
-    float roughness = gbufferNormal.a;
+    GBuffer data = ReadMRT(inTexCoords);
     float ao = texture(u_ssao, inTexCoords).r;
-    if (fragColor.a <= 0.1f)
-        discard;
-    vec4 lightingColor = main_PBR(fragPos, fragNormal, fragColor.rgb, metallic, roughness, ao);
+    //if (data.opacity <= 0.1f)
+    //    discard;
+    vec4 lightingColor = main_PBR(data.position, data.normal, data.albedo, data.metallic, data.roughness, ao);
+    lightingColor.rgb += data.emissive;
 #if defined(DEFERRED_APPLY_FOG)
     vec4 c = vec4(0.1, 0.1, 0.1, 1.f);
     outColor = ApplyFog(lightingColor, c);

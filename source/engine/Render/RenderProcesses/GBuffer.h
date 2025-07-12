@@ -36,6 +36,7 @@ namespace Mist
 			RT_POSITION,
 			RT_NORMAL,
 			RT_ALBEDO,
+			RT_EMISSIVE,
 			RT_DEPTH_STENCIL,
 
 			RT_COUNT

@@ -32,6 +32,7 @@ namespace Mist
 		{
 			render::TextureDescription texDesc;
 			texDesc.format = GetGBufferFormat((EGBufferTarget)i);
+			check(texDesc.format != render::Format_Undefined);
 			texDesc.extent = { width, height, 1 };
 			texDesc.isRenderTarget = true;
 			textures[i] = g_device->CreateTexture(texDesc);
@@ -90,7 +91,7 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Depth", "All"};
+		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Emissive", "Depth", "All"};
 		static int index = 0;
 		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
@@ -147,19 +148,11 @@ namespace Mist
 			pos.y += ydiff;
 		}
 			break;
-		case DEBUG_POSITION:
-			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[RT_POSITION].texture);
-			break;
-		case DEBUG_NORMAL:
-			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[RT_NORMAL].texture);
-			break;
-		case DEBUG_ALBEDO:
-			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[RT_ALBEDO].texture);
-			break;
 		case DEBUG_DEPTH:
 			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.depthStencilAttachment.texture);
 			break;
 		default:
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[m_debugMode].texture);
 			break;
 		}
 	}
@@ -198,8 +191,9 @@ namespace Mist
 		switch (target)
 		{
 		case RT_POSITION:
-		case RT_NORMAL: return render::Format_R32G32B32A32_SFloat;
+		case RT_NORMAL: return render::Format_R16G16B16A16_SFloat;
 		case RT_ALBEDO: return render::Format_R8G8B8A8_UNorm;
+		case RT_EMISSIVE: return render::Format_R16G16B16A16_SFloat;
 		case RT_DEPTH_STENCIL: return render::Format_D24_UNorm_S8_UInt;
 		}
 		return render::Format_Undefined;

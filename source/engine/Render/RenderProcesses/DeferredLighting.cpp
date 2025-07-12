@@ -230,6 +230,7 @@ namespace Mist
 			g_render->SetTextureSlot("u_GBufferPosition", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture);
 			g_render->SetTextureSlot("u_GBufferNormal", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
 			g_render->SetTextureSlot("u_GBufferAlbedo", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
+			g_render->SetTextureSlot("u_GBufferEmissive", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_EMISSIVE].texture);
 			g_render->SetTextureSlot("u_ssao", m_ssaoRenderTarget->m_description.colorAttachments[0].texture);
 			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
