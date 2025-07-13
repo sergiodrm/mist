@@ -207,6 +207,7 @@ namespace Mist
 		int result = 0;
 		while (!m_windowClosed)
 		{
+			PROF_FRAME_MARK("loop");
 			Profiling::CpuProf_Reset();
 			CPU_PROFILE_SCOPE(CpuTime);
 

@@ -726,6 +726,7 @@ namespace Mist
 			const MeshComponent* meshComponent = GetMesh(renderObject);
 			if (meshComponent)
 			{
+				PROF_ZONE_SCOPED("DrawMesh");
 				check(meshComponent->MeshIndex != index_invalid);
 				const cModel& model = m_models[meshComponent->MeshIndex];
 

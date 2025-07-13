@@ -233,6 +233,7 @@ namespace rendersystem
 
     render::GraphicsPipelineHandle RenderSystem::GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt)
     {
+        PROF_ZONE_SCOPED("GetPso");
         auto it = m_psoMap.find(psoDesc);
         if (it != m_psoMap.end())
             return it->second;
@@ -244,6 +245,7 @@ namespace rendersystem
 
     render::BindingSetHandle RenderSystem::GetBindingSet(const render::BindingSetDescription& desc)
     {
+        PROF_ZONE_SCOPED("GetCachedDescriptor");
         return m_bindingCache->GetCachedBindingSet(desc);
     }
 
@@ -745,6 +747,7 @@ namespace rendersystem
 
     void RenderSystem::FlushBeforeDraw()
     {
+        PROF_ZONE_SCOPED("FlushBeforeDraw");
         check(m_program);
         m_psoDesc.bindingLayouts.Clear();
 
@@ -858,6 +861,7 @@ namespace rendersystem
 
     void RenderSystem::BeginFrame()
     {
+        CPU_PROFILE_SCOPE(RenderSystem_BeginFrame);
         check(m_swapchainIndex == UINT32_MAX);
         m_frame++;
 
@@ -882,20 +886,22 @@ namespace rendersystem
         render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
         commandQueue->ProcessInFlightCommands();
         m_memoryPool->ProcessInFlight();
-        m_memoryContextId = m_memoryPool->CreateContext();
         commandQueue->AddWaitSemaphore(presentSemaphore, 0);
         commandQueue->AddSignalSemaphore(renderSemaphore, 0);
 
+        m_memoryContextId = m_memoryPool->CreateContext();
         m_renderContext.cmd->BeginRecording();
         BeginMarker("Frame"); // frame marker
     }
 
     void RenderSystem::EndFrame()
     {
+        CPU_PROFILE_SCOPE(RenderSystem_EndFrame);
         ui::EndFrame(m_renderContext.cmd);
 
         BeginMarker("CopyToPresent");
         CopyToPresentRt(m_ldrTexture);
+        ClearState();
         m_renderContext.cmd->SetTextureState(render::TextureBarrier{ GetPresentRt()->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc});
         EndMarker();
 
@@ -906,7 +912,10 @@ namespace rendersystem
 
 		const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 		const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
-        m_device->Present(renderSemaphore);
+        {
+            CPU_PROFILE_SCOPE(CpuPresent);
+            m_device->Present(renderSemaphore);
+        }
 
         m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
         SetPresentSubmissionId(submissionId);
