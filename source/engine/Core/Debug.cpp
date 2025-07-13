@@ -35,7 +35,6 @@ namespace win
 		BOOL    result;
 		HANDLE  process;
 		HANDLE  thread;
-		HMODULE hModule;
 
 		STACKFRAME64        stack;
 		ULONG               frame;
@@ -45,7 +44,6 @@ namespace win
 		IMAGEHLP_LINE64* line;
 
 		char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-		char module[MaxNameLen];
 		PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
 
 		// On x64, StackWalk64 modifies the context record, that could
@@ -159,7 +157,8 @@ namespace win
 bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, int line)
 {
 	Mist::Debug::PrintCallstack();
-	g_render->DumpState();
+	if (g_render)
+		g_render->DumpState();
 	logerror("============================================================\n\n");
     logferror("Frame: %d\n", Mist::tApplication::GetFrame());
 	logferror("Check failed: %s\n\n", txt);
@@ -310,6 +309,7 @@ namespace Mist
 			typedef tStackTree<tCpuProfItem, 64> tCpuProfStackTree;
 			tCpuProfStackTree CpuProfStack[2];
 			uint32_t CurrentFrame = 0;
+			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 
 			static void GetStats(tCircularBuffer<float, 128>& data, float& min, float& max, float& mean, float& last)
 			{
@@ -393,8 +393,6 @@ namespace Mist
 				}
 				ImGui::End();
 			}
-
-			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 		} GProfiler;
 
 		void sProfilingTimer::Start()

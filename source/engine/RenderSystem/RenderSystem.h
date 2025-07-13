@@ -168,7 +168,7 @@ namespace rendersystem
         SamplerCache(render::Device* device);
         ~SamplerCache();
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);
-        uint32_t GetCacheSize() const { return m_samplers.size(); }
+        uint32_t GetCacheSize() const { return (uint32_t)m_samplers.size(); }
         float GetLoadFactor() const { return m_samplers.load_factor(); }
         float GetMaxLoadFactor() const { return m_samplers.max_load_factor(); }
     public:

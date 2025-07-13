@@ -156,7 +156,7 @@ namespace rendersystem
             desc.format = render::Format_R8G8B8A8_UNorm;
             m_defaultTexture = m_device->CreateTexture(desc);
             render::utils::UploadContext upload(m_device);
-            float data[] = { 0xffffffff, 0x00000000, 0xffffffff, 0x00000000 };
+            uint32_t data[] = { 0xffffffff, 0x00000000, 0xffffffff, 0x00000000 };
             upload.WriteTexture(m_defaultTexture, 0, 0, data, sizeof(data));
         }
         {
@@ -1285,6 +1285,7 @@ namespace rendersystem
 
         m_vs = compiler.GetShader(render::ShaderType_Vertex);
         m_fs = compiler.GetShader(render::ShaderType_Fragment);
+        return true;
     }
 
     bool ShaderProgram::ReloadCompute()
@@ -1313,6 +1314,7 @@ namespace rendersystem
         m_properties->pushConstantMap = std::move(prop.pushConstantMap);
 
         m_cs = compiler.GetShader(render::ShaderType_Compute);
+        return true;
     }
 
     ShaderProgram* ShaderProgramCache::GetOrCreateShader(render::Device* device, const ShaderBuildDescription& desc)

@@ -58,7 +58,7 @@ namespace Mist
 
 		[[nodiscard]] T* allocate(size_t size)
 		{
-			T* ptr = static_cast<T*>(Malloc(size * sizeof(T), __FILE__ " " __FUNCTION__, __LINE__));
+			T* ptr = static_cast<T*>(::Mist::Malloc(size * sizeof(T), __FILE__ " " __FUNCTION__, __LINE__));
 			assert(ptr);
 			return ptr;
 		}
@@ -71,7 +71,7 @@ namespace Mist
 
 		void deallocate(T* ptr, size_t size) noexcept
 		{
-			Free(ptr);
+			::Mist::Free(ptr);
 		}
 
 		template <typename U>
@@ -86,21 +86,21 @@ namespace Mist
 	public:
 		static void* allocate(size_t size)
 		{
-			void* ptr = Malloc(size, __FILE__ " " __FUNCTION__, __LINE__);
+			void* ptr = ::Mist::Malloc(size, __FILE__ " " __FUNCTION__, __LINE__);
 			assert(ptr);
 			return ptr;
 		}
 
 		static void* reallocate(void* p, size_t size)
 		{
-			void* ptr = Realloc(p, size, __FILE__, __LINE__);
+			void* ptr = ::Mist::Realloc(p, size, __FILE__, __LINE__);
 			assert(ptr);
 			return ptr;
 		}
 
 		static void release(void* p)
 		{
-			Free(p);
+			::Mist::Free(p);
 		}
 	};
 
