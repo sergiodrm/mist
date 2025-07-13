@@ -36,8 +36,38 @@ if (__vkres != VK_SUCCESS) { if (Mist::Debug::DebugVkCheck(__vkres, #expr, __FIL
 
 #define unreachable_code() check(false && "Unreachable code")
 
+#define MIST_TRACY_ENABLE
+#ifdef MIST_TRACY_ENABLE
 
-#define CPU_PROFILE_SCOPE(name) Mist::Profiling::sScopedTimer __timer##name(#name)
+#include "tracy/public/tracy/Tracy.hpp"
+
+// performance
+#define PROF_FRAME_MARK(msg) FrameMarkNamed(msg)
+#define PROF_ZONE_SCOPED(msg) ZoneScopedN(msg)
+#define PROF_TAG(txt) ZoneText(txt, strlen(txt))
+#define PROF_LOG(txt) TracyMessage(txt, strlen(txt))
+// memory
+#define PROF_ALLOC(p, s) TracyAlloc(p, s)
+#define PROF_ALLOC_NAMED(p, s, n) TracyAllocN(p, s, n)
+#define PROF_FREE(p) TracyFree(p)
+#define PROF_FREE_NAMED(p, n) TracyFreeN(p, n)
+
+#else
+
+// performance
+#define PROF_FRAME_MARK(msg) DUMMY_MACRO
+#define PROF_ZONE_SCOPED(msg) DUMMY_MACRO
+#define PROF_TAG(txt) DUMMY_MACRO
+#define PROF_LOG(txt) DUMMY_MACRO
+// memory
+#define PROF_ALLOC(p, s) DUMMY_MACRO
+#define PROF_ALLOC_NAMED(p, s, n) DUMMY_MACRO
+#define PROF_FREE(p) DUMMY_MACRO
+#define PROF_FREE_NAMED(p, n) DUMMY_MACRO
+#endif
+
+
+#define CPU_PROFILE_SCOPE(name) Mist::Profiling::sScopedTimer __timer##name(#name); PROF_ZONE_SCOPED(#name)
 
 namespace Mist
 {
