@@ -88,7 +88,7 @@ workspace "Mist"
         objdir "%{temporaldir}"
         location "%{wks.location}/source/engine"
 
-        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE", "RBE_VK" }
+        defines { "MIST_VULKAN", "YAML_CPP_STATIC_DEFINE", "RBE_VK", "TRACY_ENABLE" }
         files { 
             "source/engine/**.h", "source/engine/**.cpp",
         }
@@ -107,6 +107,7 @@ workspace "Mist"
             "%{includes.vulkan}",
             "%{includes.yaml}",
             "%{includes.cppcoda}",
+            "%{includes.tracy}",
         }
         links {
             "glm",
@@ -114,6 +115,7 @@ workspace "Mist"
             "VkBootstrap",
             "YamlCpp",
             "cppcoda",
+            "tracy",
             "%{libs.vulkan}",
             "%{libs.sdl}",
         }
