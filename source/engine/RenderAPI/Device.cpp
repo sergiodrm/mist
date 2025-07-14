@@ -855,6 +855,7 @@ namespace render
 
     void CommandList::SetGraphicsState(const GraphicsState& state)
     {
+        PROF_ZONE_SCOPED("SetGraphicsState");
         check(AllowsCommandType(Queue_Graphics));
 
         // End render pass at the beginning, just in case there are some texture required states pending to flush.
