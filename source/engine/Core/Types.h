@@ -21,7 +21,7 @@
 
 #define ZeroMem(ptr, size) memset(ptr, 0, size)
 
-//#define STD_ALLOCATION_TRACKING
+#define STD_ALLOCATION_TRACKING
 
 namespace Mist
 {
