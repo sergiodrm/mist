@@ -1060,61 +1060,60 @@ namespace render
     };
 
     typedef Mist::tStaticArray<BindingSetItem, BindingSetItem::MaxBindingSets> BindingSetItemArray;
+    typedef Mist::tDynArray<BindingSetItem> BindingSetItemDynArray;
 
     struct BindingSetDescription
     {
-        BindingSetItemArray bindingItems;
+        //BindingSetItemArray bindingItems;
+        BindingSetItemDynArray bindingItems;
         Mist::String debugName;
 
         BindingSetDescription()
         {
         }
 
+        const BindingSetItem* GetBindingItemData() const { return bindingItems.data(); }
+        uint32_t GetBindingItemCount() const { return (uint32_t)bindingItems.size(); }
+        BindingSetDescription& PushItem(const BindingSetItem& item) { bindingItems.emplace_back(item); return *this; }
+
         BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
         {
-            bindingItems.Push(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, shaderStages, subresource, dimension));
-            return *this;
+            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, shaderStages, subresource, dimension));
         }
 
         BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
-            bindingItems.Push(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, shaderStages, subresources, count, dimension));
-            return *this;
+            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, shaderStages, subresources, count, dimension));
         }
 
         BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
         {
-            bindingItems.Push(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStages, subresource, dimension));
-            return *this;
+            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStages, subresource, dimension));
         }
 
         BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
-            bindingItems.Push(BindingSetItem::CreateTextureUAVItem(slot, textures, shaderStages, subresources, count, dimension));
-            return *this;
+            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, textures, shaderStages, subresources, count, dimension));
         }
 
         BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            bindingItems.Push(BindingSetItem::CreateConstantBufferItem(slot, buffer, shaderStages, bufferRange));
-            return *this;
+            return PushItem(BindingSetItem::CreateConstantBufferItem(slot, buffer, shaderStages, bufferRange));
         }
 
         BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            bindingItems.Push(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, shaderStages, bufferRange));
-            return *this;
+            return PushItem(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, shaderStages, bufferRange));
         }
 
         BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            bindingItems.Push(BindingSetItem::CreateBufferUAVItem(slot, buffer, shaderStages, bufferRange));
-            return *this;
+            return PushItem(BindingSetItem::CreateBufferUAVItem(slot, buffer, shaderStages, bufferRange));
         }
 
         inline bool operator==(const BindingSetDescription& other) const
         {
-            return utils::EqualArrays(bindingItems.GetData(), bindingItems.GetSize(), other.bindingItems.GetData(), other.bindingItems.GetSize());
+            return utils::EqualArrays(GetBindingItemData(), GetBindingItemCount(), other.GetBindingItemData(), other.GetBindingItemCount());
         }
 
         inline bool operator!=(const BindingSetDescription& other) const
@@ -1880,7 +1879,7 @@ namespace std
         size_t operator()(const render::BindingSetDescription& desc) const
         {
             size_t seed = 0;
-            for (uint32_t i = 0; i < desc.bindingItems.GetSize(); ++i)
+            for (uint32_t i = 0; i < desc.GetBindingItemCount(); ++i)
                 Mist::HashCombine(seed, desc.bindingItems[i]);
             return seed;
         }

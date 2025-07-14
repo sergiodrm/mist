@@ -1970,7 +1970,7 @@ namespace render
                 w.dstBinding = binding;
             };
 
-        for (uint32_t i = 0; i < description.bindingItems.GetSize(); ++i)
+        for (uint32_t i = 0; i < description.GetBindingItemCount(); ++i)
         {
             const BindingSetItem& item = description.bindingItems[i];
             check(item.binding < layout->m_description.bindings.GetSize());

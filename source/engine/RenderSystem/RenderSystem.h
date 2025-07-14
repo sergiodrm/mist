@@ -506,6 +506,8 @@ namespace rendersystem
         BindingCache* m_bindingCache;
         SamplerCache* m_samplerCache;
         ShaderMemoryPool* m_memoryPool;
+        // optimization to keep allocated memory in FlushBeforeDraw()
+        render::BindingSetDescription m_bindingDesc;
 
         // Shader memory context and textures
         uint32_t m_memoryContextId;

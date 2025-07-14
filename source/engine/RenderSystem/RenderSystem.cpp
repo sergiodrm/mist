@@ -33,7 +33,7 @@ namespace rendersystem
             return it->second;
         }
         render::BindingLayoutDescription layoutDesc;
-        for (uint32_t i = 0; i < desc.bindingItems.GetSize(); ++i)
+        for (uint32_t i = 0; i < desc.GetBindingItemCount(); ++i)
         {
             const render::BindingSetItem& item = desc.bindingItems[i];
             switch (item.type)
@@ -177,6 +177,8 @@ namespace rendersystem
     {
         m_device->WaitIdle();
         ClearState();
+        m_bindingDesc.bindingItems.clear();
+        m_bindingDesc.bindingItems.shrink_to_fit();
         m_memoryContextId = UINT32_MAX;
         DestroyScreenQuad();
         ui::Destroy();
@@ -759,10 +761,12 @@ namespace rendersystem
         const render::shader_compiler::ShaderReflectionProperties* properties = m_program->m_properties;
         check(properties->pushConstantMap.empty());
         m_psoDesc.bindingLayouts.Resize((uint32_t)properties->params.size());
+        render::BindingSetDescription& desc = m_bindingDesc;
         for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
         {
+            desc.bindingItems.clear();
             const render::shader_compiler::ShaderPropertySetDescription& paramSet = properties->params[i];
-            render::BindingSetDescription desc;
+            desc.bindingItems.reserve(paramSet.params.size());
             for (uint32_t j = 0; j < (uint32_t)paramSet.params.size(); ++j)
             {
                 const render::shader_compiler::ShaderPropertyDescription& property = paramSet.params[j];
