@@ -39,6 +39,7 @@
 #include "RenderAPI/ShaderCompiler.h"
 #include "RenderAPI/Utils.h"
 #include "RenderSystem/RenderSystem.h"
+#include "RenderProcesses/ShadowMap.h"
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
