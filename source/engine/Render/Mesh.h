@@ -14,6 +14,7 @@
 namespace Mist
 {
 	class cMaterial;
+
 	struct PrimitiveMeshData
 	{
 		uint16_t RenderFlags;
@@ -28,17 +29,6 @@ namespace Mist
 	public:
 		void Destroy();
 
-		[[deprecated]]
-        void BindBuffers(VkCommandBuffer cmd) const;
-		[[deprecated]]
-        void Destroy(const RenderContext& context);
-		[[deprecated]]
-        void SetupVertexBuffer(const RenderContext& context, const void* vertices, uint32_t vertexSize);
-		[[deprecated]]
-        void SetupIndexBuffer(const RenderContext& context, const uint32_t* indices, uint32_t _indexCount);
-
-        VertexBuffer VertexBuffer;
-        IndexBuffer IndexBuffer;
 		render::BufferHandle vb;
 		render::BufferHandle ib;
 		uint32_t indexCount;

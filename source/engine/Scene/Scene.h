@@ -242,10 +242,10 @@ namespace Mist
 
 		const glm::mat4* GetRawGlobalTransforms() const;
 
-		void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext);
+		void UpdateRenderData();
 		
-		void Draw(const RenderContext& context, ShaderProgram* shader, uint32_t materialSetIndex, uint32_t modelSetIndex, VkDescriptorSet modelSet, uint16_t renderFlags = 0) const;
-		void DrawWithMaterials(const RenderContext& context, const tViewRenderInfo& viewRenderInfo, uint32_t textureSlot) const;
+		void Draw(rendersystem::RenderSystem* renderSystem, uint16_t renderFlags = 0) const;
+		void DrawGeometry(rendersystem::RenderSystem* renderSystem, uint16_t renderFlags = 0) const;
 		// can be nullptr
 		render::TextureHandle GetSkyboxTexture() const;
 
@@ -272,6 +272,8 @@ namespace Mist
 
 		index_t NewCamera();
 		void SetCamera(sRenderObject r, const CameraComponent& cameraIndex);
+
+		void PrepareMeshToDraw(rendersystem::RenderSystem* renderSystem, const cModel& model, uint32_t meshIndex, uint32_t transformOffset) const;
 
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};

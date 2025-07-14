@@ -9,6 +9,7 @@
 
 namespace rendersystem
 {
+	class RenderSystem;
 	class ShaderProgram;
 }
 
@@ -66,7 +67,7 @@ namespace Mist
 		void SetupDescriptors(const RenderContext& context);
 		void Destroy(const RenderContext& context);
 
-		void BindTextures(uint32_t slot) const;
+		void BindTextures(rendersystem::RenderSystem* renderSystem) const;
 		sMaterialRenderData GetRenderData() const;
 
 		ShaderProgram* m_shader;

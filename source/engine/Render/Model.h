@@ -50,6 +50,7 @@ namespace Mist
 		tFixedHeapArray<sNode> m_nodes;
 		tFixedHeapArray<tFixedString<64>> m_nodeNames;
 		tFixedHeapArray<cMesh> m_meshes;
+		tFixedHeapArray<uint32_t> m_meshNodeIndex;
 		tFixedHeapArray<cMaterial> m_materials;
 		tFixedHeapArray<glm::mat4> m_transforms;
 	};

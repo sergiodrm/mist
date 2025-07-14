@@ -65,27 +65,21 @@ namespace Mist
 	{
 	}
 
-	CIntVar CVar_GBufferDraw("r_gbufferdraw", 1);
-
 	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
-		g_render->SetRenderTarget(m_renderTarget);
-		if (CVar_GBufferDraw.Get())
-		{
-			g_render->SetShader(m_gbufferShader);
-			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
-			g_render->ClearColor();
-			g_render->ClearDepthStencil();
-			g_render->SetStencilEnable(true);
-			g_render->SetStencilMask(0xff, 0xff, 1);
-			g_render->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
-			frameContext.Scene->Draw(renderContext, nullptr, 2, 1, VK_NULL_HANDLE, RenderFlags_Fixed | RenderFlags_Emissive);
-		}
-		else
-			frameContext.Scene->RenderPipelineDraw(renderContext, RenderFlags_Fixed);
-		g_render->ClearState();
-		g_render->SetDefaultState();
+		rendersystem::RenderSystem* renderSystem = g_render;
+		renderSystem->SetRenderTarget(m_renderTarget);
+		renderSystem->SetShader(m_gbufferShader);
+		renderSystem->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+		renderSystem->ClearColor();
+		renderSystem->ClearDepthStencil();
+		renderSystem->SetStencilEnable(true);
+		renderSystem->SetStencilMask(0xff, 0xff, 1);
+		renderSystem->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
+		frameContext.Scene->Draw(renderSystem, RenderFlags_Fixed | RenderFlags_Emissive);
+		renderSystem->ClearState();
+		renderSystem->SetDefaultState();
 	}
 
 	void GBuffer::ImGuiDraw()

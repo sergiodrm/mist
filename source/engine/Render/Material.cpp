@@ -196,14 +196,14 @@ namespace Mist
         }
     }
 
-    void cMaterial::BindTextures(uint32_t slot) const
+    void cMaterial::BindTextures(rendersystem::RenderSystem* renderSystem) const
     {
 #if 0
         CommandList* cmd = context.CmdList;
         cmd->BindDescriptorSets(&m_textureSet, 1, shader.GetParam("u_Textures").SetIndex);
 #elif 1
-        g_render->SetTextureSlot(m_textures, MATERIAL_TEXTURE_COUNT, slot);
-        g_render->SetSampler(m_samplers, MATERIAL_TEXTURE_COUNT, slot);
+        g_render->SetTextureSlot("u_Textures", m_textures, MATERIAL_TEXTURE_COUNT);
+        g_render->SetSampler("u_Textures", m_samplers, MATERIAL_TEXTURE_COUNT);
 #else
         cTexture* textures[MATERIAL_TEXTURE_COUNT];
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)

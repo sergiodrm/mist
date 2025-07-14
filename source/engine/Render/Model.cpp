@@ -569,6 +569,7 @@ namespace Mist
 			{
 				index_t meshIndex = CreateMesh();
 				m_nodes[nodeIndex].MeshId = meshIndex;
+				m_meshNodeIndex[meshIndex] = nodeIndex;
 				cMesh& mesh = m_meshes[meshIndex];
 				mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
 
@@ -758,6 +759,7 @@ namespace Mist
 	{
 		check(m_meshes.IsEmpty());
 		m_meshes.Allocate(n);
+		m_meshNodeIndex.Allocate(n);
 	}
 
 	void cModel::InitMaterials(index_t n)
@@ -771,6 +773,7 @@ namespace Mist
 	{
 		check(node != index_invalid);
 		const sNode& n = m_nodes[node];
+		check(n.MeshId == index_invalid || m_meshNodeIndex[n.MeshId] == node);
 
 		// calculate current
 		if (n.Parent != index_invalid)
@@ -847,6 +850,7 @@ namespace Mist
 	{
 		check(m_meshes.GetReservedSize());
 		m_meshes.Push();
+		m_meshNodeIndex.Push();
 		return m_meshes.GetSize() - 1;
 	}
 
