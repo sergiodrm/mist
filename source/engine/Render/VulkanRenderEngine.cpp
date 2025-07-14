@@ -304,6 +304,12 @@ namespace Mist
 		CPU_PROFILE_SCOPE(Process);
 
 #ifdef RENDER_BACKEND_TEST
+		if (m_scene)
+		{
+			m_scene->UpdateRenderData();
+			ShadowMapProcess* shadowMap = static_cast<ShadowMapProcess*>(m_renderer.GetRenderProcess(RENDERPROCESS_SHADOWMAP));
+			shadowMap->CollectLightData(*m_scene);
+		}
 		Draw();
 #else
 		ui::Begin(m_renderContext);
