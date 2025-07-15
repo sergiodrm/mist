@@ -514,6 +514,7 @@ namespace rendersystem
         render::TextureHandle m_textureSlots[MaxTextureSlots][MaxTextureBindingsPerSlot][MaxTextureArrayCount];
         render::SamplerHandle m_samplerSlots[MaxTextureSlots][MaxTextureBindingsPerSlot][MaxTextureArrayCount];
         ShaderProgram* m_program;
+        uint64_t m_dirtyPropertiesFlags;
 
         render::GraphicsPipelineDescription m_psoDesc;
 

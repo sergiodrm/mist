@@ -417,6 +417,7 @@ namespace rendersystem
             break;
         }
         m_program = shader;
+        m_dirtyPropertiesFlags = 0xffffffffffffffff; // all dirty
 
         // reserve shader properties in current shader context memory
         ShaderMemoryContext* memoryContext = m_memoryPool->GetContext(m_memoryContextId);
@@ -443,6 +444,7 @@ namespace rendersystem
     void RenderSystem::SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t textureIndex)
     {
         check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot && textureIndex < MaxTextureArrayCount && texture);
+        m_dirtyPropertiesFlags |= (1 << set);
         m_textureSlots[set][binding][textureIndex] = texture;
         if (render::utils::IsDepthStencilFormat(texture->m_description.format))
         {
@@ -469,6 +471,7 @@ namespace rendersystem
         check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
         for (uint32_t i = 0; i < count; ++i)
             m_textureSlots[set][binding][i] = textures[i];
+        m_dirtyPropertiesFlags |= (1 << set);
 	}
 
     void RenderSystem::SetTextureSlot(const char* id, const render::TextureHandle* textures, uint32_t count)
@@ -529,9 +532,14 @@ namespace rendersystem
 
 	void RenderSystem::SetShaderProperty(const char* id, const void* param, uint64_t size)
     {
+        PROF_ZONE_SCOPED("SetShaderProperty");
         check(id && *id && param && size);
         ShaderMemoryContext* context = m_memoryPool->GetContext(m_memoryContextId);
         context->WriteProperty(id, param, size);
+        uint32_t setIndex = UINT32_MAX;
+        check(m_program->GetPropertyDescription(id, &setIndex));
+        check(setIndex != UINT32_MAX);
+        m_dirtyPropertiesFlags |= (1 << setIndex);
     }
 
     void RenderSystem::SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout)
@@ -751,7 +759,7 @@ namespace rendersystem
     {
         PROF_ZONE_SCOPED("FlushBeforeDraw");
         check(m_program);
-        m_psoDesc.bindingLayouts.Clear();
+        //m_psoDesc.bindingLayouts.Clear();
 
         // Flush memory before process bindings
         ShaderMemoryContext* memoryContext = m_memoryPool->GetContext(m_memoryContextId);
@@ -764,8 +772,12 @@ namespace rendersystem
         render::BindingSetDescription& desc = m_bindingDesc;
         for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
         {
-            desc.bindingItems.clear();
             const render::shader_compiler::ShaderPropertySetDescription& paramSet = properties->params[i];
+            // if is not dirty continue
+            if (!(m_dirtyPropertiesFlags & (1 << paramSet.setIndex)))
+                continue;
+
+            desc.bindingItems.clear();
             desc.bindingItems.reserve(paramSet.params.size());
             for (uint32_t j = 0; j < (uint32_t)paramSet.params.size(); ++j)
             {
@@ -829,6 +841,8 @@ namespace rendersystem
             m_renderContext.graphicsState.bindings.SetBindingSlot(paramSet.setIndex, set);
             check(paramSet.setIndex < m_psoDesc.bindingLayouts.GetSize());
             m_psoDesc.bindingLayouts[paramSet.setIndex] = set->m_layout;
+            // clear dirty
+            m_dirtyPropertiesFlags &= ~(1 << paramSet.setIndex);
         }
 
         // Fill default blend states
