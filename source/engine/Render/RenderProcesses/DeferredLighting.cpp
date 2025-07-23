@@ -247,6 +247,7 @@ namespace Mist
 
 			const EnvironmentData& env = frameContext.Scene->GetEnvironmentData();
 			g_render->SetShaderProperty("u_env", &env, sizeof(env));
+			g_render->SetTextureSlot("u_irradianceMap", frameContext.Scene->GetIrradianceCube().irradiance);
 			g_render->DrawFullscreenQuad();
 			g_render->EndMarker();
 		}
@@ -268,7 +269,7 @@ namespace Mist
             ubo[0] = viewRot;
             ubo[1] = GetCameraData()->Projection * viewRot;
             g_render->SetShaderProperty("u_ubo", ubo, sizeof(glm::mat4) * 2);
-			render::TextureHandle cubemapTexture = renderContext.GetFrameContext().Scene->GetSkyboxTexture();
+			render::TextureHandle cubemapTexture = renderContext.GetFrameContext().Scene->GetIrradianceCube().cubemap;
             g_render->SetTextureSlot("u_cubemap", cubemapTexture);
 			g_render->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
 			g_render->ClearState();

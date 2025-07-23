@@ -6,6 +6,7 @@
 #include "Render/VulkanBuffer.h"
 #include "Render/Texture.h"
 #include "Render/Globals.h"
+#include "Render/RenderProcesses/Preprocesses.h"
 #include "Render/RenderAPI.h"
 #include "Render/Model.h"
 #include "Render/Material.h"
@@ -196,6 +197,13 @@ namespace Mist
 		}
 	};
 
+	struct IrradianceCube
+	{
+		render::TextureHandle cubemap;
+		render::TextureHandle irradiance;
+		cAssetPath filepath;
+	};
+
 	class Scene
 	{
 	protected:
@@ -248,6 +256,8 @@ namespace Mist
 		void DrawGeometry(rendersystem::RenderSystem* renderSystem, uint16_t renderFlags = 0) const;
 		// can be nullptr
 		render::TextureHandle GetSkyboxTexture() const;
+		void SetSkyboxTexture(const render::TextureHandle& t) { m_skybox.texture = t; }
+		const IrradianceCube& GetIrradianceCube() const { return m_irradianceCube; }
 
 		void ImGuiDraw();
 		bool IsDirty() const;
@@ -265,6 +275,7 @@ namespace Mist
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
 		bool LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
+		bool LoadIrradianceCube(const char* filepath);
 
 		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
 		cModel* GetModel(const char* modelName);
@@ -301,6 +312,8 @@ namespace Mist
 		glm::vec3 m_ambientColor = {0.05f, 0.05f, 0.05f};
 
 		Skybox m_skybox;
+		IrradianceCube m_irradianceCube;
+		PreprocessIrradianceInfo m_irradianceRequest{};
 		EnvironmentData m_environmentData;
 		tStaticArray<tDrawList, 4> m_drawListArray;
 
