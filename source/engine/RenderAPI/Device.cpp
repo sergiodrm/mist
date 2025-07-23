@@ -975,7 +975,7 @@ namespace render
 
     void CommandList::SetTextureState(const TextureBarrier* barriers, uint32_t count)
     {
-        static constexpr uint32_t MaxBarriers = 16;
+        static constexpr uint32_t MaxBarriers = 32;
         check(count <= MaxBarriers);
         Mist::tStaticArray<VkImageMemoryBarrier2, MaxBarriers> imageBarriers;
         for (uint32_t i = 0; i < count; ++i)
@@ -1044,46 +1044,73 @@ namespace render
     {
         FlushRequiredStates();
 
+		TextureBarrier barrier;
+		barrier.texture = texture;
+		barrier.newLayout = ImageLayout_TransferDst;
+		barrier.subresources.baseLayer = layer;
+		barrier.subresources.countLayers = 1;
+		barrier.subresources.baseMipLevel = mipLevel;
+		barrier.subresources.countMipLevels = 1;
+		ImageLayout oldLayout = texture->m_layouts.at(barrier.subresources);
+		SetTextureState(barrier);
+
+        /**
+		 * Validation layer
+			> Message: vkAllocateMemory(): pAllocateInfo->allocationSize is 268435456 bytes from heap 2,but size of that heap is only 224395264 bytes.
+			The Vulkan spec states: pAllocateInfo->allocationSize must be less than or equal to 
+            VkPhysicalDeviceMemoryProperties::memoryHeaps[memindex].size where 
+            memindex = VkPhysicalDeviceMemoryProperties::memoryTypes[pAllocateInfo->memoryTypeIndex].heapIndex as returned by
+			vkGetPhysicalDeviceMemoryProperties for the VkPhysicalDevice that device was created from 
+            (https://vulkan.lunarg.com/doc/view/1.4.313.1/windows/antora/spec/latest/chapters/memory.html#VUID-vkAllocateMemory-pAllocateInfo-01713)
+         */
+
+
         const TextureDescription& description = texture->m_description;
         check(description.layers > layer && description.mipLevels > mipLevel);
         uint32_t mipWidth, mipHeight, mipDepth;
         utils::ComputeMipExtent(mipLevel, description.extent.width, description.extent.height, description.extent.depth, &mipWidth, &mipHeight, &mipDepth);
 
-        size_t bytesBlock = utils::GetBytesPerPixel(description.format);
-        size_t deviceSize = bytesBlock * size_t(mipWidth) * size_t(mipHeight) * size_t(mipDepth);
-        check(deviceSize >= dataSize);
+        const size_t bytesBlock = utils::GetBytesPerPixel(description.format);
+        const size_t textureSize = bytesBlock * size_t(mipWidth) * size_t(mipHeight) * size_t(mipDepth);
+        check(textureSize >= dataSize);
 
-        TransferMemory transferMemory = m_transferMemoryPool.Suballocate(deviceSize);
-        transferMemory.MapMemory();
-        transferMemory.Write(data, dataSize, 0);
-        transferMemory.UnmapMemory();
+        uint64_t maxHeapSize = m_device->GetMaxPhysicalDeviceSizeInHeap(BufferUsage_TransferSrc, MemoryUsage_CpuToGpu);
 
-        TextureBarrier barrier;
-        barrier.texture = texture;
-        barrier.newLayout = ImageLayout_TransferDst;
-        barrier.subresources.baseLayer = layer;
-        barrier.subresources.countLayers = 1;
-        barrier.subresources.baseMipLevel = mipLevel;
-        barrier.subresources.countMipLevels = 1;
-        ImageLayout oldLayout = texture->m_layouts.at(barrier.subresources);
-        SetTextureState(barrier);
-
-        VkBufferImageCopy copyRegion
+        uint32_t heightChunk = mipHeight;
+        uint32_t transferBufferSize = dataSize;
+        while (transferBufferSize > maxHeapSize)
         {
-            .bufferOffset = transferMemory.m_pointer,
-            .bufferRowLength = 0,
-            .bufferImageHeight = 0
-        };
-        copyRegion.imageSubresource.aspectMask = utils::ConvertImageAspectFlags(description.format);
-        copyRegion.imageSubresource.mipLevel = mipLevel;
-        copyRegion.imageSubresource.baseArrayLayer = layer;
-        copyRegion.imageSubresource.layerCount = 1;
-        copyRegion.imageExtent = { mipWidth, mipHeight, mipDepth };
+            heightChunk = heightChunk >> 1;
+            transferBufferSize = transferBufferSize >> 1;
+        }
+        uint32_t count = mipHeight / heightChunk;
+        uint64_t dataStride = dataSize / count;
+        check(dataSize % count == 0);
+        uint64_t chunkSize = uint64_t(mipWidth) * uint64_t(heightChunk) * uint64_t(mipDepth) * bytesBlock;
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            TransferMemory transferMemory = m_transferMemoryPool.Suballocate(transferBufferSize);
+            transferMemory.MapMemory();
+            const uint8_t* byteData = reinterpret_cast<const uint8_t*>(data);
+            check(i * dataStride + dataStride <= dataSize);
+            transferMemory.Write(byteData, dataStride, i * dataStride, 0);
+            transferMemory.UnmapMemory();
 
-        // Copy from temporal stage buffer to image
-        vkCmdCopyBufferToImage(m_currentCommandBuffer->cmd,
-            transferMemory.m_buffer->m_buffer, texture->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1, &copyRegion);
+			VkBufferImageCopy copyRegion
+			{
+				.bufferOffset = transferMemory.m_pointer,
+				.bufferRowLength = 0,
+				.bufferImageHeight = 0,
+                .imageSubresource = { .aspectMask = utils::ConvertImageAspectFlags(description.format), .mipLevel = mipLevel, .baseArrayLayer = layer, .layerCount = 1 },
+                .imageOffset = {0, static_cast<int32_t>(i * heightChunk)},
+                .imageExtent = {mipWidth, heightChunk, mipDepth}
+			};
+
+			// Copy from temporal stage buffer to image
+			vkCmdCopyBufferToImage(m_currentCommandBuffer->cmd,
+				transferMemory.m_buffer->m_buffer, texture->m_image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+				1, &copyRegion);
+        }
 
         if (oldLayout != ImageLayout_Undefined)
         {
