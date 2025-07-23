@@ -422,7 +422,7 @@ namespace rendersystem
             render::SamplerAddressMode addressModeW,
             uint32_t set, uint32_t binding = 0, uint32_t samplerIndex = 0);
         void SetShaderProperty(const char* id, const void* param, uint64_t size);
-        void SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout);
+        void SetTextureLayout(const render::TextureHandle& texture, render::ImageLayout layout, render::TextureSubresourceRange range = {0,1,0,1});
         void SetTextureAsResourceBinding(render::TextureHandle texture);
         void SetTextureAsRenderTargetAttachment(render::TextureHandle texture);
 
@@ -434,6 +434,11 @@ namespace rendersystem
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
 
         ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool; }
+
+        /**
+         * Transfer functions
+         */
+        void CopyTextureToTexture(const render::TextureHandle& src, const render::TextureHandle& dst, const render::CopyTextureInfo* infoArray, uint32_t infoCount);
 
         // Utilities
         void DrawFullscreenQuad();

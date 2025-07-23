@@ -552,18 +552,24 @@ namespace rendersystem
         m_dirtyPropertiesFlags |= (1 << setIndex);
     }
 
-    void RenderSystem::SetTextureLayout(render::TextureHandle texture, render::ImageLayout layout)
+    void RenderSystem::SetTextureLayout(const render::TextureHandle& texture, render::ImageLayout layout, render::TextureSubresourceRange range)
     {
         //check(!m_renderContext.cmd->IsInsideRenderPass());
-        m_renderContext.cmd->RequireTextureState({ texture, layout });
+        m_renderContext.cmd->RequireTextureState({ texture, layout, range });
     }
 
     void RenderSystem::SetTextureAsResourceBinding(render::TextureHandle texture)
     {
         if (render::utils::IsDepthFormat(texture->m_description.format))
-            SetTextureLayout(texture, render::ImageLayout_DepthStencilReadOnly);
+        {
+            for (uint32_t i = 0; i < texture->m_description.layers; ++i)
+                SetTextureLayout(texture, render::ImageLayout_DepthStencilReadOnly, render::TextureSubresourceRange(0, 1, i, 1));
+        }
         else
-            SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly);
+        {
+            for (uint32_t i = 0; i < texture->m_description.layers; ++i)
+                SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, render::TextureSubresourceRange(0, 1, i, 1));
+        }
     }
 
     void RenderSystem::SetTextureAsRenderTargetAttachment(render::TextureHandle texture)
@@ -605,6 +611,11 @@ namespace rendersystem
     {
         FlushBeforeDraw();
         m_renderContext.cmd->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
+    }
+
+    void RenderSystem::CopyTextureToTexture(const render::TextureHandle& src, const render::TextureHandle& dst, const render::CopyTextureInfo* infoArray, uint32_t infoCount)
+    {
+        m_renderContext.cmd->CopyTexture(src, dst, infoArray, infoCount);
     }
 
     void RenderSystem::DrawFullscreenQuad()
