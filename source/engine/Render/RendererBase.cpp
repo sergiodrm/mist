@@ -3,6 +3,7 @@
 #include "RenderProcesses/GBuffer.h"
 #include "RenderProcesses/DeferredLighting.h"
 #include "RenderProcesses/ForwardLighting.h"
+#include "RenderProcesses/Preprocesses.h"
 #include "RenderProcesses/ShadowMap.h"
 #include "Core/SystemMemory.h"
 #include "Swapchain.h"
@@ -37,6 +38,7 @@ namespace Mist
 		m_processArray[RENDERPROCESS_LIGHTING] = _new DeferredLighting();
 		m_processArray[RENDERPROCESS_FORWARD_LIGHTING] = _new ForwardLighting();
 		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess();
+		m_processArray[RENDERPROCESS_PREPROCESSES] = _new Preprocess();
 
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 			m_processArray[i]->Init(context);
