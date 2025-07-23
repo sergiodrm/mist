@@ -96,6 +96,28 @@ namespace rendersystem
             return true;
         }
 
+        bool LoadTextureData_f(TextureData* out, const char* filepath, bool flipVertical)
+        {
+            profile_texload_scope_f(LoadTextureData_f, "LoadTextureData_f (%s)", filepath);
+            check(out);
+            Mist::cAssetPath assetPath(filepath);
+            stbi_set_flip_vertically_on_load(flipVertical);
+            int32_t width, height, channels;
+			float* pixels = stbi_loadf(assetPath, &width, &height, &channels, STBI_rgb_alpha);
+			if (!pixels)
+			{
+				return false;
+			}
+			if (channels != 4)
+				channels = 4;
+			out->fdata = pixels;
+			out->width = Mist::limits_cast<uint32_t>(width);
+			out->height = Mist::limits_cast<uint32_t>(height);
+			out->depth = 1;
+			out->channels = Mist::limits_cast<uint32_t>(channels);
+			return true;
+        }
+
         void FreeTextureData(TextureData& data)
         {
             if (data.u8data)
@@ -108,7 +130,7 @@ namespace rendersystem
             profile_texload_scope_f(LoadTextureFromFile, "Load texture from file (%s)", filepath);
             check(textureOut && device);
 
-            TextureData data;
+            TextureData data{};
             if (!LoadTextureData_u8(&data, filepath, flipVertical))
             {
                 logferror("Failed to load texture data from %s.\n", filepath);
@@ -130,13 +152,48 @@ namespace rendersystem
                 uploadContext = &upload;
                 uploadContext->Init(device);
             }
-            upload.WriteTexture(texture, 0, 0, data.u8data, data.width * data.height * sizeof(stbi_uc) * data.channels);
-            upload.SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, 0, 0);
+            uploadContext->WriteTexture(texture, 0, 0, data.u8data, data.width * data.height * sizeof(stbi_uc) * data.channels);
+            uploadContext->SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, 0, 0);
             if (calculateMipLevels)
                 GenerateMipMaps(device, texture, uploadContext);
 
             FreeTextureData(data);
             return true;
+        }
+
+        bool LoadHDRTextureFromFile(render::TextureHandle* textureOut, render::Device* device, const char* filepath, bool flipVertical, render::utils::UploadContext* uploadContext)
+        {
+            profile_texload_scope_f(LoadHDRTextureFromFile, "Load HDR texture from file (%s)", filepath);
+            TextureData data{};
+			if (!LoadTextureData_f(&data, filepath, flipVertical))
+			{
+				logferror("Failed to load texture data from %s.\n", filepath);
+				return false;
+			}
+            check(data.channels == 4);
+
+			profile_texload_scope_f(CreateAndFillTexture, "Create and fill texture from file (%s)", filepath);
+            render::Extent3D extent = { data.width, data.height, 1 };
+			render::TextureDescription desc;
+			desc.extent = extent;
+            desc.format = render::Format_R32G32B32A32_SFloat;
+			desc.debugName = filepath;
+            desc.layers = 1;
+			desc.mipLevels = 1;
+			render::TextureHandle texture = device->CreateTexture(desc);
+			(*textureOut) = texture;
+
+			render::utils::UploadContext upload;
+			if (!uploadContext)
+			{
+				uploadContext = &upload;
+				uploadContext->Init(device);
+			}
+			uploadContext->WriteTexture(texture, 0, 0, data.fdata, data.width * data.height * sizeof(float) * data.channels);
+			uploadContext->SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, 0, 0);
+			
+			FreeTextureData(data);
+			return true;
         }
     }
 }

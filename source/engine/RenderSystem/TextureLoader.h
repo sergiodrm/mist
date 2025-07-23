@@ -16,6 +16,7 @@ namespace rendersystem
             union
             {
                 uint8_t* u8data;
+                float* fdata;
             };
             uint32_t width;
             uint32_t height;
@@ -24,8 +25,10 @@ namespace rendersystem
         };
 
         bool LoadTextureData_u8(TextureData* out, const char* filepath, bool flipVertical = false);
+        bool LoadTextureData_f(TextureData* out, const char* filepath, bool flipVertical = false);
         void FreeTextureData(TextureData& data);
 
         bool LoadTextureFromFile(render::TextureHandle* textureOut, render::Device* device, const char* filepath, bool flipVertical = false, bool calculateMipLevels = true, render::utils::UploadContext* uploadContext = nullptr);
+        bool LoadHDRTextureFromFile(render::TextureHandle* textureOut, render::Device* device, const char* filepath, bool flipVertical = false, render::utils::UploadContext* uploadContext = nullptr);
     }
 }
