@@ -1301,6 +1301,18 @@ namespace render
         {
             .usage = utils::ConvertMemoryUsage(description.memoryUsage)
         };
+
+        /**
+		 * Validation layer
+            > Message: vkAllocateMemory(): pAllocateInfo->allocationSize is 268435456 bytes from heap 2,but size of that heap is only 224395264 bytes.
+            The Vulkan spec states: pAllocateInfo->allocationSize must be less than or equal to 
+            VkPhysicalDeviceMemoryProperties::memoryHeaps[memindex].size where memindex = VkPhysicalDeviceMemoryProperties::memoryTypes[pAllocateInfo->memoryTypeIndex].heapIndex 
+            as returned by vkGetPhysicalDeviceMemoryProperties for the VkPhysicalDevice that device was created from 
+            (https://vulkan.lunarg.com/doc/view/1.4.313.1/windows/antora/spec/latest/chapters/memory.html#VUID-vkAllocateMemory-pAllocateInfo-01713)
+         */
+        const VkDeviceSize maxHeapSize = GetMaxPhysicalDeviceSizeInHeap(description.bufferUsage, description.memoryUsage);
+        check(description.size <= maxHeapSize && "Can't allocate buffer. Requested size is greater than its max heap size.");
+        
         vkcheck(vmaCreateBuffer(m_context->memoryContext.allocator, &bufferInfo, &allocInfo,
             &buffer->m_buffer, &buffer->m_alloc, nullptr));
         SetDebugName(buffer, description.debugName.c_str());
@@ -1331,6 +1343,31 @@ namespace render
         const void* src = reinterpret_cast<const char*>(data) + srcOffset;
         memcpy_s(dst, buffer->m_description.size-dstOffset, src, size);
         vmaUnmapMemory(m_context->memoryContext.allocator, buffer->m_alloc);
+    }
+
+    uint64_t Device::GetMaxPhysicalDeviceSizeInHeap(BufferUsage usage, MemoryUsage memoryUsage)
+    {
+		VkBufferUsageFlags vkUsage = utils::ConvertBufferUsage(usage);
+		VkBufferCreateInfo bufferInfo
+		{
+			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+			.pNext = nullptr,
+			.size = 1,
+			.usage = vkUsage,
+			.sharingMode = VK_SHARING_MODE_EXCLUSIVE
+		};
+
+		VmaAllocationCreateInfo allocInfo
+		{
+			.usage = utils::ConvertMemoryUsage(memoryUsage)
+		};
+		uint32_t memoryTypeIndex;
+		vkcheck(vmaFindMemoryTypeIndexForBufferInfo(m_context->memoryContext.allocator, &bufferInfo, &allocInfo, &memoryTypeIndex));
+		VkPhysicalDeviceMemoryProperties memProperties;
+		vkGetPhysicalDeviceMemoryProperties(m_context->physicalDevice, &memProperties);
+		VkMemoryType memindex = memProperties.memoryTypes[memoryTypeIndex];
+		VkDeviceSize maxHeapSize = memProperties.memoryHeaps[memindex.heapIndex].size;
+        return maxHeapSize;
     }
 
     TextureHandle Device::CreateTexture(const TextureDescription& description)

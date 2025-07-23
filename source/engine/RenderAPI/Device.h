@@ -1580,6 +1580,7 @@ namespace render
         BufferHandle CreateBuffer(const BufferDescription& description);
         void DestroyBuffer(Buffer* buffer);
         void WriteBuffer(BufferHandle buffer, const void* data, size_t size, size_t srcOffset = 0, size_t dstOffset = 0);
+        uint64_t GetMaxPhysicalDeviceSizeInHeap(BufferUsage usage, MemoryUsage memoryUsage);
 
         TextureHandle CreateTexture(const TextureDescription& description);
         TextureHandle CreateTextureFromNative(const TextureDescription& description, VkImage image);
