@@ -1835,7 +1835,7 @@ namespace render
             VkDescriptorSetLayoutBinding& b = bindings.Push();
             b.binding = binding.binding;
             b.descriptorType = utils::ConvertToDescriptorType(binding.type);
-            b.descriptorCount = binding.arrayCount;
+            b.descriptorCount = Mist::limits_cast<uint32_t>(binding.arrayCount);
             b.stageFlags = utils::ConvertShaderStage(binding.shaderType);
             b.pImmutableSamplers = nullptr;
         }
