@@ -328,7 +328,7 @@ namespace rendersystem
             Mist::tDynArray<render::BufferHandle> buffers;
 
             FrameResourceTrack(uint32_t initialCapacity = 10)
-                : buffers(initialCapacity), textures(initialCapacity), renderTargets(initialCapacity) { }
+                : buffers(initialCapacity) { }
 
             void Clear()
             {
