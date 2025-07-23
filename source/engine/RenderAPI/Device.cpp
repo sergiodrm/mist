@@ -774,6 +774,7 @@ namespace render
 
     void CommandList::BindSets(const BindingSetVector& setsToBind, const BindingSetVector& currentBinding)
     {
+        PROF_ZONE_SCOPED("BindDescriptorSets");
         check(IsRecording());
 
         class BindingQueue
@@ -1198,6 +1199,7 @@ namespace render
 
     void CommandList::FlushRequiredStates()
     {
+        PROF_ZONE_SCOPED("FlushBarriers");
         SetTextureState(m_requiredStates.data(), (uint32_t)m_requiredStates.size());
         m_requiredStates.clear();
     }
