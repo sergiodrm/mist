@@ -320,6 +320,21 @@ namespace rendersystem
             float clearDepth;
             uint32_t clearStencil;
         };
+
+        // Data struct for keeping tracking of resources used in each frame.
+        // Once the submission is completed, call Clear() method.
+        struct FrameResourceTrack
+        {
+            Mist::tDynArray<render::BufferHandle> buffers;
+
+            FrameResourceTrack(uint32_t initialCapacity = 10)
+                : buffers(initialCapacity), textures(initialCapacity), renderTargets(initialCapacity) { }
+
+            void Clear()
+            {
+                buffers.clear();
+            }
+        };
     public:
         static constexpr uint32_t MaxTextureSlots = 8;
         static constexpr uint32_t MaxTextureBindingsPerSlot = 8;
@@ -482,11 +497,13 @@ namespace rendersystem
             render::SemaphoreHandle renderQueueSemaphores[Count];
             render::SemaphoreHandle presentSemaphores[Count];
             uint64_t presentSubmission[Count];
+            FrameResourceTrack frameResources[Count];
         } m_frameSyncronization;
         inline const render::SemaphoreHandle& GetPresentSemaphore() const { return m_frameSyncronization.presentSemaphores[m_frame % FrameSyncContext::Count]; }
         inline const render::SemaphoreHandle& GetRenderSemaphore() const { check(m_swapchainIndex < FrameSyncContext::Count); return m_frameSyncronization.renderQueueSemaphores[m_swapchainIndex]; }
         inline uint64_t GetPresentSubmissionId() const { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count]; }
         inline uint64_t SetPresentSubmissionId(uint64_t submission) { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count] = submission; }
+        inline FrameResourceTrack& GetFrameResources() { return m_frameSyncronization.frameResources[m_frame % FrameSyncContext::Count]; }
 
         // Command list with transfer, graphics and compute commands
         RenderContext m_renderContext;

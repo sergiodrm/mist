@@ -194,6 +194,7 @@ namespace rendersystem
         {
             m_frameSyncronization.renderQueueSemaphores[i] = nullptr;
             m_frameSyncronization.presentSemaphores[i] = nullptr;
+            m_frameSyncronization.frameResources[i].Clear();
         }
         m_ldrRt = nullptr;
         m_depthTexture = nullptr;
@@ -896,6 +897,10 @@ namespace rendersystem
             m_renderContext.pendingClearDepthStencil = false;
             m_renderContext.cmd->ClearDepthStencil(m_renderContext.clearDepth, m_renderContext.clearStencil);
         }
+
+        FrameResourceTrack& resources = GetFrameResources();
+        resources.buffers.emplace_back(m_renderContext.graphicsState.indexBuffer);
+        resources.buffers.emplace_back(m_renderContext.graphicsState.vertexBuffer);
     }
 
     void RenderSystem::BeginFrame()
@@ -927,6 +932,7 @@ namespace rendersystem
         m_memoryPool->ProcessInFlight();
         commandQueue->AddWaitSemaphore(presentSemaphore, 0);
         commandQueue->AddSignalSemaphore(renderSemaphore, 0);
+        GetFrameResources().Clear();
 
         m_memoryContextId = m_memoryPool->CreateContext();
         m_renderContext.cmd->BeginRecording();
