@@ -1447,6 +1447,15 @@ namespace render
         Filter filter;
     };
 
+    struct CopyTextureInfo
+    {
+        Extent3D extent;
+        Offset3D srcOffset;
+        TextureSubresourceLayer srcLayer;
+        Offset3D dstOffset;
+        TextureSubresourceLayer dstLayer;
+    };
+
     class CommandList final : public Mist::Ref<CommandList>
     {
     public:
@@ -1491,6 +1500,7 @@ namespace render
         void WriteBuffer(BufferHandle buffer, const void* data, size_t size, size_t srcOffset = 0, size_t dstOffset = 0);
         void WriteTexture(TextureHandle texture, uint32_t mipLevel, uint32_t layer, const void* data, size_t dataSize);
         void BlitTexture(const BlitDescription& desc);
+        void CopyTexture(const TextureHandle& src, const TextureHandle& dst, const CopyTextureInfo* infoArray, uint32_t infoCount);
 
 
         inline bool AllowsCommandType(QueueType type) const { return IsRecording() && m_currentCommandBuffer->type & type; }

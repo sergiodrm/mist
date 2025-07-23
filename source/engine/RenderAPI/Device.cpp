@@ -1129,6 +1129,34 @@ namespace render
         //SetTextureState(barriers, 2);
     }
 
+    void CommandList::CopyTexture(const TextureHandle& src, const TextureHandle& dst, const CopyTextureInfo* infoArray, uint32_t infoCount)
+    {
+        check(src && dst);
+        check(IsRecording() && !IsInsideRenderPass());
+        check(infoCount && infoArray);
+
+        VkImageLayout srcLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        VkImageLayout dstLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+        Mist::tStaticArray<VkImageCopy, 8> copyRegions;
+        check(copyRegions.GetCapacity() >= infoCount);
+        copyRegions.Resize(infoCount);
+        for (uint32_t i = 0; i < infoCount; ++i)
+        {
+            const CopyTextureInfo* info = &infoArray[i];
+            copyRegions[i].extent = { info->extent.width, info->extent.height, info->extent.depth };
+            copyRegions[i].srcOffset = { info->srcOffset.x, info->srcOffset.y, info->srcOffset.z };
+            copyRegions[i].dstOffset = { info->dstOffset.x, info->dstOffset.y, info->dstOffset.z };
+            copyRegions[i].srcSubresource = utils::ConvertImageSubresourceLayer(info->srcLayer, src->m_description.format);
+            copyRegions[i].dstSubresource = utils::ConvertImageSubresourceLayer(info->dstLayer, dst->m_description.format);
+
+            RequireTextureState({ .texture = src, .newLayout = ImageLayout_TransferSrc, .subresources = TextureSubresourceRange(info->srcLayer.mipLevel, 1, info->srcLayer.layer, info->srcLayer.layerCount) });
+            RequireTextureState({ .texture = dst, .newLayout = ImageLayout_TransferDst, .subresources = TextureSubresourceRange(info->dstLayer.mipLevel, 1, info->dstLayer.layer, info->dstLayer.layerCount) });
+        }
+        FlushRequiredStates();
+        vkCmdCopyImage(m_currentCommandBuffer->cmd, src->m_image, srcLayout, dst->m_image, dstLayout, copyRegions.GetSize(), copyRegions.GetData());
+    }
+
     void CommandList::BeginRenderPass(render::RenderTargetHandle rt)
     {
         if (!m_graphicsState.rt)
