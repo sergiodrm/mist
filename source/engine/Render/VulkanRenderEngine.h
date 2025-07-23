@@ -51,6 +51,7 @@ namespace Mist
 	class VulkanRenderEngine : public IRenderEngine
 	{
 	public:
+
 		/**
 		 * IRenderEngine interface
 		 */
@@ -65,6 +66,7 @@ namespace Mist
 		virtual void SetScene(Scene* scene);
 
 		const RenderContext& GetContext() const { return m_renderContext; }
+		const Renderer* GetRenderer() const { return &m_renderer; }
 
 		virtual void ReloadShaders() override;
 		void DumpShadersInfo();
@@ -77,7 +79,6 @@ namespace Mist
 		RenderFrameContext& GetFrameContext();
 
 		void ImGuiCVars();
-
 
 		// Initializations
 		bool InitVulkan();
