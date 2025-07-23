@@ -1232,6 +1232,7 @@ namespace render
 
 		VkPipeline m_pipeline;
 		VkPipelineLayout m_pipelineLayout;
+        RenderTargetHandle m_rt;
 		GraphicsPipelineDescription m_description;
 
 	private:

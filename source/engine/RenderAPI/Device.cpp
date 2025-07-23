@@ -1809,6 +1809,7 @@ namespace render
 
         vkcheck(vkCreateGraphicsPipelines(m_context->device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
         SetDebugName(pipeline, description.debugName.c_str());
+        pipeline->m_rt = rt;
         return GraphicsPipelineHandle(pipeline);
     }
 
