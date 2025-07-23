@@ -312,10 +312,11 @@ namespace rendersystem
         struct RenderContext
         {
             render::CommandListHandle cmd;
-            uint32_t memoryContextId;
             render::GraphicsState graphicsState;
+
             bool pendingClearColor;
             float clearColor[4];
+
             bool pendingClearDepthStencil;
             float clearDepth;
             uint32_t clearStencil;
