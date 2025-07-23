@@ -39,6 +39,10 @@ struct LightData
 #error Define num of shadow maps
 #endif // !MAX_SHADOW_MAPS
 
+#ifndef IRRADIANCE_MAP
+#error Define irradiance map sampler.
+#endif
+
 struct ShadowInfo
 {
 #ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
@@ -83,6 +87,11 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.f-F0) * pow(clamp(1.f-cosTheta, 0.f, 1.f), 5.f);
 }
 
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a = roughness * roughness;
@@ -114,9 +123,14 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1*ggx2;
 }
 
+vec3 GetF0()
+{
+    return vec3(0.04);
+}
+
 vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float metallic, float roughness, vec3 viewDir, vec3 halfway)
 {
-    vec3 F0 = vec3(0.04);
+    vec3 F0 = GetF0();
     F0 = mix(F0, albedo, metallic);
     vec3 F = FresnelSchlick(max(dot(halfway, viewDir), 0.f), F0);
 
@@ -228,6 +242,17 @@ vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDi
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), shininess);
     vec3 specular = specularStrength * spec * lightColor;
     return diffuse + specular;
+}
+
+vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, float ao)
+{
+    vec3 kS = FresnelSchlickRoughness(max(dot(normal, view), 0.0), GetF0(), roughness);
+    vec3 kD = 1.f-kS;
+    vec3 i = texture(IRRADIANCE_MAP, normal).rgb;
+    vec3 diffuse = i * albedo;
+    //return vec3(0.2f);
+    //return view;
+    return kD * diffuse * ao;
 }
 
 /**

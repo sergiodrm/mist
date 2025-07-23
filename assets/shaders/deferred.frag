@@ -11,18 +11,21 @@ layout(set = 0, binding = 1) uniform ShadowMapInfo
 
 // GBuffer textures
 layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
-layout(set = 2, binding = 0) uniform sampler2D u_GBufferNormal;
-layout(set = 3, binding = 0) uniform sampler2D u_GBufferAlbedo;
-layout(set = 4, binding = 0) uniform sampler2D u_GBufferEmissive;
+layout(set = 1, binding = 1) uniform sampler2D u_GBufferNormal;
+layout(set = 1, binding = 2) uniform sampler2D u_GBufferAlbedo;
+layout(set = 1, binding = 3) uniform sampler2D u_GBufferEmissive;
 // SSAO texture
-layout(set = 5, binding = 0) uniform sampler2D u_ssao;
+layout(set = 1, binding = 4) uniform sampler2D u_ssao;
 // Shadow map textures
-layout(set = 6, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
-layout(set = 7, binding = 0) uniform sampler2D u_GBufferDepth;
+layout(set = 1, binding = 5) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
+layout(set = 1, binding = 6) uniform sampler2D u_GBufferDepth;
+// Irradiance map
+layout(set = 1, binding = 7) uniform samplerCube u_irradianceMap;
 
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #define ENVIRONMENT_DATA u_env.data
+#define IRRADIANCE_MAP u_irradianceMap
 #include <shaders/includes/environment_data.glsl>
 
 #define GBUFFER_POSITION_TEX u_GBufferPosition
