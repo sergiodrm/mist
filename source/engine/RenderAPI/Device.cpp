@@ -1406,6 +1406,8 @@ namespace render
         Texture* texture = _new Texture(this);
         texture->m_description = description;
 
+        // validation: cube textures must have equal dimensions.
+        check(description.dimension != ImageDimension_Cube || description.extent.width == description.extent.height);
 
         VmaAllocationCreateInfo allocInfo
         {
