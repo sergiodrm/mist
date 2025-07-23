@@ -390,7 +390,9 @@ namespace rendersystem
         void SetBlendWriteMask(render::ColorMask mask = render::ColorMask_All, uint32_t attachment = 0);
 
         void SetViewport(float x, float y, float width, float height, float minDepth = 0.f, float maxDepth = 1.f);
+        void SetViewport(const render::Viewport& viewport);
         void SetScissor(float x0, float x1, float y0, float y1);
+        void SetScissor(const render::Rect& scissor);
 
         void SetFillMode(render::RasterFillMode mode = render::RasterFillMode_Fill);
         void SetCullMode(render::RasterCullMode mode = render::RasterCullMode_Back);

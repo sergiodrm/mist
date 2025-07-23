@@ -378,9 +378,19 @@ namespace rendersystem
         m_psoDesc.renderState.viewportState.viewport = { x, y, width, height, minDepth, maxDepth };
     }
 
+    void RenderSystem::SetViewport(const render::Viewport& viewport)
+    {
+        m_psoDesc.renderState.viewportState.viewport = viewport;
+    }
+
     void RenderSystem::SetScissor(float x0, float x1, float y0, float y1)
     {
         m_psoDesc.renderState.viewportState.scissor = { x0, x1, y0, y1 };
+    }
+
+    void RenderSystem::SetScissor(const render::Rect& scissor)
+    {
+        m_psoDesc.renderState.viewportState.scissor = scissor;
     }
 
     void RenderSystem::SetFillMode(render::RasterFillMode mode)
