@@ -1508,6 +1508,7 @@ namespace render
         void ClearState();
         CommandBuffer* GetCommandBuffer() const { check(IsRecording()); return m_currentCommandBuffer; }
         inline bool IsInsideRenderPass() const { return m_graphicsState.rt != nullptr; }
+        inline Device* GetDevice() const { return m_device; }
     private:
         void BeginRenderPass(render::RenderTargetHandle rt);
         void EndRenderPass();
@@ -1666,7 +1667,7 @@ namespace render
             void WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
             void Blit(const BlitDescription& desc);
             uint64_t Submit(bool waitForSubmission = true);
-
+            inline CommandListHandle GetCommandList() const { return m_cmd; }
         private:
             void BeginRecording();
 
