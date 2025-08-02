@@ -7,6 +7,7 @@
 #endif
 #include "Core/Debug.h"
 #include "Device.h"
+#include "Core/Logger.h"
 
 
 namespace render
@@ -907,6 +908,19 @@ namespace render
             }
             unreachable_code();
             return VK_FILTER_MAX_ENUM;
+        }
+
+        VkSamplerMipmapMode ConvertMipmapMode(Filter filter)
+        {
+            switch (filter)
+            {
+            case Filter_Nearest: return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+            case Filter_Cubic:
+                logfwarn("Invalid filter type to convert to mipmap mode: %d. Replaced by LINEAR sampler.\n", filter);
+            case Filter_Linear: return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            }
+            unreachable_code();
+            return VK_SAMPLER_MIPMAP_MODE_NEAREST;
         }
 
         VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode mode)

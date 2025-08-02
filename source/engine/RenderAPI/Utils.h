@@ -49,6 +49,7 @@ namespace render
         VkImageSubresourceRange ConvertImageSubresourceRange(const TextureSubresourceRange& range, Format format);
         VkImageSubresourceLayers ConvertImageSubresourceLayer(const TextureSubresourceLayer& layer, Format format);
         VkFilter ConvertFilter(Filter filter);
+        VkSamplerMipmapMode ConvertMipmapMode(Filter filter);
         VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode mode);
         VkShaderStageFlags ConvertShaderStage(ShaderType type);
         VkBlendFactor ConvertBlendFactor(BlendFactor factor);
