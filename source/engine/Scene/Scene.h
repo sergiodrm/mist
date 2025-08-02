@@ -313,7 +313,6 @@ namespace Mist
 
 		Skybox m_skybox;
 		IrradianceCube m_irradianceCube;
-		PreprocessIrradianceInfo m_irradianceRequest{};
 		EnvironmentData m_environmentData;
 		tStaticArray<tDrawList, 4> m_drawListArray;
 

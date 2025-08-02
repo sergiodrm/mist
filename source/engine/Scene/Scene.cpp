@@ -715,13 +715,13 @@ namespace Mist
 	{
 		const Renderer* renderer = m_engine->GetRenderer();
 		Preprocess* preprocess = (Preprocess*)renderer->GetRenderProcess(RENDERPROCESS_PREPROCESSES);
-		check(m_irradianceRequest.cubemapWidthHeight == 0 && m_irradianceRequest.irradianceCubemapWidthHeight == 0
-			&& m_irradianceRequest.hdrFilepath.empty() && m_irradianceRequest.userData == nullptr);
-		PreprocessIrradianceInfo* info = &m_irradianceRequest;
-		info->hdrFilepath = filepath;
-		info->cubemapWidthHeight = 1024;
-		info->irradianceCubemapWidthHeight = 64;
-		info->userData = this;
+		PreprocessIrradianceInfo info;
+		info.hdrFilepath = filepath;
+		info.cubemapWidthHeight = 1024;
+		info.irradianceCubemapWidthHeight = 64;
+		info.specularCubemapWidthHeight = 128;
+		info.userData = this;
+		m_irradianceCube.filepath = filepath;
 		preprocess->PushIrradiancePreprocess(info, 
 			[](const PreprocessIrradianceResult& result, void* userData) 
 			{
@@ -729,12 +729,8 @@ namespace Mist
 				// copy result
 				scene->m_irradianceCube.irradiance = result.irradianceCubemap;
 				scene->m_irradianceCube.cubemap = result.cubemap;
-				scene->m_irradianceCube.filepath = scene->m_irradianceRequest.hdrFilepath;
-				// clear data
-				scene->m_irradianceRequest.userData = nullptr;
-				scene->m_irradianceRequest.hdrFilepath = {};
-				scene->m_irradianceRequest.cubemapWidthHeight = 0;
-				scene->m_irradianceRequest.irradianceCubemapWidthHeight = 0;
+				scene->m_irradianceCube.specular = result.specularCubemap;
+				scene->m_irradianceCube.brdf = result.brdf;
 			});
 		return true;
 	}

@@ -21,12 +21,16 @@ namespace Mist
 {
 	struct PreprocessIrradianceResources
 	{
+		rendersystem::ShaderProgram* brdfShader;
 		rendersystem::ShaderProgram* equirectangularShader;
 		rendersystem::ShaderProgram* irradianceShader;
+		rendersystem::ShaderProgram* specularShader;
 		render::RenderTargetHandle rt;
 		cModel cubeModel;
 
 		void Init(rendersystem::RenderSystem* rs);
+		void PrepareDraw(rendersystem::RenderSystem* rs, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader);
+		void DrawCube(rendersystem::RenderSystem* rs);
 		void Destroy(rendersystem::RenderSystem* rs);
 	};
 
@@ -34,14 +38,17 @@ namespace Mist
 	{
 		uint32_t cubemapWidthHeight;
 		uint32_t irradianceCubemapWidthHeight;
+		uint32_t specularCubemapWidthHeight;
 		cAssetPath hdrFilepath;
 		void* userData = nullptr;
 	};
 
 	struct PreprocessIrradianceResult
 	{
+		render::TextureHandle brdf;
 		render::TextureHandle cubemap;
 		render::TextureHandle irradianceCubemap;
+		render::TextureHandle specularCubemap;
 	};
 
 	typedef void (*fnPreprocessIrradianceCallback)(const PreprocessIrradianceResult& result, void* userData);
@@ -62,7 +69,7 @@ namespace Mist
 
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const { return nullptr; }
 
-		void PushIrradiancePreprocess(const PreprocessIrradianceInfo* info, fnPreprocessIrradianceCallback fn);
+		void PushIrradiancePreprocess(const PreprocessIrradianceInfo& info, fnPreprocessIrradianceCallback fn);
 	protected:
 		PreprocessIrradianceResult ProcessIrradianceRequest(const PreprocessIrradianceInfo& info);
 	private:
@@ -70,7 +77,7 @@ namespace Mist
 
 		static constexpr uint32_t MaxRequests = 8;
 		uint32_t m_irradianceRequestCount;
-		const PreprocessIrradianceInfo* m_irradianceInfoArray[MaxRequests];
+		PreprocessIrradianceInfo m_irradianceInfoArray[MaxRequests];
 		fnPreprocessIrradianceCallback m_irradianceFnArray[MaxRequests];
 	};
 }
