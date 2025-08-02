@@ -368,7 +368,9 @@ namespace rendersystem
         render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
         render::BindingSetHandle GetBindingSet(const render::BindingSetDescription& desc);
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);
-        render::SamplerHandle GetSampler(render::Filter minFilter, render::Filter magFilter, 
+        render::SamplerHandle GetSampler(render::Filter minFilter, 
+            render::Filter magFilter, 
+            render::Filter mipmapMode, 
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW);
@@ -428,11 +430,13 @@ namespace rendersystem
         void SetSampler(const char* id, const render::SamplerHandle& sample);
         void SetSampler(const char* id, const render::SamplerHandle* sample, uint32_t count);
         void SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter,
+            render::Filter mipmapMode,
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW,
             uint32_t samplerIndex = 0);
         void SetSampler(render::Filter minFilter, render::Filter magFilter,
+            render::Filter mipmapMode,
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW,
@@ -450,6 +454,7 @@ namespace rendersystem
         void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
 
         ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool; }
+        const render::CommandListHandle& GetCommandList() const { return m_renderContext.cmd; }
 
         /**
          * Transfer functions
