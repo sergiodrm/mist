@@ -64,6 +64,7 @@ namespace Mist
 		void Set(const char* path);
 		uint32_t GetSize() const { size_t s = strlen(m_path); check(s < UINT32_MAX); return static_cast<uint32_t>(s); }
 		const char* GetAssetPath() const;
+		void Clear() { *m_path = 0; }
 
 		inline bool operator==(const cAssetPath& other) const
 		{

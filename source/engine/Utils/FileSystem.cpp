@@ -388,7 +388,7 @@ namespace Mist
 	}
 	cAssetPath::cAssetPath()
 	{
-		*m_path = 0;
+		Clear();
 	}
 
 	cAssetPath::cAssetPath(const char* path)
@@ -398,7 +398,10 @@ namespace Mist
 
 	void cAssetPath::Set(const char* path)
 	{
-		GetWorkspacePath(m_path, path);
+		if (path && *path)
+			GetWorkspacePath(m_path, path);
+		else
+			Clear();
 	}
 
 	const char* cAssetPath::GetAssetPath() const
