@@ -1528,6 +1528,7 @@ namespace render
         samplerInfo.pNext = nullptr;
         samplerInfo.magFilter = utils::ConvertFilter(description.magFilter);
         samplerInfo.minFilter = utils::ConvertFilter(description.minFilter);
+        samplerInfo.mipmapMode = utils::ConvertMipmapMode(description.mipmapMode);
         samplerInfo.addressModeU = utils::ConvertSamplerAddressMode(description.addressModeU);
         samplerInfo.addressModeV = utils::ConvertSamplerAddressMode(description.addressModeV);
         samplerInfo.addressModeW = utils::ConvertSamplerAddressMode(description.addressModeW);
