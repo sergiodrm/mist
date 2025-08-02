@@ -25,50 +25,59 @@ namespace rendersystem
         return (uint32_t)floorf(log2f((float)__max(width, height))) + 1;
     }
 
+    void GenerateMipMaps(const render::CommandListHandle& cmd, const render::TextureHandle& texture)
+    {
+        render::Device* device = cmd->GetDevice();
+		// Check if image format supports linear filtering.
+		check(device->GetContext().FormatSupportsLinearFiltering(texture->m_description.format) && "Unsupported format to generate mipmap levels.");
+
+        for (uint32_t layer = 0; layer < texture->m_description.layers; ++layer)
+        {
+            int32_t width = static_cast<int32_t>(texture->m_description.extent.width);
+            int32_t height = static_cast<int32_t>(texture->m_description.extent.height);
+            for (uint32_t mip = 1; mip < texture->m_description.mipLevels; ++mip)
+            {
+                /**
+                 * Message: vkCmdBlitImage(): pRegions[0] srcOffsets[0].z is 0 and srcOffsets[1].z is 0 but srcImage is VK_IMAGE_TYPE_2D.
+                    The Vulkan spec states: If srcImage is of type VK_IMAGE_TYPE_1D or VK_IMAGE_TYPE_2D, then for each element of pRegions, srcOffsets[0].z must be 0 and srcOffsets[1].z must be 1
+                    (https://vulkan.lunarg.com/doc/view/1.4.313.1/windows/antora/spec/latest/chapters/copies.html#VUID-vkCmdBlitImage-srcImage-00247)
+                 */
+                render::BlitDescription blit;
+                blit.src = texture;
+                blit.dst = texture;
+                blit.srcOffsets[0] = { 0, 0, 0 };
+                blit.srcOffsets[1] = { width, height, 1 };
+                blit.dstOffsets[0] = { 0, 0, 0 };
+                blit.dstOffsets[1] = { __max(1, width >> 1), __max(1, height >> 1), 1 };
+                blit.filter = render::Filter_Linear;
+                blit.srcSubresource.mipLevel = mip - 1;
+                blit.srcSubresource.layer = layer;
+                blit.srcSubresource.layerCount = 1;
+                blit.dstSubresource.mipLevel = mip;
+                blit.dstSubresource.layer = layer;
+                blit.dstSubresource.layerCount = 1;
+                cmd->BlitTexture(blit);
+
+                cmd->SetTextureState({ .texture = texture, .newLayout = render::ImageLayout_ShaderReadOnly, .subresources = render::TextureSubresourceRange(mip-1, 1, layer, 1)});
+
+                // Update dimensions
+                width = __max(1, width >> 1);
+                height = __max(1, height >> 1);
+            }
+            // Restore the last mip layout
+            cmd->SetTextureState({ .texture = texture, .newLayout = render::ImageLayout_ShaderReadOnly, .subresources = render::TextureSubresourceRange(texture->m_description.mipLevels-1, 1, layer, 1)});
+        }
+    }
+
     void GenerateMipMaps(render::Device* device, render::TextureHandle texture, render::utils::UploadContext* uploadContext)
     {
-        // Check if image format supports linear filtering.
-        check(device->GetContext().FormatSupportsLinearFiltering(texture->m_description.format) && "Unsupported format to generate mipmap levels.");
-
         render::utils::UploadContext upload;
         if (!uploadContext)
         {
             uploadContext = &upload;
             upload.Init(device);
         }
-
-        int32_t width = static_cast<int32_t>(texture->m_description.extent.width);
-        int32_t height = static_cast<int32_t>(texture->m_description.extent.height);
-        for (uint32_t i = 1; i < texture->m_description.mipLevels; ++i)
-        {
-            /**
-			 * Message: vkCmdBlitImage(): pRegions[0] srcOffsets[0].z is 0 and srcOffsets[1].z is 0 but srcImage is VK_IMAGE_TYPE_2D.
-                The Vulkan spec states: If srcImage is of type VK_IMAGE_TYPE_1D or VK_IMAGE_TYPE_2D, then for each element of pRegions, srcOffsets[0].z must be 0 and srcOffsets[1].z must be 1 
-                (https://vulkan.lunarg.com/doc/view/1.4.313.1/windows/antora/spec/latest/chapters/copies.html#VUID-vkCmdBlitImage-srcImage-00247)
-             */
-            render::BlitDescription blit;
-            blit.src = texture;
-            blit.dst = texture;
-            blit.srcOffsets[0] = { 0, 0, 0 };
-            blit.srcOffsets[1] = { width, height, 1 };
-            blit.dstOffsets[0] = { 0, 0, 0 };
-            blit.dstOffsets[1] = { __max(1, width >> 1), __max(1, height >> 1), 1 };
-            blit.filter = render::Filter_Linear;
-            blit.srcSubresource.mipLevel = i - 1;
-            blit.srcSubresource.layer = 0;
-            blit.srcSubresource.layerCount = 1;
-            blit.dstSubresource.mipLevel = i;
-            blit.dstSubresource.layer = 0;
-            blit.dstSubresource.layerCount = 1;
-            uploadContext->Blit(blit);
-
-            // Restore shader read only layout for dst mip
-            uploadContext->SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, 0, i);
-
-            // Update dimensions
-            width = __max(1, width >> 1);
-            height = __max(1, height >> 1);
-        }
+        GenerateMipMaps(uploadContext->GetCommandList(), texture);
     }
 
     namespace textureloader

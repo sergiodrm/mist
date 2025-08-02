@@ -7,6 +7,7 @@ namespace rendersystem
     class RenderSystem;
 
     uint32_t CalculateMipLevels(uint32_t width, uint32_t height);
+    void GenerateMipMaps(const render::CommandListHandle& cmd, const render::TextureHandle& texture);
     void GenerateMipMaps(render::Device* device, render::TextureHandle texture, render::utils::UploadContext* uploadContext = nullptr);
 
     namespace textureloader
