@@ -9,6 +9,13 @@ layout(set = 0, binding = 1) uniform ShadowMapInfo
     mat4 LightViewMat[MAX_SHADOW_MAPS];
 } u_ShadowMapInfo;
 
+#include <shaders/includes/camera.glsl>
+layout(set = 0, binding = 2) uniform CameraInfo
+{
+    Camera data;
+} u_camera;
+#define CAMERA_DATA u_camera.data
+
 // GBuffer textures
 layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
 layout(set = 1, binding = 1) uniform sampler2D u_GBufferNormal;
@@ -20,12 +27,16 @@ layout(set = 1, binding = 4) uniform sampler2D u_ssao;
 layout(set = 1, binding = 5) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
 layout(set = 1, binding = 6) uniform sampler2D u_GBufferDepth;
 // Irradiance map
-layout(set = 1, binding = 7) uniform samplerCube u_irradianceMap;
+layout(set = 2, binding = 0) uniform samplerCube u_irradianceMap;
+layout(set = 2, binding = 1) uniform samplerCube u_prefilterMap;
+layout(set = 2, binding = 2) uniform sampler2D u_brdfMap;
 
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #define ENVIRONMENT_DATA u_env.data
 #define IRRADIANCE_MAP u_irradianceMap
+#define PREFILTERED_MAP u_prefilterMap
+#define BRDF_MAP u_brdfMap
 #include <shaders/includes/environment_data.glsl>
 
 #define GBUFFER_POSITION_TEX u_GBufferPosition

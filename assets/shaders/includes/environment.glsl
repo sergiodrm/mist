@@ -26,10 +26,9 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
 
     // Ambient color
-    //vec3 ambientColor = vec3(ENVIRONMENT_DATA.AmbientColor) * ao;
-    vec3 viewDir = normalize(fragPos);
-    vec3 ambientColor = ProcessIrradiance(normal, viewDir, albedo, ao, roughness);
-    //return vec3(ao);
-    //return ambientColor;
-    return lightColor + ambientColor * 0.5;
+    vec3 N = normalize(normal);
+    vec3 V = normalize(-fragPos);
+    vec3 ambientColor = ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+
+    return lightColor + ambientColor;
 }

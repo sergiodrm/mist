@@ -36,11 +36,19 @@ struct LightData
 #endif // !LIGHTING_SHADOWS_TEXTURE_ARRAY
 
 #ifndef MAX_SHADOW_MAPS
-#error Define num of shadow maps
+#error Must define num of shadow maps
 #endif // !MAX_SHADOW_MAPS
 
 #ifndef IRRADIANCE_MAP
-#error Define irradiance map sampler.
+#error Must define irradiance map sampler.
+#endif
+
+#ifndef PREFILTERED_MAP
+#error Must define prefiltered map sampler.
+#endif
+
+#ifndef BRDF_MAP
+#error Must define brdf map sampler.
 #endif
 
 struct ShadowInfo
@@ -244,15 +252,36 @@ vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDi
     return diffuse + specular;
 }
 
-vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, float ao)
+vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, float metallic, float ao)
 {
-    vec3 kS = FresnelSchlickRoughness(max(dot(normal, view), 0.0), GetF0(), roughness);
+    vec3 N = normalize(normal);
+    vec3 V = normalize(view);
+    //return V;
+
+    vec3 F0 = GetF0();
+    F0 = mix(F0, albedo, metallic);
+
+    float NdotV = max(dot(N, V), 0.0);
+    // diffuse irradiance
+    vec3 kS = FresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kD = 1.f-kS;
-    vec3 i = texture(IRRADIANCE_MAP, normal).rgb;
+    kD *= 1.f-metallic;
+    //return kD;
+    vec3 i = texture(IRRADIANCE_MAP, N).rgb;
     vec3 diffuse = i * albedo;
-    //return vec3(0.2f);
-    //return view;
-    return kD * diffuse * ao;
+    // debug diffuse
+    //return kD * diffuse * ao;
+    //return kD;
+
+    // specular reflection
+    vec2 envBrdf = texture(BRDF_MAP, vec2(NdotV, roughness)).rg;
+    const float MAX_REFLECTION_LOD = 8.f;
+    vec3 r = normalize(reflect(-V, N));
+    const float mipLevel = roughness * MAX_REFLECTION_LOD;
+    vec3 prefilteredColor = textureLod(PREFILTERED_MAP, r, mipLevel).rgb;
+    vec3 specular = prefilteredColor * (kS * envBrdf.x + envBrdf.y);
+    //return specular;
+    return (kD * diffuse + specular) * ao;
 }
 
 /**

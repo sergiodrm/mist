@@ -247,7 +247,17 @@ namespace Mist
 
 			const EnvironmentData& env = frameContext.Scene->GetEnvironmentData();
 			g_render->SetShaderProperty("u_env", &env, sizeof(env));
+			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+
 			g_render->SetTextureSlot("u_irradianceMap", frameContext.Scene->GetIrradianceCube().irradiance);
+			g_render->SetTextureSlot("u_brdfMap", frameContext.Scene->GetIrradianceCube().brdf);
+			g_render->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+				render::SamplerAddressMode_ClampToEdge,
+				render::SamplerAddressMode_ClampToEdge,
+				render::SamplerAddressMode_ClampToEdge);
+			g_render->SetTextureSlot("u_prefilterMap", frameContext.Scene->GetIrradianceCube().specular);
+			g_render->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+				render::SamplerAddressMode_ClampToEdge, render::SamplerAddressMode_ClampToEdge, render::SamplerAddressMode_ClampToEdge);
 			g_render->DrawFullscreenQuad();
 			g_render->EndMarker();
 		}
