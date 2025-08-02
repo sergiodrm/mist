@@ -199,8 +199,10 @@ namespace Mist
 
 	struct IrradianceCube
 	{
+		render::TextureHandle brdf;
 		render::TextureHandle cubemap;
 		render::TextureHandle irradiance;
+		render::TextureHandle specular;
 		cAssetPath filepath;
 	};
 
