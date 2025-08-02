@@ -246,6 +246,7 @@ namespace Mist
 		g_render->SetTextureSlot("u_tex", m_inputTarget);
         g_render->SetSampler("u_tex", render::Filter_Linear,
             render::Filter_Linear,
+            render::Filter_Linear,
             render::SamplerAddressMode_ClampToEdge,
             render::SamplerAddressMode_ClampToEdge,
             render::SamplerAddressMode_ClampToEdge);
@@ -284,6 +285,7 @@ namespace Mist
 				g_render->SetTextureSlot("u_tex", textureInput);
 				g_render->SetSampler("u_tex", render::Filter_Linear,
 					render::Filter_Linear,
+					render::Filter_Linear,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge);
@@ -314,6 +316,7 @@ namespace Mist
                 render::TextureHandle textureInput = m_renderTargetTexturesArray[i + 1];
                 g_render->SetTextureSlot("u_tex", textureInput);
                 g_render->SetSampler("u_tex", render::Filter_Linear,
+                    render::Filter_Linear,
                     render::Filter_Linear,
                     render::SamplerAddressMode_ClampToEdge,
                     render::SamplerAddressMode_ClampToEdge,
