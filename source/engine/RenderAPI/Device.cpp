@@ -2553,6 +2553,7 @@ namespace render
             desc.layers = imageLayers;
             desc.mipLevels = 1;
             desc.memoryUsage = MemoryUsage_Gpu;
+            desc.isRenderTarget = true;
             TextureHandle texture = CreateTextureFromNative(desc, swapchainImages[i]);
             m_swapchain.images[i] = texture;
 

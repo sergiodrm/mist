@@ -717,7 +717,7 @@ namespace render
 
         inline bool IsValid() const
         {
-            return texture && texture->IsAllocated();
+            return texture && texture->IsAllocated() && texture->m_description.isRenderTarget;
         }
     };
 
