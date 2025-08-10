@@ -16,9 +16,5 @@ layout (set = 0, binding = 0) uniform CameraBlock
 void main() 
 {
     localPos = inPosition;
-
-    // mat4 rotView = mat4(mat3(u_camera.data.invView));
-	// vec4 clipPos = u_camera.data.projection * rotView * vec4(inPosition, 1.0f);  
-    // gl_Position = clipPos.xyww;
     gl_Position = u_camera.data.invViewProjection * vec4(localPos, 1.f);
 }
