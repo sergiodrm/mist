@@ -973,6 +973,8 @@ namespace rendersystem
     void RenderSystem::BeginMarker(const char* name, render::Color color)
     {
         m_renderContext.cmd->BeginMarker(name, color);
+    }
+
     void RenderSystem::BeginMarkerFmt(const char* fmt, ...)
     {
 		char buff[128];
