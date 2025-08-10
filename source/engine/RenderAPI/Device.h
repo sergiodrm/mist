@@ -614,6 +614,8 @@ namespace render
         bool m_owner;
         Mist::tMap<TextureSubresourceRange, ImageLayout> m_layouts;
         Mist::tMap<TextureViewDescription, TextureView> m_views;
+        typedef Mist::tMap<TextureSubresourceRange, ImageLayout>::const_iterator LayoutConstIterator;
+        typedef Mist::tMap<TextureSubresourceRange, ImageLayout>::iterator LayoutIterator;
         typedef Mist::tMap<TextureViewDescription, TextureView>::iterator ViewIterator;
     private:
         Device* m_device;

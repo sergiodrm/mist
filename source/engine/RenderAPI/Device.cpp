@@ -992,10 +992,16 @@ namespace render
         {
             //TextureSubresourceRange range = barriers[i].subresources.Resolve(barriers[i].texture->m_description);
             TextureSubresourceRange range = barriers[i].subresources;
-            check(barriers[i].texture->m_layouts.contains(range));
-            if (barriers[i].texture->m_layouts.at(range) != barriers[i].newLayout)
+            const Texture::LayoutConstIterator it = barriers[i].texture->m_layouts.find(range);
+            check(it != barriers[i].texture->m_layouts.end());
+            if (it->second != barriers[i].newLayout)
             {
                 check(barriers[i].newLayout != ImageLayout_Undefined);
+                /*logfinfo("Texture barrier processed: \"%s\" [%s -> %s](mip: %d, %d | layer: %d, %d)\n",
+                    barriers[i].texture->m_description.debugName.c_str(), 
+                    utils::ConvertImageLayoutToStr(it->second), utils::ConvertImageLayoutToStr(barriers[i].newLayout),
+                    barriers[i].subresources.baseMipLevel, barriers[i].subresources.countMipLevels,
+                    barriers[i].subresources.baseLayer, barriers[i].subresources.countLayers);*/
                 imageBarriers.Push(utils::ConvertImageBarrier(barriers[i]));
                 barriers[i].texture->m_layouts[range] = barriers[i].newLayout;
             }
