@@ -35,6 +35,7 @@ namespace render
         uint32_t GetBytesPerPixel(Format format);
 		uint32_t GetFormatSize(Format format);
         VkImageLayout ConvertImageLayout(ImageLayout layout);
+        const char* ConvertImageLayoutToStr(ImageLayout layout);
 #if !defined(RBE_MEM_MANAGEMENT)
         VmaMemoryUsage ConvertMemoryUsage(MemoryUsage usage);
 #else

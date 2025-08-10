@@ -740,6 +740,46 @@ namespace render
             unreachable_code();
             return VK_IMAGE_LAYOUT_MAX_ENUM;
         }
+
+        const char* ConvertImageLayoutToStr(ImageLayout layout)
+        {
+			switch (layout)
+			{
+			case ImageLayout_Undefined: return "ImageLayout_Undefined";
+            case ImageLayout_General: return "ImageLayout_General";
+            case ImageLayout_ColorAttachment: return "ImageLayout_ColorAttachment";
+            case ImageLayout_DepthStencilAttachment: return "ImageLayout_DepthStencilAttachment";
+            case ImageLayout_DepthStencilReadOnly: return "ImageLayout_DepthStencilReadOnly";
+            case ImageLayout_ShaderReadOnly: return "ImageLayout_ShaderReadOnly";
+            case ImageLayout_TransferSrc: return "ImageLayout_TransferSrc";
+            case ImageLayout_TransferDst: return "ImageLayout_TransferDst";
+            case ImageLayout_Preinitialized: return "ImageLayout_Preinitialized";
+            case ImageLayout_DepthReadOnly_StencilAttachment: return "ImageLayout_DepthReadOnly_StencilAttachment";
+            case ImageLayout_DepthAttachment_StencilReadOnly: return "ImageLayout_DepthAttachment_StencilReadOnly";
+            case ImageLayout_DepthAttachment: return "ImageLayout_DepthAttachment";
+            case ImageLayout_DepthReadOnly: return "ImageLayout_DepthReadOnly";
+            case ImageLayout_StencilAttachment: return "ImageLayout_StencilAttachment";
+            case ImageLayout_StencilReadOnly: return "ImageLayout_StencilReadOnly";
+            case ImageLayout_Attachment: return "ImageLayout_Attachment";
+            case ImageLayout_ReadOnly: return "ImageLayout_ReadOnly";
+            case ImageLayout_PresentSrc: return "ImageLayout_PresentSrc";
+            case ImageLayout_VideoDecodeDst: return "ImageLayout_VideoDecodeDst";
+            case ImageLayout_VideoDecodeSrc: return "ImageLayout_VideoDecodeSrc";
+            case ImageLayout_VideoDecodeDpb: return "ImageLayout_VideoDecodeDpb";
+            case ImageLayout_SharedPresent: return "ImageLayout_SharedPresent";
+            case ImageLayout_FragmentDensityMap: return "ImageLayout_FragmentDensityMap";
+            case ImageLayout_FragmentShadingRateAttachment: return "ImageLayout_FragmentShadingRateAttachment";
+            case ImageLayout_RenderingLocalRead: return "ImageLayout_RenderingLocalRead";
+            case ImageLayout_VideoEncodeDst: return "ImageLayout_VideoEncodeDst";
+            case ImageLayout_VideoEncodeSrc: return "ImageLayout_VideoEncodeSrc";
+            case ImageLayout_VideoEncodeDpb: return "ImageLayout_VideoEncodeDpb";
+            case ImageLayout_AttachmentFeedbackLoop: return "ImageLayout_AttachmentFeedbackLoop";
+            case ImageLayout_MaxEnum: return "ImageLayout_MaxEnum";
+			}
+			unreachable_code();
+			return "ImageLayout_Undefined";
+        }
+
 #if !defined(RBE_MEM_MANAGEMENT)
         VmaMemoryUsage ConvertMemoryUsage(MemoryUsage usage)
         {
