@@ -449,6 +449,9 @@ namespace Mist
 		delete[] content;
 
 		LoadIrradianceCube("textures/flamingo_pan_4k.hdr");
+		//LoadIrradianceCube("textures/citrus_orchard_road_puresky_4k.hdr");
+		//LoadIrradianceCube("textures/climbing_gym_4k.hdr");
+		//LoadIrradianceCube("textures/colorful_studio_4k.hdr");
 	}
 
 	void Scene::SaveScene(const RenderContext& context, const char* filepath)
@@ -718,7 +721,7 @@ namespace Mist
 		PreprocessIrradianceInfo info;
 		info.hdrFilepath = filepath;
 		info.cubemapWidthHeight = 1024;
-		info.irradianceCubemapWidthHeight = 64;
+		info.irradianceCubemapWidthHeight = 32;
 		info.specularCubemapWidthHeight = 128;
 		info.userData = this;
 		m_irradianceCube.filepath = filepath;
