@@ -1474,6 +1474,7 @@ namespace render
         void EndRecording();
 
         void BeginMarker(const char* name, Color color = Color::White());
+        void BeginMarkerFmt(const char* fmt, ...);
         void EndMarker();
 
         // Graphics

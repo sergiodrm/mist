@@ -349,6 +349,7 @@ namespace rendersystem
         void EndFrame();
 
         void BeginMarker(const char* name, render::Color color = render::Color::White());
+        void BeginMarkerFmt(const char* fmt, ...);
         void EndMarker();
 
         inline render::RenderTargetHandle GetLDRTarget() const { return m_ldrRt; }

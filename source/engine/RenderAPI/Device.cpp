@@ -764,6 +764,16 @@ namespace render
         context.pfn_vkCmdBeginDebugUtilsLabelEXT(m_currentCommandBuffer->cmd, &label);
     }
 
+    void CommandList::BeginMarkerFmt(const char* fmt, ...)
+    {
+        char buff[128];
+		va_list lst;
+		va_start(lst, fmt);
+		vsprintf_s(buff, fmt, lst);
+		va_end(lst);
+        BeginMarker(buff);
+    }
+
     void CommandList::EndMarker()
     {
 		check(m_device && IsRecording());

@@ -973,6 +973,14 @@ namespace rendersystem
     void RenderSystem::BeginMarker(const char* name, render::Color color)
     {
         m_renderContext.cmd->BeginMarker(name, color);
+    void RenderSystem::BeginMarkerFmt(const char* fmt, ...)
+    {
+		char buff[128];
+		va_list lst;
+		va_start(lst, fmt);
+		vsprintf_s(buff, fmt, lst);
+		va_end(lst);
+        BeginMarker(buff);
     }
 
     void RenderSystem::EndMarker()
