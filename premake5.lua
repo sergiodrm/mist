@@ -156,6 +156,10 @@ workspace "Mist"
                 "%{libs.shaderc}",
                 "%{libs.shadercutil}"
             }
+
+    project "Shaders"
+        kind "None"
+        files { "assets/**.vert", "assets/**.frag", "assets/**.comp", "assets/**.glsl" }
         
     
     group "Test"
