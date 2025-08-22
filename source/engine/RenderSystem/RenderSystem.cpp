@@ -204,14 +204,6 @@ namespace rendersystem
         delete m_device;
     }
 
-    void RenderSystem::Draw()
-    {
-    }
-
-    void RenderSystem::SetViewProjection(const glm::mat4& view, const glm::mat4& projection)
-    {
-    }
-
     ShaderProgram* RenderSystem::CreateShader(const ShaderBuildDescription& desc)
     {
         ShaderProgram* shader = _new ShaderProgram(m_device, desc);

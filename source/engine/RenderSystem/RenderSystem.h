@@ -345,7 +345,6 @@ namespace rendersystem
         void Destroy();
 
         void BeginFrame();
-        void Draw();
         void EndFrame();
 
         void BeginMarker(const char* name, render::Color color = render::Color::White());
@@ -357,8 +356,6 @@ namespace rendersystem
 
         inline const render::Extent2D& GetRenderResolution() const { return m_renderResolution; }
         inline const render::Extent2D& GetBackbufferResolution() const { return m_backbufferResolution; }
-
-        void SetViewProjection(const glm::mat4& view, const glm::mat4& projection);
 
         render::Device* GetDevice() const { return m_device; }
         ShaderProgram* CreateShader(const ShaderBuildDescription& desc);
