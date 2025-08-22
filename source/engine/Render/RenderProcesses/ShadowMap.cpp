@@ -406,7 +406,7 @@ namespace Mist
 		else
 		{
 			float shadowMapIndex = 0.f;
-			glm::mat4 invView = GetCameraData()->InvView;
+			glm::mat4 view = GetCameraData()->View;
 			glm::mat4 cameraProj = GetCameraData()->Projection;
 
 			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
@@ -428,7 +428,7 @@ namespace Mist
 							for (uint32_t j = 0; j < CountOf(m_debugDirParams.clips); ++j)
 								m_debugDirParams.clips[j] = m_shadowMapPipeline.m_orthoParams[j];
 						}
-						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, invView, cameraProj, t.Rotation);
+						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, view, cameraProj, t.Rotation);
 						break;
 					case ELightType::Spot:
 					{
@@ -438,7 +438,7 @@ namespace Mist
 							m_debugLightParams.rot = t.Rotation;
 							m_debugLightParams.cutoff = light->OuterCutoff;
 						}
-						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, invView, t.Position, t.Rotation, light->OuterCutoff, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
+						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, view, t.Position, t.Rotation, light->OuterCutoff, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
 					}
 					break;
 					default:

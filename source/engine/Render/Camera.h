@@ -44,6 +44,10 @@ namespace Mist
 		glm::mat4 GetRotationMatrix() const;
 		glm::mat4 GetProjection() const;
 
+		glm::vec3 GetForward() const;
+		glm::vec3 GetUp() const;
+		glm::vec3 GetRight() const;
+
 		const glm::vec3& GetPosition() const;
 		const glm::vec3& GetRotation() const;
 		void SetPosition(const glm::vec3& pos);
@@ -96,9 +100,7 @@ namespace Mist
 	class CameraController
 	{
 	public:
-		glm::vec3 GetForward() const { return Rotate(glm::vec3{ 0.f, 0.f, -1.f }); }
-		glm::vec3 GetUp() const { return Rotate(glm::vec3{ 0.f, 1.f, 0.f }); }
-		glm::vec3 GetRight() const { return Rotate(glm::vec3{ 1.f, 0.f, 0.f }); }
+		
 		glm::vec3 Rotate(const glm::vec3& vec) const;
 
 		void Tick(float elapsedSeconds);

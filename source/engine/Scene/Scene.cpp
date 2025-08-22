@@ -1022,6 +1022,9 @@ namespace Mist
 			ImGui::TreePop();
 		}
 		ImGui::End();
+
+		CameraController& camera = GetCamera();
+		camera.ImGuiDraw();
 	}
 
 	bool Scene::IsDirty() const
@@ -1188,7 +1191,7 @@ namespace Mist
 			// Update geometry
 			RecalculateTransforms();
 			check(!IsDirty());
-			const glm::mat4& viewMat = GetCameraData()->InvView;
+			const glm::mat4& viewMat = GetCameraData()->View;
 			ProcessEnvironmentData(viewMat, m_environmentData);
 
 			index_t offset = 0;

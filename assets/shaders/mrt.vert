@@ -34,29 +34,21 @@ layout (set = 1, binding = 0) uniform ModelBlock
 
 void main() 
 {
-	// Vertex position in world space
+	// Compute world space vertex position
 	vec3 worldPos = vec3(u_model.data.worldTransform * vec4(inPosition,1.f));
-	//vec3 worldPos = vec3(u_model.Model * inPosition);
-	gl_Position = u_camera.data.invViewProjection * vec4(worldPos, 1.f);
-#define VIEW_SPACE_TRANSFORMS
-#ifdef VIEW_SPACE_TRANSFORMS
-	//mat3 normalTransform = transpose(inverse(mat3(u_camera.View * u_model.Model)));
-	mat3 normalTransform = mat3(u_camera.data.invView * u_model.data.worldTransform);
-	outWorldPos = vec3(u_camera.data.invView * vec4(worldPos, 1.f));
-#else
-	mat3 normalTransform = transpose(inverse(mat3(u_model.data.worldTransform)));
-	outWorldPos = worldPos;
-#endif
-
 	
-	// Normal in world space
+	gl_Position = u_camera.data.viewProjection * vec4(worldPos, 1.f);
+
+	// Compute normals on view space.
+	//mat3 normalTransform = mat3(u_camera.data.view * u_model.data.worldTransform);
+	mat3 normalTransform = transpose(inverse(mat3(u_camera.data.view * u_model.data.worldTransform)));
+
+	outWorldPos = vec3(u_camera.data.view * vec4(worldPos, 1.f));
 	outNormal = normalize(normalTransform * normalize(inNormal));	
 	outTangent = normalize(normalTransform * normalize(inTangent.xyz));
 	vec3 B = cross(outNormal, outTangent) * inTangent.w;
 	outTBN = mat3(outTangent, B, outNormal);
 	
-	// Currently just vertex color
 	outColor = inColor;
-	// uvs
 	outUV = inUV0;
 }

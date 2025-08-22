@@ -411,14 +411,7 @@ namespace Mist
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
 	{
-		m_cameraData.InvView = glm::inverse(view);
-		m_cameraData.Projection = projection;
-		m_cameraData.ViewProjection = m_cameraData.Projection * m_cameraData.InvView;
-
-		g_cameraData = m_cameraData;
-#ifdef RENDER_BACKEND_TEST
-		m_renderSystem->SetViewProjection(view, projection);
-#endif
+		g_cameraData.Set(view, projection);
 	}
 
 	Scene* VulkanRenderEngine::GetScene()

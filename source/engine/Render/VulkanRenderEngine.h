@@ -94,10 +94,7 @@ namespace Mist
 
 		uint32_t m_currentSwapchainIndex;
 
-		//ShaderFileDB m_shaderDb;
-
 		Scene* m_scene = nullptr;
-		CameraData m_cameraData;
 
 		GPUParticleSystem m_gpuParticleSystem;
 		Gol* m_gol;

@@ -1,25 +1,19 @@
 #version 460
 
 #include <shaders/includes/vertex_mesh.glsl>
-
-//layout (location = 0) in vec3 inPosition;
-//layout (location = 1) in vec3 inNormal;
-//layout (location = 2) in vec3 inColor;
-//layout (location = 3) in vec3 inTangent;
-//layout (location = 4) in vec2 inUV;
+#include <shaders/includes/camera.glsl>
 
 layout (location = 0) out vec3 outUV;
 layout (location = 1) out mat4 outView;
 
-layout (set = 0, binding = 0) uniform UBO
+layout (set = 0, binding = 0) uniform CameraBlock
 {
-	mat4 View;
-	mat4 ProjModel;
-} u_ubo;
+	Camera data;
+} u_camera;
 
 void main() 
 {
 	outUV = inPosition;
-	gl_Position = u_ubo.ProjModel * vec4(inPosition.xyz, 1.0f);
-	outView = u_ubo.View;
+	gl_Position = u_camera.data.viewProjection * vec4(inPosition.xyz, 1.0f);
+	outView = u_camera.data.view;
 }

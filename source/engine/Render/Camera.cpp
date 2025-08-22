@@ -47,6 +47,24 @@ namespace Mist
 		return m_projection;
 	}
 
+	glm::vec3 Camera::GetForward() const
+	{
+		const glm::mat4& v = glm::inverse(GetView());
+		return glm::vec3(-v[2]);
+	}
+
+	glm::vec3 Camera::GetUp() const
+	{
+		const glm::mat4& v = glm::inverse(GetView());
+		return glm::vec3(v[1]);
+	}
+
+	glm::vec3 Camera::GetRight() const
+	{
+		const glm::mat4& v = glm::inverse(GetView());
+		return glm::vec3(v[0]);
+	}
+
 	const glm::vec3& Camera::GetPosition() const
 	{
 		return m_position;
@@ -185,9 +203,10 @@ namespace Mist
 
 	void Camera::RecalculateView()
 	{
-		glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, m_position);
-		glm::mat4 rot = glm::toMat4(glm::quat(m_rotation));
-		m_view = tras * rot;
+		glm::mat4 rot = glm::mat4_cast(glm::conjugate(glm::quat(m_rotation)));
+		glm::mat4 tras(1.f);
+		tras[3] = { -m_position.x, -m_position.y, -m_position.z, 1.f};
+		m_view = rot * tras;
 	}
 
 	void Camera::RecalculateProjection()
@@ -225,17 +244,17 @@ namespace Mist
 			int32_t numkeys;
 			const uint8_t* keystate = SDL_GetKeyboardState(&numkeys);
 			if (keystate[SDL_SCANCODE_W])
-				m_direction += GetForward();
+				m_direction += m_camera.GetForward();
 			if (keystate[SDL_SCANCODE_A])
-				m_direction += GetRight() * -1.f;
+				m_direction += m_camera.GetRight() * -1.f;
 			if (keystate[SDL_SCANCODE_S])
-				m_direction += GetForward() * -1.f;
+				m_direction += m_camera.GetForward() * -1.f;
 			if (keystate[SDL_SCANCODE_D])
-				m_direction += GetRight();
+				m_direction += m_camera.GetRight();
 			if (keystate[SDL_SCANCODE_E])
-				m_direction += GetUp();
+				m_direction += m_camera.GetUp();
 			if (keystate[SDL_SCANCODE_Q])
-				m_direction += GetUp() * -1.f;
+				m_direction += m_camera.GetUp() * -1.f;
 		}
 	}
 
@@ -305,7 +324,7 @@ namespace Mist
 	void CameraController::ImGuiDraw()
 	{
 		ImGui::Begin("Camera");
-		if (ImGui::CollapsingHeader("View"))
+		if (ImGui::CollapsingHeader("Camera control"))
 		{ 
 			ImGui::Checkbox("auto move camera", &m_scriptActive);
 			if (ImGui::Button("Reset position"))
@@ -314,14 +333,15 @@ namespace Mist
 			if (ImGui::DragFloat3("Position", &pos[0], 0.5f))
 				m_camera.SetPosition(pos);
 			glm::vec3 rot = m_camera.GetRotation();
+			rot *= (glm::vec3(180.f / (float)M_PI));
 			if (ImGui::DragFloat3("Rotation", &rot[0], 0.1f))
-				m_camera.SetRotation(rot);
+				m_camera.SetRotation(rot * glm::vec3((float)M_PI / 180.f));
 			if (ImGui::DragFloat("MaxSpeed", &m_maxSpeed, 1.f))
 				m_acceleration = 2.5f * m_maxSpeed;
 
 			//ImGui::DragFloat("Acceleration", &m_acceleration, 1.f);
 		}
-		if (ImGui::CollapsingHeader("Camera projection"))
+		if (ImGui::CollapsingHeader("Camera info"))
 			m_camera.ImGuiDraw();
 		ImGui::End();
 	}
