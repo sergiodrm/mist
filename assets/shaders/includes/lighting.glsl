@@ -50,6 +50,7 @@ struct LightData
 #ifndef BRDF_MAP
 #error Must define brdf map sampler.
 #endif
+#endif // !LIGHTING_NO_SHADOWS
 
 struct ShadowInfo
 {

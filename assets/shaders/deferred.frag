@@ -31,6 +31,7 @@ layout(set = 2, binding = 0) uniform samplerCube u_irradianceMap;
 layout(set = 2, binding = 1) uniform samplerCube u_prefilterMap;
 layout(set = 2, binding = 2) uniform sampler2D u_brdfMap;
 
+//#define LIGHTING_NO_SHADOWS
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #define ENVIRONMENT_DATA u_env.data
