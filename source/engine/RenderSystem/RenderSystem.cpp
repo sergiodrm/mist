@@ -910,13 +910,19 @@ namespace rendersystem
         m_renderContext.cmd->ResetStats();
 
         if (CVar_ForceFrameSync.Get())
+        {
+            CPU_PROFILE_SCOPE(RenderSystem_WaitIdleForceSync);
             m_device->WaitIdle();
+        }
 
         const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 
-        // wait for last frame before acquire swapchain image
-        if (GetPresentSubmissionId())
-            m_device->WaitForSubmissionId(GetPresentSubmissionId());
+		{
+            CPU_PROFILE_SCOPE(RenderSystem_WaitFrameInFlight);
+			// wait for last frame before acquire swapchain image
+			if (GetPresentSubmissionId())
+				m_device->WaitForSubmissionId(GetPresentSubmissionId());
+		}
 
         m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
         const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
