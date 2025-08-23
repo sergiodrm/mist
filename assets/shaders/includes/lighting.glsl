@@ -61,7 +61,6 @@ struct ShadowInfo
 #endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
 };
 
-#endif // !LIGHTING_NO_SHADOWS
 
 /**
  * Util functions
