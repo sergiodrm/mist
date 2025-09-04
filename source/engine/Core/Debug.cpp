@@ -16,6 +16,7 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
 #include "RenderSystem/RenderSystem.h"
+#include "glm/ext/quaternion_common.inl"
 
 
 #pragma comment(lib,"Dbghelp.lib")
@@ -327,9 +328,11 @@ namespace Mist
 				mean /= data.GetCount();
 			}
 
-			static void BuildGpuProfTree(tCpuProfStackTree& stack, index_t root)
+			static void BuildGpuProfTree(tCpuProfStackTree& stack, index_t root, double minValue, double maxValue)
 			{
 				index_t index = root;
+				glm::vec4 goodColor = glm::vec4(0.f, 1.f, 0.f, 1.f);
+				glm::vec4 badColor = glm::vec4(1.f, 0.f, 0.f, 1.f);
 				const char* valuefmt = "%10.5f";
 				while (index != index_invalid)
 				{
@@ -343,10 +346,12 @@ namespace Mist
 							ImGuiTreeNodeFlags_SpanAllColumns
 							| ImGuiTreeNodeFlags_DefaultOpen);
 						ImGui::TableNextColumn();
-						ImGui::Text(valuefmt, data.Value);
+						double v = data.Value;
+						glm::vec4 c = glm::mix(goodColor, badColor, (v - minValue) / (maxValue - minValue));
+						ImGui::TextColored({ c.x, c.y, c.z, c.w }, valuefmt, v);
 						if (treeOpen)
 						{
-							BuildGpuProfTree(stack, item.Child);
+							BuildGpuProfTree(stack, item.Child, minValue, maxValue);
 							ImGui::TreePop();
 						}
 					}
@@ -354,7 +359,9 @@ namespace Mist
 					{
 						ImGui::Text("%s", data.Label.CStr());
 						ImGui::TableNextColumn();
-						ImGui::Text(valuefmt, stack.Data[item.DataIndex].Value);
+						double v = stack.Data[item.DataIndex].Value;
+						glm::vec4 c = glm::mix(goodColor, badColor, (v - minValue) / (maxValue - minValue));
+						ImGui::TextColored({c.x, c.y, c.z, c.w}, valuefmt, v);
 					}
 					index = item.Sibling;
 				}
@@ -387,7 +394,7 @@ namespace Mist
 						ImGui::TableSetupColumn("Process");
 						ImGui::TableSetupColumn("Time (ms)");
 						ImGui::TableHeadersRow();
-						BuildGpuProfTree(stack, 0);
+						BuildGpuProfTree(stack, 0, 0.0, 4.0);
 						ImGui::EndTable();
 					}
 				}
