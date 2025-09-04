@@ -105,6 +105,7 @@ namespace Mist
 
 		void Tick(float elapsedSeconds);
 		const Camera& GetCamera() const { return m_camera; }
+		Camera& GetCamera() { return m_camera; }
 
 		void ImGuiDraw();
 		void ProcessEvent(void* d);

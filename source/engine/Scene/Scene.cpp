@@ -441,6 +441,14 @@ namespace Mist
 				CameraComponent cc = { NewCamera() };
 				cc.Main = cameraNode["Main"].as<bool>();
 				SetCamera(rb, cc);
+				Camera& camera = m_cameras[cc.CameraIndex].GetCamera();
+				if (cameraNode["Position"] && cameraNode["Rotation"])
+				{
+					camera.SetPosition(cameraNode["Position"].as<glm::vec3>());
+					camera.SetRotation(cameraNode["Rotation"].as<glm::vec3>());
+				}
+				else
+					logferror("File with old version: %s\n", filepath);
 			}
 		}
 
@@ -524,6 +532,11 @@ namespace Mist
 				const CameraComponent& cc = m_cameraComponentMap.at(i);
 				emitter << YAML::Key << "CameraComponent" << YAML::BeginMap;
 				emitter << YAML::Key << "Main" << YAML::Value << cc.Main;
+				check(cc.CameraIndex < m_cameras.GetSize());
+				const Camera& camera = m_cameras[cc.CameraIndex].GetCamera();
+				emitter << YAML::Key << "Position" << YAML::Value << camera.GetPosition();
+				emitter << YAML::Key << "Rotation" << YAML::Value << camera.GetRotation();
+
 				emitter << YAML::EndMap;
 			}
 
@@ -534,7 +547,7 @@ namespace Mist
 
 		check(emitter.good());
 		const char* out = emitter.c_str();
-		uint32_t size = (uint32_t)emitter.size();
+		size_t size = emitter.size();
 		//logfinfo("YAML %u b\n%s\n", size, out);
 		cFile file;
 		check(file.OpenText(filepath, cFile::FileMode_Write) == cFile::Result_Ok);
