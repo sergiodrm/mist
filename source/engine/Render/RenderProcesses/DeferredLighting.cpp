@@ -213,6 +213,7 @@ namespace Mist
         const GBuffer* gbuffer = (const GBuffer*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_GBUFFER);
         check(gbuffer);
         render::TextureHandle depthTexture = gbuffer->m_renderTarget->m_description.depthStencilAttachment.texture;
+		Scene& scene = *frameContext.Scene;
 		{
 			CPU_PROFILE_SCOPE(DeferredLighting);
 			rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
@@ -245,19 +246,35 @@ namespace Mist
 				shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
 			g_render->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
 
-			const EnvironmentData& env = frameContext.Scene->GetEnvironmentData();
+			render::TextureHandle brdf = scene.GetIrradianceCube().brdf ? scene.GetIrradianceCube().brdf : nullptr;
+			render::TextureHandle irradiance = scene.GetIrradianceCube().brdf ? scene.GetIrradianceCube().irradiance : scene.GetSkyboxTexture();
+			render::TextureHandle specular = scene.GetIrradianceCube().brdf ? scene.GetIrradianceCube().specular : scene.GetSkyboxTexture();
+
+			const EnvironmentData& env = scene.GetEnvironmentData();
 			g_render->SetShaderProperty("u_env", &env, sizeof(env));
 			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 
-			g_render->SetTextureSlot("u_irradianceMap", frameContext.Scene->GetIrradianceCube().irradiance);
-			g_render->SetTextureSlot("u_brdfMap", frameContext.Scene->GetIrradianceCube().brdf);
-			g_render->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+			g_render->SetTextureSlot("u_irradianceMap", irradiance);
+			g_render->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
 				render::SamplerAddressMode_ClampToEdge,
 				render::SamplerAddressMode_ClampToEdge,
 				render::SamplerAddressMode_ClampToEdge);
-			g_render->SetTextureSlot("u_prefilterMap", frameContext.Scene->GetIrradianceCube().specular);
+
+			if (brdf)
+			{
+				g_render->SetTextureSlot("u_brdfMap", brdf);
+				g_render->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
+			}
+
+			g_render->SetTextureSlot("u_prefilterMap", specular);
 			g_render->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-				render::SamplerAddressMode_ClampToEdge, render::SamplerAddressMode_ClampToEdge, render::SamplerAddressMode_ClampToEdge);
+				render::SamplerAddressMode_ClampToEdge, 
+				render::SamplerAddressMode_ClampToEdge, 
+				render::SamplerAddressMode_ClampToEdge);
+
 			g_render->DrawFullscreenQuad();
 			g_render->EndMarker();
 		}
@@ -265,25 +282,30 @@ namespace Mist
 		{
 			check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
 			g_render->BeginMarker("Sky");
+
 			g_render->SetShader(m_skyboxShader);
 			g_render->SetStencilEnable(true);
 			g_render->SetStencilMask(0xff, 0x00, 0x00);
 			g_render->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
 			g_render->SetDepthEnable(false, false);
 			g_render->SetCullMode(render::RasterCullMode_Front);
+
 			g_render->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
 			g_render->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
-			render::TextureHandle cubemapTexture = renderContext.GetFrameContext().Scene->GetIrradianceCube().cubemap;
+
 			glm::mat4 view = GetCameraData()->View;
 			view[3] = { 0.f, 0.f, 0.f, 1.f};
 			glm::mat4 proj = GetCameraData()->Projection;
 			CameraData cameraData;
 			cameraData.Set(view, proj);
             g_render->SetShaderProperty("u_camera", &cameraData, sizeof(CameraData));
-            g_render->SetTextureSlot("u_cubemap", cubemapTexture);
+
+            g_render->SetTextureSlot("u_cubemap", scene.GetSkyboxTexture());
+
 			g_render->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
 			g_render->ClearState();
 			g_render->SetDefaultState();
+
 			g_render->EndMarker();
 		}
 

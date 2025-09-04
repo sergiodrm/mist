@@ -286,7 +286,7 @@ namespace Mist
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
 		bool LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
-		bool LoadIrradianceCube(const char* filepath);
+		bool LoadIrradianceCube(const PreprocessIrradianceInfo& info);
 
 		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
 		cModel* GetModel(const char* modelName);
@@ -328,5 +328,7 @@ namespace Mist
 		tStaticArray<tDrawList, 4> m_drawListArray;
 
 		index_t m_cameraIndex = index_invalid;
+
+		PreprocessIrradianceInfo m_irradianceRequestInfo;
 	};
 }

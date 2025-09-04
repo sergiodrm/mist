@@ -26,9 +26,15 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
 
     // Ambient color
-    vec3 N = normalize(normal);
-    vec3 V = normalize(-fragPos);
-    vec3 ambientColor = ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+    vec3 N = normalize(mat3(CAMERA_DATA.invView) * normal);
+    vec4 wspos = ((CAMERA_DATA.invView) * vec4(fragPos, 1));
+    vec3 pos = (wspos/wspos.w).xyz;
+    vec3 camPos = (CAMERA_DATA.invView)[3].xyz;
+    vec3 V = normalize(camPos - pos);
+    //return N;
+    //return V;
 
-    return lightColor + ambientColor;
+    vec3 ambientColor = ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+	//return ambientColor;
+    return lightColor + ambientColor*0.1f;
 }

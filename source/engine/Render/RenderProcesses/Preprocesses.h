@@ -29,7 +29,7 @@ namespace Mist
 		cModel cubeModel;
 
 		void Init(rendersystem::RenderSystem* rs);
-		void PrepareDraw(rendersystem::RenderSystem* rs, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader);
+		void PrepareDraw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& _rt, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader);
 		void DrawCube(rendersystem::RenderSystem* rs);
 		void Destroy(rendersystem::RenderSystem* rs);
 	};
@@ -39,6 +39,8 @@ namespace Mist
 		uint32_t cubemapWidthHeight;
 		uint32_t irradianceCubemapWidthHeight;
 		uint32_t specularCubemapWidthHeight;
+		glm::vec3 minCubemapClamp;
+		glm::vec3 maxCubemapClamp;
 		cAssetPath hdrFilepath;
 		void* userData = nullptr;
 	};

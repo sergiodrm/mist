@@ -142,6 +142,8 @@ namespace YAML
 
 namespace Mist
 {
+	CIntVar CVar_DebugCubes("r_debugCubes", 0);
+
 	const char* LightTypeToStr(ELightType e)
 	{
 		switch (e)
@@ -202,8 +204,13 @@ namespace Mist
 
 	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine))
 	{
-		// Create root scene
-		//CreateRenderObject(RenderObject::InvalidId);
+		m_irradianceRequestInfo.cubemapWidthHeight = 1024;
+		m_irradianceRequestInfo.irradianceCubemapWidthHeight = 32;
+		m_irradianceRequestInfo.specularCubemapWidthHeight = 128;
+		m_irradianceRequestInfo.minCubemapClamp = glm::vec3(0.f);
+		m_irradianceRequestInfo.maxCubemapClamp = glm::vec3(5.f);
+		m_irradianceRequestInfo.hdrFilepath = "textures/flamingo_pan_4k.hdr";
+		m_irradianceRequestInfo.userData = this;
 	}
 
 	Scene::~Scene()
@@ -448,10 +455,10 @@ namespace Mist
 		}
 		delete[] content;
 
-		LoadIrradianceCube("textures/flamingo_pan_4k.hdr");
+		//LoadIrradianceCube("textures/flamingo_pan_4k.hdr");
 		//LoadIrradianceCube("textures/citrus_orchard_road_puresky_4k.hdr");
 		//LoadIrradianceCube("textures/climbing_gym_4k.hdr");
-		//LoadIrradianceCube("textures/colorful_studio_4k.hdr");
+		LoadIrradianceCube(m_irradianceRequestInfo);
 	}
 
 	void Scene::SaveScene(const RenderContext& context, const char* filepath)
@@ -714,17 +721,12 @@ namespace Mist
 		return true;
 	}
 
-	bool Scene::LoadIrradianceCube(const char* filepath)
+	bool Scene::LoadIrradianceCube(const PreprocessIrradianceInfo& info)
 	{
 		const Renderer* renderer = m_engine->GetRenderer();
 		Preprocess* preprocess = (Preprocess*)renderer->GetRenderProcess(RENDERPROCESS_PREPROCESSES);
-		PreprocessIrradianceInfo info;
-		info.hdrFilepath = filepath;
-		info.cubemapWidthHeight = 1024;
-		info.irradianceCubemapWidthHeight = 32;
-		info.specularCubemapWidthHeight = 128;
-		info.userData = this;
-		m_irradianceCube.filepath = filepath;
+		m_irradianceCube.filepath = info.hdrFilepath;
+		check(info.userData == this);
 		preprocess->PushIrradiancePreprocess(info, 
 			[](const PreprocessIrradianceResult& result, void* userData) 
 			{
@@ -830,7 +832,14 @@ namespace Mist
 
 	render::TextureHandle Scene::GetSkyboxTexture() const
 	{
-		return m_skybox.texture;
+		if (!m_irradianceCube.brdf) 
+			return m_skybox.texture;
+
+		if (CVar_DebugCubes.Get() == 1)
+			return m_irradianceCube.irradiance;
+		if (CVar_DebugCubes.Get() == 2)
+			return m_irradianceCube.specular;
+		return m_irradianceCube.cubemap;
 	}
 
 	void Scene::ImGuiDraw()
@@ -1019,6 +1028,27 @@ namespace Mist
 				const tDrawList& list = m_drawListArray[i];
 				ImGui::Text("Render flags: %4d | Render items: %4d/%4d", list.RenderFlags, list.Items.GetSize(), list.Items.GetReservedSize());
 			}
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("IBL cubemap"))
+		{
+			if (ImGui::Button("Reload IBL"))
+				LoadIrradianceCube(m_irradianceRequestInfo);
+			char buff[256];
+			strcpy_s(buff, m_irradianceRequestInfo.hdrFilepath);
+			if (ImGui::InputText("HDR filepath", buff, sizeof(buff)))
+				m_irradianceRequestInfo.hdrFilepath = buff;
+			int res = m_irradianceRequestInfo.cubemapWidthHeight;
+			if (ImGui::DragInt("Cubemap resolution", &res, 1.f, 0, 8192, "%5d"))
+				m_irradianceRequestInfo.cubemapWidthHeight = res;
+			res = m_irradianceRequestInfo.irradianceCubemapWidthHeight;
+			if (ImGui::DragInt("Convolution irradiance resolution", &res, 1.f, 0, 512, "%5d"))
+				m_irradianceRequestInfo.irradianceCubemapWidthHeight = res;
+			res = m_irradianceRequestInfo.specularCubemapWidthHeight;
+			if (ImGui::DragInt("Specular irradiance resolution", &res, 1.f, 0, 1024, "%5d"))
+				m_irradianceRequestInfo.specularCubemapWidthHeight = res;
+			ImGui::DragFloat3("Min cubemap color", &m_irradianceRequestInfo.minCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
+			ImGui::DragFloat3("Max cubemap color", &m_irradianceRequestInfo.maxCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
 			ImGui::TreePop();
 		}
 		ImGui::End();

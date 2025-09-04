@@ -6,15 +6,6 @@ layout (location = 0) out vec4 fragColor;
 layout (location = 0) in vec3 localPos;
   
 layout (set = 1, binding = 0) uniform samplerCube u_cubemap;
-
-const vec2 invAtan = vec2(0.1591, 0.3183);
-vec2 SampleSphericalMap(vec3 v)
-{
-    vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
-    uv *= invAtan;
-    uv += 0.5;
-    return uv;
-}
   
 void main()
 {
@@ -25,7 +16,7 @@ void main()
     up = normalize(cross(normal, right));
 
     float sampleDelta = 0.025;
-    float nrSamples = 0.f;
+    int nrSamples = 0;
     for (float phi = 0.f; phi < 2.f * M_PI; phi += sampleDelta)
     {
         for (float theta = 0.f; theta < 0.5 * M_PI; theta += sampleDelta)
@@ -37,7 +28,7 @@ void main()
             nrSamples++;
         }
     }
-    irradiance = M_PI * irradiance * 1.f / float(nrSamples);
+    irradiance = M_PI * irradiance / float(nrSamples);
 
     fragColor = vec4(irradiance, 1.f);
 }
