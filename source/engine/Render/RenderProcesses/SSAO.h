@@ -59,9 +59,10 @@ namespace Mist
 	private:
 		rendersystem::ShaderProgram* m_ssaoShader;
 		render::RenderTargetHandle m_rt;
-		SSAOUBO m_uboData;
 		render::TextureHandle m_noiseTexture;
 		const Renderer* m_renderer;
+
+		SSAOUBO m_ssaoParams;
 
 		rendersystem::ShaderProgram* m_blurShader;
 		render::RenderTargetHandle m_blurRT;

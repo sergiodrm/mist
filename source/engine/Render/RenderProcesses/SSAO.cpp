@@ -17,6 +17,10 @@
 
 namespace Mist
 {
+	CFloatVar CVar_SSAORadius("r_ssaoRadius", 1.98f);
+	CFloatVar CVar_SSAOBias("r_ssaoBias", 0.087f);
+
+
 	SSAO::SSAO()
 		: m_mode(SSAO_Enabled)
 	{	}
@@ -30,27 +34,32 @@ namespace Mist
 			float scl = (float)i / (float)SSAO_KERNEL_SAMPLES;
 			scl = math::Lerp(0.1f, 1.f, scl * scl);
 			glm::vec3 kernel = glm::normalize(glm::vec3{ randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, randomFloat(generator) });
-			m_uboData.KernelSamples[i] = glm::vec4(kernel, 1.f);
-			m_uboData.KernelSamples[i] *= randomFloat(generator);
-			m_uboData.KernelSamples[i] *= scl;
+			m_ssaoParams.KernelSamples[i] = glm::vec4(kernel, 1.f);
+			m_ssaoParams.KernelSamples[i] *= randomFloat(generator);
+			m_ssaoParams.KernelSamples[i] *= scl;
 		}
-		m_uboData.Radius = 0.5f;
-		m_uboData.Bias = 0.025f;
 
-		glm::vec4 ssaoNoise[SSAO_NOISE_SAMPLES];
+		typedef float noise_t;
+		auto generateNoise = [&]()->noise_t { return (randomFloat(generator) * 2.f - 1.f); };
+		const render::Format textureNoiseFormat = render::Format_R32G32B32A32_SFloat;
+
+		noise_t ssaoNoise[4 * SSAO_NOISE_SAMPLES];
 		for (uint32_t i = 0; i < SSAO_NOISE_SAMPLES; ++i)
 		{
-			ssaoNoise[i] = { randomFloat(generator) * 2.f - 1.f, randomFloat(generator) * 2.f - 1.f, 0.f, 1.f };
+			ssaoNoise[(i * 4) + 0] = generateNoise();
+			ssaoNoise[(i * 4) + 1] = generateNoise();
+			ssaoNoise[(i * 4) + 2] = 0;
+			ssaoNoise[(i * 4) + 3] = 1;
 		}
 
         {
             render::TextureDescription noiseDesc;
             noiseDesc.extent = { 4,4,1 };
-            noiseDesc.format = render::Format_R32G32B32A32_SFloat;
+			noiseDesc.format = textureNoiseFormat;
 			noiseDesc.isShaderResource = true;
             m_noiseTexture = g_device->CreateTexture(noiseDesc);
             render::utils::UploadContext upload(g_device);
-            upload.WriteTexture(m_noiseTexture, 0, 0, ssaoNoise, sizeof(glm::vec4) * SSAO_NOISE_SAMPLES);
+            upload.WriteTexture(m_noiseTexture, 0, 0, ssaoNoise, sizeof(noise_t) * CountOf(ssaoNoise));
             upload.Submit();
 
             render::TextureDescription texDesc;
@@ -110,36 +119,50 @@ namespace Mist
 	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
 		CPU_PROFILE_SCOPE(CpuSSAO);
-		m_uboData.Projection = GetCameraData()->Projection;
-		m_uboData.InverseProjection = glm::inverse(m_uboData.Projection);
+		{
+			m_ssaoParams.Projection = GetCameraData()->Projection;
+			m_ssaoParams.InverseProjection = glm::inverse(m_ssaoParams.Projection);
+			m_ssaoParams.Bias = CVar_SSAOBias.Get();
+			m_ssaoParams.Radius = CVar_SSAORadius.Get();
+			m_ssaoParams.Bypass = m_mode == SSAO_Disabled ? 0.f : 1.f;
 
-		g_render->SetDefaultState();
-		g_render->ClearState();
-		g_render->SetShader(m_ssaoShader);
-		g_render->SetRenderTarget(m_rt);
-		g_render->SetDepthEnable(false, false);
-		m_uboData.Bypass = m_mode == SSAO_Disabled ? 0.f : 1.f;
-		g_render->SetShaderProperty("u_ssao", &m_uboData, sizeof(m_uboData));
+			g_render->SetDefaultState();
+			g_render->BeginMarker("SSAO");
+			g_render->ClearState();
+			g_render->SetShader(m_ssaoShader);
+			g_render->SetRenderTarget(m_rt);
+			g_render->SetDepthEnable(false, false);
+			g_render->SetShaderProperty("u_ssao", &m_ssaoParams, sizeof(m_ssaoParams));
 
-		const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
-		g_render->SetTextureSlot("u_GBufferPosition", *gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_POSITION].texture);
-		g_render->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_NORMAL].texture);
-		g_render->SetTextureSlot("u_SSAONoise", m_noiseTexture);
-		g_render->DrawFullscreenQuad();
-		g_render->ClearState();
+			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
+			g_render->SetTextureSlot("u_GBufferPosition", *gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_POSITION].texture);
+			g_render->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_NORMAL].texture);
+			g_render->SetTextureSlot("u_GBufferDepth", gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
+			g_render->SetTextureSlot("u_SSAONoise", m_noiseTexture);
+			g_render->DrawFullscreenQuad();
+			g_render->ClearState();
+			g_render->EndMarker();
+		}
 
-		g_render->SetShader(m_blurShader);
-		g_render->SetRenderTarget(m_blurRT);
-		g_render->SetTextureSlot("u_ssaoTex", m_rt->m_description.colorAttachments[0].texture);
-		g_render->DrawFullscreenQuad();
-		g_render->ClearState();
+		{
+			g_render->BeginMarker("SSAO Blur");
+			g_render->SetShader(m_blurShader);
+			g_render->SetRenderTarget(m_blurRT);
+			glm::vec4 blurParams = { 1.f / (float)m_rt->m_info.extent.width, 1.f / (float)m_rt->m_info.extent.height, 0.f, 0.f };
+			g_render->SetShaderProperty("u_data", &blurParams, sizeof(glm::vec4));
+			g_render->SetTextureSlot("u_ssaoTex", m_rt->m_description.colorAttachments[0].texture);
+			g_render->DrawFullscreenQuad();
+
+			g_render->ClearState();
+			g_render->EndMarker();
+		}
 	}
 
 	void SSAO::ImGuiDraw()
 	{
 		ImGui::Begin("SSAO");
-		ImGui::DragFloat("Radius", &m_uboData.Radius, 0.02f, 0.f, 5.f);
-		ImGui::DragFloat("Bias", &m_uboData.Bias, 0.001f, 0.f, 0.05f);
+		ImGuiUtils::EditCFloatVar(CVar_SSAORadius);
+		ImGuiUtils::EditCFloatVar(CVar_SSAOBias);
 		if (ImGui::BeginCombo("Debug texture", SSAOModeStr[m_mode]))
 		{
 			for (uint32_t i = 0; i < CountOf(SSAOModeStr); ++i)
