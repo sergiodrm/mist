@@ -60,6 +60,55 @@ namespace rendersystem
         virtual void* GetWindowNative() const = 0;
     };
 
+    class GpuFrameProfiler
+    {
+        enum
+        {
+            State_Idle,
+            State_Recording
+        };
+        static constexpr size_t MaxSize = 128;
+    public:
+        GpuFrameProfiler(render::Device* device);
+
+        // Insert marks inside command list.
+        void BeginZone(const render::CommandListHandle& cmd, const char* tag);
+        void EndZone(const render::CommandListHandle& cmd);
+        void Reset(const render::CommandListHandle& cmd);
+        bool CanRecord() const;
+
+        // Collect data from gpu queries once CommandList has been submitted and finished.
+        void Resolve();
+        void ImGuiDraw();
+
+        const render::QueryPoolHandle& GetPool() const { return m_pool; }
+
+    private:
+        void ImGuiDrawTreeItem(uint32_t itemIndex);
+
+    private:
+        render::Device* m_device;
+        render::QueryPoolHandle m_pool;
+        uint32_t m_queryId;
+        uint32_t m_state;
+
+        struct QueryEntry
+        {
+            enum { InvalidQueryId = UINT32_MAX };
+            uint32_t id = InvalidQueryId;
+            double value = 0.0;
+            char tag[32];
+
+            ~QueryEntry()
+            {
+                id = InvalidQueryId;
+                value = 0.0;
+                *tag = 0;
+            }
+        };
+        Mist::tStackTree<QueryEntry, MaxSize> m_tree;
+    };
+
     class BindingLayoutCache
     {
     public:
@@ -351,6 +400,10 @@ namespace rendersystem
         void BeginMarkerFmt(const char* fmt, ...);
         void EndMarker();
 
+        void BeginGpuProf(const char* name);
+        void BeginGpuProfFmt(const char* fmt, ...);
+        void EndGpuProf();
+
         inline render::RenderTargetHandle GetLDRTarget() const { return m_ldrRt; }
         inline render::TextureHandle GetLDRTexture() const { return m_ldrTexture; }
 
@@ -502,12 +555,14 @@ namespace rendersystem
             render::SemaphoreHandle presentSemaphores[Count];
             uint64_t presentSubmission[Count];
             FrameResourceTrack frameResources[Count];
+            GpuFrameProfiler* timestampQueries[Count];
         } m_frameSyncronization;
         inline const render::SemaphoreHandle& GetPresentSemaphore() const { return m_frameSyncronization.presentSemaphores[m_frame % FrameSyncContext::Count]; }
         inline const render::SemaphoreHandle& GetRenderSemaphore() const { check(m_swapchainIndex < FrameSyncContext::Count); return m_frameSyncronization.renderQueueSemaphores[m_swapchainIndex]; }
         inline uint64_t GetPresentSubmissionId() const { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count]; }
         inline uint64_t SetPresentSubmissionId(uint64_t submission) { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count] = submission; }
         inline FrameResourceTrack& GetFrameResources() { return m_frameSyncronization.frameResources[m_frame % FrameSyncContext::Count]; }
+        inline GpuFrameProfiler& GetFrameProfiler() { return *m_frameSyncronization.timestampQueries[m_frame % FrameSyncContext::Count]; }
 
         // Command list with transfer, graphics and compute commands
         RenderContext m_renderContext;
@@ -547,6 +602,7 @@ namespace rendersystem
         render::GraphicsPipelineDescription m_psoDesc;
 
         ShaderDb m_shaderDb;
+        bool m_recordingGpuProfiling;
     };
 }
 

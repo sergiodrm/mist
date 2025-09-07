@@ -10,9 +10,135 @@
 #include "Utils/TimeUtils.h"
 
 Mist::CIntVar CVar_ForceFrameSync("r_forceframesync", 0);
+Mist::CIntVar CVar_GpuProfiling("r_gpuProfiling", 0);
 
 namespace rendersystem
 {
+	GpuFrameProfiler::GpuFrameProfiler(render::Device* device)
+        : m_device(device), m_queryId(0), m_state(State_Idle)
+	{
+        check(m_device);
+        m_pool = m_device->CreateQueryPool({ .type = render::QueryType_Timestamp, .count = MaxSize * 2 });
+        m_queryId = UINT32_MAX;
+	}
+
+	void GpuFrameProfiler::BeginZone(const render::CommandListHandle& cmd, const char* tag)
+	{
+        if (!CanRecord())
+            return;
+        check(tag && m_queryId != UINT32_MAX);
+        cmd->WriteQueryTimestamp(m_pool, m_queryId);
+        m_tree.Push({ .id = m_queryId, .value = 0.0 });
+        QueryEntry& entry = m_tree.GetCurrent();
+        strcpy_s(entry.tag, tag);
+        m_queryId += 2;
+	}
+
+	void GpuFrameProfiler::EndZone(const render::CommandListHandle& cmd)
+	{
+		if (!CanRecord())
+			return;
+        QueryEntry& entry = m_tree.GetCurrent();
+        check(entry.id != QueryEntry::InvalidQueryId);
+        cmd->WriteQueryTimestamp(m_pool, entry.id + 1);
+        m_tree.Pop();
+	}
+
+    void GpuFrameProfiler::Reset(const render::CommandListHandle& cmd)
+    {
+        m_queryId = 0;
+        cmd->ResetTimestampQuery(&m_pool, 1);
+        m_tree.Reset();
+        m_state = State_Recording;
+    }
+
+    bool GpuFrameProfiler::CanRecord() const
+    {
+        return m_state == State_Recording;
+    }
+
+	void GpuFrameProfiler::Resolve()
+	{
+        if (m_tree.Items.IsEmpty())
+            return;
+
+        uint64_t data[MaxSize * 2];
+        check(MaxSize >= m_tree.Items.GetSize());
+        m_device->GetTimestampQuery(m_pool, 0, m_tree.Items.GetSize() * 2, data);
+        for (uint32_t i = 0; i < m_tree.Data.GetSize(); ++i)
+        {
+            QueryEntry& entry = m_tree.Data[i];
+            entry.value = (data[i*2 + 1] - data[i*2]) * 0.001;
+        }
+        m_queryId = UINT32_MAX;
+        m_state = State_Idle;
+	}
+
+    void GpuFrameProfiler::ImGuiDraw()
+    {
+        Resolve();
+		uint32_t size = m_tree.Items.GetSize();
+		float heightPerLine = 20.f; //approx?
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+		ImVec2 winpos = ImVec2(0.f, viewport->Size.y - heightPerLine * size);
+		//ImGui::SetNextWindowPos(winpos);
+		ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
+		ImGui::SetNextWindowBgAlpha(0.f);
+		ImGui::Begin("Gpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
+			| ImGuiWindowFlags_NoBackground
+			| ImGuiWindowFlags_NoDocking);
+		if (!m_tree.Items.IsEmpty())
+		{
+			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
+				| ImGuiTableFlags_Resizable
+				| ImGuiTableFlags_RowBg
+				| ImGuiTableFlags_NoBordersInBody;
+			if (ImGui::BeginTable("GpuProf", 2, flags))
+			{
+				ImGui::TableSetupColumn("Gpu process");
+				ImGui::TableSetupColumn("Time (us)");
+				ImGui::TableHeadersRow();
+				ImGuiDrawTreeItem(0);
+				ImGui::EndTable();
+			}
+		}
+		ImGui::End();
+    }
+
+    void GpuFrameProfiler::ImGuiDrawTreeItem(uint32_t itemIndex)
+    {
+		uint32_t index = itemIndex;
+		const char* valuefmt = "%8.4f";
+		while (m_tree.IsValidIndex(index))
+		{
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			auto& item = m_tree.Items[index];
+			QueryEntry& data = m_tree.Data[item.DataIndex];
+			if (m_tree.IsValidIndex(item.Child))
+			{
+				bool treeOpen = ImGui::TreeNodeEx(data.tag,
+					ImGuiTreeNodeFlags_SpanAllColumns
+					| ImGuiTreeNodeFlags_DefaultOpen);
+				ImGui::TableNextColumn();
+				ImGui::Text(valuefmt, data.value);
+				if (treeOpen)
+				{
+					ImGuiDrawTreeItem(item.Child);
+					ImGui::TreePop();
+				}
+			}
+			else
+			{
+				ImGui::Text("%s", data.tag);
+				ImGui::TableNextColumn();
+				ImGui::Text(valuefmt, m_tree.Data[item.DataIndex].value);
+			}
+			index = item.Sibling;
+		}
+    }
+
     render::BindingLayoutHandle BindingLayoutCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
     {
 		auto it = m_cache.find(desc);
@@ -146,6 +272,11 @@ namespace rendersystem
 				m_device->SetDebugName(m_frameSyncronization.presentSemaphores[i].GetPtr(), buff);
 
                 m_frameSyncronization.presentSubmission[i] = 0;
+
+                sprintf_s(buff, "timestamp query %d", i);
+                m_frameSyncronization.timestampQueries[i] = _new GpuFrameProfiler(m_device);
+                m_device->SetDebugName(m_frameSyncronization.timestampQueries[i]->GetPool().GetPtr(), buff);
+                //m_device->ResetQueryPool(m_frameSyncronization.timestampQueries[i]->GetPool(), 0, 64);
             }
         }
         {
@@ -194,6 +325,8 @@ namespace rendersystem
         {
             m_frameSyncronization.renderQueueSemaphores[i] = nullptr;
             m_frameSyncronization.presentSemaphores[i] = nullptr;
+            delete m_frameSyncronization.timestampQueries[i];
+            m_frameSyncronization.timestampQueries[i] = nullptr;
             m_frameSyncronization.frameResources[i].Clear();
         }
         m_ldrRt = nullptr;
@@ -768,6 +901,28 @@ namespace rendersystem
         ImGui::Text("Sampler lf:        %.4f", m_samplerCache->GetLoadFactor());
         ImGui::Text("Shaders:           %7d", m_shaderDb.m_programs.size());
         ImGui::End();
+
+        if (m_recordingGpuProfiling)
+        {
+            GpuFrameProfiler* profiler = nullptr;
+            if (CVar_ForceFrameSync.Get())
+                profiler = m_frameSyncronization.timestampQueries[(m_frame - 1) % FrameSyncContext::Count];
+            else
+            {
+                // find last submission finished
+                uint64_t frame = 1;
+                while (frame < FrameSyncContext::Count && !profiler)
+                {
+                    uint64_t submissionId = m_frameSyncronization.presentSubmission[(m_frame + frame) % FrameSyncContext::Count];
+                    if (m_device->GetCommandQueue(render::Queue_Graphics)->PollCommandSubmission(submissionId))
+                        profiler = m_frameSyncronization.timestampQueries[(m_frame + frame) % FrameSyncContext::Count];
+                    else
+                        ++frame;
+                }
+            }
+            if (profiler)
+                profiler->ImGuiDraw();
+        }
     }
 
     void RenderSystem::FlushBeforeDraw()
@@ -904,7 +1059,7 @@ namespace rendersystem
         m_frame++;
 
         ui::BeginFrame();
-        ImGuiDraw();
+        
         SetDefaultState();
         ClearState();
         m_renderContext.cmd->ResetStats();
@@ -936,7 +1091,11 @@ namespace rendersystem
 
         m_memoryContextId = m_memoryPool->CreateContext();
         m_renderContext.cmd->BeginRecording();
+        m_recordingGpuProfiling = CVar_GpuProfiling.Get();
+        if (m_recordingGpuProfiling)
+            GetFrameProfiler().Reset(m_renderContext.cmd);
         BeginMarker("Frame"); // frame marker
+        ImGuiDraw();
     }
 
     void RenderSystem::EndFrame()
@@ -971,6 +1130,7 @@ namespace rendersystem
     void RenderSystem::BeginMarker(const char* name, render::Color color)
     {
         m_renderContext.cmd->BeginMarker(name, color);
+        BeginGpuProf(name);
     }
 
     void RenderSystem::BeginMarkerFmt(const char* fmt, ...)
@@ -986,6 +1146,33 @@ namespace rendersystem
     void RenderSystem::EndMarker()
     {
         m_renderContext.cmd->EndMarker();
+        EndGpuProf();
+    }
+
+    void RenderSystem::BeginGpuProf(const char* name)
+    {
+		if (!m_recordingGpuProfiling)
+			return;
+        GetFrameProfiler().BeginZone(m_renderContext.cmd, name);
+    }
+
+    void RenderSystem::BeginGpuProfFmt(const char* fmt, ...)
+    {
+        if (!m_recordingGpuProfiling)
+            return;
+		char buff[32];
+		va_list lst;
+		va_start(lst, fmt);
+		vsprintf_s(buff, fmt, lst);
+		va_end(lst);
+        BeginGpuProf(buff);
+    }
+
+    void RenderSystem::EndGpuProf()
+    {
+		if (!m_recordingGpuProfiling)
+			return;
+        GetFrameProfiler().EndZone(m_renderContext.cmd);
     }
 
     TextureCache::TextureCache(render::Device* device)
