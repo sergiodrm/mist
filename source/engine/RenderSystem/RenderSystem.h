@@ -550,19 +550,23 @@ namespace rendersystem
         // Syncronization objects. One per frame in flight.
         struct FrameSyncContext
         {
-            static constexpr uint32_t Count = 8;
-            render::SemaphoreHandle renderQueueSemaphores[Count];
-            render::SemaphoreHandle presentSemaphores[Count];
-            uint64_t presentSubmission[Count];
-            FrameResourceTrack frameResources[Count];
-            GpuFrameProfiler* timestampQueries[Count];
+            uint32_t count = 0;
+            render::SemaphoreHandle* renderQueueSemaphores = nullptr;
+            render::SemaphoreHandle* presentSemaphores = nullptr;
+            uint64_t* presentSubmission = nullptr;
+            FrameResourceTrack* frameResources = nullptr;
+            GpuFrameProfiler* timestampQueries = nullptr;
+
+            void Init(render::Device* device, uint32_t frameCount);
+            void Destroy();
+
         } m_frameSyncronization;
-        inline const render::SemaphoreHandle& GetPresentSemaphore() const { return m_frameSyncronization.presentSemaphores[m_frame % FrameSyncContext::Count]; }
-        inline const render::SemaphoreHandle& GetRenderSemaphore() const { check(m_swapchainIndex < FrameSyncContext::Count); return m_frameSyncronization.renderQueueSemaphores[m_swapchainIndex]; }
-        inline uint64_t GetPresentSubmissionId() const { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count]; }
-        inline uint64_t SetPresentSubmissionId(uint64_t submission) { return m_frameSyncronization.presentSubmission[m_frame % FrameSyncContext::Count] = submission; }
-        inline FrameResourceTrack& GetFrameResources() { return m_frameSyncronization.frameResources[m_frame % FrameSyncContext::Count]; }
-        inline GpuFrameProfiler& GetFrameProfiler() { return *m_frameSyncronization.timestampQueries[m_frame % FrameSyncContext::Count]; }
+        inline const render::SemaphoreHandle& GetPresentSemaphore() const { return m_frameSyncronization.presentSemaphores[m_frame % m_frameSyncronization.count]; }
+        inline const render::SemaphoreHandle& GetRenderSemaphore() const { check(m_swapchainIndex < m_frameSyncronization.count); return m_frameSyncronization.renderQueueSemaphores[m_swapchainIndex]; }
+        inline uint64_t GetPresentSubmissionId() const { return m_frameSyncronization.presentSubmission[m_frame % m_frameSyncronization.count]; }
+        inline uint64_t SetPresentSubmissionId(uint64_t submission) { return m_frameSyncronization.presentSubmission[m_frame % m_frameSyncronization.count] = submission; }
+        inline FrameResourceTrack& GetFrameResources() { return m_frameSyncronization.frameResources[m_frame % m_frameSyncronization.count]; }
+		inline GpuFrameProfiler& GetFrameProfiler() { return m_frameSyncronization.timestampQueries[m_frame % m_frameSyncronization.count]; }
 
         // Command list with transfer, graphics and compute commands
         RenderContext m_renderContext;

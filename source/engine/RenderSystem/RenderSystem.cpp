@@ -250,7 +250,6 @@ namespace rendersystem
             m_ldrRt = m_device->CreateRenderTarget(desc);
         }
         {
-            check(swapchain.images.size() <= FrameSyncContext::Count);
             m_presentRts.resize(swapchain.images.size());
             char buff[256];
             for (uint32_t i = 0; i < (uint32_t)swapchain.images.size(); ++i)
@@ -261,23 +260,7 @@ namespace rendersystem
                 desc.debugName = "RT_PRESENT";
                 m_presentRts[i] = m_device->CreateRenderTarget(desc);
             }
-            for (uint32_t i = 0; i < FrameSyncContext::Count; ++i)
-            {
-				sprintf_s(buff, "render semaphore %d", i);
-				m_frameSyncronization.renderQueueSemaphores[i] = m_device->CreateRenderSemaphore();
-				m_device->SetDebugName(m_frameSyncronization.renderQueueSemaphores[i].GetPtr(), buff);
-
-				sprintf_s(buff, "present semaphore %d", i);
-				m_frameSyncronization.presentSemaphores[i] = m_device->CreateRenderSemaphore();
-				m_device->SetDebugName(m_frameSyncronization.presentSemaphores[i].GetPtr(), buff);
-
-                m_frameSyncronization.presentSubmission[i] = 0;
-
-                sprintf_s(buff, "timestamp query %d", i);
-                m_frameSyncronization.timestampQueries[i] = _new GpuFrameProfiler(m_device);
-                m_device->SetDebugName(m_frameSyncronization.timestampQueries[i]->GetPool().GetPtr(), buff);
-                //m_device->ResetQueryPool(m_frameSyncronization.timestampQueries[i]->GetPool(), 0, 64);
-            }
+            m_frameSyncronization.Init(m_device, swapchain.images.size());
         }
         {
             render::TextureDescription desc;
@@ -321,14 +304,7 @@ namespace rendersystem
         m_psoMap.clear();
         m_renderContext.cmd = nullptr;
         //for (uint32_t i = 0; i < (uint32_t)m_device->GetSwapchain().images.size(); ++i)
-        for (uint32_t i = 0; i < FrameSyncContext::Count; ++i)
-        {
-            m_frameSyncronization.renderQueueSemaphores[i] = nullptr;
-            m_frameSyncronization.presentSemaphores[i] = nullptr;
-            delete m_frameSyncronization.timestampQueries[i];
-            m_frameSyncronization.timestampQueries[i] = nullptr;
-            m_frameSyncronization.frameResources[i].Clear();
-        }
+        m_frameSyncronization.Destroy();
         m_ldrRt = nullptr;
         m_depthTexture = nullptr;
         m_ldrTexture = nullptr;
@@ -1884,4 +1860,56 @@ namespace rendersystem
         m_samplers[desc] = sampler;
         return sampler;
     }
+
+    void RenderSystem::FrameSyncContext::Init(render::Device* device, uint32_t frameCount)
+    {
+        check(count == 0 && frameCount);
+        count = frameCount;
+        renderQueueSemaphores = (render::SemaphoreHandle*)_malloc(sizeof(render::SemaphoreHandle) * frameCount);
+        presentSemaphores = (render::SemaphoreHandle*)_malloc(sizeof(render::SemaphoreHandle) * frameCount);
+        presentSubmission = (uint64_t*)_malloc(sizeof(uint64_t) * frameCount);
+        frameResources = (FrameResourceTrack*)_malloc(sizeof(FrameResourceTrack) * frameCount);
+        timestampQueries = (GpuFrameProfiler*)_malloc(sizeof(GpuFrameProfiler) * frameCount);
+        
+        char buff[32];
+        for (uint32_t i = 0; i < count; ++i)
+        {
+		    // init frame sync data
+		    sprintf_s(buff, "render semaphore %d", i);
+            new (&renderQueueSemaphores[i]) render::SemaphoreHandle(device->CreateRenderSemaphore());
+		    device->SetDebugName(renderQueueSemaphores[i].GetPtr(), buff);
+
+		    sprintf_s(buff, "present semaphore %d", i);
+            new (&presentSemaphores[i]) render::SemaphoreHandle(device->CreateRenderSemaphore());
+		    device->SetDebugName(presentSemaphores[i].GetPtr(), buff);
+
+		    presentSubmission[i] = 0;
+
+            new (&frameResources[i]) FrameResourceTrack();
+
+		    sprintf_s(buff, "timestamp query %d", i);
+            new (&timestampQueries[i]) GpuFrameProfiler(device);
+		    device->SetDebugName(timestampQueries[i].GetPool().GetPtr(), buff);
+        }
+    }
+
+    void RenderSystem::FrameSyncContext::Destroy()
+    {
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			renderQueueSemaphores[i] = nullptr;
+			presentSemaphores[i] = nullptr;
+			presentSubmission[i] = 0;
+            frameResources[i].Clear();
+			timestampQueries[i].~GpuFrameProfiler();
+		}
+
+        Mist::Free(renderQueueSemaphores);
+        Mist::Free(presentSemaphores);
+        Mist::Free(presentSubmission);
+        Mist::Free(frameResources);
+        Mist::Free(timestampQueries);
+        memset(this, 0, sizeof(FrameSyncContext));
+    }
+
 }
