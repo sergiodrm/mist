@@ -52,6 +52,9 @@ namespace Mist
 	template <typename T, typename U>
 	T limits_cast(U v) { check(v>= std::numeric_limits<T>::min() && v <= std::numeric_limits<T>::max()); return static_cast<T>(v); }
 
+	uint16_t f32Tof16(float v);
+	float f16Tof32(uint16_t v);
+
 	template <typename T>
 	void CopyDynArray(tDynArray<T>& dst, const std::vector<T>& src)
 	{
@@ -508,6 +511,7 @@ namespace Mist
 
 		const T& GetCurrent() const { check(Current != index_invalid); return Data[Items[Current].DataIndex]; }
 		T& GetCurrent() { check(Current != index_invalid); return Data[Items[Current].DataIndex]; }
+		inline bool IsValidIndex(index_t i) const { return i != index_invalid; }
 
 		void Reset()
 		{
