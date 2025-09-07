@@ -1,7 +1,18 @@
 #include "Types.h"
+#include "glm/glm.hpp"
 
 namespace Mist
 {
+	uint16_t f32Tof16(float v)
+	{
+		return glm::detail::toFloat16(v);
+	}
+
+	float f16Tof32(uint16_t v)
+	{
+		return glm::detail::toFloat32(v);
+	}
+
 	bool WildStrcmp(const char* wild, const char* str)
 	{
 		while (*wild != '*' && *str)
