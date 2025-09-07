@@ -340,6 +340,12 @@ namespace render
         m_device->DestroyComputePipeline(this);
     }
 
+	QueryPool::~QueryPool()
+	{
+        check(m_device);
+        m_device->DestroyQueryPool(this);
+	}
+
     void CommandBuffer::Begin()
     {
         vkcheck(vkResetCommandBuffer(cmd, 0));
@@ -1199,6 +1205,22 @@ namespace render
         }
         FlushRequiredStates();
         vkCmdCopyImage(m_currentCommandBuffer->cmd, src->m_image, srcLayout, dst->m_image, dstLayout, copyRegions.GetSize(), copyRegions.GetData());
+    }
+
+    void CommandList::WriteQueryTimestamp(const QueryPoolHandle& query, uint32_t queryId)
+    {
+        check(query && query->m_description.type == QueryType_Timestamp);
+        check(queryId < query->m_description.count);
+        vkCmdWriteTimestamp(m_currentCommandBuffer->cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, query->m_queryPool, queryId);
+    }
+
+    void CommandList::ResetTimestampQuery(const QueryPoolHandle* queries, uint32_t count)
+    {
+        for (uint32_t i = 0; i < count; ++i)
+        {
+            check(queries[i]);
+            vkCmdResetQueryPool(m_currentCommandBuffer->cmd, queries[i]->m_queryPool, 0, queries[i]->m_description.count);
+        }
     }
 
     void CommandList::BeginRenderPass(render::RenderTargetHandle rt)
@@ -2171,6 +2193,36 @@ namespace render
         bindingSet->m_samplers.clear();
     }
 
+    QueryPoolHandle Device::CreateQueryPool(const QueryPoolDescription& description)
+    {
+        check(description.count);
+        QueryPool* query = _new QueryPool(this, description);
+        VkQueryPoolCreateInfo info{ .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, .pNext = nullptr };
+        info.flags = 0;
+        info.queryType = utils::ConvertQueryType(description.type);
+        info.queryCount = description.count;
+        info.pipelineStatistics = 0;
+        vkcheck(vkCreateQueryPool(m_context->device, &info, m_context->allocationCallbacks, &query->m_queryPool));
+        return QueryPoolHandle(query);
+    }
+
+    void Device::DestroyQueryPool(QueryPool* query)
+    {
+        check(m_context && query);
+        vkDestroyQueryPool(m_context->device, query->m_queryPool, m_context->allocationCallbacks);
+    }
+
+    void Device::GetTimestampQuery(const QueryPoolHandle& query, uint32_t firstQuery, uint32_t queryCount, uint64_t* queryResults)
+    {
+        vkcheck(vkGetQueryPoolResults(m_context->device, query->m_queryPool, firstQuery, queryCount, sizeof(uint64_t) * queryCount, queryResults, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
+    }
+
+    void Device::ResetQueryPool(const QueryPoolHandle& query, uint32_t firstQuery, uint32_t queryCount)
+    {
+        check(query && firstQuery + queryCount <= query->m_description.count);
+        vkResetQueryPool(m_context->device, query->m_queryPool, firstQuery, queryCount);
+    }
+
     uint32_t Device::AcquireSwapchainIndex(SemaphoreHandle semaphoreToBeSignaled)
     {
         check(m_swapchainIndex == UINT32_MAX);
@@ -2262,6 +2314,11 @@ namespace render
     {
         SetDebugName(object->m_pipeline, debugName, VK_OBJECT_TYPE_PIPELINE);
         SetDebugName(object->m_pipelineLayout, debugName, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
+    }
+
+    void Device::SetDebugName(QueryPool* object, const char* debugName) const
+    {
+        SetDebugName(object->m_queryPool, debugName, VK_OBJECT_TYPE_QUERY_POOL);
     }
 
     void Device::SetDebugName(const void* object, const char* debugName, uint32_t type) const

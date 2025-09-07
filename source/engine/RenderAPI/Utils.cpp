@@ -1125,6 +1125,18 @@ namespace render
             return VK_CULL_MODE_FLAG_BITS_MAX_ENUM;
         }
 
+        VkQueryType ConvertQueryType(QueryType type)
+        {
+            switch (type)
+            {
+            case QueryType_Oclussion: return VK_QUERY_TYPE_OCCLUSION;
+            case QueryType_PipelineStatistics: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
+            case QueryType_Timestamp: return VK_QUERY_TYPE_TIMESTAMP;
+            }
+            unreachable_code();
+            return VK_QUERY_TYPE_MAX_ENUM;
+        }
+
         void ComputeMipExtent(uint32_t mipLevel, uint32_t width, uint32_t height, uint32_t depth, uint32_t* mipWidth, uint32_t* mipHeight, uint32_t* mipDepth)
         {
             if (mipWidth)

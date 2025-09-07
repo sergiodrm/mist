@@ -1266,6 +1266,33 @@ namespace render
     typedef Mist::RefPtr<ComputePipeline> ComputePipelineHandle;
 
     /************************************************************************/
+    /* Queries                                                              */
+    /************************************************************************/
+
+    struct QueryPoolDescription
+    {
+        QueryType type;
+        uint32_t count;
+    };
+
+    class QueryPool : public Mist::Ref<QueryPool>
+    {
+    public:
+        QueryPool(Device* device, const QueryPoolDescription& description)
+            : m_device(device), 
+            m_queryPool(VK_NULL_HANDLE), 
+            m_description(description)
+        { }
+        ~QueryPool();
+
+        VkQueryPool m_queryPool;
+        QueryPoolDescription m_description;
+    private:
+        Device* m_device;
+    };
+    typedef Mist::RefPtr<QueryPool> QueryPoolHandle;
+
+    /************************************************************************/
     /* Command queues and buffers                                           */
     /************************************************************************/
 
@@ -1505,6 +1532,10 @@ namespace render
         void BlitTexture(const BlitDescription& desc);
         void CopyTexture(const TextureHandle& src, const TextureHandle& dst, const CopyTextureInfo* infoArray, uint32_t infoCount);
 
+        // Queries
+        void WriteQueryTimestamp(const QueryPoolHandle& query, uint32_t queryId);
+        void ResetTimestampQuery(const QueryPoolHandle* queries, uint32_t count);
+
 
         inline bool AllowsCommandType(QueueType type) const { return IsRecording() && m_currentCommandBuffer->type & type; }
 
@@ -1611,6 +1642,11 @@ namespace render
         BindingSetHandle CreateBindingSet(const BindingSetDescription& description, BindingLayoutHandle layout);
         void DestroyBindingSet(BindingSet* bindingSet);
 
+        QueryPoolHandle CreateQueryPool(const QueryPoolDescription& description);
+        void DestroyQueryPool(QueryPool* query);
+        void GetTimestampQuery(const QueryPoolHandle& query, uint32_t firstQuery, uint32_t queryCount, uint64_t* queryResults);
+        void ResetQueryPool(const QueryPoolHandle& query, uint32_t firstQuery, uint32_t queryCount);
+
         const Swapchain& GetSwapchain() const { return m_swapchain; }
         uint32_t AcquireSwapchainIndex(SemaphoreHandle semaphoreToBeSignaled);
         void Present(SemaphoreHandle semaphoreToWait);
@@ -1628,6 +1664,7 @@ namespace render
         void SetDebugName(BindingLayout* object, const char* debugName) const;
         void SetDebugName(BindingSet* object, const char* debugName) const;
         void SetDebugName(ComputePipeline* object, const char* debugName) const;
+        void SetDebugName(QueryPool* object, const char* debugName) const;
         void SetDebugName(const void* object, const char* debugName, uint32_t type) const;
 
     private:

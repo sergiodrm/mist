@@ -61,6 +61,7 @@ namespace render
         VkPrimitiveTopology ConvertPrimitiveType(PrimitiveType type);
         VkPolygonMode ConvertPolygonMode(RasterFillMode mode);
         VkCullModeFlags ConvertCullMode(RasterCullMode mode);
+        VkQueryType ConvertQueryType(QueryType type);
 
         void ComputeMipExtent(uint32_t mipLevel, uint32_t width, uint32_t height, uint32_t depth, uint32_t* mipWidth, uint32_t* mipHeight, uint32_t* mipDepth);
         uint32_t ComputeMipLevels(uint32_t width, uint32_t height);

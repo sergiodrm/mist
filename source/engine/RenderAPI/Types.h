@@ -715,4 +715,12 @@ namespace render
 		RasterCullMode_FrontAndBack,
 		RasterCullMode_MaxEnum
 	};
+
+	enum QueryType
+	{
+		QueryType_Oclussion,
+		QueryType_PipelineStatistics,
+		QueryType_Timestamp,
+		QueryType_MaxEnum,
+	};
 }
