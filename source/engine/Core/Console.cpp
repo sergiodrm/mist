@@ -32,6 +32,11 @@ namespace Mist
 		g_Console.Draw();
 	}
 
+	void FlushPendingConsoleCommands()
+	{
+		g_Console.ExecuteDeferredCommand();
+	}
+
 	void ConsoleLog(LogLevel level, const char* msg)
 	{
 		g_Console.Log(level, msg);
@@ -40,7 +45,8 @@ namespace Mist
 	Console::Console()
 		: m_mode(ConsoleMode_Input), 
 		m_newEntry(false),
-		m_historyIndex(0)
+		m_historyIndex(0),
+		m_pendingExecuteCommand(false)
 	{
 	}
 
@@ -138,9 +144,8 @@ namespace Mist
 		bool reclaimFocus = false;
 		if (ImGui::InputText("Input", m_inputCommand, 256, flags, &Console::ConsoleInputCallback, this))
 		{
-			ExecCommand(m_inputCommand);
-			*m_inputCommand = 0;
 			reclaimFocus = true;
+			m_pendingExecuteCommand = true;
 		}
 
 		ImGui::SetItemDefaultFocus();
@@ -157,6 +162,16 @@ namespace Mist
 		loginfo("============\n");
 	}
 
+	void Console::ExecuteDeferredCommand()
+	{
+		if (*m_inputCommand && m_pendingExecuteCommand)
+		{
+			ExecCommand(m_inputCommand);
+			*m_inputCommand = 0;
+			m_pendingExecuteCommand = false;
+		}
+	}
+
 	bool Console::ExecInternalCommand(const char* cmd)
 	{
 		if (!strcmp(cmd, "cmdlist"))
@@ -164,7 +179,7 @@ namespace Mist
 			PrintCommandList();
 			return true;
 		}
-		else if (ExecCommand_CVar(cmd))
+		if (ExecCommand_CVar(cmd))
 			return true;
 		return false;
 	}

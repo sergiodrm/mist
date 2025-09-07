@@ -16,6 +16,7 @@ namespace Mist
 	typedef void(*FnExecCommandCallback)(const char* cmd);
 	void AddConsoleCommand(const char* cmdname, FnExecCommandCallback fn);
 	void DrawConsole();
+	void FlushPendingConsoleCommands();
 	void ConsoleLog(LogLevel level, const char* msg);
 
 	class Console
@@ -56,6 +57,7 @@ namespace Mist
 
 		void Draw();
 		void PrintCommandList();
+		void ExecuteDeferredCommand();
 	private:
 		bool ExecInternalCommand(const char* cmd);
 		void ExecCommand(const char* cmd);
@@ -73,6 +75,7 @@ namespace Mist
 		tCircularBuffer<tInputString, CONSOLE_HISTORY_SIZE> m_history;
 		eConsoleMode m_mode;
 		char m_inputCommand[CONSOLE_INPUT_LENGTH];
+		bool m_pendingExecuteCommand;
 		tStaticArray<tFixedString<64>, CONSOLE_CMD_CALLBACKS_COUNT> m_callbacksNames;
 		tStaticArray<FnExecCommandCallback, CONSOLE_CMD_CALLBACKS_COUNT> m_cmdFunctions;
 	};

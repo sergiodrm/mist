@@ -303,25 +303,14 @@ namespace Mist
 	bool VulkanRenderEngine::RenderProcess()
 	{
 		CPU_PROFILE_SCOPE(Process);
-
-#ifdef RENDER_BACKEND_TEST
 		if (m_scene)
 		{
 			m_scene->UpdateRenderData();
 			ShadowMapProcess* shadowMap = static_cast<ShadowMapProcess*>(m_renderer.GetRenderProcess(RENDERPROCESS_SHADOWMAP));
 			shadowMap->CollectLightData(*m_scene);
 		}
+		FlushPendingConsoleCommands();
 		Draw();
-#else
-		ui::Begin(m_renderContext);
-		{
-			CPU_PROFILE_SCOPE(ImGuiCalbacks);
-			ImGuiDraw();
-		}
-		//BeginFrame();
-		Mist::Profiling::GRenderStats.Reset();
-		Draw();
-#endif
 		return true;
 	}
 
