@@ -24,7 +24,7 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
-      Color: [0.862494409, 0.979865789, 0.749695957]
+      Color: [0.8624944, 0.9798658, 0.74969596]
       Radius: 10000
       Compression: 10000
       OuterCutoff: 26.5
@@ -39,10 +39,10 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [1, 0.907256424, 0.523489952]
+      Color: [1, 0.9072564, 0.52348995]
       Radius: 1000
       Compression: 1000
-      OuterCutoff: 0.800000012
+      OuterCutoff: 0.8
       Cutoff: 1
       ProjectShadows: true
   - RenderObject: 3
@@ -58,7 +58,7 @@ RenderObjects:
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
-      Cutoff: 41.7999992
+      Cutoff: 41.8
       ProjectShadows: true
   - RenderObject: 4
     Name: Sponza
@@ -87,3 +87,14 @@ RenderObjects:
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: models/metalrough/metalroughspheres.gltf
+  - RenderObject: 7
+    Name: DefaultMainCamera
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Main: true
+      Position: [91.36974, 5.5041227, 5.470748]
+      Rotation: [0.41296312, -1.0817723, 0]
