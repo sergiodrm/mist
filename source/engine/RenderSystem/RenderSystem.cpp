@@ -881,20 +881,15 @@ namespace rendersystem
         if (m_recordingGpuProfiling)
         {
             GpuFrameProfiler* profiler = nullptr;
-            if (CVar_ForceFrameSync.Get())
-                profiler = m_frameSyncronization.timestampQueries[(m_frame - 1) % FrameSyncContext::Count];
-            else
+            // find last submission finished
+            uint64_t frame = 1;
+            while (frame < m_frameSyncronization.count && !profiler)
             {
-                // find last submission finished
-                uint64_t frame = 1;
-                while (frame < FrameSyncContext::Count && !profiler)
-                {
-                    uint64_t submissionId = m_frameSyncronization.presentSubmission[(m_frame + frame) % FrameSyncContext::Count];
-                    if (m_device->GetCommandQueue(render::Queue_Graphics)->PollCommandSubmission(submissionId))
-                        profiler = m_frameSyncronization.timestampQueries[(m_frame + frame) % FrameSyncContext::Count];
-                    else
-                        ++frame;
-                }
+                uint64_t submissionId = m_frameSyncronization.presentSubmission[(m_frame + frame) % m_frameSyncronization.count];
+                if (m_device->GetCommandQueue(render::Queue_Graphics)->PollCommandSubmission(submissionId))
+                    profiler = &m_frameSyncronization.timestampQueries[(m_frame + frame) % m_frameSyncronization.count];
+                else
+                    ++frame;
             }
             if (profiler)
                 profiler->ImGuiDraw();
