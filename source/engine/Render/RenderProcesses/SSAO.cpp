@@ -137,7 +137,7 @@ namespace Mist
 			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
 			g_render->SetTextureSlot("u_GBufferPosition", *gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_POSITION].texture);
 			g_render->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_NORMAL].texture);
-			g_render->SetTextureSlot("u_GBufferDepth", gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
+			//g_render->SetTextureSlot("u_GBufferDepth", gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
 			g_render->SetTextureSlot("u_SSAONoise", m_noiseTexture);
 			g_render->DrawFullscreenQuad();
 			g_render->ClearState();
