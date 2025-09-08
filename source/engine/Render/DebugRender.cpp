@@ -317,8 +317,7 @@ namespace Mist
 				g_render->SetPrimitive(render::PrimitiveType_TriangleList);
 				g_render->SetIndexBuffer(DebugRenderPipeline.QuadBatch.indexBuffer);
 				g_render->SetShaderProperty("u_camera", &orthoproj, sizeof(orthoproj));
-				for (uint32_t i = 0; i < DebugRenderPipeline.QuadBatch.Textures.GetSize(); ++i)
-					g_render->SetTextureSlot(DebugRenderPipeline.QuadBatch.Textures[i], 1, i);
+				g_render->SetTextureSlot("u_tex", DebugRenderPipeline.QuadBatch.Textures.GetData(), DebugRenderPipeline.QuadBatch.Textures.GetSize());
 				g_render->SetDepthEnable(false, false);
 				g_render->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6);
 				g_render->SetDefaultState();
