@@ -30,8 +30,11 @@ namespace Mist
 		const GBuffer* gbuffer = (const GBuffer*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_GBUFFER);
 		check(gbuffer);
 
-		uint32_t width = gbuffer->GetRenderTarget()->m_info.extent.width;
-		uint32_t height = gbuffer->GetRenderTarget()->m_info.extent.height;
+		rendersystem::RenderSystem* rs = g_render;
+		render::Device* device = rs->GetDevice();
+
+		uint32_t width = rs->GetRenderResolution().width;
+		uint32_t height = rs->GetRenderResolution().height;
 		render::TextureHandle depthTexture = gbuffer->m_renderTarget->m_description.depthStencilAttachment.texture;
         {
             render::TextureDescription texDesc;
@@ -39,27 +42,27 @@ namespace Mist
 			texDesc.extent = { width, height, 1 };
 			texDesc.isRenderTarget = true;
 			texDesc.debugName = "DeferredLighting_HDR";
-			render::TextureHandle texture = g_device->CreateTexture(texDesc);
+			render::TextureHandle texture = device->CreateTexture(texDesc);
 
             render::RenderTargetDescription rtDesc;
 			rtDesc.AddColorAttachment(texture);
 			rtDesc.SetDepthStencilAttachment(depthTexture);
-			m_lightingOutput = g_device->CreateRenderTarget(rtDesc);
+			m_lightingOutput = device->CreateRenderTarget(rtDesc);
         }
 
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/deferred.frag";
-			m_lightingShader = g_render->CreateShader(shaderDesc);
+			m_lightingShader = rs->CreateShader(shaderDesc);
 			shaderDesc.fsDesc.options.PushMacroDefinition("DEFERRED_APPLY_FOG");
-			m_lightingFogShader = g_render->CreateShader(shaderDesc);
+			m_lightingFogShader = rs->CreateShader(shaderDesc);
 		}
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
 			shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
-            m_skyboxShader = g_render->CreateShader(shaderDesc);
+            m_skyboxShader = rs->CreateShader(shaderDesc);
 		}
 		{
 			render::TextureDescription texDesc;
@@ -67,95 +70,17 @@ namespace Mist
 			texDesc.extent = { width, height, 1 };
 			texDesc.isRenderTarget = true;
 			texDesc.debugName = "DeferredLighting_LDR";
-			render::TextureHandle texture = g_device->CreateTexture(texDesc);
+			render::TextureHandle texture = device->CreateTexture(texDesc);
 
 			render::RenderTargetDescription rtDesc;
 			rtDesc.AddColorAttachment(texture);
-			m_hdrOutput = g_device->CreateRenderTarget(rtDesc);
+			m_hdrOutput = device->CreateRenderTarget(rtDesc);
 
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/hdr.frag";
-			m_hdrShader = g_render->CreateShader(shaderDesc);
+			m_hdrShader = rs->CreateShader(shaderDesc);
 		}
-#if 0
-		tClearValue clearValue{ .color = {0.2f, 0.2f, 0.2f, 0.f} };
-		RenderTargetDescription description;
-		description.AddColorAttachment(FORMAT_R16G16B16A16_SFLOAT, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-		description.SetDepthAttachment(depthTexture);
-		description.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
-		description.RenderArea.offset = { .x = 0, .y = 0 };
-		description.ResourceName = "DeferredLighting_RT";
-		description.ClearOnLoad = false;
-		m_lightingOutput = RenderTarget::Create(renderContext, description);
-
-		{
-			// Deferred pipeline
-			tShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("deferred.frag");
-			shaderDesc.RenderTarget = m_lightingOutput;
-			shaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			shaderDesc.DepthStencilMode = DEPTH_STENCIL_NONE;
-			//shaderDesc.DepthCompareOp = COMPARE_OP_NEVER;
-			//shaderDesc.FrontStencil.CompareMask = 0x01;
-			//shaderDesc.FrontStencil.WriteMask = 0x00;
-			//shaderDesc.FrontStencil.Reference = 0x01;
-			//shaderDesc.FrontStencil.CompareOp = COMPARE_OP_NOT_EQUAL;
-			//shaderDesc.FrontStencil.FailOp = STENCIL_OP_KEEP;
-			//shaderDesc.FrontStencil.PassOp = STENCIL_OP_KEEP;
-			//shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_KEEP;
-			//shaderDesc.BackStencil = shaderDesc.FrontStencil;
-			tColorBlendState blend;
-			blend.Enabled = true;
-			//shaderDesc.ColorAttachmentBlendingArray.push_back(blend);
-			m_lightingShader = ShaderProgram::Create(renderContext, shaderDesc);
-			shaderDesc.FragmentShaderFile.CompileOptions.MacroDefinitionArray.push_back({ "DEFERRED_APPLY_FOG" });
-			m_lightingFogShader = ShaderProgram::Create(renderContext, shaderDesc);
-		}
-
-#if 1
-		{
-			tShaderProgramDescription shaderDesc;
-			shaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("skybox.vert");
-			shaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("skybox.frag");
-			shaderDesc.InputLayout = VertexInputLayout::GetStaticMeshVertexLayout();
-			shaderDesc.RenderTarget = m_lightingOutput;
-			shaderDesc.CullMode = CULL_MODE_FRONT_BIT;
-			shaderDesc.FrontFaceMode = FRONT_FACE_COUNTER_CLOCKWISE;
-			shaderDesc.DepthStencilMode = DEPTH_STENCIL_STENCIL_TEST;
-			shaderDesc.FrontStencil.CompareMask = 0x1;
-			shaderDesc.FrontStencil.Reference = 0x1;
-			shaderDesc.FrontStencil.WriteMask = 0x1;
-			shaderDesc.FrontStencil.CompareOp = COMPARE_OP_NOT_EQUAL;
-			shaderDesc.FrontStencil.PassOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.FailOp = STENCIL_OP_KEEP;
-			shaderDesc.FrontStencil.DepthFailOp = STENCIL_OP_KEEP;
-			shaderDesc.BackStencil = shaderDesc.FrontStencil;
-
-			m_skyboxShader = ShaderProgram::Create(renderContext, shaderDesc);
-		}
-#endif // 0
-
-		{
-			tClearValue clearValue{ 1.f, 1.f, 1.f, 1.f };
-			RenderTargetDescription ldrRtDesc;
-			ldrRtDesc.RenderArea.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height };
-			ldrRtDesc.RenderArea.offset = { .x = 0, .y = 0 };
-			ldrRtDesc.AddColorAttachment(FORMAT_R8G8B8A8_UNORM, IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, SAMPLE_COUNT_1_BIT, clearValue);
-			ldrRtDesc.ResourceName = "HDR_RT";
-			m_hdrOutput = RenderTarget::Create(renderContext, ldrRtDesc);
-
-			tShaderProgramDescription hdrShaderDesc;
-			hdrShaderDesc.VertexShaderFile.Filepath = SHADER_FILEPATH("quad.vert");
-			hdrShaderDesc.FragmentShaderFile.Filepath = SHADER_FILEPATH("hdr.frag");
-			hdrShaderDesc.InputLayout = VertexInputLayout::GetScreenQuadVertexLayout();
-			hdrShaderDesc.RenderTarget = m_hdrOutput;
-			m_hdrShader = ShaderProgram::Create(renderContext, hdrShaderDesc);
-		}
-#endif // 0
-
-
 		// ComposeTarget needs to be != nullptr on create shaders
 		m_bloomEffect.m_composeTarget = m_lightingOutput;
 		m_bloomEffect.Init(renderContext);
@@ -171,10 +96,11 @@ namespace Mist
 		m_skyModel = nullptr;
 		m_bloomEffect.Destroy(renderContext);
 
-		g_render->DestroyShader(&m_hdrShader);
-		g_render->DestroyShader(&m_lightingShader);
-		g_render->DestroyShader(&m_lightingFogShader);
-		g_render->DestroyShader(&m_skyboxShader);
+		rendersystem::RenderSystem* rs = g_render;
+		rs->DestroyShader(&m_hdrShader);
+		rs->DestroyShader(&m_lightingShader);
+		rs->DestroyShader(&m_lightingFogShader);
+		rs->DestroyShader(&m_skyboxShader);
 		m_lightingOutput = nullptr;
 		m_hdrOutput = nullptr;
 		m_ssaoRenderTarget = nullptr;
@@ -208,8 +134,7 @@ namespace Mist
 
 	void DeferredLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
 	{
-        CommandList* commandList = renderContext.CmdList;
-		GraphicsState graphicsState;
+		rendersystem::RenderSystem* rs = g_render;
         const GBuffer* gbuffer = (const GBuffer*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_GBUFFER);
         check(gbuffer);
         render::TextureHandle depthTexture = gbuffer->m_renderTarget->m_description.depthStencilAttachment.texture;
@@ -219,94 +144,94 @@ namespace Mist
 			rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
 
 			// Composition
-			g_render->BeginMarker("Deferred lighting");
-			g_render->ClearState();
-			g_render->SetDefaultState();
-			g_render->SetShader(shader);
-			g_render->SetRenderTarget(m_lightingOutput);
-			g_render->SetDepthEnable(true, false);
+			rs->BeginMarker("Deferred lighting");
+			rs->ClearState();
+			rs->SetDefaultState();
+			rs->SetShader(shader);
+			rs->SetRenderTarget(m_lightingOutput);
+			rs->SetDepthEnable(true, false);
 			
 			///////////////////////////////////////////////////////////commandList->ClearColor();
 
-			g_render->SetTextureSlot("u_GBufferPosition", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture);
-			g_render->SetTextureSlot("u_GBufferNormal", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
-			g_render->SetTextureSlot("u_GBufferAlbedo", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
-			g_render->SetTextureSlot("u_GBufferEmissive", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_EMISSIVE].texture);
-			g_render->SetTextureSlot("u_ssao", m_ssaoRenderTarget->m_description.colorAttachments[0].texture);
+			rs->SetTextureSlot("u_GBufferPosition", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture);
+			rs->SetTextureSlot("u_GBufferNormal", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
+			rs->SetTextureSlot("u_GBufferAlbedo", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
+			rs->SetTextureSlot("u_GBufferEmissive", m_gbufferRenderTarget->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_EMISSIVE].texture);
+			rs->SetTextureSlot("u_ssao", m_ssaoRenderTarget->m_description.colorAttachments[0].texture);
 			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 				shadowMapTextures[i] = m_shadowMapRenderTargetArray[i]->m_description.depthStencilAttachment.texture;
-			g_render->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
-			g_render->SetTextureSlot("u_GBufferDepth", *m_gbufferRenderTarget->m_description.depthStencilAttachment.texture);
+			rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
+			rs->SetTextureSlot("u_GBufferDepth", *m_gbufferRenderTarget->m_description.depthStencilAttachment.texture);
 
 			// Use shared buffer for avoiding doing this here (?)
 			const ShadowMapProcess& shadowMapProcess = *(ShadowMapProcess*)renderContext.Renderer->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
 			tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 				shadowMapMatrices[i] = shadowMapProcess.GetPipeline().GetLightVP(i);
-			g_render->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+			rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
 
 			render::TextureHandle brdf = scene.GetIrradianceCube().brdf ? scene.GetIrradianceCube().brdf : nullptr;
 			render::TextureHandle irradiance = scene.GetIrradianceCube().brdf ? scene.GetIrradianceCube().irradiance : scene.GetSkyboxTexture();
 			render::TextureHandle specular = scene.GetIrradianceCube().brdf ? scene.GetIrradianceCube().specular : scene.GetSkyboxTexture();
 
 			const EnvironmentData& env = scene.GetEnvironmentData();
-			g_render->SetShaderProperty("u_env", &env, sizeof(env));
-			g_render->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+			rs->SetShaderProperty("u_env", &env, sizeof(env));
+			rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 
-			g_render->SetTextureSlot("u_irradianceMap", irradiance);
-			g_render->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+			rs->SetTextureSlot("u_irradianceMap", irradiance);
+			rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
 				render::SamplerAddressMode_ClampToEdge,
 				render::SamplerAddressMode_ClampToEdge,
 				render::SamplerAddressMode_ClampToEdge);
 
 			if (brdf)
 			{
-				g_render->SetTextureSlot("u_brdfMap", brdf);
-				g_render->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+				rs->SetTextureSlot("u_brdfMap", brdf);
+				rs->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge);
 			}
 
-			g_render->SetTextureSlot("u_prefilterMap", specular);
-			g_render->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+			rs->SetTextureSlot("u_prefilterMap", specular);
+			rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
 				render::SamplerAddressMode_ClampToEdge, 
 				render::SamplerAddressMode_ClampToEdge, 
 				render::SamplerAddressMode_ClampToEdge);
 
-			g_render->DrawFullscreenQuad();
-			g_render->EndMarker();
+			rs->DrawFullscreenQuad();
+			rs->EndMarker();
 		}
 
 		{
 			check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
-			g_render->BeginMarker("Sky");
+			rs->BeginMarker("Sky");
 
-			g_render->SetShader(m_skyboxShader);
-			g_render->SetStencilEnable(true);
-			g_render->SetStencilMask(0xff, 0x00, 0x00);
-			g_render->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
-			g_render->SetDepthEnable(false, false);
-			g_render->SetCullMode(render::RasterCullMode_Front);
+			rs->SetShader(m_skyboxShader);
+			rs->SetStencilEnable(true);
+			rs->SetStencilMask(0xff, 0x00, 0x00);
+			rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
+			rs->SetDepthEnable(false, false);
+			rs->SetCullMode(render::RasterCullMode_Front);
 
-			g_render->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
-			g_render->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
+			rs->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
+			rs->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
 
 			glm::mat4 view = GetCameraData()->View;
 			view[3] = { 0.f, 0.f, 0.f, 1.f};
 			glm::mat4 proj = GetCameraData()->Projection;
 			CameraData cameraData;
 			cameraData.Set(view, proj);
-            g_render->SetShaderProperty("u_camera", &cameraData, sizeof(CameraData));
+            rs->SetShaderProperty("u_camera", &cameraData, sizeof(CameraData));
 
-            g_render->SetTextureSlot("u_cubemap", scene.GetSkyboxTexture());
+            rs->SetTextureSlot("u_cubemap", scene.GetSkyboxTexture());
 
-			g_render->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
-			g_render->ClearState();
-			g_render->SetDefaultState();
+			rs->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
+			rs->ClearState();
+			rs->SetDefaultState();
 
-			g_render->EndMarker();
+			rs->EndMarker();
 		}
 
 		m_bloomEffect.m_composeTarget = m_lightingOutput;
@@ -316,26 +241,26 @@ namespace Mist
 
 		{
 			CPU_PROFILE_SCOPE(CpuHDR);
-			g_render->BeginMarker("HDR");
+			rs->BeginMarker("HDR");
 			// HDR and tone mapping
 			struct
 			{
 				float gamma;
 				float exposure;
 			} params{ CVar_GammaCorrection.Get(), CVar_Exposure.Get() };
-			render::RenderTargetHandle rt = g_render->GetLDRTarget();
+			render::RenderTargetHandle rt = rs->GetLDRTarget();
 
-			g_render->SetShader(m_hdrShader);
-			g_render->SetRenderTarget(rt);
-			g_render->ClearColor();
-			g_render->SetDepthEnable(false, false);
-			g_render->SetShaderProperty("u_HdrParams", &params, sizeof(params));
-			g_render->SetTextureSlot("u_hdrtex", m_lightingOutput->m_description.colorAttachments[0].texture);
-			g_render->DrawFullscreenQuad();
-			g_render->SetDefaultState();
-			g_render->EndMarker();
+			rs->SetShader(m_hdrShader);
+			rs->SetRenderTarget(rt);
+			rs->ClearColor();
+			rs->SetDepthEnable(false, false);
+			rs->SetShaderProperty("u_HdrParams", &params, sizeof(params));
+			rs->SetTextureSlot("u_hdrtex", m_lightingOutput->m_description.colorAttachments[0].texture);
+			rs->DrawFullscreenQuad();
+			rs->SetDefaultState();
+			rs->EndMarker();
 		}
-		g_render->ClearState();
+		rs->ClearState();
 	}
 
 	void DeferredLighting::ImGuiDraw()

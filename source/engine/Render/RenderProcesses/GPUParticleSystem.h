@@ -14,6 +14,7 @@
 namespace rendersystem
 {
     class ShaderProgram;
+	class RenderSystem;
 }
 
 namespace Mist
@@ -52,14 +53,17 @@ namespace Mist
 	public:
 
 		GPUParticleSystem();
-		void Init(const RenderContext& context);
+		void Init(rendersystem::RenderSystem* renderSystem);
+#if 0
 		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
-		void UpdateBuffers(const RenderContext& context, RenderFrameContext& frameContext);
-		void Dispatch(const RenderContext& context, uint32_t frameIndex);
-		void Draw(const RenderContext& context, const RenderFrameContext& frameContext);
-		void Destroy(const RenderContext& context);
+#endif // 0
+
+		void UpdateBuffers(rendersystem::RenderSystem* renderSystem);
+		void Dispatch(rendersystem::RenderSystem* renderSystem);
+		void Draw(rendersystem::RenderSystem* renderSystem);
+		void Destroy(rendersystem::RenderSystem* renderSystem);
 		void ImGuiDraw();
-		void ResetParticles(const RenderContext& context);
+		void ResetParticles(render::Device* device);
 
 	private:
 		rendersystem::ShaderProgram* m_computeShader;
