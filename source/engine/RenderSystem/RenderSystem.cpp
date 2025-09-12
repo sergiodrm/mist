@@ -1523,6 +1523,8 @@ namespace rendersystem
         for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
             compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
 
+		check(!m_properties);
+		m_properties = _new render::shader_compiler::ShaderReflectionProperties();
         const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
         m_properties->params = std::move(prop.params);
         m_properties->pushConstantMap = std::move(prop.pushConstantMap);
