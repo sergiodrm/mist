@@ -1036,7 +1036,7 @@ namespace rendersystem
         ClearState();
         m_renderContext.cmd->ResetStats();
 
-        if (CVar_ForceFrameSync.Get())
+        if (CVar_ForceFrameSync.Get() || m_recordingGpuProfiling)
         {
             CPU_PROFILE_SCOPE(RenderSystem_WaitIdleForceSync);
             m_device->WaitIdle();
