@@ -847,7 +847,8 @@ namespace rendersystem
         ImGui::Text("DrawCalls:         %7d", m_renderContext.cmd->GetStats().drawCalls);
         ImGui::Text("Pipelines:         %7d", m_renderContext.cmd->GetStats().pipelines);
         ImGui::Text("Render targets:    %7d", m_renderContext.cmd->GetStats().rts);
-        ImGui::Text("Swapchains:        %1d %1d %1d %1d %1d %1d",
+        ImGui::Text("Swapchains (%d):        %1d %1d %1d %1d %1d %1d",
+            m_frameSyncronization.count,
             m_swapchainHistoric.Get(0),
             m_swapchainHistoric.Get(1),
             m_swapchainHistoric.Get(2),
