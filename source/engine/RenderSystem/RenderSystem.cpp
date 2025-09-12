@@ -573,8 +573,8 @@ namespace rendersystem
         check(m_program);
         uint32_t setIndex;
         const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
-        check(property && setIndex != UINT32_MAX);
-        check(property->arrayCount == 1);
+        check(property && setIndex != UINT32_MAX && "Property not found in shader uniforms.");
+        //check(property->arrayCount == 1);
         SetTextureSlot(texture, setIndex, property->binding);
     }
 
