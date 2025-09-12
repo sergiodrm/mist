@@ -914,6 +914,16 @@ namespace render
     {
         Viewport viewport;
         Rect scissor;
+
+		inline bool operator==(const ViewportState& other) const
+		{
+			return viewport == other.viewport &&
+				scissor == other.scissor;
+		}
+		inline bool operator!=(const ViewportState& other) const
+		{
+			return !(*this == other);
+		};
     };
 
     struct RenderState
@@ -927,7 +937,8 @@ namespace render
         {
             return blendState == other.blendState &&
                 depthStencilState == other.depthStencilState &&
-                rasterState == other.rasterState;
+                rasterState == other.rasterState &&
+                viewportState == other.viewportState;
         }
         inline bool operator!=(const RenderState& other) const
         {
