@@ -2,6 +2,7 @@
 #include "Core/Debug.h"
 #include "Core/Logger.h"
 #include "Core/Types.h"
+#include "Utils/GenericUtils.h"
 
 namespace Mist
 {
@@ -260,7 +261,17 @@ namespace Mist
 		return ret;
 	}
 
-
+	void ImGuiDrawCVars()
+	{
+		uint32_t count = GetCVarCount();
+		CVar** cvarArray = GetCVarArray();
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			CVar* cvar = cvarArray[i];
+			if (!(cvar->GetFlags() & CVarFlag_Private))
+				ImGuiUtils::EditCVar(*cvar);
+		}
+	}
 
 	CVar::CVar(const char* name, CVarType type, tCVarFlags flags) : Name{ 0 }, Type(type), Flags(flags)
 	{

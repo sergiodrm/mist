@@ -289,6 +289,11 @@ namespace rendersystem
                         ImGui::Checkbox(g_windowCallbacks[i].buff, &g_windowCallbacks[i].open);
                     ImGui::EndMenu();
                 }
+                if (ImGui::BeginMenu("Console vars"))
+                {
+                    Mist::ImGuiDrawCVars();
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMainMenuBar();
             }
 

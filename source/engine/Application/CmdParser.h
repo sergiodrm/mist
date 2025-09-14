@@ -86,6 +86,8 @@ namespace Mist
 	bool SetCVar(CVar* cvar, const char* strValue);
 	void PrintCVarList(const char* wildstr = nullptr);
 	bool ExecCommand_CVar(const char* cmd);
+	// iterate over all cvars and show the right imgui widget. Does not create a window.
+	void ImGuiDrawCVars();
 
 	class CmdParser
 	{

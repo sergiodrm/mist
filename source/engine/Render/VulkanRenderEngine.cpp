@@ -304,7 +304,7 @@ namespace Mist
 		//////////////////////////////////////
 		// ImGui callbacks
 		//////////////////////////////////////
-		rendersystem::ui::AddWindowCallback("CVars", &ImGuiCVars);
+		rendersystem::ui::AddWindowCallback("AppInfo", [](void*) { Profiling::ImGuiDraw(); }, nullptr, true);
 		rendersystem::ui::AddWindowCallback("InputState", &ImGuiDrawInputState);
 		rendersystem::ui::AddWindowCallback("ImGuiDemo", [](void*) { ImGui::ShowDemoWindow(); });
 		rendersystem::ui::AddWindowCallback("Gpu particles", [](void* data) 
@@ -453,26 +453,6 @@ namespace Mist
 		if (CVar_ShowImGui.Get())
 		{
 			rendersystem::ui::Show();
-			// Application imgui calls
-			//ImGuiCVars();
-			//ImGuiDrawInputState();
-
-			// Render engine imgui calls
-			//GpuProf_ImGuiDraw(m_renderContext);
-
-			//m_renderer.ImGuiDraw();
-			//m_gpuParticleSystem.ImGuiDraw();
-			//m_gol->ImGuiDraw();
-			//if (m_scene)
-			//	m_scene->ImGuiDraw();
-
-			// Demo imgui
-			//if (CVar_ShowImGuiDemo.Get())
-			//	ImGui::ShowDemoWindow();
-
-#if !defined(RENDER_BACKEND_TEST)
-			RenderTarget::ImGuiRenderTargets();
-#endif
 			tApplication::ImGuiDraw();
 		}
 	}
@@ -502,20 +482,6 @@ namespace Mist
 	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
 	{
 		return m_renderContext.GetFrameContext();
-	}
-
-	void VulkanRenderEngine::ImGuiCVars(void* data)
-	{
-		ImGui::Begin("CVars");
-		uint32_t count = GetCVarCount();
-		CVar** cvarArray = GetCVarArray();
-		for (uint32_t i = 0; i < count; ++i)
-		{
-			CVar* cvar = cvarArray[i];
-			if (!(cvar->GetFlags() & CVarFlag_Private))
-				ImGuiUtils::EditCVar(*cvar);
-		}
-		ImGui::End();
 	}
 
 	bool VulkanRenderEngine::InitVulkan()
