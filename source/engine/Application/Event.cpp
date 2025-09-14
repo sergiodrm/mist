@@ -393,7 +393,7 @@ namespace Mist
 			*y = (unsigned int)g_InputState.MouseCursorPosition[1];
 	}
 
-	void ImGuiDrawInputState()
+	void ImGuiDrawInputState(void* data)
 	{
 		if (CVar_ShowInputState.Get())
 		{

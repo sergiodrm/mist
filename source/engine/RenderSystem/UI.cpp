@@ -21,6 +21,18 @@ namespace rendersystem
     {
         Mist::CIntVar CVar_ShowImGuiDemo("ui_showdemo", 0);
 
+        struct WindowCallbackEntry
+        {
+            char buff[32];
+            ImGuiWindowCallback fn = nullptr;
+            bool open = false;
+            void* userData = nullptr;
+        };
+
+        static constexpr size_t MaxWindowCallbacks = 128;
+        WindowCallbackEntry g_windowCallbacks[MaxWindowCallbacks];
+        uint32_t g_windowCallbackIndex = 0;
+
         void ExecCommand_ActivateMultipleViewports(const char* cmd)
         {
             ImGuiIO& io = ImGui::GetIO();
@@ -277,15 +289,42 @@ namespace rendersystem
                 ImGui::ShowDemoWindow();
 
             g_imgui.Draw(cmd);
-            //Renderer* renderer = context.Renderer;
-            //CommandList* commandList = context.CmdList;
-            //commandList->SetGraphicsState({ .Rt = &renderer->GetLDRTarget() });
-            ////renderer->GetLDRTarget().BeginPass(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
-            //commandList->BeginMarker("ImGui");
-            //ImGuiInstance.Draw(context, commandList->GetCurrentCommandBuffer()->CmdBuffer);
-            //commandList->ClearState();
-            //commandList->EndMarker();
-            //renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
+        }
+
+        void Show()
+        {
+            if (ImGui::BeginMainMenuBar())
+            {
+                if (ImGui::BeginMenu("Windows"))
+                {
+                    for (uint32_t i = 0; i < g_windowCallbackIndex; ++i)
+                        ImGui::Checkbox(g_windowCallbacks[i].buff, &g_windowCallbacks[i].open);
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
+
+            for (uint32_t i = 0; i < g_windowCallbackIndex; ++i)
+            {
+                check(g_windowCallbacks[i].fn);
+                if (g_windowCallbacks[i].open)
+                    g_windowCallbacks[i].fn(g_windowCallbacks[i].userData);
+            }
+        }
+
+        void AddWindowCallback(const char* id, ImGuiWindowCallback fn, void* userData, bool openByDefault)
+        {
+            check(g_windowCallbackIndex < MaxWindowCallbacks);
+            check(id && *id && fn);
+            strcpy_s(g_windowCallbacks[g_windowCallbackIndex].buff, id);
+            g_windowCallbacks[g_windowCallbackIndex].fn = fn;
+            g_windowCallbacks[g_windowCallbackIndex].open = openByDefault;
+            g_windowCallbacks[g_windowCallbackIndex].userData = userData;
+            ++g_windowCallbackIndex;
+        }
+
+        void AddMenuCallback(const char* id, ImGuiMenuCallback fn)
+        {
         }
     }
 

@@ -474,10 +474,6 @@ namespace Mist
 
 		void ImGuiDraw()
 		{
-			const RenderContext& context = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>()->GetContext();
-			CpuProf_ImGuiDraw();
-
-
 			struct
 			{
 				float minMs, maxMs, meanMs, lastMs;
@@ -497,7 +493,7 @@ namespace Mist
 					;
 #endif // 0
 				ImGuiViewport* viewport = ImGui::GetMainViewport();
-				ImGui::SetNextWindowPos(viewport->Pos);
+				ImGui::SetNextWindowPos(ImVec2{ viewport->Pos.x, viewport->Pos.y + 10.f});
 				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.5f, viewport->Size.y * 0.15f });
 				ImGui::SetNextWindowBgAlpha(0.f);
 				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
@@ -564,7 +560,7 @@ namespace Mist
 					ImGui::NextColumn();
 					if (ImGui::BeginChild("Child_mem"))
 					{
-						auto lmbShowMemStat = [](const char* label, uint64_t allocated, uint64_t maxAllocated)
+						/*auto lmbShowMemStat = [](const char* label, uint64_t allocated, uint64_t maxAllocated)
 							{
 								ImGui::Text("%15s", label);
 								ImGui::NextColumn();
@@ -583,7 +579,7 @@ namespace Mist
 						lmbShowMemStat("System", systemStats.Allocated, systemStats.MaxAllocated);
 						lmbShowMemStat("GPU buffer", bufferStats.Allocated, bufferStats.MaxAllocated);
 						lmbShowMemStat("GPU texture", texStats.Allocated, texStats.MaxAllocated);
-						ImGui::Columns();
+						ImGui::Columns();*/
 						ImGui::EndChild();
 					}
 

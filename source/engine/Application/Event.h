@@ -261,7 +261,7 @@ namespace Mist
 
     void ProcessEvents(void(*Fn)(void*, void*), void* userData = nullptr);
     void UpdateInputState();
-    void ImGuiDrawInputState();
+    void ImGuiDrawInputState(void* data);
     bool GetKeyboardState(eKeyCode code);
     bool GetKeyboardPreviousState(eKeyCode code);
     bool IsKeyPressed(eKeyCode code);

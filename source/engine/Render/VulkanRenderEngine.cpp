@@ -40,6 +40,7 @@
 #include "RenderAPI/Utils.h"
 #include "RenderSystem/RenderSystem.h"
 #include "RenderProcesses/ShadowMap.h"
+#include "RenderSystem/UI.h"
 
 #define UNIFORM_ID_SCREEN_QUAD_INDEX "ScreenQuadIndex"
 #define MAX_RT_SCREEN 6
@@ -293,9 +294,34 @@ namespace Mist
 		m_renderContext.Renderer = &m_renderer;
 		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
 		DebugRender::Init();
+		//////////////////////////////////////
+		// Console commands
+		//////////////////////////////////////
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
 		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
+
+		//////////////////////////////////////
+		// ImGui callbacks
+		//////////////////////////////////////
+		rendersystem::ui::AddWindowCallback("CVars", &ImGuiCVars);
+		rendersystem::ui::AddWindowCallback("InputState", &ImGuiDrawInputState);
+		rendersystem::ui::AddWindowCallback("ImGuiDemo", [](void*) { ImGui::ShowDemoWindow(); });
+		rendersystem::ui::AddWindowCallback("Gpu particles", [](void* data) 
+			{
+				check(data);
+				GPUParticleSystem* ps = static_cast<GPUParticleSystem*>(data);
+				ps->ImGuiDraw();
+			}, &m_gpuParticleSystem);
+		rendersystem::ui::AddWindowCallback("Game of life demo", [](void* data) 
+			{
+				check(data);
+				Gol* g = static_cast<Gol*>(data);
+				g->ImGuiDraw();
+			}, &m_gol);
+
+		for (uint32_t i = 0; i < m_renderer.GetRenderProcessCount(); ++i)
+			rendersystem::ui::AddWindowCallback(RenderProcessNames[i], &ImGuiCallback_RenderProcess, m_renderer.GetRenderProcess((RenderProcessType)i));
 
 		return true;
 	}
@@ -423,6 +449,8 @@ namespace Mist
 			if (scene)
 				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
 		}
+
+		rendersystem::ui::AddWindowCallback("Scene", &ImGuiCallback_Scene, m_scene);
 	}
 
 	void VulkanRenderEngine::ReloadShaders()
@@ -515,28 +543,29 @@ namespace Mist
 	void VulkanRenderEngine::ImGuiDraw()
 	{
 		// Show always profiling for fps and frame counter and console
-		DrawConsole();
+		//DrawConsole();
 		Profiling::ImGuiDraw();
 
 		// Show the rest of imgui windows only if is desired
 		if (CVar_ShowImGui.Get())
 		{
+			rendersystem::ui::Show();
 			// Application imgui calls
-			ImGuiCVars();
-			ImGuiDrawInputState();
+			//ImGuiCVars();
+			//ImGuiDrawInputState();
 
 			// Render engine imgui calls
-			GpuProf_ImGuiDraw(m_renderContext);
+			//GpuProf_ImGuiDraw(m_renderContext);
 
-			m_renderer.ImGuiDraw();
-			m_gpuParticleSystem.ImGuiDraw();
-			m_gol->ImGuiDraw();
-			if (m_scene)
-				m_scene->ImGuiDraw();
+			//m_renderer.ImGuiDraw();
+			//m_gpuParticleSystem.ImGuiDraw();
+			//m_gol->ImGuiDraw();
+			//if (m_scene)
+			//	m_scene->ImGuiDraw();
 
 			// Demo imgui
-			if (CVar_ShowImGuiDemo.Get())
-				ImGui::ShowDemoWindow();
+			//if (CVar_ShowImGuiDemo.Get())
+			//	ImGui::ShowDemoWindow();
 
 #if !defined(RENDER_BACKEND_TEST)
 			RenderTarget::ImGuiRenderTargets();
@@ -572,7 +601,7 @@ namespace Mist
 		return m_renderContext.GetFrameContext();
 	}
 
-	void VulkanRenderEngine::ImGuiCVars()
+	void VulkanRenderEngine::ImGuiCVars(void* data)
 	{
 		ImGui::Begin("CVars");
 		uint32_t count = GetCVarCount();

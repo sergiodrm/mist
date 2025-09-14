@@ -78,7 +78,7 @@ namespace Mist
 		void DrawCubemap(const RenderContext& context, const cTexture& texture);
 		RenderFrameContext& GetFrameContext();
 
-		void ImGuiCVars();
+		static void ImGuiCVars(void* data);
 
 		// Initializations
 		bool InitVulkan();

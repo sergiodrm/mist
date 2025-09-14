@@ -32,6 +32,7 @@ namespace Mist
 
 		const RenderProcess* GetRenderProcess(RenderProcessType type) const;
 		RenderProcess* GetRenderProcess(RenderProcessType type);
+		uint32_t GetRenderProcessCount() const { return RENDERPROCESS_COUNT; }
 
 		render::RenderTargetHandle GetLDRTarget() const { return m_ldr; }
 		void CopyRenderTarget(const CopyParams& params);

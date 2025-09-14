@@ -12,6 +12,7 @@
 #include "Application/Application.h"
 #include "Utils/TimeUtils.h"
 #include "Utils/GenericUtils.h"
+#include "RenderSystem/UI.h"
 
 
 namespace Mist
@@ -48,6 +49,12 @@ namespace Mist
 		m_historyIndex(0),
 		m_pendingExecuteCommand(false)
 	{
+		rendersystem::ui::AddWindowCallback("Console", [](void* data) 
+			{
+				check(data);
+				Console* c = static_cast<Console*>(data);
+				c->Draw();
+			}, this);
 	}
 
 	void Console::AddCommandCallback(const char* cmdname, FnExecCommandCallback fn)
