@@ -321,7 +321,12 @@ namespace Mist
 			}, &m_gol);
 
 		for (uint32_t i = 0; i < m_renderer.GetRenderProcessCount(); ++i)
-			rendersystem::ui::AddWindowCallback(RenderProcessNames[i], &ImGuiCallback_RenderProcess, m_renderer.GetRenderProcess((RenderProcessType)i));
+			rendersystem::ui::AddWindowCallback(RenderProcessNames[i], [](void* data) 
+				{
+					check(data);
+					Mist::RenderProcess* rp = static_cast<Mist::RenderProcess*>(data);
+					rp->ImGuiDraw();
+				}, m_renderer.GetRenderProcess((RenderProcessType)i));
 
 		return true;
 	}
@@ -358,70 +363,6 @@ namespace Mist
 		g_render = nullptr;
 		m_renderSystem->Destroy();
 		delete m_renderSystem;
-#else
-		RenderContext_ForceFrameSync(m_renderContext);
-
-		delete m_renderContext.CmdList;
-		delete m_renderContext.Queue;
-
-		FullscreenQuad.Destroy(m_renderContext);
-
-
-		m_gol->Destroy();
-		delete m_gol;
-		m_gpuParticleSystem.Destroy(m_renderContext);
-
-		ui::Destroy(m_renderContext);
-#if defined(MIST_CUBEMAP)
-		m_cubemapPipeline.Destroy(m_renderContext);
-#endif // defined(MIST_CUBEMAP)
-
-		m_renderer.Destroy(m_renderContext);
-
-		// Destroy Default resources
-		DefaultTexture = nullptr;
-		if (DefaultMaterial)
-		{
-			DefaultMaterial->Destroy(m_renderContext);
-			delete DefaultMaterial;
-			DefaultMaterial = nullptr;
-		}
-
-		DestroyCachedTextures(m_renderContext);
-		DestroySamplers(m_renderContext);
-		vkDestroyFence(m_renderContext.Device, m_renderContext.TransferContext.Fence, nullptr);
-		vkDestroyCommandPool(m_renderContext.Device, m_renderContext.TransferContext.CommandPool, nullptr);
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			m_renderContext.FrameContextArray[i].TempStageBuffer.Destroy(m_renderContext);
-			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Destroy(m_renderContext.Device);
-			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Destroy(m_renderContext.Device);
-			m_renderContext.FrameContextArray[i].GlobalBuffer->Destroy(m_renderContext);
-            delete m_renderContext.FrameContextArray[i].GlobalBuffer;
-			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].RenderSemaphore, nullptr);
-			vkDestroySemaphore(m_renderContext.Device, m_renderContext.FrameContextArray[i].PresentSemaphore, nullptr);
-		}
-
-		m_swapchain.Destroy(m_renderContext);
-		m_shaderDb.Destroy(m_renderContext);
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-			m_descriptorAllocators[i].Destroy();
-		m_descriptorLayoutCache.Destroy();
-
-		RenderTarget::DestroyAll(m_renderContext);
-		Memory::Destroy(m_renderContext.Allocator);
-		vkDestroyDevice(m_renderContext.Device, nullptr);
-		vkDestroySurfaceKHR(m_renderContext.Instance, m_renderContext.Surface, nullptr);
-		vkb::destroy_debug_utils_messenger(m_renderContext.Instance,
-			m_renderContext.DebugMessenger);
-		vkDestroyInstance(m_renderContext.Instance, nullptr);
-
-
-
-		logok("Render engine terminated.\n");
-		Logf(Mist::Debug::GVulkanLayerValidationErrors > 0 ? LogLevel::Error : LogLevel::Ok,
-			"Total vulkan layer validation errors: %u.\n", Mist::Debug::GVulkanLayerValidationErrors);
-#endif
 	}
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
@@ -473,39 +414,10 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(BeginFrame);
 		g_render->BeginFrame(); 
-#if 0
-
-			// TODO descriptor allocators must be instanciated on each frame context.
-			RenderFrameContext & frameContext = GetFrameContext();
-		frameContext.DescriptorAllocator = m_renderContext.DescAllocator;
-
-		frameContext.GlobalBuffer->SetUniform(m_renderContext, UNIFORM_ID_CAMERA, &m_cameraData, sizeof(CameraData));
-		//frameContext.GlobalBuffer->SetUniform(m_renderContext, UNIFORM_ID_SCREEN_QUAD_INDEX, &m_screenPipeline.QuadIndex, sizeof(uint32_t));
-
-		UBOTime time{ 0.033f, 0.f };
-		frameContext.GlobalBuffer->SetUniform(m_renderContext, UNIFORM_ID_TIME, &time, sizeof(UBOTime));
-
-		//frameContext.PresentTex = m_screenPipeline.PresentTexSets[m_renderContext.GetFrameIndex()];
-		frameContext.Scene->UpdateRenderData(m_renderContext, frameContext);
-		//m_screenPipeline.DebugInstance.PrepareFrame(m_renderContext, &frameContext.GlobalBuffer);
-		m_renderer.UpdateRenderData(m_renderContext, frameContext);
-		m_gpuParticleSystem.UpdateBuffers(m_renderContext, frameContext);
-#endif // 0
-
 	}
 
 	void VulkanRenderEngine::Draw()
 	{
-#if 0
-		{
-			CPU_PROFILE_SCOPE(NextFrame);
-			RenderContext_NewFrame(m_renderContext);
-			GpuProf_Resolve(m_renderContext);
-			Profiling::AddGPUTime((float)(0.001 * GpuProf_GetGpuTime(m_renderContext, "GpuTime")));
-		}
-		frameContext.Scene = static_cast<Scene*>(m_scene);
-		m_renderContext.Queue->ProcessInFlightCommands();
-#endif // 0
 		//DumpMemoryStats();
 		RenderFrameContext& frameContext = GetFrameContext();
 		uint32_t frameIndex = m_renderContext.GetFrameIndex();

@@ -483,8 +483,6 @@ namespace Mist
 				sProfiler::GetStats(GProfiler.CPUTimeArray, cpuTimes.minMs, cpuTimes.maxMs, cpuTimes.meanMs, cpuTimes.lastMs);
 				sProfiler::GetStats(GProfiler.GPUTimeArray, gpuTimes.minMs, gpuTimes.maxMs, gpuTimes.meanMs, gpuTimes.lastMs);
 
-#if 1
-
 				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
 					| ImGuiWindowFlags_NoDecoration
 					| ImGuiWindowFlags_AlwaysAutoResize
@@ -500,19 +498,6 @@ namespace Mist
 				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
 				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
 				ImGui::Begin("fps", nullptr, flags);
-#if 0
-
-				char buff[32];
-				sprintf_s(buff, "%3.2f fps", lastFps);
-				char buff2[32];
-				sprintf_s(buff2, "%.4f ms", lastMs);
-				ImGui::Text("%3.2f fps Min [%3.2f fps] Max [%3.2f fps] Last [%3.2f fps]", meanFps, minFps, maxFps, lastFps);
-				ImVec2 availRegion = ImGui::GetContentRegionAvail();
-				availRegion.y *= 0.3f;
-				ImGui::PlotLines("##fpschar", &ImGuiGetFpsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff, 0.f, 200.f, availRegion);
-				ImGui::Text("%.4f ms Min [%.4f ms] Max [%.4f ms] Last [%.4f ms]", minMs, maxMs, meanMs, lastMs);
-				ImGui::PlotLines("##fpschar", &ImGuiGetMsPlotValue, &GProfiler, GProfiler.FPSArray.GetCount(), 0, buff2, 0.f, 100.f, availRegion);
-#else
 				ImGui::Text(
 #if defined(_DEBUG)
                     "DEBUG"
@@ -584,11 +569,10 @@ namespace Mist
 					}
 
 					ImGui::Columns();
-#endif // 0
 				}
 
-					ImGui::End();
-					ImGui::PopStyleColor(3);
+				ImGui::End();
+				ImGui::PopStyleColor(3);
 			}
 		}
 
