@@ -83,6 +83,7 @@ void main()
     float ao = texture(u_ssao, inTexCoords).r;
     //if (data.opacity <= 0.1f)
     //    discard;
+    data.albedo += data.emissive;
     vec4 lightingColor = main_PBR(data.position, data.normal, data.albedo, data.metallic, data.roughness, ao);
     lightingColor.rgb += data.emissive;
 #if defined(DEFERRED_APPLY_FOG)
