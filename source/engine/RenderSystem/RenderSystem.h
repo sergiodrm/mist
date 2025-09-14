@@ -551,6 +551,7 @@ namespace rendersystem
 
         render::Extent2D m_renderResolution;
         render::Extent2D m_backbufferResolution;
+        render::CommandStats m_cmdStats;
 
         // Syncronization objects. One per frame in flight.
         struct FrameSyncContext

@@ -295,6 +295,12 @@ namespace rendersystem
         }
 
         ui::Init(m_device, m_ldrRt, window->GetWindowNative());
+        rendersystem::ui::AddWindowCallback("Render stats", [](void* data) 
+            {
+                check(data);
+                RenderSystem* rs = static_cast<RenderSystem*>(data);
+                rs->ImGuiDraw();
+            }, this, true);
 
         InitScreenQuad();
     }
@@ -853,12 +859,14 @@ namespace rendersystem
     void RenderSystem::ImGuiDraw()
     {
         //ImGui::SetNextWindowPos(ImVec2(500, 500));
-        ImGui::Begin("Render system");
+        ImGui::SetNextWindowBgAlpha(0.f);
+        ImGui::Begin("Render system", nullptr, ImGuiWindowFlags_NoDecoration);
         ImGui::SeparatorText("Draw stats");
-        ImGui::Text("Tris:              %7d", m_renderContext.cmd->GetStats().tris);
-        ImGui::Text("DrawCalls:         %7d", m_renderContext.cmd->GetStats().drawCalls);
-        ImGui::Text("Pipelines:         %7d", m_renderContext.cmd->GetStats().pipelines);
-        ImGui::Text("Render targets:    %7d", m_renderContext.cmd->GetStats().rts);
+        ImGui::Text("Gpu time:          %2.3f us", m_gpuTime);
+        ImGui::Text("Tris:              %7d", m_cmdStats.tris);
+        ImGui::Text("DrawCalls:         %7d", m_cmdStats.drawCalls);
+        ImGui::Text("Pipelines:         %7d", m_cmdStats.pipelines);
+        ImGui::Text("Render targets:    %7d", m_cmdStats.rts);
         ImGui::Text("Swapchains (%d):   %1d %1d %1d %1d %1d %1d",
             m_frameSyncronization.count,
             m_swapchainHistoric.Get(0),
@@ -1032,10 +1040,10 @@ namespace rendersystem
         m_frame++;
 
         ui::BeginFrame();
-        ImGuiDraw();
         
         SetDefaultState();
         ClearState();
+        m_cmdStats = m_renderContext.cmd->GetStats();
         m_renderContext.cmd->ResetStats();
 
         if (CVar_ForceFrameSync.Get())
