@@ -16,6 +16,7 @@
 #include "Render/DebugRender.h"
 #include "../CommandList.h"
 #include "RenderSystem/RenderSystem.h"
+#include "RenderSystem/UI.h"
 
 
 namespace Mist
@@ -87,6 +88,13 @@ namespace Mist
 
         m_skyModel = _new cModel();
         m_skyModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
+
+		rendersystem::ui::AddWindowCallback("Bloom", [](void* data) 
+			{
+				check(data);
+				BloomEffect* b = static_cast<BloomEffect*>(data);
+				b->ImGuiDraw();
+			}, &m_bloomEffect);
 	}
 
 	void DeferredLighting::Destroy(const RenderContext& renderContext)
@@ -265,7 +273,6 @@ namespace Mist
 
 	void DeferredLighting::ImGuiDraw()
 	{
-		m_bloomEffect.ImGuiDraw();
 	}
 
 	void DeferredLighting::DebugDraw(const RenderContext& context)
