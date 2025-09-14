@@ -348,8 +348,6 @@ namespace Mist
 	void VulkanRenderEngine::Shutdown()
 	{
 		loginfo("Shutdown render engine.\n");
-
-#ifdef RENDER_BACKEND_TEST
 		g_device->WaitIdle();
 		if (m_scene)
 		{
@@ -391,7 +389,12 @@ namespace Mist
 				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
 		}
 
-		rendersystem::ui::AddWindowCallback("Scene", &ImGuiCallback_Scene, m_scene);
+		rendersystem::ui::AddWindowCallback("Scene", [](void* data)
+			{
+				check(data);
+				Scene* s = static_cast<Scene*>(data);
+				s->ImGuiDraw();
+			}, m_scene);
 	}
 
 	void VulkanRenderEngine::ReloadShaders()
@@ -445,10 +448,6 @@ namespace Mist
 
 	void VulkanRenderEngine::ImGuiDraw()
 	{
-		// Show always profiling for fps and frame counter and console
-		//DrawConsole();
-		Profiling::ImGuiDraw();
-
 		// Show the rest of imgui windows only if is desired
 		if (CVar_ShowImGui.Get())
 		{

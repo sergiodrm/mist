@@ -489,7 +489,6 @@ namespace Mist
 					| ImGuiWindowFlags_NoResize
 					//| ImGuiWindowFlags_NoInputs
 					;
-#endif // 0
 				ImGuiViewport* viewport = ImGui::GetMainViewport();
 				ImGui::SetNextWindowPos(ImVec2{ viewport->Pos.x, viewport->Pos.y + 10.f});
 				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.5f, viewport->Size.y * 0.15f });
@@ -506,7 +505,9 @@ namespace Mist
 #endif
 				);
 				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
-				ImGui::Text("%ux%u", context.Window->Width, context.Window->Height);
+				ImGui::Text("Cpu %2.3f ms", cpuTimes.meanMs);
+				ImGui::Text("Gpu %2.3f ms", g_render->GetGpuTimeUs() * 0.001f);
+				ImGui::Text("%ux%u", g_render->GetRenderResolution().width, g_render->GetRenderResolution().height);
 				if (CVar_ShowStats.Get() > 1 && 0)
 				{
 					ImGui::Columns(3, nullptr, false);
