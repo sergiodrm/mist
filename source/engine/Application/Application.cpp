@@ -18,6 +18,7 @@ namespace Mist
 	extern CBoolVar CVar_ShowImGui;
 
 	CStrVar GIniFile("IniFile", "default.cfg");
+	CIntVar CVar_ResizableWindow("ResizableWindow", 0);
 
 	uint64_t GFrame = 0;
 	tApplication* GApp = nullptr;
@@ -81,6 +82,8 @@ namespace Mist
 			posy = 0;
 			flags |= WindowFlags_Borderless;
 		}
+		if (CVar_ResizableWindow.Get())
+			flags |= WindowFlags_Resizable;
 
 		Window newWindow;
 		newWindow.Width = width;
@@ -268,11 +271,14 @@ namespace Mist
 				case SDL_WINDOWEVENT:
 				{
 					{
-						uint8_t windowEvent = (*(SDL_WindowEvent*)&ev).event;
-						if (windowEvent == SDL_WINDOWEVENT_CLOSE)
+						SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)&ev;
+						uint8_t windowEventType = windowEvent->event;
+						if (windowEventType == SDL_WINDOWEVENT_CLOSE)
 							app.m_windowClosed = true;
-						if (windowEvent == SDL_WINDOWEVENT_MINIMIZED)
+						if (windowEventType == SDL_WINDOWEVENT_MINIMIZED)
 							app.m_windowMinimized = true;
+						if (windowEventType == SDL_WINDOWEVENT_RESIZED)
+							app.OnResizeWindowEvent(windowEvent);
 					}
 					break;
 				default:
@@ -298,5 +304,12 @@ namespace Mist
 	{
 		if (m_engine->GetScene())
 			m_engine->GetScene()->GetCamera().ProcessEvent(e);
+	}
+
+	void tApplication::OnResizeWindowEvent(void* e)
+	{
+		SDL_WindowEvent* windowEvent = (SDL_WindowEvent*)e;
+		logfok("[%d] Resize event: [%d, %4dx%4d]\n",
+			windowEvent->timestamp, windowEvent->windowID, windowEvent->data1, windowEvent->data2);
 	}
 }

@@ -56,6 +56,8 @@ namespace Mist
 		virtual void ProcessEvent(void* e);
 		virtual void ProcessImGui() {}
 
+		void OnResizeWindowEvent(void* e);
+
 	private:
 		class IRenderEngine* m_engine = nullptr;
 		Window m_window;
