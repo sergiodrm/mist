@@ -293,6 +293,7 @@ namespace Mist
 
 		m_renderContext.Renderer = &m_renderer;
 		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
+		m_gpuParticleSystem.Init(g_render);
 		DebugRender::Init();
 		//////////////////////////////////////
 		// Console commands
@@ -355,6 +356,7 @@ namespace Mist
 			delete m_scene;
 			m_scene = nullptr;
 		}
+		m_gpuParticleSystem.Destroy(g_render);
 		DebugRender::Destroy();
 		m_renderer.Destroy(m_renderContext);
 		g_device = nullptr;
@@ -433,8 +435,8 @@ namespace Mist
 		g_render->EndMarker();
 
 		g_render->BeginMarker("Test compute shaders");
-		m_gpuParticleSystem.Dispatch(m_renderContext, frameIndex);
-		m_gpuParticleSystem.Draw(m_renderContext, frameContext);
+		m_gpuParticleSystem.Dispatch(g_render);
+		m_gpuParticleSystem.Draw(g_render);
 		m_gol->Compute();
 		g_render->EndMarker();
 
