@@ -83,6 +83,8 @@ namespace rendersystem
 
         const render::QueryPoolHandle& GetPool() const { return m_pool; }
 
+        double GetTimestamp(const char* tag);
+
     private:
         void ImGuiDrawTreeItem(uint32_t itemIndex);
 
@@ -519,6 +521,8 @@ namespace rendersystem
 
         void DumpState();
 
+        double GetGpuTimeUs() const { return m_gpuTime; }
+
     private:
 
         render::RenderTargetBlendState& GetPsoBlendStateAttachment(uint32_t attachment);
@@ -533,6 +537,7 @@ namespace rendersystem
         void ImGuiDraw();
         void FlushBeforeDraw();
         
+        void ImGuiDrawGpuProfiler();
 
     private:
         // Device context. Communication with render api.
@@ -606,7 +611,7 @@ namespace rendersystem
         render::GraphicsPipelineDescription m_psoDesc;
 
         ShaderDb m_shaderDb;
-        bool m_recordingGpuProfiling;
+        double m_gpuTime;
     };
 }
 

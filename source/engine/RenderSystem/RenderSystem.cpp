@@ -76,7 +76,6 @@ namespace rendersystem
 
     void GpuFrameProfiler::ImGuiDraw()
     {
-        Resolve();
 		uint32_t size = m_tree.Items.GetSize();
 		float heightPerLine = 20.f; //approx?
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -104,6 +103,19 @@ namespace rendersystem
 			}
 		}
 		ImGui::End();
+    }
+
+    double GpuFrameProfiler::GetTimestamp(const char* tag)
+    {
+        if (tag && *tag)
+        {
+            for (uint32_t i = 0; i < m_tree.Data.GetSize(); ++i)
+            {
+                if (!strcmp(m_tree.Data[i].tag, tag))
+                    return m_tree.Data[i].value;
+            }
+        }
+        return 0.0;
     }
 
     void GpuFrameProfiler::ImGuiDrawTreeItem(uint32_t itemIndex)
@@ -847,7 +859,7 @@ namespace rendersystem
         ImGui::Text("DrawCalls:         %7d", m_renderContext.cmd->GetStats().drawCalls);
         ImGui::Text("Pipelines:         %7d", m_renderContext.cmd->GetStats().pipelines);
         ImGui::Text("Render targets:    %7d", m_renderContext.cmd->GetStats().rts);
-        ImGui::Text("Swapchains (%d):        %1d %1d %1d %1d %1d %1d",
+        ImGui::Text("Swapchains (%d):   %1d %1d %1d %1d %1d %1d",
             m_frameSyncronization.count,
             m_swapchainHistoric.Get(0),
             m_swapchainHistoric.Get(1),
@@ -878,23 +890,6 @@ namespace rendersystem
         ImGui::Text("Sampler lf:        %.4f", m_samplerCache->GetLoadFactor());
         ImGui::Text("Shaders:           %7d", m_shaderDb.m_programs.size());
         ImGui::End();
-
-        if (m_recordingGpuProfiling)
-        {
-            GpuFrameProfiler* profiler = nullptr;
-            // find last submission finished
-            uint64_t frame = 1;
-            while (frame < m_frameSyncronization.count && !profiler)
-            {
-                uint64_t submissionId = m_frameSyncronization.presentSubmission[(m_frame + frame) % m_frameSyncronization.count];
-                if (m_device->GetCommandQueue(render::Queue_Graphics)->PollCommandSubmission(submissionId))
-                    profiler = &m_frameSyncronization.timestampQueries[(m_frame + frame) % m_frameSyncronization.count];
-                else
-                    ++frame;
-            }
-            if (profiler)
-                profiler->ImGuiDraw();
-        }
     }
 
     void RenderSystem::FlushBeforeDraw()
@@ -1024,6 +1019,12 @@ namespace rendersystem
         resources.buffers.emplace_back(m_renderContext.graphicsState.vertexBuffer);
     }
 
+    void RenderSystem::ImGuiDrawGpuProfiler()
+    {
+        if (CVar_GpuProfiling.Get())
+            GetFrameProfiler().ImGuiDraw();
+    }
+
     void RenderSystem::BeginFrame()
     {
         CPU_PROFILE_SCOPE(RenderSystem_BeginFrame);
@@ -1031,12 +1032,13 @@ namespace rendersystem
         m_frame++;
 
         ui::BeginFrame();
+        ImGuiDraw();
         
         SetDefaultState();
         ClearState();
         m_renderContext.cmd->ResetStats();
 
-        if (CVar_ForceFrameSync.Get() || m_recordingGpuProfiling)
+        if (CVar_ForceFrameSync.Get())
         {
             CPU_PROFILE_SCOPE(RenderSystem_WaitIdleForceSync);
             m_device->WaitIdle();
@@ -1051,9 +1053,18 @@ namespace rendersystem
 				m_device->WaitForSubmissionId(GetPresentSubmissionId());
 		}
 
-        m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
-        const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
+        {
+            CPU_PROFILE_SCOPE(RenderSystem_AcquireSwapchain);
+            m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
+        }
 
+        // Do gpu profiler imgui call after wait current frame presentation index.
+        // Resolve pending query data
+        GetFrameProfiler().Resolve();
+        m_gpuTime = GetFrameProfiler().GetTimestamp("Frame");
+        ImGuiDrawGpuProfiler();
+
+        const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
         render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
         commandQueue->ProcessInFlightCommands();
         m_memoryPool->ProcessInFlight();
@@ -1063,11 +1074,8 @@ namespace rendersystem
 
         m_memoryContextId = m_memoryPool->CreateContext();
         m_renderContext.cmd->BeginRecording();
-        m_recordingGpuProfiling = CVar_GpuProfiling.Get();
-        if (m_recordingGpuProfiling)
-            GetFrameProfiler().Reset(m_renderContext.cmd);
+        GetFrameProfiler().Reset(m_renderContext.cmd);
         BeginMarker("Frame"); // frame marker
-        ImGuiDraw();
     }
 
     void RenderSystem::EndFrame()
@@ -1123,15 +1131,11 @@ namespace rendersystem
 
     void RenderSystem::BeginGpuProf(const char* name)
     {
-		if (!m_recordingGpuProfiling)
-			return;
         GetFrameProfiler().BeginZone(m_renderContext.cmd, name);
     }
 
     void RenderSystem::BeginGpuProfFmt(const char* fmt, ...)
     {
-        if (!m_recordingGpuProfiling)
-            return;
 		char buff[32];
 		va_list lst;
 		va_start(lst, fmt);
@@ -1142,8 +1146,6 @@ namespace rendersystem
 
     void RenderSystem::EndGpuProf()
     {
-		if (!m_recordingGpuProfiling)
-			return;
         GetFrameProfiler().EndZone(m_renderContext.cmd);
     }
 
