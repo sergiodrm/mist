@@ -218,7 +218,6 @@ namespace Mist
 		m_renderContext.Window = &window;
 		SDL_Init(SDL_INIT_VIDEO);
 
-#ifdef RENDER_BACKEND_TEST
 		class WindowRenderInterface : public rendersystem::IWindow
 		{
 		public:
@@ -232,64 +231,6 @@ namespace Mist
 
 		g_render = m_renderSystem;
 		g_device = m_renderSystem->GetDevice();
-#else
-		// Init vulkan context
-		check(InitVulkan());
-
-		// Descriptor layout and allocator
-		m_descriptorLayoutCache.Init(m_renderContext);
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
-		{
-			m_descriptorAllocators[i].Init(m_renderContext, DescriptorPoolSizes::GetDefault());
-			m_renderContext.FrameContextArray[i].DescriptorAllocator = &m_descriptorAllocators[i];
-			m_renderContext.FrameContextArray[i].Renderer = &m_renderer;
-			m_renderContext.FrameContextArray[i].StatusFlags = 0;
-		}
-		m_shaderDb.Init(m_renderContext);
-		m_renderContext.LayoutCache = &m_descriptorLayoutCache;
-		m_renderContext.DescAllocator = &m_descriptorAllocators[0];
-		m_renderContext.ShaderDB = &m_shaderDb;
-
-		m_renderContext.FrameIndex = 0;
-
-		// Swapchain
-		SwapchainInitializationSpec swapchainSpec;
-		swapchainSpec.ImageWidth = window.Width;
-		swapchainSpec.ImageHeight = window.Height;
-		check(m_swapchain.Init(m_renderContext, swapchainSpec));
-
-		// Commands
-		check(InitCommands());
-		// Pipelines
-		check(InitPipeline());
-		// Init sync vars
-		check(InitSync());
-
-        m_renderContext.Queue = _new CommandQueue(&m_renderContext, QUEUE_GRAPHICS | QUEUE_COMPUTE | QUEUE_TRANSFER);
-        m_renderContext.CmdList = _new CommandList(&m_renderContext);
-
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; i++)
-		{
-			m_renderContext.FrameContextArray[i].GraphicsTimestampQueryPool.Init(m_renderContext.Device, 40);
-			m_renderContext.FrameContextArray[i].ComputeTimestampQueryPool.Init(m_renderContext.Device, 40);
-
-			// 3 stage buffer per frame with 100 MB each one.
-			m_renderContext.FrameContextArray[i].TempStageBuffer.Init(m_renderContext, 100 * 1024 * 1024, 3);
-		}
-
-		// Initialize render processes after instantiate render context
-		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
-		DebugRender::Init(m_renderContext);
-		ui::Init(m_renderContext, m_renderer.GetLDRTarget());
-#if defined(MIST_CUBEMAP)
-		m_cubemapPipeline.Init(m_renderContext, &m_renderer.GetLDRTarget());
-#endif // defined(MIST_CUBEMAP)
-		m_gpuParticleSystem.Init(m_renderContext);
-		m_gpuParticleSystem.InitFrameData(m_renderContext, m_renderContext.FrameContextArray);
-		m_gol = _new Gol(&m_renderContext);
-        m_gol->Init(256, 256);
-		FullscreenQuad.Init(m_renderContext, -1.f, 1.f, -1.f, 1.f);
-#endif
 
 		m_renderContext.Renderer = &m_renderer;
 		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
