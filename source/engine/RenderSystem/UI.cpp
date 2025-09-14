@@ -213,18 +213,6 @@ namespace rendersystem
             void Draw(render::CommandListHandle cmd)
             {
                 CPU_PROFILE_SCOPE(ImGuiPass);
-                //BeginGPUEvent(context, cmd, "ImGui");
-
-                //Renderer* renderer = context.Renderer;
-                //CommandList* commandList = context.CmdList;
-                //commandList->SetGraphicsState({ .Rt = &renderer->GetLDRTarget() });
-                ////renderer->GetLDRTarget().BeginPass(context, context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
-                //commandList->BeginMarker("ImGui");
-                //ImGuiInstance.Draw(context, commandList->GetCurrentCommandBuffer()->CmdBuffer);
-                //commandList->ClearState();
-                //commandList->EndMarker();
-                //renderer->GetLDRTarget().EndPass(context.GetFrameContext().GraphicsCommandContext.CommandBuffer);
-
                 cmd->BeginMarker("ImGui");
                 render::GraphicsState state{};
                 state.rt = m_rt;

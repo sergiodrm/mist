@@ -456,16 +456,7 @@ namespace Mist
 	void VulkanRenderEngine::ReloadShaders()
 	{
 		PROFILE_SCOPE_LOG(ReloadShaders, "reload shaders");
-#if 0
-		RenderContext_ForceFrameSync(m_renderContext);
-		for (uint32_t i = 0; i < m_shaderDb.GetShaderCount(); ++i)
-		{
-			m_shaderDb.GetShaderArray()[i]->Reload(m_renderContext);
-		}
-#else
 		g_render->ReloadAllShaders();
-#endif // 0
-
 		logok("Shader reloaded.\n");
 	}
 
