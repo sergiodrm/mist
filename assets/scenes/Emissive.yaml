@@ -54,7 +54,7 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.640762, 0.7248322, 0.60321605]
+      Color: [0.8389262, 0.682636, 0.34345302]
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
@@ -96,5 +96,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [47.765297, 6.269067, -5.5545526]
-      Rotation: [0.17129622, 3.234376, 0]
+      Position: [49.16987, 6.2133474, -9.746765]
+      Rotation: [0.1111109, 3.1932375, 0]
