@@ -211,6 +211,7 @@ namespace Mist
 		while (!m_windowClosed)
 		{
 			PROF_FRAME_MARK("loop");
+			GFrame++;
 			Profiling::CpuProf_Reset();
 			CPU_PROFILE_SCOPE(CpuTime);
 
@@ -234,7 +235,6 @@ namespace Mist
 				if (!m_engine->RenderProcess())
 					result = EXIT_FAILURE;
 			}
-			GFrame++;
 		}
 		return result;
 	}

@@ -249,13 +249,18 @@ namespace Mist::Debug
 namespace Mist
 {
 	CIntVar CVar_ShowStats("ShowStats", 1);
-	// 0: inactive. 1: active. 2: pending deactive. 3: pending active.
-	CIntVar CVar_ShowCpuProf("r_ShowCpuProf", 0, CVarFlag_Private);
+	CIntVar CVar_ShowCpuProf("r_ShowCpuProf", 0);
 	CIntVar CVar_ShowCpuProfRatio("r_ShowCpuProfRatio", 5);
 
 	namespace Profiling
 	{
 		sRenderStats GRenderStats;
+		bool g_cpuProfilingEnabled = false;
+		size_t g_profilerFrame = 0;
+
+		size_t GetFrame() { return g_profilerFrame; }
+		size_t GetLastFrameIndex() { return (GetFrame() - 1) % 2; }
+		size_t GetCurrentFrameIndex() { return GetFrame() % 2; }
 
 		struct tCpuProfItem
 		{
@@ -299,7 +304,6 @@ namespace Mist
 
 			typedef tStackTree<tCpuProfItem, 64> tCpuProfStackTree;
 			tCpuProfStackTree CpuProfStack[2];
-			uint32_t CurrentFrame = 0;
 			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 
 			static void GetStats(tCircularBuffer<float, 128>& data, float& min, float& max, float& mean, float& last)
@@ -359,7 +363,7 @@ namespace Mist
 
 			void ImGuiDraw()
 			{
-				tCpuProfStackTree& stack = CpuProfStack[0x0001 & ~CurrentFrame];
+				tCpuProfStackTree& stack = CpuProfStack[GetLastFrameIndex()];
 				check(stack.Current == index_invalid);
 
 				index_t size = stack.Items.GetSize();
@@ -369,7 +373,7 @@ namespace Mist
 				ImVec2 winpos = ImVec2(0.f, 100.f);
 				//ImGui::SetNextWindowPos(winpos);
 				ImGui::SetNextWindowSize(ImVec2(500.f, (float)size * heightPerLine));
-				ImGui::SetNextWindowBgAlpha(0.f);
+				//ImGui::SetNextWindowBgAlpha(0.8f);
 				ImGui::Begin("Cpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
 					| ImGuiWindowFlags_NoBackground
 					| ImGuiWindowFlags_NoDocking);
@@ -567,52 +571,57 @@ namespace Mist
 			}
 		}
 
-		bool CpuProfSlotThisFrame() { return !(tApplication::GetFrame() % CVar_ShowCpuProfRatio.Get()); }
+		bool CpuProfSlotThisFrame() 
+		{ 
+			return !(GetFrame() % __max(CVar_ShowCpuProfRatio.Get(), 2));
+		}
 
 		bool IsCpuProfActive()
 		{
-			return CpuProfSlotThisFrame() && (CVar_ShowCpuProf.Get() == 1 || CVar_ShowCpuProf.Get() == 2);
+			return CpuProfSlotThisFrame() && Profiling::g_cpuProfilingEnabled;
 		}
 
-		bool IsCpuProfPendingActive() { return CVar_ShowCpuProf.Get() == 3 && CpuProfSlotThisFrame(); }
-		bool IsCpuProfPendingDeactive() { return CVar_ShowCpuProf.Get() == 2 && CpuProfSlotThisFrame(); }
+		Profiling::sProfiler::tCpuProfStackTree& CpuProfGetStack()
+		{
+			return GProfiler.CpuProfStack[GetCurrentFrameIndex()];
+		}
 
-		void CpuProfSetActive(bool active) { CVar_ShowCpuProf.Set(active ? 1 : 0); }
+		bool CpuProfSetActive(bool active) 
+		{ 
+			bool res = active != Profiling::g_cpuProfilingEnabled;
+			Profiling::g_cpuProfilingEnabled = active;
+			return res;
+		}
 
 		void CpuProf_Begin(const char* label)
 		{
 			if (IsCpuProfActive())
-			{
-				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Push({ label, 0.0 });
-			}
+				CpuProfGetStack().Push({ label, 0.0 });
 		}
 
 		void CpuProf_End(float ms)
 		{
 			if (IsCpuProfActive())
 			{
-				GProfiler.CpuProfStack[GProfiler.CurrentFrame].GetCurrent().Value = ms;
-				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Pop();
+				CpuProfGetStack().GetCurrent().Value = ms;
+				CpuProfGetStack().Pop();
 			}
 		}
 
 		void CpuProf_Reset()
 		{
-			if (IsCpuProfPendingActive())
-				CpuProfSetActive(1);
-			if (IsCpuProfActive())
+			bool changed = CpuProfSetActive(CVar_ShowCpuProf.Get());
+			if (Profiling::g_cpuProfilingEnabled)
 			{
-				GProfiler.CurrentFrame = (GProfiler.CurrentFrame + 1) % 2;
-				GProfiler.CpuProfStack[GProfiler.CurrentFrame].Reset();
-
-				if (IsCpuProfPendingDeactive())
-					CpuProfSetActive(0);
+				++g_profilerFrame;
 			}
+			if (IsCpuProfActive())
+				CpuProfGetStack().Reset();
 		}
 
 		void CpuProf_ImGuiDraw()
 		{
-			if (CVar_ShowCpuProf.Get() == 1)
+			if (Profiling::g_cpuProfilingEnabled)
 				GProfiler.ImGuiDraw();
 		}
 	}

@@ -305,6 +305,7 @@ namespace Mist
 		if (CVar_ShowImGui.Get())
 		{
 			rendersystem::ui::Show();
+			Profiling::CpuProf_ImGuiDraw();
 			tApplication::ImGuiDraw();
 		}
 	}
