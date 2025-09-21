@@ -1072,13 +1072,16 @@ namespace rendersystem
         m_gpuTime = GetFrameProfiler().GetTimestamp("Frame");
         ImGuiDrawGpuProfiler();
 
-        const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
-        render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
-        commandQueue->ProcessInFlightCommands();
-        m_memoryPool->ProcessInFlight();
-        commandQueue->AddWaitSemaphore(presentSemaphore, 0);
-        commandQueue->AddSignalSemaphore(renderSemaphore, 0);
-        GetFrameResources().Clear();
+		{
+            CPU_PROFILE_SCOPE(RenderSystem_PrepareCmdQueue);
+			const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
+			render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
+			commandQueue->ProcessInFlightCommands();
+			m_memoryPool->ProcessInFlight();
+			commandQueue->AddWaitSemaphore(presentSemaphore, 0);
+			commandQueue->AddSignalSemaphore(renderSemaphore, 0);
+			GetFrameResources().Clear();
+		}
 
         m_memoryContextId = m_memoryPool->CreateContext();
         m_renderContext.cmd->BeginRecording();
