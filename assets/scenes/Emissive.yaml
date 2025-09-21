@@ -24,7 +24,7 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
-      Color: [0.8624944, 0.9798658, 0.74969596]
+      Color: [0.067114115, 0.04594389, 0.04594389]
       Radius: 10000
       Compression: 10000
       OuterCutoff: 26.5
@@ -39,7 +39,7 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [1, 0.9072564, 0.52348995]
+      Color: [0.34228188, 0.21363902, 0.21363902]
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.8
@@ -54,7 +54,7 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [1, 1, 1]
+      Color: [0.640762, 0.7248322, 0.60321605]
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
@@ -96,5 +96,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [91.36974, 5.5041227, 5.470748]
-      Rotation: [0.41296312, -1.0817723, 0]
+      Position: [47.765297, 6.269067, -5.5545526]
+      Rotation: [0.17129622, 3.234376, 0]

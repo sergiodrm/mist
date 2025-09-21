@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.011764706, 0.011764706, 0.011764706]
+  Ambient: [0.013422847, 0.013422847, 0.013422847]
   Skybox:
     Front: textures/yokohama/posz.jpg
     Back: textures/yokohama/negz.jpg
@@ -24,7 +24,7 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.8799004, 0.97315437, 0.7902797]
+      Color: [0.49006617, 1, 0]
       Radius: 10000
       Compression: 10000
       OuterCutoff: 43.6
@@ -49,12 +49,12 @@ RenderObjects:
     Name: Light_3
     Parent: 0
     TransformComponent:
-      Position: [73, 1, 0.5]
+      Position: [66.5, 3, -15]
       Rotation: [0, -222, -307]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.16483924, 0.15404712, 0.20134228]
+      Color: [0.9261745, 0.22998963, 0.22998963]
       Radius: 5000
       Compression: 5000
       OuterCutoff: 54.1
@@ -78,5 +78,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [91.833725, 3.930302, -15.943142]
-      Rotation: [0.2166667, -10.674468, 0]
+      Position: [81.34464, 4.49579, -11.864473]
+      Rotation: [0.24074152, -10.708843, 0]
