@@ -4,6 +4,9 @@
 #error Must define ENVIRONMENT_DATA macro
 #endif
 
+//#define DEBUG_AMBIENT
+//#define DEBUG_LIGHTS 
+
 vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metallic, float roughness, float ao, ShadowInfo shadowInfo)
 {
     // Point lights
@@ -24,6 +27,7 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     vec3 directionalLightColor = ProcessDirectionalLight(fragPos, normal, ENVIRONMENT_DATA.DirectionalLight, albedo, metallic, roughness, shadowInfo);
 
     vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
+    //return directionalLightColor;
 
     // Ambient color
     vec3 N = normalize(mat3(CAMERA_DATA.invView) * normal);
@@ -31,10 +35,15 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     vec3 pos = (wspos/wspos.w).xyz;
     vec3 camPos = (CAMERA_DATA.invView)[3].xyz;
     vec3 V = normalize(camPos - pos);
-    //return N;
-    //return V;
 
-    vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
-	//return ambientColor;
+#if defined(DEBUG_AMBIENT)
+    vec3 ambientColor = ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+	return ambientColor;
+#elif defined(DEBUG_LIGHTS)
+    return lightColor;
+#else
+    //vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+    vec3 ambientColor = ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
     return lightColor + ambientColor;
+#endif
 }

@@ -28,6 +28,7 @@ struct LightData
 /*
  * Data structures for lighting
 */
+//#define LIGHTING_NO_SHADOWS
 #ifndef LIGHTING_NO_SHADOWS
 #define LIGHTING_SHADOWS_PCF
 
@@ -181,13 +182,14 @@ float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
 #endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
     shadowCoord = shadowCoord / shadowCoord.w;
 
+    const float bias = 0.005f;
+
     // Shadow calculation
 #if defined(LIGHTING_SHADOWS_PCF)
     // PCF
     float shadow = 0.0;
     vec2 texelSize = 1.0 / textureSize(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], 0);
     float currentDepth = shadowCoord.z;
-    float bias = 0.005f;
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
@@ -204,7 +206,6 @@ float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
 	if ( z > -1.0 && z < 1.0 ) 
 	{
 		float dist = texture( u_ShadowMap[0], shadowCoord.xy ).r;
-        const float bias = 0.005f;
 		if ( shadowCoord.w > 0.0 && z - bias > dist ) 
 		{
 			shadow = 1.f;
