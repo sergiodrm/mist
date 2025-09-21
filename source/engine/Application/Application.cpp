@@ -107,7 +107,7 @@ namespace Mist
 	void Window::Destroy(Window& window)
 	{
 		SDL_DestroyWindow((SDL_Window*)window.WindowInstance);
-		ZeroMemory(&window, sizeof(Window));
+		memset(&window, 0, sizeof(Window));
 	}
 
 	bool Window::IsMinimized(const Window& window)

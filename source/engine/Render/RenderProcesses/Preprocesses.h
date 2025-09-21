@@ -1,14 +1,8 @@
 #pragma once
 
-#include "Render/Shader.h"
 #include "Render/Globals.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/RenderAPI.h"
-#include "Render/RenderTarget.h"
-#include "Render/Texture.h"
 #include "Render/Model.h"
 #include <glm/glm.hpp>
-#include "RenderAPI/Device.h"
 #include "RenderProcess.h"
 #include "Utils/FileSystem.h"
 
@@ -60,20 +54,19 @@ namespace Mist
 
 	public:
 
+		Preprocess(Renderer* renderer, IRenderEngine* engine);
 		virtual ~Preprocess();
 		virtual RenderProcessType GetProcessType() const { return RENDERPROCESS_PREPROCESSES; }
 
-		virtual void Init(const RenderContext& context) override;
-		virtual void Destroy(const RenderContext& context) override;
-		virtual void InitFrameData(const RenderContext& context, const Renderer& renderFrame, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override {}
-		virtual void UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext) override {}
-		virtual void Draw(const RenderContext& context, const RenderFrameContext& frameContext) override;
+		virtual void Init(rendersystem::RenderSystem* rs) override;
+		virtual void Destroy(rendersystem::RenderSystem* rs) override;
+		virtual void Draw(rendersystem::RenderSystem* rs) override;
 
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const { return nullptr; }
 
 		void PushIrradiancePreprocess(const PreprocessIrradianceInfo& info, fnPreprocessIrradianceCallback fn);
 	protected:
-		PreprocessIrradianceResult ProcessIrradianceRequest(const PreprocessIrradianceInfo& info);
+		PreprocessIrradianceResult ProcessIrradianceRequest(rendersystem::RenderSystem* rs, const PreprocessIrradianceInfo& info);
 	private:
 		PreprocessIrradianceResources m_irradianceResources;
 

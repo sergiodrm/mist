@@ -39,7 +39,7 @@ namespace Mist
 		rtDesc.AddColorAttachment(rtTexture, render::TextureSubresourceRange(0, 1, 0, 1));
 		rt = rs->GetDevice()->CreateRenderTarget(rtDesc);
 
-		cubeModel.LoadModel(RenderContext(), ASSET_PATH("models/cube.gltf"));
+		cubeModel.LoadModel(rs->GetDevice(), ASSET_PATH("models/cube.gltf"));
 	}
 
 	void PreprocessIrradianceResources::PrepareDraw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& _rt, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader)
@@ -61,7 +61,7 @@ namespace Mist
 
 	void PreprocessIrradianceResources::Destroy(rendersystem::RenderSystem* rs)
 	{
-		cubeModel.Destroy(RenderContext());
+		cubeModel.Destroy();
 		rt = nullptr;
 		rs->DestroyShader(&equirectangularShader);
 		rs->DestroyShader(&irradianceShader);
@@ -69,22 +69,27 @@ namespace Mist
 		rs->DestroyShader(&brdfShader);
 	}
 
+	Preprocess::Preprocess(Renderer* renderer, IRenderEngine* engine)
+		: RenderProcess(renderer, engine), m_irradianceRequestCount(0)
+	{
+	}
+
 	Preprocess::~Preprocess()
 	{
 	}
 
-	void Preprocess::Init(const RenderContext& context)
+	void Preprocess::Init(rendersystem::RenderSystem* rs)
 	{
 		m_irradianceResources.Init(g_render);
 	}
 
-	void Preprocess::Destroy(const RenderContext& context)
+	void Preprocess::Destroy(rendersystem::RenderSystem* rs)
 	{
 		check(m_irradianceRequestCount == 0);
 		m_irradianceResources.Destroy(g_render);
 	}
 
-	void Preprocess::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
+	void Preprocess::Draw(rendersystem::RenderSystem* rs)
 	{
 		// TODO: idk why, IBL preprocess works without artifacts when frame != 0.
 		// some layout? some barrier?
@@ -99,7 +104,7 @@ namespace Mist
 			check(fn);
 
 			// process
-			PreprocessIrradianceResult result = ProcessIrradianceRequest(info);
+			PreprocessIrradianceResult result = ProcessIrradianceRequest(rs, info);
 			// notify
 			fn(result, info.userData);
 			// invalidate request
@@ -121,9 +126,9 @@ namespace Mist
 		m_irradianceFnArray[index] = fn;
 	}
 
-	PreprocessIrradianceResult Preprocess::ProcessIrradianceRequest(const PreprocessIrradianceInfo& info)
+	PreprocessIrradianceResult Preprocess::ProcessIrradianceRequest(rendersystem::RenderSystem* rs, const PreprocessIrradianceInfo& info)
 	{
-		rendersystem::RenderSystem* renderSystem = g_render;
+		rendersystem::RenderSystem* renderSystem = rs;
 		render::Device* device = renderSystem->GetDevice();
 
 		// Create output resources
@@ -358,8 +363,8 @@ namespace Mist
 			renderSystem->ClearState();
 			renderSystem->SetRenderTarget(rtBrdf);
 			renderSystem->SetShader(m_irradianceResources.brdfShader);
-			renderSystem->SetViewport(0.f, 0.f, brdf->m_description.extent.width, brdf->m_description.extent.height);
-			renderSystem->SetScissor(0.f, brdf->m_description.extent.width, 0.f, brdf->m_description.extent.height);
+			renderSystem->SetViewport(0.f, 0.f, (float)brdf->m_description.extent.width, (float)brdf->m_description.extent.height);
+			renderSystem->SetScissor(0.f, (float)brdf->m_description.extent.width, 0.f, (float)brdf->m_description.extent.height);
 			renderSystem->DrawFullscreenQuad();
 			renderSystem->ClearState();
 			renderSystem->SetTextureAsResourceBinding(brdf);

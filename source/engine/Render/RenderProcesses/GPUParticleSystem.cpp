@@ -1,19 +1,13 @@
 #include "GPUParticleSystem.h"
-#include "Core/VideoMemory.h"
-#include "Render/RenderContext.h"
 #include <random>
 #include <imgui/imgui.h>
 #include "SDL_stdinc.h"
-#include "Render/RenderDescriptor.h"
 #include "Render/DebugRender.h"
 #include "Core/Debug.h"
 #include "Application/Application.h"
-#include "Render/Texture.h"
 #include "Utils/GenericUtils.h"
 #include "Application/Event.h"
-#include "Render/InitVulkanTypes.h"
 #include "Core/SystemMemory.h"
-#include "../CommandList.h"
 #include "../VulkanRenderEngine.h"
 #include "RenderSystem/RenderSystem.h"
 
@@ -260,6 +254,7 @@ namespace Mist
 
 
 
+#if 0
 
 
 
@@ -267,8 +262,8 @@ namespace Mist
 #define GOL_INVOCATIONS_X 8
 #define GOL_INVOCATIONS_Y 8
 
-    void Gol::Init(uint32_t width, uint32_t height)
-    {
+	void Gol::Init(uint32_t width, uint32_t height)
+	{
 #if 0
 		const RenderContext& context = *m_context;
 
@@ -308,10 +303,10 @@ namespace Mist
 		Reset();
 #endif // 0
 
-    }
+	}
 
-    void Gol::Destroy()
-    {
+	void Gol::Destroy()
+	{
 #if 0
 		const RenderContext& context = *m_context;
 		for (uint32_t i = 0; i < CountOf(m_buffers); ++i)
@@ -320,10 +315,10 @@ namespace Mist
 		m_rt = nullptr;
 #endif // 0
 
-    }
+	}
 
-    void Gol::Compute()
-    {
+	void Gol::Compute()
+	{
 #if 0
 		const RenderContext& context = *m_context;
 
@@ -391,7 +386,7 @@ namespace Mist
 		}
 #endif // 0
 
-    }
+	}
 
 	void Gol::ImGuiDraw()
 	{
@@ -445,7 +440,7 @@ namespace Mist
 		std::default_random_engine generator;
 		generator.seed(tApplication::GetFrame());
 		int* data = _new int[m_width * m_height];
-		for (uint32_t i = 0; i < m_width * m_height; ++i)
+		for (uint32_t i = 0; i < m_width* m_height; ++i)
 			data[i] = randomFloat(generator) > 0.5f ? 1 : 0;
 
 		GPUBuffer::SubmitBufferToGpu(m_buffers[0], data, m_width * m_height * sizeof(int));
@@ -511,8 +506,10 @@ namespace Mist
 
 	glm::vec2 Gol::CalculateTexCoordsFromPixel(uint32_t x, uint32_t y) const
 	{
-        if (m_width == 0 || m_height == 0)
+		if (m_width == 0 || m_height == 0)
 			return {};
-        return glm::vec2((float)x / ((float)m_context->Window->Width), (float)y / ((float)m_context->Window->Height));
-	} 
+		return glm::vec2((float)x / ((float)m_context->Window->Width), (float)y / ((float)m_context->Window->Height));
+	}
+#endif // 0
+
 }

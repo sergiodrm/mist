@@ -2,12 +2,7 @@
 // Header file
 
 #pragma once
-#include "Render/Shader.h"
 #include "Render/Globals.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/RenderAPI.h"
-#include "Render/RenderTarget.h"
-#include "Render/Texture.h"
 #include <glm/glm.hpp>
 #include "RenderAPI/Device.h"
 
@@ -54,10 +49,6 @@ namespace Mist
 
 		GPUParticleSystem();
 		void Init(rendersystem::RenderSystem* renderSystem);
-#if 0
-		void InitFrameData(const RenderContext& context, RenderFrameContext* frameContextArray);
-#endif // 0
-
 		void UpdateBuffers(rendersystem::RenderSystem* renderSystem);
 		void Dispatch(rendersystem::RenderSystem* renderSystem);
 		void Draw(rendersystem::RenderSystem* renderSystem);
@@ -80,34 +71,35 @@ namespace Mist
 	};
 
 
-    class Gol
-    {
-    public:
-        Gol(const RenderContext* context)
-            : m_context(context), m_rt(nullptr) {
-        }
+#if 0
+	class Gol
+	{
+	public:
+		Gol(const RenderContext* context)
+			: m_context(context), m_rt(nullptr) {
+		}
 
-        void Init(uint32_t width, uint32_t height);
-        void Destroy();
+		void Init(uint32_t width, uint32_t height);
+		void Destroy();
 
-        void Compute();
+		void Compute();
 		void ImGuiDraw();
 		void Reset();
-    private:
+	private:
 
 		void InitBuffers(uint32_t width, uint32_t height);
 		void CreateDescriptorBuffers();
 
 		glm::vec2 CalculateTexCoordsFromPixel(uint32_t x, uint32_t y) const;
 
-        const RenderContext* m_context;
+		const RenderContext* m_context;
 		uint32_t m_width;
 		uint32_t m_height;
 		render::BufferHandle m_buffers[2];
 		VkDescriptorSet m_bufferBinding[2];
 		VkDescriptorSet m_drawBinding[2];
 		render::RenderTargetHandle m_rt;
-        rendersystem::ShaderProgram* m_computeShader;
+		rendersystem::ShaderProgram* m_computeShader;
 		rendersystem::ShaderProgram* m_drawShader;
 
 		uint64_t m_counter;
@@ -115,7 +107,9 @@ namespace Mist
 		bool m_paused;
 		bool m_dirtyState;
 		uint32_t m_modifiedWidth;
-        uint32_t m_modifiedHeight;
+		uint32_t m_modifiedHeight;
 		float m_drawScale;
-    };
+	};
+#endif // 0
+
 }

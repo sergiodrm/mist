@@ -1,17 +1,16 @@
 #pragma once
 
 #include "RenderProcess.h"
-#include "Render/RenderTarget.h"
 #include "Render/Globals.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/Texture.h"
 #include "Utils/Angles.h"
 
+namespace rendersystem
+{
+	class RenderSystem;
+}
 
 namespace Mist
 {
-	struct RenderContext;
-	class ShaderProgram;
 	class Scene;
 
 
@@ -28,10 +27,8 @@ namespace Mist
 		ShadowMapPipeline();
 		~ShadowMapPipeline();
 
-		void Init(const RenderContext& renderContext, const RenderTarget* renderTarget);
-		void Destroy(const RenderContext& renderContext);
-
-		void AddFrameData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
+		void Init(rendersystem::RenderSystem* rs);
+		void Destroy(rendersystem::RenderSystem* rs);
 
 		void SetPerspectiveClip(float nearClip, float farClip);
 		void SetOrthographicClip(float nearClip, float farClip);
@@ -43,8 +40,7 @@ namespace Mist
 		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
 		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float nearClip = 0.1f, float farClip = 1000.f);
 
-		void FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer);
-		void RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex);
+		void RenderShadowMap(rendersystem::RenderSystem* rs, const Scene* scene, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
 		const glm::mat4& GetLightVP(uint32_t index) const;
 		void SetDepthVP(uint32_t index, const glm::mat4& mat);
@@ -79,13 +75,11 @@ namespace Mist
 			DEBUG_ALL
 		};
 	public:
-		ShadowMapProcess();
+		ShadowMapProcess(Renderer* renderer, IRenderEngine* engine);
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_SHADOWMAP; }
-		virtual void Init(const RenderContext& context) override;
-		virtual void Destroy(const RenderContext& renderContext) override;
-		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
-		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext) override;
-		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext) override;
+		virtual void Init(rendersystem::RenderSystem* rs) override;
+		virtual void Destroy(rendersystem::RenderSystem* rs) override;
+		virtual void Draw(rendersystem::RenderSystem* rs) override;
 		virtual void ImGuiDraw() override;
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
@@ -94,7 +88,7 @@ namespace Mist
 
 		ShadowMapPipeline m_shadowMapPipeline;
 	private:
-		virtual void DebugDraw(const RenderContext& context) override;
+		virtual void DebugDraw() override;
 	private:
 		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		uint32_t m_lightCount = 0;

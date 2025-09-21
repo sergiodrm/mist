@@ -1,32 +1,26 @@
 #pragma once
 
 #include "RenderProcess.h"
-#include "Render/RenderTarget.h"
 #include "Render/Globals.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/Texture.h"
 #include "Bloom.h"
 #include <glm/glm.hpp>
 
 
 namespace Mist
 {
-	struct RenderContext;
-	class ShaderProgram;
 	class cModel;
 
 	class DeferredLighting : public RenderProcess
 	{
 	public:
+		DeferredLighting(Renderer* renderer, IRenderEngine* engine);
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_LIGHTING; }
-		virtual void Init(const RenderContext& renderContext) override;
-		virtual void Destroy(const RenderContext& renderContext) override;
-		virtual void InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer) override;
-		virtual void UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext) override;
-		virtual void Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext) override;
+		virtual void Init(rendersystem::RenderSystem* rs) override;
+		virtual void Destroy(rendersystem::RenderSystem* rs) override;
+		virtual void Draw(rendersystem::RenderSystem* rs) override;
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput.GetPtr(); }
 		virtual void ImGuiDraw() override;
-		virtual void DebugDraw(const RenderContext& context) override;
+		virtual void DebugDraw() override;
 		render::RenderTargetHandle m_lightingOutput;
 	private:
 		rendersystem::ShaderProgram* m_lightingShader;
@@ -36,10 +30,6 @@ namespace Mist
 
 		rendersystem::ShaderProgram* m_hdrShader;
 		render::RenderTargetHandle m_hdrOutput;
-
-		render::RenderTargetHandle m_gbufferRenderTarget;
-		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapRenderTargetArray;
-		render::RenderTargetHandle m_ssaoRenderTarget;
 
 		BloomEffect m_bloomEffect;
 	};

@@ -1,6 +1,4 @@
 #include "GBuffer.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Render/DebugRender.h"
 #include "Scene/Scene.h"
@@ -8,7 +6,6 @@
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
 #include "Render/Model.h"
-#include "../CommandList.h"
 
 #include "RenderSystem/RenderSystem.h"
 
@@ -18,8 +15,13 @@ namespace Mist
 {
 	GBuffer* g_gbuffer = nullptr;
 
-	void GBuffer::Init(const RenderContext& renderContext)
+	GBuffer::GBuffer(Renderer* renderer, IRenderEngine* engine)
+		: RenderProcess(renderer, engine)
+	{ }
+
+	void GBuffer::Init(rendersystem::RenderSystem* rs)
 	{
+		render::Device* device = rs->GetDevice();
 		check(g_gbuffer == nullptr);
 		g_gbuffer = this;
 		render::Extent2D extent = g_render->GetBackbufferResolution();
@@ -35,18 +37,18 @@ namespace Mist
 			check(texDesc.format != render::Format_Undefined);
 			texDesc.extent = { width, height, 1 };
 			texDesc.isRenderTarget = true;
-			textures[i] = g_device->CreateTexture(texDesc);
+			textures[i] = device->CreateTexture(texDesc);
 
 			if (render::utils::IsDepthStencilFormat(texDesc.format))
 				rtDesc.SetDepthStencilAttachment(textures[i]);
 			else
 				rtDesc.AddColorAttachment(textures[i]);
 		}
-		m_renderTarget = g_device->CreateRenderTarget(rtDesc);
-		InitPipeline(renderContext);
+		m_renderTarget = device->CreateRenderTarget(rtDesc);
+		InitPipeline(rs);
 	}
 
-	void GBuffer::Destroy(const RenderContext& renderContext)
+	void GBuffer::Destroy(rendersystem::RenderSystem* rs)
 	{
 		check(g_gbuffer == this);
 		//RenderTarget::Destroy(renderContext, m_renderTarget);
@@ -54,32 +56,24 @@ namespace Mist
 		//check(m_renderTarget.GetRefCounter() == 1);
 		m_renderTarget = nullptr;
 		g_gbuffer = nullptr;
-		g_render->DestroyShader(&m_gbufferShader);
+		rs->DestroyShader(&m_gbufferShader);
 	}
 
-	void GBuffer::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
-	{
-	}
-
-	void GBuffer::UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext)
-	{
-	}
-
-	void GBuffer::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
+	void GBuffer::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
-		rendersystem::RenderSystem* renderSystem = g_render;
-		renderSystem->SetRenderTarget(m_renderTarget);
-		renderSystem->SetShader(m_gbufferShader);
-		renderSystem->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
-		renderSystem->ClearColor();
-		renderSystem->ClearDepthStencil();
-		renderSystem->SetStencilEnable(true);
-		renderSystem->SetStencilMask(0xff, 0xff, 1);
-		renderSystem->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
-		frameContext.Scene->Draw(renderSystem, RenderFlags_Fixed | RenderFlags_Emissive);
-		renderSystem->ClearState();
-		renderSystem->SetDefaultState();
+		rendersystem::RenderSystem* renderSystem = rs;
+		rs->SetRenderTarget(m_renderTarget);
+		rs->SetShader(m_gbufferShader);
+		rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+		rs->ClearColor();
+		rs->ClearDepthStencil();
+		rs->SetStencilEnable(true);
+		rs->SetStencilMask(0xff, 0xff, 1);
+		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
+		GetEngine()->GetScene()->Draw(rs, RenderFlags_Fixed | RenderFlags_Emissive);
+		rs->ClearState();
+		rs->SetDefaultState();
 	}
 
 	void GBuffer::ImGuiDraw()
@@ -113,7 +107,7 @@ namespace Mist
 		return g_gbuffer->GetRenderTarget();
 	}
 
-	void GBuffer::DebugDraw(const RenderContext& context)
+	void GBuffer::DebugDraw()
 	{
 		render::Extent2D extent = g_render->GetBackbufferResolution();
 		float w = (float)extent.width;
@@ -151,7 +145,7 @@ namespace Mist
 		}
 	}
 
-	void GBuffer::InitPipeline(const RenderContext& renderContext)
+	void GBuffer::InitPipeline(rendersystem::RenderSystem* rs)
 	{
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
@@ -176,7 +170,7 @@ namespace Mist
             DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
 			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-			m_gbufferShader = g_render->CreateShader(shaderDesc);
+			m_gbufferShader = rs->CreateShader(shaderDesc);
 		}
 	}
 

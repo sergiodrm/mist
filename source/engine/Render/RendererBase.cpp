@@ -6,20 +6,17 @@
 #include "RenderProcesses/Preprocesses.h"
 #include "RenderProcesses/ShadowMap.h"
 #include "Core/SystemMemory.h"
-#include "Swapchain.h"
-#include "RenderContext.h"
 #include "Application/Application.h"
 #include "VulkanRenderEngine.h"
-#include "CommandList.h"
 
 #include "RenderSystem/RenderSystem.h"
 
 namespace Mist
 {
-	void Renderer::Init(const RenderContext& context, RenderFrameContext* frameContextArray, uint32_t frameContextCount, const Swapchain& swapchain)
+	void Renderer::Init(rendersystem::RenderSystem* rs, IRenderEngine* engine)
 	{
-		uint32_t width = context.Window->Width;
-		uint32_t height = context.Window->Height;
+		uint32_t width = rs->GetRenderResolution().width;
+		uint32_t height = rs->GetRenderResolution().height;
 
 		{
 			render::TextureDescription texDesc;
@@ -33,61 +30,45 @@ namespace Mist
 			m_ldr = g_device->CreateRenderTarget(rtDesc);
 		}
 
-		m_processArray[RENDERPROCESS_SSAO] = _new SSAO();
-		m_processArray[RENDERPROCESS_GBUFFER] = _new GBuffer();
-		m_processArray[RENDERPROCESS_LIGHTING] = _new DeferredLighting();
-		m_processArray[RENDERPROCESS_FORWARD_LIGHTING] = _new ForwardLighting();
-		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess();
-		m_processArray[RENDERPROCESS_PREPROCESSES] = _new Preprocess();
+		m_processArray[RENDERPROCESS_SSAO] = _new SSAO(this, engine);
+		m_processArray[RENDERPROCESS_GBUFFER] = _new GBuffer(this, engine);
+		m_processArray[RENDERPROCESS_LIGHTING] = _new DeferredLighting(this, engine);
+		m_processArray[RENDERPROCESS_FORWARD_LIGHTING] = _new ForwardLighting(this, engine);
+		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess(this, engine);
+		m_processArray[RENDERPROCESS_PREPROCESSES] = _new Preprocess(this, engine);
 
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
-			m_processArray[i]->Init(context);
-
-		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
-		{
-			for (uint32_t j = 0; j < frameContextCount; ++j)
-				m_processArray[i]->InitFrameData(context, *this, j, *frameContextArray[j].GlobalBuffer);
-		}
+			m_processArray[i]->Init(rs);
 	}
 
-	void Renderer::Destroy(const RenderContext& context)
+	void Renderer::Destroy(rendersystem::RenderSystem* rs)
 	{
 		m_ldr = nullptr;
 
 		// reverse order
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 		{
-			m_processArray[RENDERPROCESS_COUNT - 1 - i]->Destroy(context);
+			m_processArray[RENDERPROCESS_COUNT - 1 - i]->Destroy(rs);
 			delete m_processArray[RENDERPROCESS_COUNT - 1 - i];
 		}
 	}
 
-	void Renderer::UpdateRenderData(const RenderContext& context, RenderFrameContext& frameContext)
-	{
-		{
-			CPU_PROFILE_SCOPE(RendererUpdateRenderData);
-			for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
-				m_processArray[i]->UpdateRenderData(context, frameContext);
-		}
-	}
-
-	void Renderer::Draw(const RenderContext& context, const RenderFrameContext& frameContext)
+	void Renderer::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(RendererDraw);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 		{
 			g_render->BeginMarker(RenderProcessNames[i]);
-			m_processArray[i]->Draw(context, frameContext);
+			m_processArray[i]->Draw(rs);
 			g_render->EndMarker();
 		}
 	}
 
 	void Renderer::DebugRender()
 	{
-		RenderContext c;
 		CPU_PROFILE_SCOPE(RendererDebugDraw);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
-			m_processArray[i]->DebugDraw(c);
+			m_processArray[i]->DebugDraw();
 	}
 
 	void Renderer::ImGuiDraw()
@@ -107,19 +88,5 @@ namespace Mist
 	{
 		check(m_processArray[type] && m_processArray[type]->GetProcessType() == type);
 		return m_processArray[type];
-	}
-
-	void Renderer::CopyRenderTarget(const CopyParams& params)
-	{
-		check(params.Dst && params.Src);
-		g_render->SetRenderTarget(params.Dst);
-		g_render->SetShader(m_copyProgram);
-		g_render->SetBlendEnable(params.blendState.blendEnable);
-		g_render->SetBlendFactor(params.blendState.srcBlend, params.blendState.dstBlend, params.blendState.blendOp);
-		g_render->SetBlendAlphaState(params.blendState.srcAlphaBlend, params.blendState.dstAlphaBlend, params.blendState.alphaBlendOp);
-		g_render->SetBlendWriteMask(params.blendState.colorWriteMask);
-		g_render->SetTextureSlot("u_tex", params.Src->m_description.colorAttachments[0].texture);
-		g_render->DrawFullscreenQuad();
-		g_render->ClearState();
 	}
 }

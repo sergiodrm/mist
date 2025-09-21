@@ -1,6 +1,5 @@
 
 #include "Mesh.h"
-#include "RenderAPI.h"
 #include "Core/Debug.h"
 
 namespace Mist

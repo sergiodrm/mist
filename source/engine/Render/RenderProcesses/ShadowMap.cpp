@@ -2,11 +2,8 @@
 #include <vector>
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"
-#include "Render/InitVulkanTypes.h"
 #include "GBuffer.h"
 #include "Scene/Scene.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/RenderDescriptor.h"
 #include "Render/DebugRender.h"
 #include "imgui_internal.h"
 #include "glm/ext/matrix_clip_space.inl"
@@ -16,7 +13,6 @@
 #include "Render/Camera.h"
 #include "glm/ext/quaternion_geometric.hpp"
 #include "glm/ext/matrix_transform.hpp"
-#include "../CommandList.h"
 #include "RenderSystem/RenderSystem.h"
 
 #define SHADOW_MAP_RT_FORMAT FORMAT_D32_SFLOAT
@@ -43,20 +39,16 @@ namespace Mist
 	{
 	}
 
-	void ShadowMapPipeline::Init(const RenderContext& renderContext, const RenderTarget* renderTarget)
+	void ShadowMapPipeline::Init(rendersystem::RenderSystem* rs)
 	{
 		rendersystem::ShaderBuildDescription shaderDesc;
 		shaderDesc.vsDesc.filePath = "shaders/depth.vert";
-		m_shader = g_render->CreateShader(shaderDesc);
+		m_shader = rs->CreateShader(shaderDesc);
 	}
 
-	void ShadowMapPipeline::Destroy(const RenderContext& renderContext)
+	void ShadowMapPipeline::Destroy(rendersystem::RenderSystem* rs)
 	{	
-		g_render->DestroyShader(&m_shader);
-	}
-
-	void ShadowMapPipeline::AddFrameData(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
-	{
+		rs->DestroyShader(&m_shader);
 	}
 
 	void ShadowMapPipeline::SetPerspectiveClip(float nearClip, float farClip)
@@ -143,20 +135,14 @@ namespace Mist
 		glm::mat4 viewProj = ComputeShadowVolume(cameraView, cameraProj, lightDir, 1.f, 10.f);
 		SetupLight(lightIndex, viewProj, cameraView);
 #endif // 0
-
 	}
 
-	void ShadowMapPipeline::FlushToUniformBuffer(const RenderContext& renderContext, UniformBufferMemoryPool* buffer)
-	{
-		//m_shader->SetDynamicBufferData(renderContext, "u_ubo", m_depthMVPCache, sizeof(glm::mat4), globals::MaxShadowMapAttachments);
-	}
-
-	void ShadowMapPipeline::RenderShadowMap(const RenderContext& context, const Scene* scene, uint32_t lightIndex)
+	void ShadowMapPipeline::RenderShadowMap(rendersystem::RenderSystem* rs, const Scene* scene, uint32_t lightIndex)
 	{
 		check(lightIndex < globals::MaxShadowMapAttachments);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
-		g_render->SetShaderProperty("u_ubo", &m_depthMVPCache[lightIndex], sizeof(glm::mat4));
-		scene->DrawGeometry(g_render, RenderFlags_ShadowMap | RenderFlags_NoTextures);
+		rs->SetShaderProperty("u_ubo", &m_depthMVPCache[lightIndex], sizeof(glm::mat4));
+		scene->DrawGeometry(rs, RenderFlags_ShadowMap | RenderFlags_NoTextures);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -276,83 +262,57 @@ namespace Mist
 		SetLightVP(lightIndex, lightVP);
 	}
 
-	ShadowMapProcess::ShadowMapProcess()
+	ShadowMapProcess::ShadowMapProcess(Renderer* renderer, IRenderEngine* engine)
+		: RenderProcess(renderer, engine)
 	{
 		m_debugLightParams.clips[0] = 1.f;
 		m_debugLightParams.clips[1] = 1000.f;
 	}
 
-	void ShadowMapProcess::Init(const RenderContext& context)
+	void ShadowMapProcess::Init(rendersystem::RenderSystem* rs)
 	{
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
 		{
 			render::TextureDescription texDesc;
-			texDesc.extent = { .width = context.Window->Width, .height = context.Window->Height, .depth = 1 };
+			texDesc.extent = { .width = rs->GetRenderResolution().width, .height = rs->GetRenderResolution().height, .depth = 1 };
 			texDesc.format = render::Format_D32_SFloat;
 			texDesc.isRenderTarget = true;
-			render::TextureHandle depthTex = g_device->CreateTexture(texDesc);
+			render::TextureHandle depthTex = rs->GetDevice()->CreateTexture(texDesc);
 
 			render::RenderTargetDescription rtDesc;
 			rtDesc.SetDepthStencilAttachment(depthTex);
-			m_shadowMapTargetArray[i] = g_device->CreateRenderTarget(rtDesc);
+			m_shadowMapTargetArray[i] = rs->GetDevice()->CreateRenderTarget(rtDesc);
 		}
 
 		// Init shadow map pipeline when render target is created
-		m_shadowMapPipeline.Init(context, nullptr);
+		m_shadowMapPipeline.Init(rs);
 	}
 
-	void ShadowMapProcess::InitFrameData(const RenderContext& renderContext, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
-	{
-	}
-
-	void ShadowMapProcess::Destroy(const RenderContext& renderContext)
+	void ShadowMapProcess::Destroy(rendersystem::RenderSystem* rs)
 	{
 		for (uint32_t j = 0; j < globals::MaxShadowMapAttachments; ++j)
 			m_shadowMapTargetArray[j] = nullptr;
-		m_shadowMapPipeline.Destroy(renderContext);
+		m_shadowMapPipeline.Destroy(rs);
 	}
 
-	void ShadowMapProcess::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
-	{
-		Scene& scene = *renderFrameContext.Scene;
-		CollectLightData(scene);
-
-#if 0
-		// Update light VP matrix for lighting pass
-		static constexpr glm::mat4 depthBias =
-		{
-			0.5f, 0.0f, 0.0f, 0.0f,
-			0.0f, 0.5f, 0.0f, 0.0f,
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.5f, 0.5f, 0.0f, 1.0f
-		};
-		glm::mat4 lightMatrix[globals::MaxShadowMapAttachments];
-		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-		{
-			//lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
-			lightMatrix[i] = renderFrameContext.CameraData->View * depthBias * m_shadowMapPipeline.GetDepthVP(i);
-		}
-		renderFrameContext.GlobalBuffer->SetUniform(renderContext, UNIFORM_ID_LIGHT_VP, lightMatrix, sizeof(glm::mat4) * globals::MaxShadowMapAttachments);
-#endif // 0
-
-	}
-
-	void ShadowMapProcess::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
+	void ShadowMapProcess::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuShadowMapping);
+		Scene* scene = GetEngine()->GetScene();
+		CollectLightData(*scene);
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);
-		g_render->SetShader(m_shadowMapPipeline.GetShader());
+		rs->SetShader(m_shadowMapPipeline.GetShader());
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
-			g_render->SetRenderTarget(m_shadowMapTargetArray[i]);
-			g_render->ClearDepthStencil();
-			g_render->SetDepthEnable();
+			rs->SetRenderTarget(m_shadowMapTargetArray[i]);
+			rs->ClearDepthStencil();
+			rs->SetDepthEnable();
 			if (i < m_lightCount)
-				m_shadowMapPipeline.RenderShadowMap(renderContext, renderFrameContext.Scene, i);
+				m_shadowMapPipeline.RenderShadowMap(rs, scene, i);
 		}
-		g_render->ClearState();
-		g_render->SetDefaultState();
+		rs->ClearState();
+		rs->SetDefaultState();
 	}
 
 	void ShadowMapProcess::ImGuiDraw()
@@ -450,7 +410,7 @@ namespace Mist
 		}
 	}
 
-	void ShadowMapProcess::DebugDraw(const RenderContext& context)
+	void ShadowMapProcess::DebugDraw()
 	{
 		render::Extent2D extent = g_render->GetBackbufferResolution();
 		float w = (float)extent.width;

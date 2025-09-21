@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Vertex.h"
-#include "VulkanBuffer.h"
-#include "RenderAPI.h"
 #include "RenderResource.h"
 #include "RenderProcesses/RenderProcess.h"
 #include "Core/Types.h"

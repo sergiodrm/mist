@@ -9,10 +9,8 @@
 #include "imgui.h"
 #include <unordered_map>
 #include <algorithm>
-#include "Render/RenderTypes.h"
 #include "Application/CmdParser.h"
 #include "Render/RenderEngine.h"
-#include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
 #include "RenderSystem/RenderSystem.h"
@@ -175,14 +173,6 @@ bool Mist::Debug::DebugCheck(const char* txt, const char* file, const char* fn, 
 		Mist::tApplication::GetFrame(),
 		txt, file, fn, line);
 	return res == DIALOG_MESSAGE_RESULT_YES;
-}
-
-bool Mist::Debug::DebugVkCheck(int res, const char* txt, const char* file, const char* fn, int line)
-{
-	VkResult vkres = (VkResult)res;
-	const char* vkstr = Mist::VkResultToStr(vkres);
-	logferror("VkCheck failed. VkResult %d: %s\n", res, vkstr);
-	return DebugCheck(txt, file, fn, line);
 }
 
 void Mist::Debug::PrintCallstack(size_t count, size_t offset)

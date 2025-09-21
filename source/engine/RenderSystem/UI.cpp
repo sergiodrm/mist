@@ -1,7 +1,5 @@
 #include "UI.h"
 #include "Core/Debug.h"
-#include "Render/InitVulkanTypes.h"
-#include "Render/Shader.h"
 #include "Render/Globals.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
@@ -10,7 +8,6 @@
 #include <imgui_impl_vulkan.h>
 #include "Core/Console.h"
 #include "Utils/FileSystem.h"
-#include "Render/RenderContext.h"
 #include "Render/RendererBase.h"
 
 #include "RenderAPI/Device.h"
@@ -165,7 +162,7 @@ namespace rendersystem
                 poolInfo.pPoolSizes = poolSizes;
                 poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
-                vkcheck(vkCreateDescriptorPool(m_device->GetContext().device, &poolInfo, m_device->GetContext().allocationCallbacks, &m_imguiPool));
+                check_result(vkCreateDescriptorPool(m_device->GetContext().device, &poolInfo, m_device->GetContext().allocationCallbacks, &m_imguiPool));
                 m_device->SetDebugName(m_imguiPool, "ImGui_DescriptorPool", VK_OBJECT_TYPE_DESCRIPTOR_POOL);
 
                 // Init imgui lib

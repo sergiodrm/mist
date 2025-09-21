@@ -210,11 +210,11 @@ public:
 	virtual void Init(int argc, char** argv) override
 	{
 		Mist::tApplication::Init(argc, argv);
-
+		
 		Mist::VulkanRenderEngine* engine = (Mist::VulkanRenderEngine*)GetEngineInstance();
 		Mist::Scene* scene = new Mist::Scene(engine);
 		engine->SetScene(scene);
-		scene->LoadScene(engine->GetContext(), CVar_LoadScene.Get());
+		scene->LoadScene(CVar_LoadScene.Get());
 	}
 
 protected:

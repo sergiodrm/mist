@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Types.h"
-#include "Texture.h"
 #include "RenderResource.h"
 #include <glm/glm.hpp>
 
@@ -63,9 +62,7 @@ namespace Mist
 	{
 	public:
 		cMaterial();
-		void SetupShader(const RenderContext& context);
-		void SetupDescriptors(const RenderContext& context);
-		void Destroy(const RenderContext& context);
+		void Invalidate();
 
 		void BindTextures(rendersystem::RenderSystem* renderSystem) const;
 		sMaterialRenderData GetRenderData() const;

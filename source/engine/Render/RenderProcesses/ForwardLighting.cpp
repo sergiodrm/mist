@@ -2,14 +2,11 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Debug.h"
 #include "Application/Application.h"
-#include "Render/InitVulkanTypes.h"
-#include "Render/RenderContext.h"
 #include "ShadowMap.h"
 #include "Core/Logger.h"
 #include "Render/DebugRender.h"
 #include <imgui/imgui.h>
 #include "Utils/GenericUtils.h"
-#include "../CommandList.h"
 #include "../Material.h"
 #include "RenderSystem/RenderSystem.h"
 
@@ -21,13 +18,14 @@ namespace Mist
 
 	render::RenderTargetHandle g_forwardRt = nullptr;
 
-	ForwardLighting::ForwardLighting()
-		: m_shader(nullptr), m_rt(nullptr)
+	ForwardLighting::ForwardLighting(Renderer* renderer, IRenderEngine* engine)
+		: RenderProcess(renderer, engine), m_shader(nullptr), m_rt(nullptr)
 	{
 	}
 
-	void ForwardLighting::Init(const RenderContext& renderContext)
+	void ForwardLighting::Init(rendersystem::RenderSystem* rs)
 	{
+#if 0
 #ifdef MIST_DISABLE_FORWARD
 		return;
 #endif
@@ -56,70 +54,62 @@ namespace Mist
 			shaderDesc.fsDesc.filePath = "shaders/forward_lighting.frag";
 			shaderDesc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", 3);
 #define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
+			DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
 
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
+			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
-			m_shader = g_render->CreateShader(shaderDesc);
+			m_shader = rs->CreateShader(shaderDesc);
 		}
 
 		{
-            rendersystem::ShaderBuildDescription shaderDesc;
-            shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
-            shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
-            m_shader = g_render->CreateShader(shaderDesc);
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
+			shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
+			m_shader = rs->CreateShader(shaderDesc);
 
 			m_skyboxModel = _new cModel();
 			m_skyboxModel->LoadModel(renderContext, ASSET_PATH("models/cube.gltf"));
 		}
+#endif // 0
+
 	}
 
-	void ForwardLighting::Destroy(const RenderContext& renderContext)
+	void ForwardLighting::Destroy(rendersystem::RenderSystem* rs)
 	{
+#if 0
 #ifdef MIST_DISABLE_FORWARD
-        return;
+		return;
 #endif
 		m_skyboxModel->Destroy(renderContext);
 		delete m_skyboxModel;
 		m_skyboxModel = nullptr;
 
 		m_rt = nullptr;
-		g_render->DestroyShader(&m_shader);
-		g_render->DestroyShader(&m_skyboxShader);
+		rs->DestroyShader(&m_shader);
+		rs->DestroyShader(&m_skyboxShader);
+#endif // 0
+
 	}
 
-	void ForwardLighting::InitFrameData(const RenderContext& context, const Renderer& renderFrame, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
+	void ForwardLighting::Draw(rendersystem::RenderSystem* rs)
 	{
+#if 0
 #ifdef MIST_DISABLE_FORWARD
-        return;
-#endif
-	}
-
-	void ForwardLighting::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& renderFrameContext)
-	{
-#ifdef MIST_DISABLE_FORWARD
-        return;
-#endif
-	}
-
-	void ForwardLighting::Draw(const RenderContext& renderContext, const RenderFrameContext& renderFrameContext)
-	{
-#ifdef MIST_DISABLE_FORWARD
-        return;
+		return;
 #endif
 		CPU_PROFILE_SCOPE(ForwardLighting);
 
@@ -145,9 +135,11 @@ namespace Mist
 			g_render->SetShaderProperty("u_ubo", ubo, sizeof(glm::mat4) * 2);
 			g_render->SetTextureSlot("u_cubemap", cubemapTexture);
 			g_render->DrawIndexed(mesh.indexCount);
-			
+
 			DebugRender::DrawScreenQuad({}, { m_rt->m_info.extent.width, m_rt->m_info.extent.height }, m_rt->m_description.colorAttachments[0].texture);;
 		}
+#endif // 0
+
 	}
 
 	void ForwardLighting::ImGuiDraw()

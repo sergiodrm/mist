@@ -1,8 +1,10 @@
 #include "TextureLoader.h"
 #include "Utils/FileSystem.h"
 #include "Utils/TimeUtils.h"
-#include "stb_image.h"
 #include "Core/Logger.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 //#define TEXLOAD_DUMP_INFO
 #ifdef TEXLOAD_DUMP_INFO

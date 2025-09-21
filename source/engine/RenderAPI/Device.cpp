@@ -1,3 +1,6 @@
+
+// define vma implementation before include device.h
+#define VMA_IMPLEMENTATION
 #include "Device.h"
 #include "Utils.h"
 #include "Core/Logger.h"
@@ -5,10 +8,10 @@
 
 #include "vkbootstrap/VkBootstrap.h"
 #include "Application/Application.h"
-#include "Render/RenderTypes.h"
 #include "Utils/GenericUtils.h"
 
 #include "ShaderCompiler.h"
+
 
 namespace Mist
 {
@@ -160,7 +163,7 @@ namespace render
             viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
         else if (description.viewOnlyStencil && utils::IsStencilFormat(description.format))
             viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-        vkcheck(vkCreateImageView(m_device->GetContext().device, &viewInfo, m_device->GetContext().allocationCallbacks, &view.m_view));
+        check_result(vkCreateImageView(m_device->GetContext().device, &viewInfo, m_device->GetContext().allocationCallbacks, &view.m_view));
 
         m_views.insert({ description, view });
         return &m_views[description];
@@ -348,16 +351,16 @@ namespace render
 
     void CommandBuffer::Begin()
     {
-        vkcheck(vkResetCommandBuffer(cmd, 0));
+        check_result(vkResetCommandBuffer(cmd, 0));
         VkCommandBufferBeginInfo info = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr };
         info.pInheritanceInfo = nullptr;
         info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        vkcheck(vkBeginCommandBuffer(cmd, &info));
+        check_result(vkBeginCommandBuffer(cmd, &info));
     }
 
     void CommandBuffer::End()
     {
-        vkcheck(vkEndCommandBuffer(cmd));
+        check_result(vkEndCommandBuffer(cmd));
     }
 
     CommandQueue::CommandQueue(Device* device, QueueType type)
@@ -403,12 +406,12 @@ namespace render
             VkCommandPoolCreateInfo poolInfo = { .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .pNext = nullptr };
             poolInfo.queueFamilyIndex = m_queueFamilyIndex;
             poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-            vkcheck(vkCreateCommandPool(m_device->GetContext().device, &poolInfo, m_device->GetContext().allocationCallbacks, &cmd->pool));
+            check_result(vkCreateCommandPool(m_device->GetContext().device, &poolInfo, m_device->GetContext().allocationCallbacks, &cmd->pool));
             VkCommandBufferAllocateInfo allocInfo = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .pNext = nullptr };
             allocInfo.commandPool = cmd->pool;
             allocInfo.commandBufferCount = 1;
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-            vkcheck(vkAllocateCommandBuffers(m_device->GetContext().device, &allocInfo, &cmd->cmd));
+            check_result(vkAllocateCommandBuffers(m_device->GetContext().device, &allocInfo, &cmd->cmd));
 
             cmd->submissionId = UINT32_MAX;
             cmd->type = m_type;
@@ -474,7 +477,7 @@ namespace render
         submitInfo.commandBufferCount = commandBuffers.GetSize();
         submitInfo.pCommandBuffers = commandBuffers.GetData();
         submitInfo.pWaitDstStageMask = pipelineFlags.GetData();
-        vkcheck(vkQueueSubmit(m_queue, 1, &submitInfo, VK_NULL_HANDLE));
+        check_result(vkQueueSubmit(m_queue, 1, &submitInfo, VK_NULL_HANDLE));
 
         // Clear sync info
         m_waitSemaphores.Clear();
@@ -579,7 +582,7 @@ namespace render
     {
         if (!m_dst)
         {
-            vkcheck(vmaMapMemory(m_device->GetContext().memoryContext.allocator, m_buffer->m_alloc, &m_dst));
+            check_result(vmaMapMemory(m_device->GetContext().memoryContext.allocator, m_buffer->m_alloc, &m_dst));
             check(m_dst);
         }
     }
@@ -1099,7 +1102,7 @@ namespace render
         uint64_t maxHeapSize = m_device->GetMaxPhysicalDeviceSizeInHeap(BufferUsage_TransferSrc, MemoryUsage_CpuToGpu);
 
         uint32_t heightChunk = mipHeight;
-        uint32_t transferBufferSize = dataSize;
+        uint64_t transferBufferSize = dataSize;
         while (transferBufferSize > maxHeapSize)
         {
             heightChunk = heightChunk >> 1;
@@ -1322,7 +1325,7 @@ namespace render
 
         VkSemaphoreCreateInfo info{ .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = timelineSemaphore ? &typeInfo : nullptr };
         info.flags = 0;
-        vkcheck(vkCreateSemaphore(m_context->device, &info, m_context->allocationCallbacks, &semaphore->m_semaphore));
+        check_result(vkCreateSemaphore(m_context->device, &info, m_context->allocationCallbacks, &semaphore->m_semaphore));
         semaphore->m_isTimeline = timelineSemaphore;
         return SemaphoreHandle(semaphore);
     }
@@ -1335,7 +1338,7 @@ namespace render
     uint64_t Device::GetSemaphoreTimelineCounter(SemaphoreHandle semaphore)
     {
         uint64_t v;
-        vkcheck(vkGetSemaphoreCounterValue(m_context->device, semaphore->m_semaphore, &v));
+        check_result(vkGetSemaphoreCounterValue(m_context->device, semaphore->m_semaphore, &v));
         return v;
     }
 
@@ -1378,7 +1381,7 @@ namespace render
         const VkDeviceSize maxHeapSize = GetMaxPhysicalDeviceSizeInHeap(description.bufferUsage, description.memoryUsage);
         check(description.size <= maxHeapSize && "Can't allocate buffer. Requested size is greater than its max heap size.");
         
-        vkcheck(vmaCreateBuffer(m_context->memoryContext.allocator, &bufferInfo, &allocInfo,
+        check_result(vmaCreateBuffer(m_context->memoryContext.allocator, &bufferInfo, &allocInfo,
             &buffer->m_buffer, &buffer->m_alloc, nullptr));
         SetDebugName(buffer, description.debugName.c_str());
 
@@ -1403,7 +1406,7 @@ namespace render
     {
         check(dstOffset + size <= buffer->m_description.size);
         void* bufferPtr;
-        vkcheck(vmaMapMemory(m_context->memoryContext.allocator, buffer->m_alloc, &bufferPtr));
+        check_result(vmaMapMemory(m_context->memoryContext.allocator, buffer->m_alloc, &bufferPtr));
         void* dst = reinterpret_cast<char*>(bufferPtr) + dstOffset;
         const void* src = reinterpret_cast<const char*>(data) + srcOffset;
         memcpy_s(dst, buffer->m_description.size-dstOffset, src, size);
@@ -1427,7 +1430,7 @@ namespace render
 			.usage = utils::ConvertMemoryUsage(memoryUsage)
 		};
 		uint32_t memoryTypeIndex;
-		vkcheck(vmaFindMemoryTypeIndexForBufferInfo(m_context->memoryContext.allocator, &bufferInfo, &allocInfo, &memoryTypeIndex));
+		check_result(vmaFindMemoryTypeIndexForBufferInfo(m_context->memoryContext.allocator, &bufferInfo, &allocInfo, &memoryTypeIndex));
 		VkPhysicalDeviceMemoryProperties memProperties;
 		vkGetPhysicalDeviceMemoryProperties(m_context->physicalDevice, &memProperties);
 		VkMemoryType memindex = memProperties.memoryTypes[memoryTypeIndex];
@@ -1495,11 +1498,11 @@ namespace render
             &imageProperties);
         if (infoSupported != VK_SUCCESS)
         {
-            logferror("Image info not supported. Code result: %s\n", Mist::VkResultToStr(infoSupported));
+            logferror("Image info not supported. Code result: %s\n", utils::ConvertVkResultToStr(infoSupported));
             check(false && "Image information not supported.");
         }
 
-        vkcheck(vmaCreateImage(m_context->memoryContext.allocator, &imageInfo, &allocInfo,
+        check_result(vmaCreateImage(m_context->memoryContext.allocator, &imageInfo, &allocInfo,
             &texture->m_image, &texture->m_alloc, nullptr));
         SetDebugName(texture, description.debugName.c_str());
 
@@ -1580,7 +1583,7 @@ namespace render
         samplerInfo.minLod = description.minLod == FLT_MAX ? 0.f : description.minLod;
         samplerInfo.maxLod = description.maxLod == FLT_MAX ? VK_LOD_CLAMP_NONE : description.maxLod;
 
-        vkcheck(vkCreateSampler(m_context->device, &samplerInfo, m_context->allocationCallbacks, &sampler->m_sampler));
+        check_result(vkCreateSampler(m_context->device, &samplerInfo, m_context->allocationCallbacks, &sampler->m_sampler));
         SetDebugName(sampler, description.debugName.c_str());
         return SamplerHandle(sampler);
     }
@@ -1602,7 +1605,7 @@ namespace render
         createInfo.codeSize = binarySize*sizeof(uint32_t);
         createInfo.pCode = (const uint32_t*)binary;
         createInfo.flags = 0;
-        vkcheck(vkCreateShaderModule(m_context->device, &createInfo, m_context->allocationCallbacks, &shader->m_shader));
+        check_result(vkCreateShaderModule(m_context->device, &createInfo, m_context->allocationCallbacks, &shader->m_shader));
         SetDebugName(shader, description.debugName.c_str());
         return ShaderHandle(shader);
     }
@@ -1712,7 +1715,7 @@ namespace render
         renderPassInfo.pSubpasses = &subpass;
         renderPassInfo.dependencyCount = 0;
         renderPassInfo.pDependencies = nullptr;
-        vkcheck(vkCreateRenderPass(m_context->device, &renderPassInfo, m_context->allocationCallbacks, &renderTarget->m_renderPass));
+        check_result(vkCreateRenderPass(m_context->device, &renderPassInfo, m_context->allocationCallbacks, &renderTarget->m_renderPass));
 
         VkFramebufferCreateInfo framebufferInfo = {};
         framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1723,7 +1726,7 @@ namespace render
         framebufferInfo.width = renderTarget->m_info.extent.width;
         framebufferInfo.height = renderTarget->m_info.extent.height;
         framebufferInfo.layers = 1;
-        vkcheck(vkCreateFramebuffer(m_context->device, &framebufferInfo, m_context->allocationCallbacks, &renderTarget->m_framebuffer));
+        check_result(vkCreateFramebuffer(m_context->device, &framebufferInfo, m_context->allocationCallbacks, &renderTarget->m_framebuffer));
 
 
         SetDebugName(renderTarget, description.debugName.c_str());
@@ -1942,7 +1945,7 @@ namespace render
         graphicsPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
         graphicsPipelineInfo.basePipelineIndex = -1;
 
-        vkcheck(vkCreateGraphicsPipelines(m_context->device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
+        check_result(vkCreateGraphicsPipelines(m_context->device, VK_NULL_HANDLE, 1, &graphicsPipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
         if (!description.debugName.isEmpty())
             SetDebugName(pipeline, description.debugName.c_str());
         pipeline->m_rt = rt;
@@ -1982,7 +1985,7 @@ namespace render
         layoutInfo.flags = 0;
         layoutInfo.bindingCount = bindings.GetSize();
         layoutInfo.pBindings = bindings.GetData();
-        vkcheck(vkCreateDescriptorSetLayout(m_context->device, &layoutInfo, m_context->allocationCallbacks, &bindingLayout->m_layout));
+        check_result(vkCreateDescriptorSetLayout(m_context->device, &layoutInfo, m_context->allocationCallbacks, &bindingLayout->m_layout));
 
         // Compute descriptor pool sizes
         auto findFn = [](const VkDescriptorPoolSize* data, uint32_t count, VkDescriptorType type) -> uint32_t
@@ -2049,7 +2052,7 @@ namespace render
         pipelineInfo.stage = shaderStageInfo;
         pipelineInfo.layout = pipeline->m_pipelineLayout;
 
-        vkcheck(vkCreateComputePipelines(m_context->device, VK_NULL_HANDLE, 1, &pipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
+        check_result(vkCreateComputePipelines(m_context->device, VK_NULL_HANDLE, 1, &pipelineInfo, m_context->allocationCallbacks, &pipeline->m_pipeline));
         SetDebugName(pipeline, description.debugName.c_str());
         return ComputePipelineHandle(pipeline);
     }
@@ -2076,7 +2079,7 @@ namespace render
         poolInfo.maxSets = 1;
         poolInfo.poolSizeCount = layout->m_poolSizes.GetSize();
         poolInfo.pPoolSizes = layout->m_poolSizes.GetData();
-        vkcheck(vkCreateDescriptorPool(m_context->device, &poolInfo, m_context->allocationCallbacks, &bindingSet->m_pool));
+        check_result(vkCreateDescriptorPool(m_context->device, &poolInfo, m_context->allocationCallbacks, &bindingSet->m_pool));
 
         // Allocate descriptors
         VkDescriptorSetAllocateInfo allocInfo = {};
@@ -2085,7 +2088,7 @@ namespace render
         allocInfo.descriptorPool = bindingSet->m_pool;
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &layout->m_layout;
-        vkcheck(vkAllocateDescriptorSets(m_context->device, &allocInfo, &bindingSet->m_set));
+        check_result(vkAllocateDescriptorSets(m_context->device, &allocInfo, &bindingSet->m_set));
 
         // Update descriptors
         Mist::tStaticArray<VkWriteDescriptorSet, BindingSetItem::MaxBindingSets> writes;
@@ -2202,7 +2205,7 @@ namespace render
         info.queryType = utils::ConvertQueryType(description.type);
         info.queryCount = description.count;
         info.pipelineStatistics = 0;
-        vkcheck(vkCreateQueryPool(m_context->device, &info, m_context->allocationCallbacks, &query->m_queryPool));
+        check_result(vkCreateQueryPool(m_context->device, &info, m_context->allocationCallbacks, &query->m_queryPool));
         return QueryPoolHandle(query);
     }
 
@@ -2214,7 +2217,7 @@ namespace render
 
     void Device::GetTimestampQuery(const QueryPoolHandle& query, uint32_t firstQuery, uint32_t queryCount, uint64_t* queryResults)
     {
-        vkcheck(vkGetQueryPoolResults(m_context->device, query->m_queryPool, firstQuery, queryCount, sizeof(uint64_t) * queryCount, queryResults, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
+        check_result(vkGetQueryPoolResults(m_context->device, query->m_queryPool, firstQuery, queryCount, sizeof(uint64_t) * queryCount, queryResults, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT));
     }
 
     void Device::ResetQueryPool(const QueryPoolHandle& query, uint32_t firstQuery, uint32_t queryCount)
@@ -2226,7 +2229,7 @@ namespace render
     uint32_t Device::AcquireSwapchainIndex(SemaphoreHandle semaphoreToBeSignaled)
     {
         check(m_swapchainIndex == UINT32_MAX);
-        vkcheck(vkAcquireNextImageKHR(m_context->device, m_swapchain.swapchain, 1000000000, semaphoreToBeSignaled ? semaphoreToBeSignaled->m_semaphore : nullptr, nullptr, &m_swapchainIndex));
+        check_result(vkAcquireNextImageKHR(m_context->device, m_swapchain.swapchain, 1000000000, semaphoreToBeSignaled ? semaphoreToBeSignaled->m_semaphore : nullptr, nullptr, &m_swapchainIndex));
         check(m_swapchainIndex < (uint32_t)m_swapchain.images.size());
         return m_swapchainIndex;
     }
@@ -2243,13 +2246,13 @@ namespace render
         presentInfo.pWaitSemaphores = semaphoreToWait ? &semaphoreToWait->m_semaphore : nullptr;
         presentInfo.waitSemaphoreCount = semaphoreToWait ? 1 : 0;
         presentInfo.pImageIndices = &m_swapchainIndex;
-        vkcheck(vkQueuePresentKHR(m_queue->m_queue, &presentInfo));
+        check_result(vkQueuePresentKHR(m_queue->m_queue, &presentInfo));
         m_swapchainIndex = UINT32_MAX;
     }
 
     void Device::WaitIdle()
     {
-        vkcheck(vkDeviceWaitIdle(m_context->device));
+        check_result(vkDeviceWaitIdle(m_context->device));
     }
 
     bool Device::WaitForSubmissionId(uint64_t submissionId, uint64_t timeoutCounter) const
@@ -2327,7 +2330,7 @@ namespace render
         info.objectType = (VkObjectType)type;
         info.objectHandle = *(const uint64_t*)(&object);
         info.pObjectName = debugName;
-        vkcheck(m_context->pfn_vkSetDebugUtilsObjectNameEXT(m_context->device, &info));
+        check_result(m_context->pfn_vkSetDebugUtilsObjectNameEXT(m_context->device, &info));
     }
 
     void Device::InitContext(const DeviceDescription& description)
@@ -2337,7 +2340,7 @@ namespace render
         PFN_vkEnumerateInstanceVersion FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
         if (FN_vkEnumerateInstanceVersion)
         {
-            vkcheck(FN_vkEnumerateInstanceVersion(&instanceVersion));
+            check_result(FN_vkEnumerateInstanceVersion(&instanceVersion));
         }
         else
             logerror("Fail to get Vulkan API version. Using base api version.\n");
@@ -2479,7 +2482,7 @@ namespace render
         allocatorInfo.physicalDevice = m_context->physicalDevice;
         allocatorInfo.device = m_context->device;
         allocatorInfo.instance = m_context->instance;
-        vkcheck(vmaCreateAllocator(&allocatorInfo, &m_context->memoryContext.allocator));
+        check_result(vmaCreateAllocator(&allocatorInfo, &m_context->memoryContext.allocator));
     }
 
     void Device::InitQueue()
@@ -2496,17 +2499,17 @@ namespace render
 
         // Query surface properties
         VkSurfaceCapabilitiesKHR capabilities;
-        vkcheck(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->physicalDevice, m_context->surface, &capabilities));
+        check_result(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_context->physicalDevice, m_context->surface, &capabilities));
         uint32_t formatCount = 0;
-        vkcheck(vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->physicalDevice, m_context->surface, &formatCount, nullptr));
+        check_result(vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->physicalDevice, m_context->surface, &formatCount, nullptr));
         Mist::tFixedHeapArray<VkSurfaceFormatKHR> formats(formatCount);
         formats.Resize(formatCount);
-        vkcheck(vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->physicalDevice, m_context->surface, &formatCount, formats.GetData()));
+        check_result(vkGetPhysicalDeviceSurfaceFormatsKHR(m_context->physicalDevice, m_context->surface, &formatCount, formats.GetData()));
         uint32_t presentModesCount = 0;
-        vkcheck(vkGetPhysicalDeviceSurfacePresentModesKHR(m_context->physicalDevice, m_context->surface, &presentModesCount, nullptr));
+        check_result(vkGetPhysicalDeviceSurfacePresentModesKHR(m_context->physicalDevice, m_context->surface, &presentModesCount, nullptr));
         Mist::tFixedHeapArray<VkPresentModeKHR> presentModes(presentModesCount);
         presentModes.Resize(presentModesCount);
-        vkcheck(vkGetPhysicalDeviceSurfacePresentModesKHR(m_context->physicalDevice, m_context->surface, &presentModesCount, presentModes.GetData()));
+        check_result(vkGetPhysicalDeviceSurfacePresentModesKHR(m_context->physicalDevice, m_context->surface, &presentModesCount, presentModes.GetData()));
 
         // Find best surface format
         const ColorSpace desiredColorSpace = ColorSpace_SRGB;
@@ -2577,7 +2580,7 @@ namespace render
         uint32_t graphicsQueueIndex = FindFamilyQueueIndex(this, Queue_Graphics);
         check(graphicsQueueIndex != UINT32_MAX);
         VkBool32 graphicsSupportsPresent = VK_FALSE;
-        vkcheck(vkGetPhysicalDeviceSurfaceSupportKHR(m_context->physicalDevice, graphicsQueueIndex, m_context->surface, &graphicsSupportsPresent));
+        check_result(vkGetPhysicalDeviceSurfaceSupportKHR(m_context->physicalDevice, graphicsQueueIndex, m_context->surface, &graphicsSupportsPresent));
         check(graphicsSupportsPresent);
         VkSharingMode sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -2599,13 +2602,13 @@ namespace render
         createInfo.clipped = true;
         createInfo.oldSwapchain = VK_NULL_HANDLE;
         createInfo.flags = 0;
-        vkcheck(vkCreateSwapchainKHR(m_context->device, &createInfo, m_context->allocationCallbacks, &m_swapchain.swapchain));
+        check_result(vkCreateSwapchainKHR(m_context->device, &createInfo, m_context->allocationCallbacks, &m_swapchain.swapchain));
 
         uint32_t swapchainImageCount = 0;
-        vkcheck(vkGetSwapchainImagesKHR(m_context->device, m_swapchain.swapchain, &swapchainImageCount, nullptr));
+        check_result(vkGetSwapchainImagesKHR(m_context->device, m_swapchain.swapchain, &swapchainImageCount, nullptr));
         check(swapchainImageCount != 0);
         VkImage* swapchainImages = _new VkImage[swapchainImageCount];
-        vkcheck(vkGetSwapchainImagesKHR(m_context->device, m_swapchain.swapchain, &swapchainImageCount, swapchainImages));
+        check_result(vkGetSwapchainImagesKHR(m_context->device, m_swapchain.swapchain, &swapchainImageCount, swapchainImages));
 
         m_swapchain.images.resize(swapchainImageCount);
         Mist::tStaticArray<TextureBarrier, 8> barriers;
@@ -2700,7 +2703,7 @@ namespace render
         pipelineLayoutInfo.setLayoutCount = layouts.GetSize();
         pipelineLayoutInfo.pSetLayouts = layouts.GetData();
 
-        vkcheck(vkCreatePipelineLayout(device->GetContext().device, &pipelineLayoutInfo, device->GetContext().allocationCallbacks, &pipelineLayout));
+        check_result(vkCreatePipelineLayout(device->GetContext().device, &pipelineLayoutInfo, device->GetContext().allocationCallbacks, &pipelineLayout));
     }
 
     uint32_t FindFamilyQueueIndex(Device* device, QueueType type)

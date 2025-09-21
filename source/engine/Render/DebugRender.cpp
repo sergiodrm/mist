@@ -1,7 +1,5 @@
 #include "DebugRender.h"
 #include "Core/Debug.h"
-#include "Render/InitVulkanTypes.h"
-#include "Render/Shader.h"
 #include "Core/Logger.h"
 #include "Render/Globals.h"
 #include "Render/VulkanRenderEngine.h"
@@ -10,11 +8,8 @@
 #include <corecrt_math_defines.h>
 #include "imgui_internal.h"
 #include "Utils/GenericUtils.h"
-#include "Render/RenderAPI.h"
-#include "Render/Texture.h"
 #include "Application/Application.h"
 #include "Render/RendererBase.h"
-#include "CommandList.h"
 #include "RenderSystem/RenderSystem.h"
 
 
@@ -47,7 +42,6 @@ namespace Mist
 		{
 			static constexpr index_t MaxLines = 500;
 			tStaticArray<tLineVertex, MaxLines> LineArray;
-			VertexBuffer vb;
 			render::BufferHandle vertexBuffer;
 
 			inline void Reset() { LineArray.Clear(); }
@@ -99,8 +93,6 @@ namespace Mist
 
 			tStaticArray<tQuadVertex, MaxQuadVertices> QuadArray;
 			tStaticArray<render::TextureHandle, MaxViews> Textures;
-			VertexBuffer vb;
-			IndexBuffer ib;
 			render::BufferHandle vertexBuffer;
 			render::BufferHandle indexBuffer;
 

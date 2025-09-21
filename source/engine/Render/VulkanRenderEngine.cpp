@@ -7,10 +7,7 @@
 #include <SDL_vulkan.h>
 #include <string.h>
 
-#include <vkbootstrap/VkBootstrap.h>
-#include "Render/InitVulkanTypes.h"
 #include "Render/Mesh.h"
-#include "Render/RenderDescriptor.h"
 #include "Render/Camera.h"
 
 #include <imgui.h>
@@ -18,21 +15,16 @@
 #include <imgui_impl_sdl2.h>
 #include "Core/Console.h"
 #include "Core/Debug.h"
-#include "Render/Shader.h"
 #include "Render/Globals.h"
 #include "Scene/Scene.h"
 #include "Utils/GenericUtils.h"
-#include "Render/RenderTarget.h"
 #include "RenderProcesses/RenderProcess.h"
 #include "Utils/TimeUtils.h"
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
 #include "Application/Event.h"
 #include "Core/SystemMemory.h"
-#include "RenderProfiling.h"
 #include "Render/DebugRender.h"
-#include "Render/CommandList.h"
-#include "Render/UI.h"
 
 
 #include "RenderAPI/Device.h"
@@ -107,96 +99,14 @@ namespace Mist
 			CVar_ShowCpuProf.Set(2);
 	}
 
-	struct Quad
-	{
-		VertexBuffer VB;
-		IndexBuffer IB;
-
-		void Init(const RenderContext& context, float minx, float maxx, float miny, float maxy)
-		{
-			// Init vertexbuffer
-			float vertices[] =
-			{
-				// vkscreencoords	// uvs
-				minx, miny, 0.f,	0.f, 0.f,
-				maxx, miny, 0.f,	1.f, 0.f,
-				maxx, maxy, 0.f,	1.f, 1.f,
-				minx, maxy, 0.f,	0.f, 1.f
-			};
-			BufferCreateInfo quadInfo;
-			quadInfo.Data = vertices;
-			quadInfo.Size = sizeof(vertices);
-			VB.Init(context, quadInfo);
-
-			uint32_t indices[] = { 0, 2, 1, 0, 3, 2 };
-			quadInfo.Data = indices;
-			quadInfo.Size = sizeof(indices);
-			IB.Init(context, quadInfo);
-		}
-
-		void Draw(CommandList* commandList)
-		{
-			check(commandList);
-			commandList->BindVertexBuffer(VB);
-			commandList->BindIndexBuffer(IB);
-			commandList->DrawIndexed(6, 1, 0, 0);
-		}
-
-		void Destroy(const RenderContext& context)
-		{
-			VB.Destroy(context);
-			IB.Destroy(context);
-		}
-	} FullscreenQuad;
-
-	void CmdDrawFullscreenQuad(CommandList* commandList)
-	{
-		FullscreenQuad.Draw(commandList);
-	}
-
-	cTexture* DefaultTexture = nullptr;
-	cTexture* GetTextureCheckerboard4x4(const RenderContext& context)
-	{
-		if (!DefaultTexture)
-		{
-#if 0
-			constexpr EFormat f = FORMAT_R8G8B8A8_SRGB;
-			constexpr uint32_t w = 2;
-			constexpr uint32_t h = 2;
-			constexpr uint32_t d = 1;
-			constexpr uint8_t pixels[] = {
-				0x00, 0xff, 0x00, 0xff, 0x00, 0x00, 0x00, 0xff,
-				0x00, 0x00, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff
-			};
-			static_assert(utils::GetPixelSizeFromFormat(f) * w * h * d == sizeof(pixels));
-			tImageDescription desc
-			{
-				.Format = f,
-				.Width = w,
-				.Height = h,
-				.Depth = d,
-			};
-			DefaultTexture = cTexture::Create(context, desc);
-			const uint8_t* layer = (uint8_t*)pixels;
-			DefaultTexture->SetImageLayers(context, &layer, 1);
-			DefaultTexture->CreateView(context, tViewDescription());
-#else
-			check(LoadTextureFromFile(context, "textures/checkerboard.jpg", &DefaultTexture, FORMAT_R8G8B8A8_UNORM));
-			DefaultTexture->CreateView(context, tViewDescription());
-#endif // 0
-		}
-		return DefaultTexture;
-	}
-
 	cMaterial* DefaultMaterial = nullptr;
-	cMaterial* GetDefaultMaterial(const RenderContext& context)
+	cMaterial* GetDefaultMaterial()
 	{
 		if (!DefaultMaterial)
 		{
 			DefaultMaterial = _new cMaterial();
 			DefaultMaterial->SetName("DefaultMaterial");
 			DefaultMaterial->m_albedo = glm::vec3(1.f, 0.f, 1.f);
-			DefaultMaterial->SetupShader(context);
 		}
 		return DefaultMaterial;
 	}
@@ -210,12 +120,12 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(Init);
 #ifdef _DEBUG
-		Log(LogLevel::Info, "Running app in DEBUG mode.\n");
+		logfinfo("Running app in %s mode.\n", "RELEASE");
 #else
-		Log(LogLevel::Info, "Running app in RELEASE mode.\n");
+		logfinfo("Running app in %s mode.\n", "DEBUG");
 #endif // _DEBUG
+			
 
-		m_renderContext.Window = &window;
 		SDL_Init(SDL_INIT_VIDEO);
 
 		class WindowRenderInterface : public rendersystem::IWindow
@@ -232,8 +142,7 @@ namespace Mist
 		g_render = m_renderSystem;
 		g_device = m_renderSystem->GetDevice();
 
-		m_renderContext.Renderer = &m_renderer;
-		m_renderer.Init(m_renderContext, m_renderContext.FrameContextArray, CountOf(m_renderContext.FrameContextArray), m_swapchain);
+		m_renderer.Init(m_renderSystem, this);
 		m_gpuParticleSystem.Init(g_render);
 		DebugRender::Init();
 		//////////////////////////////////////
@@ -255,12 +164,15 @@ namespace Mist
 				GPUParticleSystem* ps = static_cast<GPUParticleSystem*>(data);
 				ps->ImGuiDraw();
 			}, &m_gpuParticleSystem);
-		rendersystem::ui::AddWindowCallback("Game of life demo", [](void* data) 
+#if 0
+		rendersystem::ui::AddWindowCallback("Game of life demo", [](void* data)
 			{
 				check(data);
 				Gol* g = static_cast<Gol*>(data);
 				g->ImGuiDraw();
-			}, &m_gol);
+			}, & m_gol);
+#endif // 0
+
 
 		for (uint32_t i = 0; i < m_renderer.GetRenderProcessCount(); ++i)
 			rendersystem::ui::AddWindowCallback(RenderProcessNames[i], [](void* data) 
@@ -299,7 +211,7 @@ namespace Mist
 		}
 		m_gpuParticleSystem.Destroy(g_render);
 		DebugRender::Destroy();
-		m_renderer.Destroy(m_renderContext);
+		m_renderer.Destroy(m_renderSystem);
 		g_device = nullptr;
 		g_render = nullptr;
 		m_renderSystem->Destroy();
@@ -327,9 +239,9 @@ namespace Mist
 		m_scene->Init();
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
-			m_renderContext.FrameContextArray[i].Scene = m_scene;
-			if (scene)
-				m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
+			//m_renderContext.FrameContextArray[i].Scene = m_scene;
+			//if (scene)
+			//	m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
 		}
 
 		rendersystem::ui::AddWindowCallback("Scene", [](void* data)
@@ -365,20 +277,18 @@ namespace Mist
 	void VulkanRenderEngine::Draw()
 	{
 		//DumpMemoryStats();
-		RenderFrameContext& frameContext = GetFrameContext();
-		uint32_t frameIndex = m_renderContext.GetFrameIndex();
 
 		g_render->BeginFrame();
 		ImGuiDraw();
 
 		g_render->BeginMarker("Renderer");
-		m_renderer.Draw(m_renderContext, frameContext);
+		m_renderer.Draw(m_renderSystem);
 		g_render->EndMarker();
 
 		g_render->BeginMarker("Test compute shaders");
 		m_gpuParticleSystem.Dispatch(g_render);
 		m_gpuParticleSystem.Draw(g_render);
-		m_gol->Compute();
+		//m_gol->Compute();
 		g_render->EndMarker();
 
 		g_render->BeginMarker("Debug render");
@@ -399,51 +309,25 @@ namespace Mist
 		}
 	}
 
-	void VulkanRenderEngine::DrawCubemap(const RenderContext& context, const cTexture& texture)
-	{
-#if defined(MIST_CUBEMAP)
-		m_cubemapPipeline.Shader->UseProgram(context);
-		const RenderFrameContext& frameContext = context.GetFrameContext();
-		glm::mat4 viewRot = frameContext.CameraData->InvView;
-		viewRot[3] = { 0.f,0.f,0.f,1.f };
-		glm::mat4 ubo[2];
-		ubo[0] = viewRot;
-		ubo[1] = frameContext.CameraData->Projection * viewRot;
-		m_cubemapPipeline.Shader->SetBufferData(context, "u_ubo", ubo, sizeof(glm::mat4) * 2);
-		m_cubemapPipeline.Shader->BindTextureSlot(context, 1, texture);
-		m_cubemapPipeline.Shader->FlushDescriptors(context);
-		CommandBuffer cmd = frameContext.GraphicsCommandContext.CommandBuffer;
-		check(m_cubemapPipeline.Cube->m_meshes.GetSize() == 1);
-		const cMesh& mesh = m_cubemapPipeline.Cube->m_meshes[0];
-		mesh.BindBuffers(cmd);
-		RenderAPI::CmdDrawIndexed(cmd, mesh.IndexCount, 1, 0, 0, 0);
-#endif // defined(MIST_CUBEMAP)
-
-	}
-
-	RenderFrameContext& VulkanRenderEngine::GetFrameContext()
-	{
-		return m_renderContext.GetFrameContext();
-	}
-
 	bool VulkanRenderEngine::InitVulkan()
 	{
 		return true;
+#if 0
 
 		// Get Vulkan version
-        uint32_t instanceVersion = VK_API_VERSION_1_0;
+		uint32_t instanceVersion = VK_API_VERSION_1_0;
 		PFN_vkEnumerateInstanceVersion FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
-		if (FN_vkEnumerateInstanceVersion) 
+		if (FN_vkEnumerateInstanceVersion)
 		{
 			vkcheck(FN_vkEnumerateInstanceVersion(&instanceVersion));
 		}
 		else
 			logerror("Fail to get Vulkan API version. Using base api version.\n");
 
-        // 3 macros to extract version info
-        uint32_t major = VK_VERSION_MAJOR(instanceVersion);
-        uint32_t minor = VK_VERSION_MINOR(instanceVersion);
-        uint32_t patch = VK_VERSION_PATCH(instanceVersion);
+		// 3 macros to extract version info
+		uint32_t major = VK_VERSION_MAJOR(instanceVersion);
+		uint32_t minor = VK_VERSION_MINOR(instanceVersion);
+		uint32_t patch = VK_VERSION_PATCH(instanceVersion);
 		logfok("Vulkan API version: %d.%d.%d\n", major, minor, patch);
 
 		vkb::InstanceBuilder builder;
@@ -503,12 +387,12 @@ namespace Mist
 		timelineSemaphoreFeatures.timelineSemaphore = VK_TRUE;
 		deviceBuilder.add_pNext(&timelineSemaphoreFeatures);
 
-        // Enable synchronization2
-        VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features;
-        sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-        sync2Features.pNext = nullptr;
-        sync2Features.synchronization2 = VK_TRUE;
-        deviceBuilder.add_pNext(&sync2Features);
+		// Enable synchronization2
+		VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features;
+		sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+		sync2Features.pNext = nullptr;
+		sync2Features.synchronization2 = VK_TRUE;
+		deviceBuilder.add_pNext(&sync2Features);
 
 		// Create Device
 		vkb::Result<vkb::Device> deviceResult = deviceBuilder.build();
@@ -532,7 +416,7 @@ namespace Mist
 			&& m_renderContext.ComputeQueueFamily != vkb::detail::QUEUE_INDEX_MAX_VALUE);
 
 #else
-        // Get queue families and find a queue that supports both graphics and compute
+		// Get queue families and find a queue that supports both graphics and compute
 		uint32_t queueFamilyCount = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_renderContext.GPUDevice, &queueFamilyCount, nullptr);
 		VkQueueFamilyProperties* queueFamilyProperties = _new VkQueueFamilyProperties[queueFamilyCount];
@@ -543,10 +427,10 @@ namespace Mist
 		{
 			logfinfo("DeviceQueue %d:\n", i);
 			logfinfo("* Graphics: %d, Compute: %d, Transfer: %d, SparseBinding: %d\n",
-				queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT? 1 : 0,
-				queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT? 1 : 0,
-				queueFamilyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT? 1 : 0,
-				queueFamilyProperties[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT? 1 : 0);
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ? 1 : 0,
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT ? 1 : 0,
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT ? 1 : 0,
+				queueFamilyProperties[i].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT ? 1 : 0);
 
 			if (queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT
 				&& queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT)
@@ -590,25 +474,31 @@ namespace Mist
 #undef GET_VK_PROC_ADDRESS
 
 		return true;
+#endif // 0
+
 	}
 
 	bool VulkanRenderEngine::InitCommands()
 	{
+#if 0
 		VkCommandPoolCreateInfo graphicsPoolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.GraphicsQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 		VkCommandPoolCreateInfo computePoolInfo = vkinit::CommandPoolCreateInfo(m_renderContext.ComputeQueueFamily, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
 		vkcheck(vkCreateCommandPool(m_renderContext.Device, &graphicsPoolInfo, nullptr, &m_renderContext.TransferContext.CommandPool));
 		VkCommandBufferAllocateInfo allocInfo = vkinit::CommandBufferCreateAllocateInfo(m_renderContext.TransferContext.CommandPool, 1);
 		vkcheck(vkAllocateCommandBuffers(m_renderContext.Device, &allocInfo, &m_renderContext.TransferContext.CommandBuffer));
-        char buff[64];
-        sprintf_s(buff, "TransferCommandBuffer");
-        SetVkObjectName(m_renderContext, &m_renderContext.TransferContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
+		char buff[64];
+		sprintf_s(buff, "TransferCommandBuffer");
+		SetVkObjectName(m_renderContext, &m_renderContext.TransferContext.CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER, buff);
+#endif // 0
+
 		return true;
 	}
 
 
 	bool VulkanRenderEngine::InitSync()
 	{
+#if 0
 		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
 		{
 			RenderFrameContext& frameContext = m_renderContext.FrameContextArray[i];
@@ -633,6 +523,8 @@ namespace Mist
 
 		VkFenceCreateInfo info = vkinit::FenceCreateInfo();
 		vkcheck(vkCreateFence(m_renderContext.Device, &info, nullptr, &m_renderContext.TransferContext.Fence));
+#endif // 0
+
 		return true;
 	}
 

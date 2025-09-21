@@ -6,6 +6,12 @@
 
 #include "Types.h"
 
+#define check_result(_call) \
+do { \
+VkResult __vkres = expand(_call); \
+if (__vkres != VK_SUCCESS) { ::render::utils::HandleVkError(__vkres, #_call, __FILE__, __LINE__); } \
+} while(0)
+
 namespace render
 {
     struct TextureSubresourceRange;
@@ -16,6 +22,8 @@ namespace render
 
     namespace utils
     {
+        void HandleVkError(VkResult res, const char* call, const char* file, int line);
+
         struct ImageLayoutState
         {
             VkImageLayout layout;
@@ -25,6 +33,7 @@ namespace render
         ImageLayoutState ConvertImageLayoutState(ImageLayout layout);
         VkImageMemoryBarrier2 ConvertImageBarrier(const TextureBarrier& barrier);
 
+        const char* ConvertVkResultToStr(VkResult res);
         VkPresentModeKHR ConvertPresentMode(PresentMode mode);
         VkColorSpaceKHR ConvertColorSpace(ColorSpace space);
         VkQueueFlags ConvertQueueFlags(QueueType flags);

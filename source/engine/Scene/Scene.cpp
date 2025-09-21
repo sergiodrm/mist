@@ -39,7 +39,6 @@
 #include "Utils/FileSystem.h"
 #include "Render/RendererBase.h"
 #include "Render/RenderProcesses/ShadowMap.h"
-#include "Render/CommandList.h"
 #include "Render/RenderProcesses/Preprocesses.h"
 
 //#define MIST_ENABLE_LOADER_LOG
@@ -204,17 +203,23 @@ namespace Mist
 
 	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine))
 	{
-		m_irradianceRequestInfo.cubemapWidthHeight = 1024;
-		m_irradianceRequestInfo.irradianceCubemapWidthHeight = 32;
-		m_irradianceRequestInfo.specularCubemapWidthHeight = 128;
-		m_irradianceRequestInfo.minCubemapClamp = glm::vec3(0.f);
-		m_irradianceRequestInfo.maxCubemapClamp = glm::vec3(5.f);
-		m_irradianceRequestInfo.hdrFilepath = "textures/flamingo_pan_4k.hdr";
-		m_irradianceRequestInfo.userData = this;
+		m_irradianceRequestInfo = _new PreprocessIrradianceInfo();
+		m_irradianceRequestInfo->cubemapWidthHeight = 1024;
+		m_irradianceRequestInfo->irradianceCubemapWidthHeight = 32;
+		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
+		m_irradianceRequestInfo->minCubemapClamp = glm::vec3(0.f);
+		m_irradianceRequestInfo->maxCubemapClamp = glm::vec3(4.f);
+		m_irradianceRequestInfo->hdrFilepath = "textures/flamingo_pan_4k.hdr";
+		//m_irradianceRequestInfo->hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
+		//m_irradianceRequestInfo->hdrFilepath = "textures/climbing_gym_4k.hdr";
+		m_irradianceRequestInfo->userData = this;
 	}
 
 	Scene::~Scene()
-	{}
+	{
+		delete m_irradianceRequestInfo;
+		m_irradianceRequestInfo = nullptr;
+	}
 
 	void Scene::Init()
 	{
@@ -241,10 +246,8 @@ namespace Mist
 #endif // 0
 		DestroyRenderLists();
 
-		const RenderContext& renderContext = m_engine->GetContext();
-
 		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
-			m_models[i].Destroy(renderContext);
+			m_models[i].Destroy();
 		m_models.Clear();
 		m_localTransforms.Delete();
 		m_globalTransforms.Delete();
@@ -253,18 +256,6 @@ namespace Mist
 		m_materials.Delete();
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 			m_dirtyNodes[i].Delete();
-	}
-
-	void Scene::InitFrameData(const RenderContext& renderContext, RenderFrameContext& frameContext)
-	{
-#if 0
-		frameContext.GlobalBuffer->AllocDynamicUniform(renderContext, "Material", sizeof(MaterialUniform), MIST_MAX_MATERIALS);
-		VkDescriptorBufferInfo info = frameContext.GlobalBuffer->GenerateDescriptorBufferInfo("Material");
-		DescriptorBuilder::Create(*renderContext.LayoutCache, *renderContext.DescAllocator)
-			.BindBuffer(0, &info, 1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT)
-			.Build(renderContext, m_materialSetArray[frameContext.FrameIndex]);
-#endif // 0
-		//frameContext.GlobalBuffer->AllocDynamicUniform(renderContext, "u_materials", sizeof(sMaterialRenderData), globals::MaxRenderObjects);
 	}
 
 	void Scene::Tick(float deltaTime)
@@ -322,14 +313,14 @@ namespace Mist
 		return node;
 	}
 
-	index_t Scene::LoadModel(const RenderContext& context, const char* filepath)
+	index_t Scene::LoadModel(const char* filepath)
 	{
 		cModel* model = GetModel(filepath);
 		if (!model)
 		{
 			m_models.Push();
 			model = &m_models.GetBack();
-			check(model->LoadModel(context, filepath));
+			check(model->LoadModel(g_device, filepath));
 		}
 		check(model);
 		return (index_t)(model-m_models.GetData());
@@ -359,7 +350,7 @@ namespace Mist
 		renderSystem->SetShaderProperty("u_model", &m_renderTransforms[transformOffset + model.m_meshNodeIndex[meshIndex]], sizeof(glm::mat4));
 	}
 
-	void Scene::LoadScene(const RenderContext& context, const char* filepath)
+	void Scene::LoadScene(const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadScene, "Load scene (%s)", filepath);
 
@@ -387,7 +378,7 @@ namespace Mist
 		strcpy_s(skyboxTextures[Skybox::BOTTOM], envNode["Skybox"]["Bottom"].as<std::string>().c_str());
 		strcpy_s(skyboxTextures[Skybox::LEFT], envNode["Skybox"]["Left"].as<std::string>().c_str());
 		strcpy_s(skyboxTextures[Skybox::RIGHT], envNode["Skybox"]["Right"].as<std::string>().c_str());
-		LoadSkybox(m_engine->GetContext(), m_skybox,
+		LoadSkybox(m_skybox,
 			skyboxTextures[Skybox::FRONT],
 			skyboxTextures[Skybox::BACK],
 			skyboxTextures[Skybox::LEFT],
@@ -431,7 +422,7 @@ namespace Mist
 			{
 				MeshComponent m;
 				strcpy_s(m.MeshAssetPath, meshNode["MeshAssetPath"].as<std::string>().c_str());
-				m.MeshIndex = LoadModel(context, m.MeshAssetPath);
+				m.MeshIndex = LoadModel(m.MeshAssetPath);
 				SetMesh(rb, m);
 			}
 
@@ -463,13 +454,11 @@ namespace Mist
 		}
 		delete[] content;
 
-		//LoadIrradianceCube("textures/flamingo_pan_4k.hdr");
-		//LoadIrradianceCube("textures/citrus_orchard_road_puresky_4k.hdr");
-		//LoadIrradianceCube("textures/climbing_gym_4k.hdr");
-		LoadIrradianceCube(m_irradianceRequestInfo);
+		
+		LoadIrradianceCube(*m_irradianceRequestInfo);
 	}
 
-	void Scene::SaveScene(const RenderContext& context, const char* filepath)
+	void Scene::SaveScene(const char* filepath)
 	{
 		YAML::Emitter emitter;
 
@@ -687,12 +676,9 @@ namespace Mist
 
 	}
 
-	bool Scene::LoadSkybox(const RenderContext& context, Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
+	bool Scene::LoadSkybox(Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom)
 	{
 		PROFILE_SCOPE_LOG(LoadSkybox, "LoadSkybox");
-
-		// descriptors generator
-		DescriptorBuilder builder = DescriptorBuilder::Create(*context.LayoutCache, *context.DescAllocator);
 
 		strcpy_s(skybox.CubemapFiles[Skybox::FRONT], front);
 		strcpy_s(skybox.CubemapFiles[Skybox::BACK], back);
@@ -866,13 +852,12 @@ namespace Mist
 		char tempSceneFile[256];
 		strcpy_s(tempSceneFile, m_sceneFile.GetAssetPath());
 
-		const RenderContext& context = m_engine->GetContext();
 		ImGui::Columns(3);
 		if (ImGui::Button("Save"))
-			SaveScene(context, tempSceneFile);
+			SaveScene(tempSceneFile);
 		ImGui::NextColumn();
 		if (ImGui::Button("Load"))
-			LoadScene(context, tempSceneFile);
+			LoadScene(tempSceneFile);
 		ImGui::NextColumn();
 		if (ImGui::InputText("Scene file", tempSceneFile, 256))
 			m_sceneFile = tempSceneFile;
@@ -1046,22 +1031,22 @@ namespace Mist
 		if (ImGui::TreeNode("IBL cubemap"))
 		{
 			if (ImGui::Button("Reload IBL"))
-				LoadIrradianceCube(m_irradianceRequestInfo);
+				LoadIrradianceCube(*m_irradianceRequestInfo);
 			char buff[256];
-			strcpy_s(buff, m_irradianceRequestInfo.hdrFilepath);
+			strcpy_s(buff, m_irradianceRequestInfo->hdrFilepath);
 			if (ImGui::InputText("HDR filepath", buff, sizeof(buff)))
-				m_irradianceRequestInfo.hdrFilepath = buff;
-			int res = m_irradianceRequestInfo.cubemapWidthHeight;
+				m_irradianceRequestInfo->hdrFilepath = buff;
+			int res = m_irradianceRequestInfo->cubemapWidthHeight;
 			if (ImGui::DragInt("Cubemap resolution", &res, 1.f, 0, 8192, "%5d"))
-				m_irradianceRequestInfo.cubemapWidthHeight = res;
-			res = m_irradianceRequestInfo.irradianceCubemapWidthHeight;
+				m_irradianceRequestInfo->cubemapWidthHeight = res;
+			res = m_irradianceRequestInfo->irradianceCubemapWidthHeight;
 			if (ImGui::DragInt("Convolution irradiance resolution", &res, 1.f, 0, 512, "%5d"))
-				m_irradianceRequestInfo.irradianceCubemapWidthHeight = res;
-			res = m_irradianceRequestInfo.specularCubemapWidthHeight;
+				m_irradianceRequestInfo->irradianceCubemapWidthHeight = res;
+			res = m_irradianceRequestInfo->specularCubemapWidthHeight;
 			if (ImGui::DragInt("Specular irradiance resolution", &res, 1.f, 0, 1024, "%5d"))
-				m_irradianceRequestInfo.specularCubemapWidthHeight = res;
-			ImGui::DragFloat3("Min cubemap color", &m_irradianceRequestInfo.minCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
-			ImGui::DragFloat3("Max cubemap color", &m_irradianceRequestInfo.maxCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
+				m_irradianceRequestInfo->specularCubemapWidthHeight = res;
+			ImGui::DragFloat3("Min cubemap color", &m_irradianceRequestInfo->minCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
+			ImGui::DragFloat3("Max cubemap color", &m_irradianceRequestInfo->maxCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
 			ImGui::TreePop();
 		}
 		ImGui::End();
@@ -1156,7 +1141,7 @@ namespace Mist
 		//m_drawListArray.Clear();
 	}
 
-	void Scene::RenderPipelineDraw(const RenderContext& context, uint32_t pipelineFlags, index_t materialSetIndex, rendersystem::ShaderProgram* program)
+	void Scene::RenderPipelineDraw(uint32_t pipelineFlags, index_t materialSetIndex, rendersystem::ShaderProgram* program)
 	{
 		check(false); 
 #if 0

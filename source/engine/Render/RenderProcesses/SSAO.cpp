@@ -3,13 +3,11 @@
 #include <imgui/imgui.h>
 #include <glm/geometric.hpp>
 #include "Utils/GenericUtils.h"
-#include "Render/RenderContext.h"
 #include "Render/VulkanRenderEngine.h"
 #include "GBuffer.h"
 #include "Application/Application.h"
 #include "Core/Logger.h"
 #include "Render/DebugRender.h"
-#include "../CommandList.h"
 #include "RenderSystem/RenderSystem.h"
 
 
@@ -21,11 +19,11 @@ namespace Mist
 	CFloatVar CVar_SSAOBias("r_ssaoBias", 0.087f);
 
 
-	SSAO::SSAO()
-		: m_mode(SSAO_Enabled)
+	SSAO::SSAO(Renderer* renderer, IRenderEngine* engine)
+		: RenderProcess(renderer, engine), m_mode(SSAO_Enabled)
 	{	}
 
-	void SSAO::Init(const RenderContext& renderContext)
+	void SSAO::Init(rendersystem::RenderSystem* rs)
 	{
 		std::uniform_real_distribution<float> randomFloat(0.f, 1.f);
 		std::default_random_engine generator;
@@ -63,7 +61,7 @@ namespace Mist
             upload.Submit();
 
             render::TextureDescription texDesc;
-            texDesc.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height, .depth = 1 };
+            texDesc.extent = { .width = rs->GetRenderResolution().width, .height = rs->GetRenderResolution().height, .depth = 1 };
             texDesc.format = render::Format_R8_UNorm;
             texDesc.isShaderResource = true;
             texDesc.isRenderTarget = true;
@@ -82,7 +80,7 @@ namespace Mist
 
 		{
 			render::TextureDescription texDesc;
-			texDesc.extent = { .width = renderContext.Window->Width, .height = renderContext.Window->Height, .depth = 1 };
+			texDesc.extent = { .width = rs->GetRenderResolution().width, .height = rs->GetRenderResolution().height, .depth = 1 };
 			texDesc.format = render::Format_R8_UNorm;
 			texDesc.isShaderResource = true;
 			texDesc.isRenderTarget = true;
@@ -99,7 +97,7 @@ namespace Mist
 		}
 	}
 
-	void SSAO::Destroy(const RenderContext& renderContext)
+	void SSAO::Destroy(rendersystem::RenderSystem* rs)
 	{
 		g_render->DestroyShader(&m_blurShader);
 		g_render->DestroyShader(&m_ssaoShader);
@@ -107,16 +105,7 @@ namespace Mist
 		m_blurRT = nullptr;
 	}
 
-	void SSAO::InitFrameData(const RenderContext& context, const Renderer& renderer, uint32_t frameIndex, UniformBufferMemoryPool& buffer)
-	{
-		m_renderer = &renderer;
-	}
-
-	void SSAO::UpdateRenderData(const RenderContext& renderContext, RenderFrameContext& frameContext)
-	{
-	}
-
-	void SSAO::Draw(const RenderContext& renderContext, const RenderFrameContext& frameContext)
+	void SSAO::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuSSAO);
 		{
@@ -134,7 +123,7 @@ namespace Mist
 			g_render->SetDepthEnable(false, false);
 			g_render->SetShaderProperty("u_ssao", &m_ssaoParams, sizeof(m_ssaoParams));
 
-			const GBuffer* gbuffer = static_cast<const GBuffer*>(m_renderer->GetRenderProcess(RENDERPROCESS_GBUFFER));
+			const GBuffer* gbuffer = static_cast<const GBuffer*>(GetRenderer()->GetRenderProcess(RENDERPROCESS_GBUFFER));
 			g_render->SetTextureSlot("u_GBufferPosition", *gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_POSITION].texture);
 			g_render->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_NORMAL].texture);
 			//g_render->SetTextureSlot("u_GBufferDepth", gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
@@ -175,7 +164,7 @@ namespace Mist
 		ImGui::End();
 	}
 
-	void SSAO::DebugDraw(const RenderContext& context)
+	void SSAO::DebugDraw()
 	{
 		render::TextureHandle tex = nullptr;
 		float scale = 1.f;

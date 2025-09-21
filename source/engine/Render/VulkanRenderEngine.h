@@ -1,17 +1,9 @@
 #pragma once
 
 #include "Render/RenderEngine.h"
-#include "Render/Shader.h"
-#include "Render/RenderContext.h"
-#include "Render/RenderDescriptor.h"
-#include "Render/RenderTarget.h"
-#include "Render/Texture.h"
-#include "Render/VulkanBuffer.h"
 #include "Core/Debug.h"
-#include "Swapchain.h"
 #include "Render/Mesh.h"
 #include "Utils/FunctionStack.h"
-#include "Framebuffer.h"
 #include "Scene/Scene.h"
 #include "RendererBase.h"
 
@@ -37,9 +29,7 @@ namespace rendersystem
 
 namespace Mist
 {
-	class Framebuffer;
 	class IRendererBase;
-	struct ShaderModuleLoadDescription;
 
 
 	struct UBOTime
@@ -65,7 +55,6 @@ namespace Mist
 		virtual const Scene* GetScene() const override;
 		virtual void SetScene(Scene* scene);
 
-		const RenderContext& GetContext() const { return m_renderContext; }
 		const Renderer* GetRenderer() const { return &m_renderer; }
 
 		virtual void ReloadShaders() override;
@@ -75,8 +64,6 @@ namespace Mist
 		void BeginFrame();
 		void Draw();
 		void ImGuiDraw();
-		void DrawCubemap(const RenderContext& context, const cTexture& texture);
-		RenderFrameContext& GetFrameContext();
 
 		// Initializations
 		bool InitVulkan();
@@ -85,9 +72,6 @@ namespace Mist
 		bool InitPipeline();
 	private:
 
-		RenderContext m_renderContext;
-		Swapchain m_swapchain;
-
 		Renderer m_renderer;
 
 		uint32_t m_currentSwapchainIndex;
@@ -95,14 +79,15 @@ namespace Mist
 		Scene* m_scene = nullptr;
 
 		GPUParticleSystem m_gpuParticleSystem;
+#if 0
 		Gol* m_gol;
+#endif // 0
+
 
 		rendersystem::RenderSystem* m_renderSystem;
 	};
 
-	extern void CmdDrawFullscreenQuad(CommandList* commandList);
-	extern cTexture* GetTextureCheckerboard4x4(const RenderContext& context);
-	extern cMaterial* GetDefaultMaterial(const RenderContext& context);
+	extern cMaterial* GetDefaultMaterial();
 	const CameraData* GetCameraData();
 
 	extern ::render::Device* g_device;

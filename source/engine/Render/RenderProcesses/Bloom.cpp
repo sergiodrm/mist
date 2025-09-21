@@ -4,18 +4,13 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"
 #include "Core/Debug.h"
-#include "Render/InitVulkanTypes.h"
 #include "Scene/Scene.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/RenderDescriptor.h"
 #include "imgui_internal.h"
 #include "Application/Application.h"
 #include "Application/CmdParser.h"
 #include "ShadowMap.h"
 #include "Render/RendererBase.h"
 #include "Render/DebugRender.h"
-#include "../CommandList.h"
-#include "../RenderContext.h"
 #include "RenderProcess.h"
 #include "GBuffer.h"
 #include "DeferredLighting.h"
@@ -52,9 +47,8 @@ namespace Mist
 	{
 	}
 
-	void BloomEffect::Init(const RenderContext& context)
+	void BloomEffect::Init(rendersystem::RenderSystem* rs)
 	{
-		rendersystem::RenderSystem* rs = g_render;
 		render::Device* device = rs->GetDevice();
 		// Downscale
 		uint32_t width = rs->GetRenderResolution().width / 2;
@@ -118,14 +112,12 @@ namespace Mist
         }
 	}
 
-	void BloomEffect::Draw(const RenderContext& context)
+	void BloomEffect::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(Bloom);
 
 		if (!CVar_EnableBloom.Get())
 			return;
-
-		rendersystem::RenderSystem* rs = g_render;
 
 		rs->BeginMarker("Bloom");
 
@@ -135,8 +127,8 @@ namespace Mist
 		rs->BeginMarker("Filter");
 		render::RenderTargetHandle rt = m_renderTargetArray[0];
 		rs->SetRenderTarget(rt);
-		rs->SetViewport(0.f, 0.f, rt->m_info.extent.width, rt->m_info.extent.height);
-		rs->SetScissor(0.f, rt->m_info.extent.width, 0.f, rt->m_info.extent.height);
+		rs->SetViewport(0.f, 0.f, (float)rt->m_info.extent.width, (float)rt->m_info.extent.height);
+		rs->SetScissor(0.f, (float)rt->m_info.extent.width, 0.f, (float)rt->m_info.extent.height);
 		rs->SetShader(m_filterShader);
 		rs->SetTextureSlot("u_tex", m_inputTarget);
         rs->SetSampler("u_tex", render::Filter_Linear,
@@ -255,8 +247,8 @@ namespace Mist
         {
             float x = 0.f;
             float y = 0.f;
-            float aspectRatio = (float)context.Window->Width / (float)context.Window->Height;
-            float h = (float)context.Window->Height / (float)(m_renderTargetArray.size() + 1);
+            float aspectRatio = (float)rs->GetRenderResolution().width / (float)rs->GetRenderResolution().height;
+            float h = (float)(float)rs->GetRenderResolution().height / (float)(m_renderTargetArray.size() + 1);
             float w = h * aspectRatio;
             for (uint32_t i = 0; i < m_renderTargetArray.size(); ++i)
             {
@@ -266,9 +258,8 @@ namespace Mist
         }
 	}
 
-	void BloomEffect::Destroy(const RenderContext& context)
+	void BloomEffect::Destroy(rendersystem::RenderSystem* rs)
 	{
-		rendersystem::RenderSystem* rs = g_render;
 		for (uint32_t i = 0; i < BLOOM_MIPMAP_LEVELS; ++i)
 		{
 			m_renderTargetArray[i] = nullptr;

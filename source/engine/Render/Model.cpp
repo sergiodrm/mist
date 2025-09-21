@@ -15,7 +15,6 @@
 #pragma warning(disable:4996)
 #include <gltf/cgltf.h>
 #undef CGLTF_IMPLEMENTATION
-#include "Texture.h"
 #include "Material.h"
 #include "Utils/GenericUtils.h"
 #include "Utils/TimeUtils.h"
@@ -369,7 +368,7 @@ namespace gltf_api
 		return render::SamplerAddressMode_Repeat;
 	}
 
-	render::SamplerHandle LoadSampler(rendersystem::RenderSystem* renderSystem, const cgltf_sampler* sampler)
+	render::SamplerHandle LoadSampler(render::Device* device, const cgltf_sampler* sampler)
 	{
 		render::SamplerDescription desc;
 		GetSamplerMinFilterAndMipmapMode(sampler->min_filter, &desc.minFilter, &desc.mipmapMode);
@@ -379,10 +378,10 @@ namespace gltf_api
 		desc.addressModeW = GetSamplerAddressMode(sampler->wrap_t);
 		if (sampler->name && sampler->name[0])
 			desc.debugName = sampler->name;
-		return renderSystem->GetSampler(desc);
+		return device->CreateSampler(desc);
 	}
 
-	bool LoadTexture(const Mist::RenderContext& context, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::EFormat format, render::TextureHandle* texOut, render::SamplerHandle* samplerOut)
+	bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& texView, render::TextureHandle* texOut, render::SamplerHandle* samplerOut)
 	{
 		if (!texView.texture)
 			return false;
@@ -390,10 +389,9 @@ namespace gltf_api
 		check(texView.scale == 1.f && !texView.has_transform);
 		char texturePath[512];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
-		//check(Mist::LoadTextureFromFile(context, texturePath, texOut, format));
-		check(rendersystem::textureloader::LoadTextureFromFile(texOut, Mist::g_device, texturePath));
+		check(rendersystem::textureloader::LoadTextureFromFile(texOut, device, texturePath));
 		if (texView.texture->sampler)
-			*samplerOut = LoadSampler(Mist::g_render, texView.texture->sampler);
+			*samplerOut = LoadSampler(device, texView.texture->sampler);
 		loadmeshlogf("Load texture: %s\n", texView.texture->image->uri);
 		return true;
 	}
@@ -401,7 +399,7 @@ namespace gltf_api
 	template <typename T>
 	inline Mist::index_t GetArrayElementOffset(const T* root, const T* item) { check(item >= root); return Mist::index_t(item - root); }
 
-	void LoadMaterial(Mist::cMaterial& material, const Mist::RenderContext& context, const cgltf_material& cgltfmtl, const char* rootAssetPath)
+	void LoadMaterial(Mist::cMaterial& material, render::Device* device, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
 		material.m_flags = Mist::MATERIAL_FLAG_NONE;
 		// Emissive
@@ -411,7 +409,7 @@ namespace gltf_api
 			ToVec3(material.m_emissiveFactor, cgltfmtl.emissive_factor);
 			material.m_emissiveStrength = cgltfmtl.emissive_strength.emissive_strength;
 			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_EMISSIVE;
-			if (LoadTexture(context, rootAssetPath, cgltfmtl.emissive_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
+			if (LoadTexture(device, rootAssetPath, cgltfmtl.emissive_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
 			{
 				material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 			}
@@ -424,7 +422,7 @@ namespace gltf_api
 			material.m_metallicFactor = cgltfmtl.pbr_metallic_roughness.metallic_factor;
 			material.m_roughnessFactor = cgltfmtl.pbr_metallic_roughness.roughness_factor;
 			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS;
-			if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
+			if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
 			{
 				material.m_flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
 			}
@@ -437,13 +435,13 @@ namespace gltf_api
 			material.m_flags |= Mist::MATERIAL_FLAG_UNLIT;
 		}
 		// Normal
-		if (LoadTexture(context, rootAssetPath, cgltfmtl.normal_texture, Mist::FORMAT_R8G8B8A8_UNORM, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL], &material.m_samplers[Mist::MATERIAL_TEXTURE_NORMAL]))
+		if (LoadTexture(device, rootAssetPath, cgltfmtl.normal_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL], &material.m_samplers[Mist::MATERIAL_TEXTURE_NORMAL]))
 		{
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
 		}
 		// Albedo
 		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
-		if (LoadTexture(context, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::FORMAT_R8G8B8A8_SRGB, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
+		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 	}
 
@@ -484,12 +482,12 @@ namespace Mist
 	}
 
 
-	void cModel::Destroy(const RenderContext& context)
+	void cModel::Destroy()
 	{
 		for (index_t i = 0; i < m_meshes.GetSize(); ++i)
-			m_meshes[i].Destroy(/*context*/);
+			m_meshes[i].Destroy();
 		for (index_t i = 0; i < m_materials.GetSize(); ++i)
-			m_materials[i].Destroy(context);
+			m_materials[i].Invalidate();
 		m_nodes.Delete();
 		m_meshes.Delete();
 		m_materials.Delete();
@@ -497,7 +495,7 @@ namespace Mist
 		m_root = index_invalid;
 	}
 
-	bool cModel::LoadModel(const RenderContext& context, const char* filepath)
+	bool cModel::LoadModel(render::Device* device, const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		check(m_materials.IsEmpty() && m_meshes.IsEmpty());
@@ -532,15 +530,15 @@ namespace Mist
 			for (uint32_t i = 0; i < data->materials_count; ++i)
 			{
 				m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
-				gltf_api::LoadMaterial(m_materials[i], context, data->materials[i], rootAssetPath);
-				m_materials[i].SetupShader(context);
+				gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
+				//m_materials[i].SetupShader(context);
 			}
 		}
 		else
 		{
 			logfwarn("Model without materials: %s\n", assetPath);
 			InitMaterials(1);
-			m_materials[0] = *GetDefaultMaterial(context);
+			m_materials[0] = *GetDefaultMaterial();
 		}
 
 		InitNodes((index_t)data->nodes_count);
@@ -628,8 +626,8 @@ namespace Mist
 
 				//mesh.SetupIndexBuffer(context, tempIndices.data(), (uint32_t)tempIndices.size());
 				//mesh.SetupVertexBuffer(context, tempVertices.data(), (uint32_t)tempVertices.size() * sizeof(Vertex));
-				mesh.vb = render::utils::CreateVertexBuffer(g_device, tempVertices.data(), tempVertices.size() * sizeof(Vertex));
-				mesh.ib = render::utils::CreateIndexBuffer(g_device, tempIndices.data(), tempIndices.size() * sizeof(uint32_t));
+				mesh.vb = render::utils::CreateVertexBuffer(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex));
+				mesh.ib = render::utils::CreateIndexBuffer(device, tempIndices.data(), tempIndices.size() * sizeof(uint32_t));
 				mesh.indexCount = Mist::limits_cast<uint32_t>(tempIndices.size());
 				tempIndices.clear();
 				tempVertices.clear();

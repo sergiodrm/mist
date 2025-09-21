@@ -1,10 +1,7 @@
 #pragma once
 
 #include "RenderProcess.h"
-#include "Render/RenderTarget.h"
 #include "Render/Globals.h"
-#include "Render/VulkanBuffer.h"
-#include "Render/Texture.h"
 #include <glm/glm.hpp>
 #include "RenderAPI/Device.h"
 
@@ -17,7 +14,6 @@ namespace rendersystem
 
 namespace Mist
 {
-	struct RenderContext;
 	class ShaderProgram;
 
 	struct tBloomConfig
@@ -39,9 +35,9 @@ namespace Mist
 	public:
 		BloomEffect();
 
-		void Init(const RenderContext& context);
-		void Draw(const RenderContext& context);
-		void Destroy(const RenderContext& context);
+		void Init(rendersystem::RenderSystem* rs);
+		void Draw(rendersystem::RenderSystem* rs);
+		void Destroy(rendersystem::RenderSystem* rs);
 
 
 		void ImGuiDraw();

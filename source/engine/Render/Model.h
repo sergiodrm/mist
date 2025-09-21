@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Mesh.h"
-#include "Material.h"
-#include "RenderAPI.h"
 #include "RenderResource.h"
 #include "Core/Types.h"
 
 namespace Mist
 {
+	class cMaterial;
+	struct sMaterialRenderData;
+
 	class cModel : public cRenderResource<RenderResource_Model>
 	{
 		struct sNode
@@ -19,8 +20,8 @@ namespace Mist
 		};
 	public:
 
-		bool LoadModel(const RenderContext& context, const char* filepath);
-		void Destroy(const RenderContext& context);
+		bool LoadModel(render::Device* device, const char* filepath);
+		void Destroy();
 		
 		inline index_t GetTransformsCount() const { return m_nodes.GetSize(); }
 		inline index_t GetMaterialCount() const { return m_materials.GetSize(); }
