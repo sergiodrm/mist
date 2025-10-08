@@ -1,0 +1,100 @@
+Environment:
+  Ambient: [0.01, 0.01, 0.01]
+  Skybox:
+    Front: textures/yokohama/posz.jpg
+    Back: textures/yokohama/negz.jpg
+    Top: textures/yokohama/posy.jpg
+    Bottom: textures/yokohama/negy.jpg
+    Left: textures/yokohama/posx.jpg
+    Right: textures/yokohama/negx.jpg
+RenderObjects:
+  - RenderObject: 0
+    Name: Root
+    Parent: 65535
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - RenderObject: 1
+    Name: Light
+    Parent: 0
+    TransformComponent:
+      Position: [58.5, 18, -1.5]
+      Rotation: [0, -91.5, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Point
+      Color: [0.067114115, 0.04594389, 0.04594389]
+      Radius: 10000
+      Compression: 10000
+      OuterCutoff: 26.5
+      Cutoff: 0
+      ProjectShadows: true
+  - RenderObject: 2
+    Name: Light_2
+    Parent: 0
+    TransformComponent:
+      Position: [7.5, 12.5, 0]
+      Rotation: [6, 1, -83]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Directional
+      Color: [0.34228188, 0.21363902, 0.21363902]
+      Radius: 1000
+      Compression: 1000
+      OuterCutoff: 0.8
+      Cutoff: 1
+      ProjectShadows: true
+  - RenderObject: 3
+    Name: Light_3
+    Parent: 0
+    TransformComponent:
+      Position: [23, 9, -14]
+      Rotation: [0, 180, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: Spot
+      Color: [0.8389262, 0.682636, 0.34345302]
+      Radius: 5000
+      Compression: 5000
+      OuterCutoff: 55
+      Cutoff: 41.8
+      ProjectShadows: true
+  - RenderObject: 4
+    Name: Sponza
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, -0, 0]
+      Scale: [10, 10, 10]
+    MeshComponent:
+      MeshAssetPath: models/sponza/sponza.gltf
+  - RenderObject: 5
+    Name: EmissiveTest
+    Parent: 0
+    TransformComponent:
+      Position: [52, -29, 9]
+      Rotation: [0, -180, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: models/emissive/emissivestrengthtest.gltf
+  - RenderObject: 6
+    Name: MetalRoughSpheres
+    Parent: 0
+    TransformComponent:
+      Position: [27, 10, 0]
+      Rotation: [0, 180, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: models/metalrough/metalroughspheres.gltf
+  - RenderObject: 7
+    Name: DefaultMainCamera
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Main: true
+      Position: [36.18186, 9.263116, -17.896446]
+      Rotation: [-0.062037203, 2.5156343, 0]
