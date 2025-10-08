@@ -149,8 +149,8 @@ namespace Mist
 	{
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.vsDesc.filePath = "shaders/mrt.vert";
-			shaderDesc.fsDesc.filePath = "shaders/mrt.frag";
+			shaderDesc.vsDesc.filePath = "shaders/gbuffer_main.vert";
+			shaderDesc.fsDesc.filePath = "shaders/gbuffer_main.frag";
 #define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
             DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
