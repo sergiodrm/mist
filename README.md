@@ -14,7 +14,7 @@ Nowadays, the engine implements the following features:
 * Shadow mapping
 ![img](/docs/03_ShadowMapDebug.png)
 * Bloom post process
-![img](/docs/02_ProfilingAndBloom.png)
+![img](/docs/04_ProfilingAndBloom.png)
 * Scene management
 * Scene load and save from/to file
 * PBR
@@ -24,14 +24,19 @@ Nowadays, the engine implements the following features:
 * Shader reflection
 * Shader include libraries
 * Hot shader reload
-* Compute shaders (wip)
-![img](/docs/04_GPUParticles.png)
+* Compute shaders
+![img](/docs/05_GPUParticles.png)
 * CPU and GPU profiling
 * Tags for external GPU profiling tools (NSight, RenderDoc, PIX...)
-![img](/docs/05_NSight.png)
-* Line renderer for debugging
+![img](/docs/06_NSight.png)
+* Debug render primitives
 * CVar system
 * Cfg files
+Latest features:
+* IBL
+* RenderAPI layer abstraction. Currently using just Vulkan.
+* Compute shaders support by new render api layer.
+
 
 ## First steps
 First of all, we can change the `workspace` variable to point to our assets directory by the cmd line. 
@@ -51,19 +56,22 @@ To see all the command functions, run this: `cmdlist`.
 Here are some features that I will develop from now on:
 * Forward lighting+
 * Material system
-* IBL
-* Render API to abstract engine from graphics API
 * DX12 backend
-* Improve compute shaders pipeline to use them in rendering pipeline
+* HBAO
 * SSR
 * Skinning animation
 * Capsule shadows
+* Cascaded shadows
 * Mesh LODs
+* CPU culling
+* GPU culling
 * Job system
 * Instance meshes
 * Tesselation
 * Terrains
 * Lib project for custom data containers (wip)
+* CMake instead of premake to generate the project
+* CTest
 * ...
 
 ## Dependencies
