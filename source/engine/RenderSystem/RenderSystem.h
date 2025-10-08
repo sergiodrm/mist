@@ -360,10 +360,16 @@ namespace rendersystem
 
     class RenderSystem
     {
-        struct RenderContext
+    public:
+        static constexpr uint32_t MaxDescriptorSetSlots = 8;
+        static constexpr uint32_t MaxBindingsPerSlot = 8;
+        static constexpr uint32_t MaxTextureArrayCount = 8;
+
+    private:
+        struct GraphicsPipelineContext
         {
-            render::CommandListHandle cmd;
             render::GraphicsState graphicsState;
+			render::GraphicsPipelineDescription pso;
 
             bool pendingClearColor;
             float clearColor[4];
@@ -371,6 +377,71 @@ namespace rendersystem
             bool pendingClearDepthStencil;
             float clearDepth;
             uint32_t clearStencil;
+
+            void Invalidate()
+            {
+                graphicsState = render::GraphicsState();
+                pso = render::GraphicsPipelineDescription();
+            }
+        };
+
+        struct ComputePipelineContext
+        {
+			render::ComputePipelineDescription pso;
+            render::ComputeState computeState;
+
+            void Invalidate()
+            {
+                pso = render::ComputePipelineDescription();
+                computeState = render::ComputeState();
+            }
+        };
+
+        struct ShaderContext
+        {
+			render::TextureHandle textureSlots[MaxDescriptorSetSlots][MaxBindingsPerSlot][MaxTextureArrayCount];
+			render::SamplerHandle samplerSlots[MaxDescriptorSetSlots][MaxBindingsPerSlot][MaxTextureArrayCount];
+            render::BufferHandle buffers[MaxDescriptorSetSlots][MaxBindingsPerSlot];
+			ShaderProgram* program;
+			uint32_t dirtyPropertiesFlags;
+
+            void Invalidate()
+            {
+                dirtyPropertiesFlags = UINT32_MAX;
+                program = nullptr;
+                for (uint32_t i = 0; i < MaxDescriptorSetSlots; ++i)
+                {
+                    for (uint32_t j = 0; j < MaxBindingsPerSlot; ++j)
+                    {
+                        for (uint32_t k = 0; k < MaxTextureArrayCount; ++k)
+                        {
+                            textureSlots[i][j][k] = nullptr;
+                            samplerSlots[i][j][k] = nullptr;
+                        }
+                        buffers[i][j] = nullptr;
+                    }
+                }
+            }
+
+            inline void MarkSetAsDirty(uint32_t setIndex)
+            {
+                dirtyPropertiesFlags |= (1 << setIndex);
+            }
+
+            inline bool IsSetDirty(uint32_t setIndex)
+            {
+                return dirtyPropertiesFlags & (1 << setIndex);
+            }
+
+            inline void ClearDirtyAll()
+            {
+                dirtyPropertiesFlags = 0xffffffff;
+            }
+
+            inline void ClearDirtySet(uint32_t setIndex)
+            {
+                dirtyPropertiesFlags &= ~(1 << setIndex);
+            }
         };
 
         // Data struct for keeping tracking of resources used in each frame.
@@ -388,9 +459,6 @@ namespace rendersystem
             }
         };
     public:
-        static constexpr uint32_t MaxTextureSlots = 8;
-        static constexpr uint32_t MaxTextureBindingsPerSlot = 8;
-        static constexpr uint32_t MaxTextureArrayCount = 8;
 
         void Init(IWindow* window);
         void Destroy();
@@ -418,7 +486,6 @@ namespace rendersystem
         void ReloadAllShaders();
 
         inline uint64_t GetFrameIndex() const { return m_frame % m_device->GetSwapchain().images.size(); }
-        render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
         render::BindingSetHandle GetBindingSet(const render::BindingSetDescription& desc);
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);
         render::SamplerHandle GetSampler(render::Filter minFilter, 
@@ -428,8 +495,14 @@ namespace rendersystem
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW);
 
-        void SetDefaultState();
+
         void ClearState();
+
+        /**
+         * Graphics commands
+         */
+
+        void SetDefaultGraphicsState();
         void SetDepthEnable(bool testing = true, bool writing = true);
         void SetDepthOp(render::CompareOp op = render::CompareOp_Less);
         void SetStencilEnable(bool testing = false);
@@ -469,9 +542,21 @@ namespace rendersystem
         void SetCullMode(render::RasterCullMode mode = render::RasterCullMode_Back);
         void SetPrimitive(render::PrimitiveType type = render::PrimitiveType_TriangleList);
 
-        
+
+		void SetRenderTarget(render::RenderTargetHandle rt);
+
+		void SetVertexBuffer(render::BufferHandle vb);
+		void SetIndexBuffer(render::BufferHandle ib);
+		void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
+		void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
+
         /**
-         * TODO: bindings, set shader constants and textures
+         * Compute commands
+         */
+        void Dispatch(uint32_t workgroupSizeX, uint32_t workgroupSizeY, uint32_t workgroupSizeZ);
+
+        /**
+         * Shader properties methods
          */
         void SetShader(ShaderProgram* shader);
         void SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding = 0, uint32_t textureIndex = 0);
@@ -499,15 +584,14 @@ namespace rendersystem
         void SetTextureAsResourceBinding(render::TextureHandle texture);
         void SetTextureAsRenderTargetAttachment(render::TextureHandle texture);
 
-        void SetRenderTarget(render::RenderTargetHandle rt);
+        void BindUAV(const char* id, const render::BufferHandle& buffer);
+        void BindSRV(const char* id, const render::BufferHandle& buffer);
 
-        void SetVertexBuffer(render::BufferHandle vb);
-        void SetIndexBuffer(render::BufferHandle ib);
-        void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
-        void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, uint32_t firstVertex = 0, uint32_t firstInstance = 0);
+        void BindUAV(const char* id, const render::TextureHandle& texture);
+
 
         ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool; }
-        const render::CommandListHandle& GetCommandList() const { return m_renderContext.cmd; }
+        const render::CommandListHandle& GetCommandList() const { return m_cmd; }
 
         /**
          * Transfer functions
@@ -523,6 +607,10 @@ namespace rendersystem
 
         double GetGpuTimeUs() const { return m_gpuTime; }
 
+        inline bool AllowsCommand(ShaderProgramType type) const { return m_shaderContext.program && m_shaderContext.program->m_description->type == type; }
+        inline bool AllowsGraphicsCommand() const { return AllowsCommand(ShaderProgram_Graphics); }
+        inline bool AllowsComputeCommand() const { return AllowsCommand(ShaderProgram_Compute); }
+
     private:
 
         render::RenderTargetBlendState& GetPsoBlendStateAttachment(uint32_t attachment);
@@ -536,6 +624,32 @@ namespace rendersystem
 
         void ImGuiDraw();
         void FlushBeforeDraw();
+        void FlushBeforeDispatch();
+        void FlushMemoryContext();
+        void ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray);
+        render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
+        render::ComputePipelineHandle GetPso(const render::ComputePipelineDescription& psoDesc);
+
+        void SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t index, render::ImageLayout layout);
+
+        inline ShaderMemoryContext* GetMemoryContext() const 
+        {
+            check(m_memoryContextId != UINT32_MAX);
+            ShaderMemoryContext* ctx = m_memoryPool->GetContext(m_memoryContextId);
+            check(ctx);
+            return ctx;
+        }
+
+        inline void CreateMemoryContext()
+        {
+            check(m_memoryContextId == UINT32_MAX);
+            m_memoryContextId = m_memoryPool->CreateContext();
+        }
+
+        inline void SubmitMemoryContext(uint64_t submissionId)
+        {
+            m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
+        }
         
         void ImGuiDrawGpuProfiler();
 
@@ -575,7 +689,11 @@ namespace rendersystem
 		inline GpuFrameProfiler& GetFrameProfiler() { return m_frameSyncronization.timestampQueries[m_frame % m_frameSyncronization.count]; }
 
         // Command list with transfer, graphics and compute commands
-        RenderContext m_renderContext;
+        GraphicsPipelineContext m_graphicsContext;
+        ComputePipelineContext m_computeContext;
+        ShaderContext m_shaderContext;
+		render::CommandListHandle m_cmd;
+		uint32_t m_memoryContextId; 
 
         // Render targets and other resources.
         render::TextureHandle m_ldrTexture;
@@ -595,24 +713,17 @@ namespace rendersystem
         } m_screenQuadCopy;
 
         // Memory and cache management.
-        Mist::tMap<render::GraphicsPipelineDescription, render::GraphicsPipelineHandle> m_psoMap;
+        Mist::tMap<render::GraphicsPipelineDescription, render::GraphicsPipelineHandle> m_graphicsPsoMap;
+        Mist::tMap<render::ComputePipelineDescription, render::ComputePipelineHandle> m_computePsoMap;
         BindingCache* m_bindingCache;
         SamplerCache* m_samplerCache;
         ShaderMemoryPool* m_memoryPool;
         // optimization to keep allocated memory in FlushBeforeDraw()
         render::BindingSetDescription m_bindingDesc;
 
-        // Shader memory context and textures
-        uint32_t m_memoryContextId;
-        render::TextureHandle m_textureSlots[MaxTextureSlots][MaxTextureBindingsPerSlot][MaxTextureArrayCount];
-        render::SamplerHandle m_samplerSlots[MaxTextureSlots][MaxTextureBindingsPerSlot][MaxTextureArrayCount];
-        ShaderProgram* m_program;
-        uint64_t m_dirtyPropertiesFlags;
-
-        render::GraphicsPipelineDescription m_psoDesc;
-
         ShaderDb m_shaderDb;
         double m_gpuTime;
+        GpuFrameProfiler::QueryTree m_lastQueryTree;
     };
 }
 

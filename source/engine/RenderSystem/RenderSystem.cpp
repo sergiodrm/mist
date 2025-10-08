@@ -224,6 +224,7 @@ namespace rendersystem
         PROFILE_SCOPE_LOG(Init, "RenderSystem_Init");
         m_frame = 0;
         m_swapchainIndex = UINT32_MAX;
+        m_memoryContextId = UINT32_MAX;
         {
             render::DeviceDescription desc;
             desc.enableValidationLayer = true;
@@ -286,7 +287,7 @@ namespace rendersystem
             upload.WriteTexture(m_defaultTexture, 0, 0, data, sizeof(data));
         }
         {
-            m_renderContext.cmd = m_device->CreateCommandList();
+            m_cmd = m_device->CreateCommandList();
         }
         {
             m_bindingCache = _new BindingCache(m_device);
@@ -311,17 +312,18 @@ namespace rendersystem
         ClearState();
         m_bindingDesc.bindingItems.clear();
         m_bindingDesc.bindingItems.shrink_to_fit();
-        m_memoryContextId = UINT32_MAX;
+        m_shaderContext.Invalidate();
         DestroyScreenQuad();
         ui::Destroy();
         delete m_bindingCache;
         delete m_memoryPool;
         delete m_samplerCache;
         m_defaultTexture = nullptr;
-        m_psoDesc = {};
-        m_psoMap.clear();
-        m_renderContext.cmd = nullptr;
-        //for (uint32_t i = 0; i < (uint32_t)m_device->GetSwapchain().images.size(); ++i)
+        m_graphicsContext.pso = {};
+        m_computeContext.pso = {};
+        m_graphicsPsoMap.clear();
+        m_computePsoMap.clear();
+        m_cmd = nullptr;
         m_frameSyncronization.Destroy();
         m_ldrRt = nullptr;
         m_depthTexture = nullptr;
@@ -350,19 +352,40 @@ namespace rendersystem
     {
         m_device->WaitIdle();
         m_shaderDb.ReloadAll();
-        m_psoMap.clear();
+        m_graphicsPsoMap.clear();
     }
 
     render::GraphicsPipelineHandle RenderSystem::GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt)
     {
-        PROF_ZONE_SCOPED("GetPso");
-        auto it = m_psoMap.find(psoDesc);
-        if (it != m_psoMap.end())
+        PROF_ZONE_SCOPED("GetGraphicsPso");
+        auto it = m_graphicsPsoMap.find(psoDesc);
+        if (it != m_graphicsPsoMap.end())
             return it->second;
         render::GraphicsPipelineHandle handle = m_device->CreateGraphicsPipeline(psoDesc, rt);
-        m_psoMap[psoDesc] = handle;
+        m_graphicsPsoMap[psoDesc] = handle;
         //logfdebug("[%20s -> %3d]\n", "GraphicsPipelineCache", m_psoMap.size());
         return handle;
+    }
+
+    render::ComputePipelineHandle RenderSystem::GetPso(const render::ComputePipelineDescription& psoDesc)
+    {
+		PROF_ZONE_SCOPED("GetComputePso");
+		auto it = m_computePsoMap.find(psoDesc);
+		if (it != m_computePsoMap.end())
+			return it->second;
+		render::ComputePipelineHandle handle = m_device->CreateComputePipeline(psoDesc);
+		m_computePsoMap[psoDesc] = handle;
+		//logfdebug("[%20s -> %3d]\n", "GraphicsPipelineCache", m_psoMap.size());
+		return handle;
+    }
+
+    void RenderSystem::SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t index, render::ImageLayout layout)
+    {
+		check(set < MaxDescriptorSetSlots && binding < MaxBindingsPerSlot && index < MaxTextureArrayCount && texture);
+		m_shaderContext.MarkSetAsDirty(set);
+		m_shaderContext.textureSlots[set][binding][index] = texture;
+		if (texture->GetLayoutAt(0, 0) != layout)
+			GetCommandList()->RequireTextureState({ texture, layout });
     }
 
     render::BindingSetHandle RenderSystem::GetBindingSet(const render::BindingSetDescription& desc)
@@ -388,7 +411,7 @@ namespace rendersystem
         return GetSampler(desc);
     }
 
-    void RenderSystem::SetDefaultState()
+    void RenderSystem::SetDefaultGraphicsState()
     {
         SetDepthEnable();
         SetDepthOp();
@@ -412,60 +435,49 @@ namespace rendersystem
 
     void RenderSystem::ClearState()
     {
-        m_renderContext.graphicsState = render::GraphicsState();
-        m_program = nullptr;
-
-        for (uint32_t i = 0; i < MaxTextureSlots; ++i)
-        {
-            for (uint32_t j = 0; j < MaxTextureBindingsPerSlot; ++j)
-            {
-                for (uint32_t k = 0; k < MaxTextureArrayCount; ++k)
-                {
-                    m_textureSlots[i][j][k] = nullptr;
-                    m_samplerSlots[i][j][k] = nullptr;
-                }
-            }
-        }
-        m_renderContext.cmd->ClearState();
+        m_computeContext.Invalidate();
+        m_graphicsContext.Invalidate();
+        m_shaderContext.Invalidate();
+        GetCommandList()->ClearState();
     }
 
     void RenderSystem::SetDepthEnable(bool testing, bool writing)
     {
-        m_psoDesc.renderState.depthStencilState.depthTestEnable = testing;
-        m_psoDesc.renderState.depthStencilState.depthWriteEnable = writing;
+        m_graphicsContext.pso.renderState.depthStencilState.depthTestEnable = testing;
+        m_graphicsContext.pso.renderState.depthStencilState.depthWriteEnable = writing;
     }
 
     void RenderSystem::SetDepthOp(render::CompareOp op)
     {
-        m_psoDesc.renderState.depthStencilState.depthCompareOp = op;
+        m_graphicsContext.pso.renderState.depthStencilState.depthCompareOp = op;
     }
 
     void RenderSystem::SetStencilEnable(bool testing)
     {
-        m_psoDesc.renderState.depthStencilState.stencilTestEnable = testing;
+        m_graphicsContext.pso.renderState.depthStencilState.stencilTestEnable = testing;
     }
 
     void RenderSystem::SetStencilMask(uint8_t readMask, uint8_t writeMask, uint8_t refValue)
     {
-        m_psoDesc.renderState.depthStencilState.stencilReadMask = readMask;
-        m_psoDesc.renderState.depthStencilState.stencilWriteMask = writeMask;
-        m_psoDesc.renderState.depthStencilState.stencilRefValue = refValue;
+        m_graphicsContext.pso.renderState.depthStencilState.stencilReadMask = readMask;
+        m_graphicsContext.pso.renderState.depthStencilState.stencilWriteMask = writeMask;
+        m_graphicsContext.pso.renderState.depthStencilState.stencilRefValue = refValue;
     }
 
     void RenderSystem::SetStencilOpFront(render::StencilOp fail, render::StencilOp depthFail, render::StencilOp pass, render::CompareOp compareOp)
     {
-        m_psoDesc.renderState.depthStencilState.frontFace.failOp = fail;
-        m_psoDesc.renderState.depthStencilState.frontFace.depthFailOp = depthFail;
-        m_psoDesc.renderState.depthStencilState.frontFace.passOp = pass;
-        m_psoDesc.renderState.depthStencilState.frontFace.compareOp = compareOp;
+        m_graphicsContext.pso.renderState.depthStencilState.frontFace.failOp = fail;
+        m_graphicsContext.pso.renderState.depthStencilState.frontFace.depthFailOp = depthFail;
+        m_graphicsContext.pso.renderState.depthStencilState.frontFace.passOp = pass;
+        m_graphicsContext.pso.renderState.depthStencilState.frontFace.compareOp = compareOp;
     }
 
     void RenderSystem::SetStencilOpBack(render::StencilOp fail, render::StencilOp depthFail, render::StencilOp pass, render::CompareOp compareOp)
     {
-        m_psoDesc.renderState.depthStencilState.backFace.failOp = fail;
-        m_psoDesc.renderState.depthStencilState.backFace.depthFailOp = depthFail;
-        m_psoDesc.renderState.depthStencilState.backFace.passOp = pass;
-        m_psoDesc.renderState.depthStencilState.backFace.compareOp = compareOp;
+        m_graphicsContext.pso.renderState.depthStencilState.backFace.failOp = fail;
+        m_graphicsContext.pso.renderState.depthStencilState.backFace.depthFailOp = depthFail;
+        m_graphicsContext.pso.renderState.depthStencilState.backFace.passOp = pass;
+        m_graphicsContext.pso.renderState.depthStencilState.backFace.compareOp = compareOp;
     }
 
     void RenderSystem::SetBlendEnable(bool enabled, uint32_t attachment)
@@ -496,38 +508,38 @@ namespace rendersystem
 
     void RenderSystem::SetViewport(float x, float y, float width, float height, float minDepth, float maxDepth)
     {
-        m_psoDesc.renderState.viewportState.viewport = { x, y, width, height, minDepth, maxDepth };
+        m_graphicsContext.pso.renderState.viewportState.viewport = { x, y, width, height, minDepth, maxDepth };
     }
 
     void RenderSystem::SetViewport(const render::Viewport& viewport)
     {
-        m_psoDesc.renderState.viewportState.viewport = viewport;
+        m_graphicsContext.pso.renderState.viewportState.viewport = viewport;
     }
 
     void RenderSystem::SetScissor(float x0, float x1, float y0, float y1)
     {
-        m_psoDesc.renderState.viewportState.scissor = { x0, x1, y0, y1 };
+        m_graphicsContext.pso.renderState.viewportState.scissor = { x0, x1, y0, y1 };
     }
 
     void RenderSystem::SetScissor(const render::Rect& scissor)
     {
-        m_psoDesc.renderState.viewportState.scissor = scissor;
+        m_graphicsContext.pso.renderState.viewportState.scissor = scissor;
     }
 
     void RenderSystem::SetFillMode(render::RasterFillMode mode)
     {
-        m_psoDesc.renderState.rasterState.fillMode = mode;
+        m_graphicsContext.pso.renderState.rasterState.fillMode = mode;
     }
 
     void RenderSystem::SetCullMode(render::RasterCullMode mode)
     {
-        m_psoDesc.renderState.rasterState.cullMode = mode;
+        m_graphicsContext.pso.renderState.rasterState.cullMode = mode;
     }
 
     void RenderSystem::SetPrimitive(render::PrimitiveType type)
     {
         check(type < render::PrimitiveType_MaxEnum);
-        m_psoDesc.primitiveType = type;
+        m_graphicsContext.pso.primitiveType = type;
     }
 
     void RenderSystem::SetShader(ShaderProgram* shader)
@@ -536,24 +548,23 @@ namespace rendersystem
         switch (shader->m_description->type)
         {
         case ShaderProgram_Graphics:
-            m_psoDesc.vertexShader = shader->m_vs;
-            m_psoDesc.fragmentShader = shader->m_fs;
-            m_psoDesc.vertexInputLayout = shader->m_inputLayout;
+            m_graphicsContext.pso.vertexShader = shader->m_vs;
+            m_graphicsContext.pso.fragmentShader = shader->m_fs;
+            m_graphicsContext.pso.vertexInputLayout = shader->m_inputLayout;
             break;
         case ShaderProgram_Compute:
-            check(false);
+            m_computeContext.pso.computeShader = shader->m_cs;
             break;
         default:
             unreachable_code();
             break;
         }
-        m_program = shader;
-        m_dirtyPropertiesFlags = 0xffffffffffffffff; // all dirty
+        m_shaderContext.program = shader;
+        m_shaderContext.ClearDirtyAll();
 
         // reserve shader properties in current shader context memory
-        ShaderMemoryContext* memoryContext = m_memoryPool->GetContext(m_memoryContextId);
-        check(memoryContext);
-        const render::shader_compiler::ShaderReflectionProperties& properties = *m_program->m_properties;
+        ShaderMemoryContext* memoryContext = GetMemoryContext();
+        const render::shader_compiler::ShaderReflectionProperties& properties = *m_shaderContext.program->m_properties;
         for (uint32_t i = 0; i < (uint32_t)properties.params.size(); ++i)
         {
             for (uint32_t j = 0; j < (uint32_t)properties.params[i].params.size(); ++j)
@@ -563,8 +574,6 @@ namespace rendersystem
                 {
                 case render::ResourceType_ConstantBuffer:
                 case render::ResourceType_VolatileConstantBuffer:
-                //case render::ResourceType_BufferUAV:
-                //case render::ResourceType_DynamicBufferUAV:
                     memoryContext->ReserveProperty(property.name.c_str(), property.size);
                     break;
                 }
@@ -574,23 +583,17 @@ namespace rendersystem
 
     void RenderSystem::SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t textureIndex)
     {
-        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot && textureIndex < MaxTextureArrayCount && texture);
-        m_dirtyPropertiesFlags |= (1 << set);
-        m_textureSlots[set][binding][textureIndex] = texture;
-        if (render::utils::IsDepthStencilFormat(texture->m_description.format))
-        {
-            if (texture->GetLayoutAt(0, 0) != render::ImageLayout_DepthStencilReadOnly)
-                m_renderContext.cmd->RequireTextureState({ texture, render::ImageLayout_DepthStencilReadOnly });
-        }
-        else if (texture->GetLayoutAt(0, 0) != render::ImageLayout_ShaderReadOnly)
-            m_renderContext.cmd->RequireTextureState({ texture, render::ImageLayout_ShaderReadOnly });
+        SetTextureSlot(texture, set, binding, textureIndex,
+            render::utils::IsDepthStencilFormat(texture->m_description.format)
+            ? render::ImageLayout_DepthStencilReadOnly
+            : render::ImageLayout_ShaderReadOnly);
     }
 
     void RenderSystem::SetTextureSlot(const char* id, const render::TextureHandle& texture)
     {
-        check(m_program);
+        check(m_shaderContext.program);
         uint32_t setIndex;
-        const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+        const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
         check(property && setIndex != UINT32_MAX && "Property not found in shader uniforms.");
         //check(property->arrayCount == 1);
         SetTextureSlot(texture, setIndex, property->binding);
@@ -599,10 +602,10 @@ namespace rendersystem
 	void RenderSystem::SetTextureSlot(const render::TextureHandle* textures, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
 	{
         check(count <= MaxTextureArrayCount);
-        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
+        check(set < MaxDescriptorSetSlots && binding < MaxBindingsPerSlot);
         for (uint32_t i = 0; i < count; ++i)
-            m_textureSlots[set][binding][i] = textures[i];
-        m_dirtyPropertiesFlags |= (1 << set);
+            m_shaderContext.textureSlots[set][binding][i] = textures[i];
+        m_shaderContext.MarkSetAsDirty(set);
 	}
 
     void RenderSystem::SetTextureSlot(const char* id, const render::TextureHandle* textures, uint32_t count)
@@ -614,9 +617,9 @@ namespace rendersystem
         }
         else
         {
-		    check(m_program);
+		    check(m_shaderContext.program);
 		    uint32_t setIndex;
-		    const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+		    const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
 		    check(property && setIndex != UINT32_MAX);
             check(count <= property->arrayCount);
             SetTextureSlot(textures, count, setIndex, property->binding);
@@ -626,8 +629,8 @@ namespace rendersystem
 	void RenderSystem::SetSampler(const render::SamplerHandle& sampler, uint32_t set, uint32_t binding, uint32_t samplerIndex)
     {
         check(samplerIndex < MaxTextureArrayCount);
-        check(set < MaxTextureSlots && binding < MaxTextureBindingsPerSlot);
-        m_samplerSlots[set][binding][samplerIndex] = sampler;
+        check(set < MaxDescriptorSetSlots && binding < MaxBindingsPerSlot);
+        m_shaderContext.samplerSlots[set][binding][samplerIndex] = sampler;
     }
 
     void RenderSystem::SetSampler(const char* id, const render::SamplerHandle& sampler)
@@ -647,9 +650,9 @@ namespace rendersystem
 
 	void RenderSystem::SetSampler(const char* id, const render::SamplerHandle* sampler, uint32_t count)
 	{
-        check(m_program);
+        check(m_shaderContext.program);
         uint32_t setIndex;
-        const render::shader_compiler::ShaderPropertyDescription* property = m_program->GetPropertyDescription(id, &setIndex);
+        const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
         check(property && setIndex != UINT32_MAX);
         check(property->arrayCount >= count);
         SetSampler(sampler, count, setIndex, property->binding);
@@ -665,18 +668,18 @@ namespace rendersystem
     {
         PROF_ZONE_SCOPED("SetShaderProperty");
         check(id && *id && param && size);
-        ShaderMemoryContext* context = m_memoryPool->GetContext(m_memoryContextId);
+        ShaderMemoryContext* context = GetMemoryContext();
         context->WriteProperty(id, param, size);
         uint32_t setIndex = UINT32_MAX;
-        check(m_program->GetPropertyDescription(id, &setIndex));
+        check(m_shaderContext.program->GetPropertyDescription(id, &setIndex));
         check(setIndex != UINT32_MAX);
-        m_dirtyPropertiesFlags |= (1 << setIndex);
+        m_shaderContext.MarkSetAsDirty(setIndex);
     }
 
     void RenderSystem::SetTextureLayout(const render::TextureHandle& texture, render::ImageLayout layout, render::TextureSubresourceRange range)
     {
         //check(!m_renderContext.cmd->IsInsideRenderPass());
-        m_renderContext.cmd->RequireTextureState({ texture, layout, range });
+        GetCommandList()->RequireTextureState({ texture, layout, range });
     }
 
     void RenderSystem::SetTextureAsResourceBinding(render::TextureHandle texture)
@@ -703,9 +706,38 @@ namespace rendersystem
             SetTextureLayout(texture, render::ImageLayout_ColorAttachment);
     }
 
+    void RenderSystem::BindUAV(const char* id, const render::BufferHandle& buffer)
+    {
+        check(id && *id && buffer && m_shaderContext.program);
+        uint32_t setIndex = UINT32_MAX;
+        const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
+        check(property && setIndex != UINT32_MAX);
+        check(property->type == render::ResourceType_BufferUAV);
+        check(setIndex < MaxDescriptorSetSlots && property->binding < MaxBindingsPerSlot);
+        m_shaderContext.buffers[setIndex][property->binding] = buffer;
+        m_shaderContext.MarkSetAsDirty(setIndex);
+    }
+
+    void RenderSystem::BindSRV(const char* id, const render::BufferHandle& buffer)
+    {
+        // todo??????????
+        BindUAV(id, buffer);
+    }
+
+    void RenderSystem::BindUAV(const char* id, const render::TextureHandle& texture)
+    {
+		check(id && *id && texture && m_shaderContext.program);
+		uint32_t setIndex = UINT32_MAX;
+		const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
+		check(property && property->type == render::ResourceType_TextureUAV);
+        check(property->arrayCount == 1);
+		check(setIndex < MaxDescriptorSetSlots && property->binding < MaxBindingsPerSlot);
+        SetTextureSlot(texture, setIndex, property->binding, 0, render::ImageLayout_General);
+    }
+
     void RenderSystem::SetRenderTarget(render::RenderTargetHandle rt)
     {
-        m_renderContext.graphicsState.rt = rt;
+        m_graphicsContext.graphicsState.rt = rt;
         for (uint32_t i = 0; i < rt->m_description.colorAttachments.GetSize(); ++i)
             SetTextureAsRenderTargetAttachment(rt->m_description.colorAttachments[i].texture);
         if (rt->m_description.depthStencilAttachment.texture)
@@ -714,29 +746,31 @@ namespace rendersystem
 
     void RenderSystem::SetVertexBuffer(render::BufferHandle vb)
     {
-        m_renderContext.graphicsState.vertexBuffer = vb;
+        m_graphicsContext.graphicsState.vertexBuffer = vb;
     }
 
     void RenderSystem::SetIndexBuffer(render::BufferHandle ib)
     {
-        m_renderContext.graphicsState.indexBuffer = ib;
+        m_graphicsContext.graphicsState.indexBuffer = ib;
     }
 
     void RenderSystem::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
+        check(AllowsGraphicsCommand());
         FlushBeforeDraw();
-        m_renderContext.cmd->Draw(vertexCount, instanceCount, firstVertex, firstInstance);
+        GetCommandList()->Draw(vertexCount, instanceCount, firstVertex, firstInstance);
     }
 
     void RenderSystem::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t firstVertex, uint32_t firstInstance)
     {
+        check(AllowsGraphicsCommand());
         FlushBeforeDraw();
-        m_renderContext.cmd->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
+        GetCommandList()->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
     }
 
     void RenderSystem::CopyTextureToTexture(const render::TextureHandle& src, const render::TextureHandle& dst, const render::CopyTextureInfo* infoArray, uint32_t infoCount)
     {
-        m_renderContext.cmd->CopyTexture(src, dst, infoArray, infoCount);
+        GetCommandList()->CopyTexture(src, dst, infoArray, infoCount);
     }
 
     void RenderSystem::DrawFullscreenQuad()
@@ -748,18 +782,24 @@ namespace rendersystem
 
     void RenderSystem::ClearColor(float r, float g, float b, float a)
     {
-        m_renderContext.pendingClearColor = true;
-        m_renderContext.clearColor[0] = r;
-        m_renderContext.clearColor[1] = g;
-        m_renderContext.clearColor[2] = b;
-        m_renderContext.clearColor[3] = a;
+        m_graphicsContext.pendingClearColor = true;
+        m_graphicsContext.clearColor[0] = r;
+        m_graphicsContext.clearColor[1] = g;
+        m_graphicsContext.clearColor[2] = b;
+        m_graphicsContext.clearColor[3] = a;
     }
 
     void RenderSystem::ClearDepthStencil(float depth, uint32_t stencil)
     {
-        m_renderContext.pendingClearDepthStencil = true;
-        m_renderContext.clearDepth = depth;
-        m_renderContext.clearStencil = stencil;
+        m_graphicsContext.pendingClearDepthStencil = true;
+        m_graphicsContext.clearDepth = depth;
+        m_graphicsContext.clearStencil = stencil;
+    }
+
+    void RenderSystem::Dispatch(uint32_t workgroupSizeX, uint32_t workgroupSizeY, uint32_t workgroupSizeZ)
+    {
+        FlushBeforeDispatch();
+        GetCommandList()->Dispatch(workgroupSizeX, workgroupSizeY, workgroupSizeZ);
     }
 
     void RenderSystem::DumpState()
@@ -779,23 +819,22 @@ namespace rendersystem
                 m_swapchainHistoric.Get(5));
         }
         logferror("* Binding cache count: %lld\n", m_bindingCache->GetCacheSize());
-        logferror("* Pso cache count: %lld\n", m_psoMap.size());
+        logferror("* Pso cache count: %lld\n", m_graphicsPsoMap.size());
         logerror("===========================\n");
-
     }
 
     render::RenderTargetBlendState& RenderSystem::GetPsoBlendStateAttachment(uint32_t attachment)
     {
-        check(attachment < m_psoDesc.renderState.blendState.renderTargetBlendStates.GetCapacity());
-        if (attachment >= m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize())
-            m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(attachment + 1);
-        return m_psoDesc.renderState.blendState.renderTargetBlendStates[attachment];
+        check(attachment < m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.GetCapacity());
+        if (attachment >= m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.GetSize())
+            m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.Resize(attachment + 1);
+        return m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates[attachment];
     }
 
     void RenderSystem::InitScreenQuad()
     {
         PROFILE_SCOPE_LOG(InitScreenQuad, "RenderSystem_InitScreenQuad");
-        m_renderContext.cmd->BeginRecording();
+        GetCommandList()->BeginRecording();
 
         float quadVertices[] =
         {
@@ -812,16 +851,16 @@ namespace rendersystem
         bufferDescription.memoryUsage = render::MemoryUsage_Gpu;
         bufferDescription.bufferUsage = render::BufferUsage_VertexBuffer;
         m_screenQuadCopy.vb = m_device->CreateBuffer(bufferDescription);
-        m_renderContext.cmd->WriteBuffer(m_screenQuadCopy.vb, quadVertices, sizeof(quadVertices));
+        GetCommandList()->WriteBuffer(m_screenQuadCopy.vb, quadVertices, sizeof(quadVertices));
 
         // Index buffer
         bufferDescription.size = sizeof(quadIndices);
         bufferDescription.bufferUsage = render::BufferUsage_IndexBuffer;
         m_screenQuadCopy.ib = m_device->CreateBuffer(bufferDescription);
-        m_renderContext.cmd->WriteBuffer(m_screenQuadCopy.ib, quadIndices, sizeof(quadIndices));
+        GetCommandList()->WriteBuffer(m_screenQuadCopy.ib, quadIndices, sizeof(quadIndices));
 
-        m_renderContext.cmd->EndRecording();
-        uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
+        GetCommandList()->EndRecording();
+        uint64_t submissionId = GetCommandList()->ExecuteCommandList();
         check(m_device->WaitForSubmissionId(submissionId));
 
         // Sampler
@@ -847,12 +886,12 @@ namespace rendersystem
     void RenderSystem::CopyToPresentRt(render::TextureHandle texture)
     {
         ClearState();
-        SetDefaultState();
+        SetDefaultGraphicsState();
         SetRenderTarget(GetPresentRt());
         SetShader(m_screenQuadCopy.shader);
         SetTextureSlot("tex", texture);
         DrawFullscreenQuad();
-        SetDefaultState();
+        SetDefaultGraphicsState();
         ClearState();
     }
 
@@ -890,8 +929,8 @@ namespace rendersystem
         ImGui::Text("CB pool:           %7d", queue->GetPoolCommandBuffersCount());
 
         ImGui::SeparatorText("Cache state");
-        ImGui::Text("Pso cache:         %7d", m_psoMap.size());
-        ImGui::Text("Pso lf:            %.4f", m_psoMap.load_factor());
+        ImGui::Text("Pso cache:         %7d", m_graphicsPsoMap.size());
+        ImGui::Text("Pso lf:            %.4f", m_graphicsPsoMap.load_factor());
         ImGui::Text("Binding cache:     %7d", m_bindingCache->GetCacheSize());
         ImGui::Text("Binding lf:        %.4f", m_bindingCache->GetLoadFactor());
         ImGui::Text("Sampler cache:     %7d", m_samplerCache->GetCacheSize());
@@ -903,128 +942,151 @@ namespace rendersystem
     void RenderSystem::FlushBeforeDraw()
     {
         PROF_ZONE_SCOPED("FlushBeforeDraw");
-        check(m_program);
-        //m_psoDesc.bindingLayouts.Clear();
+        //m_graphicsContext.pso.bindingLayouts.Clear();
 
         // Flush memory before process bindings
-        ShaderMemoryContext* memoryContext = m_memoryPool->GetContext(m_memoryContextId);
-        memoryContext->FlushMemory();
-
-        // Bind descriptors sets and memory before draw call
-        const render::shader_compiler::ShaderReflectionProperties* properties = m_program->m_properties;
-        check(properties->pushConstantMap.empty());
-        m_psoDesc.bindingLayouts.Resize((uint32_t)properties->params.size());
-        render::BindingSetDescription& desc = m_bindingDesc;
-        for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
-        {
-            const render::shader_compiler::ShaderPropertySetDescription& paramSet = properties->params[i];
-            // if is not dirty continue
-            if (!(m_dirtyPropertiesFlags & (1 << paramSet.setIndex)))
-                continue;
-
-            desc.bindingItems.clear();
-            desc.bindingItems.reserve(paramSet.params.size());
-            for (uint32_t j = 0; j < (uint32_t)paramSet.params.size(); ++j)
-            {
-                const render::shader_compiler::ShaderPropertyDescription& property = paramSet.params[j];
-                switch (property.type)
-                {
-                case render::ResourceType_TextureSRV:
-                case render::ResourceType_TextureUAV:
-                {
-                    check(paramSet.setIndex < MaxTextureSlots && property.binding < MaxTextureBindingsPerSlot);
-                    check(property.arrayCount <= MaxTextureArrayCount);
-                    render::TextureHandle* tex = m_textureSlots[paramSet.setIndex][property.binding];
-                    render::SamplerHandle* sampler = m_samplerSlots[paramSet.setIndex][property.binding];
-                    Mist::tStaticArray<render::TextureSubresourceRange, MaxTextureArrayCount> subresources;
-
-                    for (uint32_t k = 0; k < property.arrayCount; ++k)
-                    {
-#if 0
-                        check(tex[k]);
-#endif // 0
-                        if (!tex[k])
-                            tex[k] = m_defaultTexture;
-
-                        if (!sampler[k])
-                            sampler[k] = GetSampler(render::Filter_Linear, render::Filter_Linear,
-                                render::Filter_Linear,
-                                render::SamplerAddressMode_Repeat,
-                                render::SamplerAddressMode_Repeat,
-                                render::SamplerAddressMode_Repeat);
-                        subresources.Push(render::TextureSubresourceRange::AllSubresources());
-                    }
-                    if (property.type == render::ResourceType_TextureSRV)
-                        desc.PushTextureSRV(property.binding, tex, sampler, property.stage, subresources.GetData(), property.arrayCount);
-                    else
-                        desc.PushTextureUAV(property.binding, tex, property.stage, subresources.GetData(), property.arrayCount);
-                }
-                break;
-                case render::ResourceType_ConstantBuffer:
-                {
-                    const ShaderMemoryContext::PropertyMemory* propertyMemory = memoryContext->GetProperty(property.name.c_str());
-                    check(propertyMemory && propertyMemory->buffer && propertyMemory->size >= property.size);
-                    desc.PushConstantBuffer(property.binding, propertyMemory->buffer.GetPtr(), property.stage, render::BufferRange(propertyMemory->offset, propertyMemory->size));
-                }
-                break;
-                case render::ResourceType_VolatileConstantBuffer:
-                    unreachable_code();
-                    break;
-                case render::ResourceType_BufferUAV:
-                    unreachable_code();
-                    break;
-                case render::ResourceType_DynamicBufferUAV:
-                    unreachable_code();
-                    break;
-                case render::ResourceType_None:
-                case render::ResourceType_MaxEnum:
-                default:
-                    unreachable_code();
-                    break;
-                }
-            }
-            render::BindingSetHandle set = GetBindingSet(desc);
-            m_renderContext.graphicsState.bindings.SetBindingSlot(paramSet.setIndex, set);
-            check(paramSet.setIndex < m_psoDesc.bindingLayouts.GetSize());
-            m_psoDesc.bindingLayouts[paramSet.setIndex] = set->m_layout;
-            // clear dirty
-            m_dirtyPropertiesFlags &= ~(1 << paramSet.setIndex);
-        }
+        FlushMemoryContext();
+        ResolveBindings(m_graphicsContext.graphicsState.bindings, m_graphicsContext.pso.bindingLayouts);
 
         // Fill default blend states
-        if (m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize() > m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize())
+        if (m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.GetSize() > m_graphicsContext.graphicsState.rt->m_description.colorAttachments.GetSize())
         {
 #if 0
             logfwarn("Render state with dirty info from previous states (BlendStates %d > Current color attachments %d)\n",
-                m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize(),
+                m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.GetSize(),
                 m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
 #endif // 0
 
-            m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
+            m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.Resize(m_graphicsContext.graphicsState.rt->m_description.colorAttachments.GetSize());
         }
-        else if (m_psoDesc.renderState.blendState.renderTargetBlendStates.GetSize() < m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize())
+        else if (m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.GetSize() < m_graphicsContext.graphicsState.rt->m_description.colorAttachments.GetSize())
         {
-            m_psoDesc.renderState.blendState.renderTargetBlendStates.Resize(m_renderContext.graphicsState.rt->m_description.colorAttachments.GetSize());
+            m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.Resize(m_graphicsContext.graphicsState.rt->m_description.colorAttachments.GetSize());
         }
 
         // Process graphics pipeline
-        m_renderContext.graphicsState.pipeline = GetPso(m_psoDesc, m_renderContext.graphicsState.rt);
+        m_graphicsContext.graphicsState.pipeline = GetPso(m_graphicsContext.pso, m_graphicsContext.graphicsState.rt);
 
-        m_renderContext.cmd->SetGraphicsState(m_renderContext.graphicsState);
-        if (m_renderContext.pendingClearColor)
+        GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
+        if (m_graphicsContext.pendingClearColor)
         {
-            m_renderContext.pendingClearColor = false;
-            m_renderContext.cmd->ClearColor(m_renderContext.clearColor[0], m_renderContext.clearColor[1], m_renderContext.clearColor[2], m_renderContext.clearColor[3]);
+            m_graphicsContext.pendingClearColor = false;
+            GetCommandList()->ClearColor(m_graphicsContext.clearColor[0], m_graphicsContext.clearColor[1], m_graphicsContext.clearColor[2], m_graphicsContext.clearColor[3]);
         }
-        if (m_renderContext.pendingClearDepthStencil)
+        if (m_graphicsContext.pendingClearDepthStencil)
         {
-            m_renderContext.pendingClearDepthStencil = false;
-            m_renderContext.cmd->ClearDepthStencil(m_renderContext.clearDepth, m_renderContext.clearStencil);
+            m_graphicsContext.pendingClearDepthStencil = false;
+            GetCommandList()->ClearDepthStencil(m_graphicsContext.clearDepth, m_graphicsContext.clearStencil);
         }
 
         FrameResourceTrack& resources = GetFrameResources();
-        resources.buffers.emplace_back(m_renderContext.graphicsState.indexBuffer);
-        resources.buffers.emplace_back(m_renderContext.graphicsState.vertexBuffer);
+        resources.buffers.emplace_back(m_graphicsContext.graphicsState.indexBuffer);
+        resources.buffers.emplace_back(m_graphicsContext.graphicsState.vertexBuffer);
+    }
+
+    void RenderSystem::FlushBeforeDispatch()
+    {
+        PROF_ZONE_SCOPED("FlushBeforeDispatch");
+        FlushMemoryContext();
+        ResolveBindings(m_computeContext.computeState.bindings, m_computeContext.pso.bindingLayouts);
+        m_computeContext.computeState.pipeline = GetPso(m_computeContext.pso);
+        GetCommandList()->SetComputeState(m_computeContext.computeState);
+    }
+
+    void RenderSystem::FlushMemoryContext()
+    {
+		// Flush memory before process bindings
+		ShaderMemoryContext* memoryContext = GetMemoryContext();
+		memoryContext->FlushMemory();
+    }
+
+    void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray)
+    {
+        ShaderMemoryContext* memoryContext = GetMemoryContext();
+		// Bind descriptors sets and memory before draw call
+		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
+		check(properties->pushConstantMap.empty());
+        bindingLayoutArray.Resize((uint32_t)properties->params.size());
+		render::BindingSetDescription& desc = m_bindingDesc;
+		for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
+		{
+			const render::shader_compiler::ShaderPropertySetDescription& paramSet = properties->params[i];
+			// if is not dirty continue
+            if (!m_shaderContext.IsSetDirty(paramSet.setIndex))
+				continue;
+
+			desc.bindingItems.clear();
+			desc.bindingItems.reserve(paramSet.params.size());
+			for (uint32_t j = 0; j < (uint32_t)paramSet.params.size(); ++j)
+			{
+				const render::shader_compiler::ShaderPropertyDescription& property = paramSet.params[j];
+				switch (property.type)
+				{
+				case render::ResourceType_TextureSRV:
+				case render::ResourceType_TextureUAV:
+				{
+					check(paramSet.setIndex < MaxDescriptorSetSlots && property.binding < MaxBindingsPerSlot);
+					check(property.arrayCount <= MaxTextureArrayCount);
+					render::TextureHandle* tex = m_shaderContext.textureSlots[paramSet.setIndex][property.binding];
+					render::SamplerHandle* sampler = m_shaderContext.samplerSlots[paramSet.setIndex][property.binding];
+					Mist::tStaticArray<render::TextureSubresourceRange, MaxTextureArrayCount> subresources;
+
+					for (uint32_t k = 0; k < property.arrayCount; ++k)
+					{
+#if 0
+						check(tex[k]);
+#endif // 0
+						if (!tex[k])
+							tex[k] = m_defaultTexture;
+
+						if (!sampler[k])
+							sampler[k] = GetSampler(render::Filter_Linear, render::Filter_Linear,
+								render::Filter_Linear,
+								render::SamplerAddressMode_Repeat,
+								render::SamplerAddressMode_Repeat,
+								render::SamplerAddressMode_Repeat);
+						subresources.Push(render::TextureSubresourceRange::AllSubresources());
+					}
+					if (property.type == render::ResourceType_TextureSRV)
+						desc.PushTextureSRV(property.binding, tex, sampler, property.stage, subresources.GetData(), property.arrayCount);
+					else
+						desc.PushTextureUAV(property.binding, tex, property.stage, subresources.GetData(), property.arrayCount);
+				}
+				break;
+				case render::ResourceType_ConstantBuffer:
+				{
+					const ShaderMemoryContext::PropertyMemory* propertyMemory = memoryContext->GetProperty(property.name.c_str());
+					check(propertyMemory && propertyMemory->buffer && propertyMemory->size >= property.size);
+					desc.PushConstantBuffer(property.binding, propertyMemory->buffer.GetPtr(), property.stage, render::BufferRange(propertyMemory->offset, propertyMemory->size));
+				}
+				break;
+				case render::ResourceType_VolatileConstantBuffer:
+					unreachable_code();
+					break;
+				case render::ResourceType_BufferUAV:
+                {
+					check(paramSet.setIndex < MaxDescriptorSetSlots && property.binding < MaxBindingsPerSlot);
+                    check(m_shaderContext.buffers[paramSet.setIndex][property.binding]);
+                    desc.PushBufferUAV(property.binding, m_shaderContext.buffers[paramSet.setIndex][property.binding].GetPtr(), property.stage);
+                }
+					break;
+				case render::ResourceType_DynamicBufferUAV:
+					unreachable_code();
+					break;
+				case render::ResourceType_None:
+				case render::ResourceType_MaxEnum:
+				default:
+					unreachable_code();
+					break;
+				}
+			}
+			render::BindingSetHandle set = GetBindingSet(desc);
+			bindingSetVector.SetBindingSlot(paramSet.setIndex, set);
+			check(paramSet.setIndex < bindingLayoutArray.GetSize());
+            bindingLayoutArray[paramSet.setIndex] = set->m_layout;
+			// clear dirty
+            m_shaderContext.ClearDirtySet(paramSet.setIndex);
+		}
     }
 
     void RenderSystem::ImGuiDrawGpuProfiler()
@@ -1041,10 +1103,10 @@ namespace rendersystem
 
         ui::BeginFrame();
         
-        SetDefaultState();
+        SetDefaultGraphicsState();
         ClearState();
-        m_cmdStats = m_renderContext.cmd->GetStats();
-        m_renderContext.cmd->ResetStats();
+        m_cmdStats = GetCommandList()->GetStats();
+        GetCommandList()->ResetStats();
 
         if (CVar_ForceFrameSync.Get())
         {
@@ -1083,27 +1145,27 @@ namespace rendersystem
 			GetFrameResources().Clear();
 		}
 
-        m_memoryContextId = m_memoryPool->CreateContext();
-        m_renderContext.cmd->BeginRecording();
-        GetFrameProfiler().Reset(m_renderContext.cmd);
+        CreateMemoryContext();
+        GetCommandList()->BeginRecording();
+        GetFrameProfiler().Reset(GetCommandList());
         BeginMarker("Frame"); // frame marker
     }
 
     void RenderSystem::EndFrame()
     {
         CPU_PROFILE_SCOPE(RenderSystem_EndFrame);
-        ui::EndFrame(m_renderContext.cmd);
+        ui::EndFrame(GetCommandList());
 
         BeginMarker("CopyToPresent");
         CopyToPresentRt(m_ldrTexture);
         ClearState();
-        m_renderContext.cmd->SetTextureState(render::TextureBarrier{ GetPresentRt()->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc});
+        GetCommandList()->SetTextureState(render::TextureBarrier{ GetPresentRt()->m_description.colorAttachments[0].texture, render::ImageLayout_PresentSrc});
         EndMarker();
 
         EndMarker(); // frame marker
-        m_renderContext.cmd->EndRecording();
+        GetCommandList()->EndRecording();
 
-        uint64_t submissionId = m_renderContext.cmd->ExecuteCommandList();
+        uint64_t submissionId = GetCommandList()->ExecuteCommandList();
 
 		const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 		const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
@@ -1112,7 +1174,7 @@ namespace rendersystem
             m_device->Present(renderSemaphore);
         }
 
-        m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
+        SubmitMemoryContext(submissionId);
         SetPresentSubmissionId(submissionId);
         m_swapchainHistoric.Push(m_swapchainIndex);
         m_swapchainIndex = UINT32_MAX;
@@ -1120,7 +1182,7 @@ namespace rendersystem
 
     void RenderSystem::BeginMarker(const char* name, render::Color color)
     {
-        m_renderContext.cmd->BeginMarker(name, color);
+        GetCommandList()->BeginMarker(name, color);
         BeginGpuProf(name);
     }
 
@@ -1136,7 +1198,7 @@ namespace rendersystem
 
     void RenderSystem::EndMarker()
     {
-        m_renderContext.cmd->EndMarker();
+        GetCommandList()->EndMarker();
         EndGpuProf();
     }
 
@@ -1523,7 +1585,7 @@ namespace rendersystem
 
         if (!compiler.Compile(m_description->csDesc, render::ShaderType_Compute))
         {
-            logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
+            logferror("Failed to generate shader modules for graphics shaders [%s]\n",
                 m_description->csDesc.filePath.empty() ? "none" : m_description->csDesc.filePath.c_str());
             return false;
         }

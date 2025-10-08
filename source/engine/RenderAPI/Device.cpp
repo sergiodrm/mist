@@ -343,6 +343,12 @@ namespace render
         m_device->DestroyComputePipeline(this);
     }
 
+    void ComputePipeline::UsePipeline(CommandBuffer* cmd)
+    {
+        check(cmd && cmd->cmd && m_pipeline && m_pipelineLayout);
+        vkCmdBindPipeline(cmd->cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_pipeline);
+    }
+
 	QueryPool::~QueryPool()
 	{
         check(m_device);
@@ -858,14 +864,32 @@ namespace render
                     queue.Push(i, setsToBind.m_slots[i].set->m_set, setsToBind.m_slots[i].offsets.GetData(), setsToBind.m_slots[i].offsets.GetSize());
 
                     // set required texture states
-                    for (uint32_t textureIndex = 0; textureIndex < (uint32_t)setsToBind.m_slots[i].set->m_textures.size(); ++textureIndex)
+                    const BindingSetDescription& desc = setsToBind.m_slots[i].set->m_description;
+                    for (uint32_t binding = 0; binding < (uint32_t)desc.bindingItems.size(); ++binding)
                     {
-                        TextureBarrier barrier;
-                        barrier.texture = setsToBind.m_slots[i].set->m_textures[textureIndex];
-                        barrier.newLayout = render::ImageLayout_ShaderReadOnly;
-                        //barrier.newLayout = utils::IsDepthStencilFormat(barrier.texture->m_description.format) ? render::ImageLayout_DepthStencilReadOnly : render::ImageLayout_ShaderReadOnly;
-                        barrier.subresources = { 0,1,0,1 };
-                        RequireTextureState(barrier);
+                        switch (desc.bindingItems[binding].type)
+                        {
+                        case ResourceType_TextureSRV:
+                        for (uint32_t textureIndex = 0; textureIndex < desc.bindingItems[binding].textures.GetSize(); ++textureIndex)
+						{
+							TextureBarrier barrier;
+							barrier.texture = desc.bindingItems[binding].textures[textureIndex];
+							barrier.newLayout = render::ImageLayout_ShaderReadOnly;
+							barrier.subresources = { 0,1,0,1 };
+							RequireTextureState(barrier);
+						}
+                        break;
+                        case ResourceType_TextureUAV:
+                        for (uint32_t textureIndex = 0; textureIndex < desc.bindingItems[binding].textures.GetSize(); ++textureIndex)
+						{
+							TextureBarrier barrier;
+							barrier.texture = setsToBind.m_slots[i].set->m_textures[textureIndex];
+							barrier.newLayout = render::ImageLayout_General;
+							barrier.subresources = { 0,1,0,1 };
+							RequireTextureState(barrier);
+						}
+                        break;
+                        }
                     }
                 }
             }
@@ -962,9 +986,12 @@ namespace render
     {
         check(AllowsCommandType(Queue_Graphics));
         vkCmdDraw(m_currentCommandBuffer->cmd, vertexCount, instanceCount, firstVertex, firstInstance);
-        check((vertexCount % 3) == 0);
         ++m_stats.drawCalls;
-        m_stats.tris += vertexCount / 3;
+        if (m_graphicsState.pipeline->m_description.primitiveType == PrimitiveType_TriangleList)
+        {
+            check((vertexCount % 3) == 0);
+            m_stats.tris += vertexCount / 3;
+        }
     }
 
     void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
@@ -982,7 +1009,19 @@ namespace render
         if (state == m_computeState)
             return;
 
+        // terminate current graphics pass if needed
         EndRenderPass();
+
+        // bind compute pipeline
+        if (m_computeState.pipeline != state.pipeline)
+        {
+            state.pipeline->UsePipeline(m_currentCommandBuffer);
+            m_computeState.pipeline = state.pipeline;
+            ++m_stats.pipelines;
+        }
+
+		BindSets(state.bindings, m_computeState.bindings);
+
         m_computeState = state;
     }
 

@@ -1258,6 +1258,12 @@ namespace render
         ShaderHandle computeShader;
         BindingLayoutArray bindingLayouts;
         Mist::String debugName;
+
+        inline bool operator==(const ComputePipelineDescription& desc) const
+        {
+            return computeShader == desc.computeShader
+                && utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
+        }
     };
 
     class ComputePipeline : public Mist::Ref<ComputePipeline>
@@ -1265,9 +1271,11 @@ namespace render
     public:
         ComputePipeline(Device* device)
             : m_device(device)
-        {
-        }
+        { }
         ~ComputePipeline();
+
+        void UsePipeline(CommandBuffer* cmd);
+
         VkPipeline m_pipeline;
         VkPipelineLayout m_pipelineLayout;
         ComputePipelineDescription m_description;
@@ -1397,20 +1405,12 @@ namespace render
     struct ComputeState
     {
         ComputePipelineHandle pipeline = nullptr;
-        BindingSetArray bindings;
+        BindingSetVector bindings;
 
         inline bool operator ==(const ComputeState& other) const 
         {
-            if (pipeline != other.pipeline)
-                return false;
-            if (bindings.GetSize() != other.bindings.GetSize())
-                return false;
-            for (uint32_t i = 0; i < bindings.GetSize(); ++i)
-            {
-                if (bindings[i] != other.bindings[i])
-                    return false;
-            }
-            return true;
+            return pipeline == other.pipeline 
+                && bindings == other.bindings;
         }
 
         inline bool operator!=(const ComputeState& other) const { return !(*this == other); }
@@ -1903,6 +1903,17 @@ namespace std
         }
     };
 
+	template <>
+	struct hash<render::ComputePipelineDescription>
+	{
+		size_t operator()(const render::ComputePipelineDescription& desc) const
+		{
+			size_t seed = 0;
+            Mist::HashCombine(seed, desc.computeShader->m_description);
+			return seed;
+		}
+	};
+
     template<>
     struct hash<render::BindingSetItem>
     {
@@ -1914,11 +1925,18 @@ namespace std
             switch (item.type)
             {
             case render::ResourceType_TextureSRV:
+				Mist::HashCombine(seed, item.dimension);
+				for (uint32_t i = 0; i < item.textures.GetSize(); ++i)
+				{
+					Mist::HashCombine(seed, item.samplers[i].GetPtr());
+					Mist::HashCombine(seed, item.textures[i].GetPtr());
+					Mist::HashCombine(seed, item.textureSubresources[i]);
+				}
+                break;
             case render::ResourceType_TextureUAV:
                 Mist::HashCombine(seed, item.dimension);
                 for (uint32_t i = 0; i < item.textures.GetSize(); ++i)
                 {
-                    Mist::HashCombine(seed, item.samplers[i].GetPtr());
                     Mist::HashCombine(seed, item.textures[i].GetPtr());
                     Mist::HashCombine(seed, item.textureSubresources[i]);
                 }
