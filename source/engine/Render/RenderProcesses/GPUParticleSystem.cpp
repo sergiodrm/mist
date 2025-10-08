@@ -147,44 +147,6 @@ namespace Mist
 		renderSystem->BindUAV("u_particles", m_particlesBuffer);
 		renderSystem->SetShaderProperty("u_movParams", &m_params, sizeof(ParameterUBO));
 		renderSystem->Dispatch(PARTICLE_COUNT / 256, 1, 1);
-#if 0
-		CommandList* commandList = context.CmdList;
-
-		//if (m_flags & GPU_PARTICLES_COMPUTE_ACTIVE)
-		{
-			if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
-			{
-				VkBufferMemoryBarrier barrier{ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr };
-				barrier.buffer = m_particlesBuffer.GetBuffer().Buffer;
-				barrier.offset = 0;
-				barrier.size = PARTICLE_STORAGE_BUFFER_SIZE;
-				barrier.srcAccessMask = 0;
-				barrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-				barrier.srcQueueFamilyIndex = context.GraphicsQueueFamily;
-				barrier.dstQueueFamilyIndex = context.ComputeQueueFamily;
-				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
-			}
-
-			commandList->SetComputeState({ .Program = m_computeShader });
-
-			commandList->BindDescriptorSets(&m_singleBufferDescriptorSet, 1);
-			commandList->Dispatch(PARTICLE_COUNT / 256, 1, 1);
-
-			if (context.GraphicsQueueFamily != context.ComputeQueueFamily)
-			{
-				VkBufferMemoryBarrier memoryBarrier{ .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr };
-				memoryBarrier.buffer = m_particlesBuffer.GetBuffer().Buffer;
-				memoryBarrier.offset = 0;
-				memoryBarrier.size = PARTICLE_STORAGE_BUFFER_SIZE;
-				memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-				memoryBarrier.dstAccessMask = 0;
-				memoryBarrier.srcQueueFamilyIndex = context.ComputeQueueFamily;
-				memoryBarrier.dstQueueFamilyIndex = context.GraphicsQueueFamily;
-				vkCmdPipelineBarrier(commandList->GetCurrentCommandBuffer()->CmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 1, &memoryBarrier, 0, nullptr);
-			}
-		}
-#endif // 0
-
 	}
 
 	void GPUParticleSystem::Draw(rendersystem::RenderSystem* renderSystem)
