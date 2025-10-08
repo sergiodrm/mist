@@ -1724,6 +1724,7 @@ namespace rendersystem
                 p.offset = m_pointer;
                 m_pointer += size;
             }
+            check(p.size >= size);
             // if not, there is already allocated previously and it is a valid allocation
             return;
         }
