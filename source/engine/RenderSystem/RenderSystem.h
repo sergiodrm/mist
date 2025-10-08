@@ -69,6 +69,23 @@ namespace rendersystem
         };
         static constexpr size_t MaxSize = 128;
     public:
+		struct QueryEntry
+		{
+			enum { InvalidQueryId = UINT32_MAX };
+			uint32_t id = InvalidQueryId;
+			double value = 0.0;
+			char tag[32];
+
+			~QueryEntry()
+			{
+				id = InvalidQueryId;
+				value = 0.0;
+				*tag = 0;
+			}
+		};
+
+        typedef Mist::tStackTree<QueryEntry, MaxSize> QueryTree;
+
         GpuFrameProfiler(render::Device* device);
 
         // Insert marks inside command list.
@@ -85,7 +102,11 @@ namespace rendersystem
 
         double GetTimestamp(const char* tag);
 
+        const QueryTree& GetData() const { return m_tree; }
+        static void ImGuiDrawQueryTree(const char* title, const QueryTree& tree);
+
     private:
+        static void ImGuiDrawTreeItem(const QueryTree& tree, uint32_t itemIndex);
         void ImGuiDrawTreeItem(uint32_t itemIndex);
 
     private:
@@ -94,21 +115,8 @@ namespace rendersystem
         uint32_t m_queryId;
         uint32_t m_state;
 
-        struct QueryEntry
-        {
-            enum { InvalidQueryId = UINT32_MAX };
-            uint32_t id = InvalidQueryId;
-            double value = 0.0;
-            char tag[32];
-
-            ~QueryEntry()
-            {
-                id = InvalidQueryId;
-                value = 0.0;
-                *tag = 0;
-            }
-        };
-        Mist::tStackTree<QueryEntry, MaxSize> m_tree;
+       
+        QueryTree m_tree;
     };
 
     class BindingLayoutCache

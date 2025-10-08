@@ -11,6 +11,7 @@
 
 Mist::CIntVar CVar_ForceFrameSync("r_forceframesync", 0);
 Mist::CIntVar CVar_GpuProfiling("r_gpuProfiling", 0);
+Mist::CIntVar CVar_GpuProfilingRatio("r_gpuProfilingRatio", 0);
 
 namespace rendersystem
 {
@@ -76,33 +77,7 @@ namespace rendersystem
 
     void GpuFrameProfiler::ImGuiDraw()
     {
-		uint32_t size = m_tree.Items.GetSize();
-		float heightPerLine = 20.f; //approx?
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-		ImVec2 winpos = ImVec2(0.f, viewport->Size.y - heightPerLine * size);
-		//ImGui::SetNextWindowPos(winpos);
-		ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
-		ImGui::SetNextWindowBgAlpha(0.f);
-		ImGui::Begin("Gpu profiling", nullptr, ImGuiWindowFlags_NoDecoration
-			| ImGuiWindowFlags_NoBackground
-			| ImGuiWindowFlags_NoDocking);
-		if (!m_tree.Items.IsEmpty())
-		{
-			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
-				| ImGuiTableFlags_Resizable
-				| ImGuiTableFlags_RowBg
-				| ImGuiTableFlags_NoBordersInBody;
-			if (ImGui::BeginTable("GpuProf", 2, flags))
-			{
-				ImGui::TableSetupColumn("Gpu process");
-				ImGui::TableSetupColumn("Time (us)");
-				ImGui::TableHeadersRow();
-				ImGuiDrawTreeItem(0);
-				ImGui::EndTable();
-			}
-		}
-		ImGui::End();
+        ImGuiDrawQueryTree("Gpu profiling", m_tree);
     }
 
     double GpuFrameProfiler::GetTimestamp(const char* tag)
@@ -118,17 +93,48 @@ namespace rendersystem
         return 0.0;
     }
 
-    void GpuFrameProfiler::ImGuiDrawTreeItem(uint32_t itemIndex)
+    void GpuFrameProfiler::ImGuiDrawQueryTree(const char* title, const QueryTree& tree)
+    {
+		uint32_t size = tree.Items.GetSize();
+		float heightPerLine = 20.f; //approx?
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+		ImVec2 winpos = ImVec2(0.f, viewport->Size.y - heightPerLine * size);
+		//ImGui::SetNextWindowPos(winpos);
+		ImGui::SetNextWindowSize(ImVec2(300.f, (float)size * heightPerLine));
+		ImGui::SetNextWindowBgAlpha(0.f);
+		ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoDecoration
+			| ImGuiWindowFlags_NoBackground
+			| ImGuiWindowFlags_NoDocking);
+		if (!tree.Items.IsEmpty())
+		{
+			ImGuiTableFlags flags = ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
+				| ImGuiTableFlags_Resizable
+				| ImGuiTableFlags_RowBg
+				| ImGuiTableFlags_NoBordersInBody;
+			if (ImGui::BeginTable("GpuProf", 2, flags))
+			{
+				ImGui::TableSetupColumn("Gpu process");
+				ImGui::TableSetupColumn("Time (us)");
+				ImGui::TableHeadersRow();
+				ImGuiDrawTreeItem(tree, 0);
+				ImGui::EndTable();
+			}
+		}
+		ImGui::End();
+    }
+
+    void GpuFrameProfiler::ImGuiDrawTreeItem(const QueryTree& tree, uint32_t itemIndex)
     {
 		uint32_t index = itemIndex;
 		const char* valuefmt = "%8.4f";
-		while (m_tree.IsValidIndex(index))
+		while (tree.IsValidIndex(index))
 		{
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			auto& item = m_tree.Items[index];
-			QueryEntry& data = m_tree.Data[item.DataIndex];
-			if (m_tree.IsValidIndex(item.Child))
+			auto& item = tree.Items[index];
+			const QueryEntry& data = tree.Data[item.DataIndex];
+			if (tree.IsValidIndex(item.Child))
 			{
 				bool treeOpen = ImGui::TreeNodeEx(data.tag,
 					ImGuiTreeNodeFlags_SpanAllColumns
@@ -137,7 +143,7 @@ namespace rendersystem
 				ImGui::Text(valuefmt, data.value);
 				if (treeOpen)
 				{
-					ImGuiDrawTreeItem(item.Child);
+					ImGuiDrawTreeItem(tree, item.Child);
 					ImGui::TreePop();
 				}
 			}
@@ -145,10 +151,15 @@ namespace rendersystem
 			{
 				ImGui::Text("%s", data.tag);
 				ImGui::TableNextColumn();
-				ImGui::Text(valuefmt, m_tree.Data[item.DataIndex].value);
+				ImGui::Text(valuefmt, tree.Data[item.DataIndex].value);
 			}
 			index = item.Sibling;
 		}
+    }
+
+    void GpuFrameProfiler::ImGuiDrawTreeItem(uint32_t itemIndex)
+    {
+        ImGuiDrawTreeItem(m_tree, itemIndex);
     }
 
     render::BindingLayoutHandle BindingLayoutCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
@@ -1092,7 +1103,7 @@ namespace rendersystem
     void RenderSystem::ImGuiDrawGpuProfiler()
     {
         if (CVar_GpuProfiling.Get())
-            GetFrameProfiler().ImGuiDraw();
+            GpuFrameProfiler::ImGuiDrawQueryTree("Gpu profiling", m_lastQueryTree);
     }
 
     void RenderSystem::BeginFrame()
@@ -1132,6 +1143,8 @@ namespace rendersystem
         // Resolve pending query data
         GetFrameProfiler().Resolve();
         m_gpuTime = GetFrameProfiler().GetTimestamp("Frame");
+        if (CVar_GpuProfilingRatio.Get() == 0 || !(m_frame % CVar_GpuProfilingRatio.Get()))
+            m_lastQueryTree = GetFrameProfiler().GetData();
         ImGuiDrawGpuProfiler();
 
 		{
@@ -1204,7 +1217,7 @@ namespace rendersystem
 
     void RenderSystem::BeginGpuProf(const char* name)
     {
-        GetFrameProfiler().BeginZone(m_renderContext.cmd, name);
+        GetFrameProfiler().BeginZone(GetCommandList(), name);
     }
 
     void RenderSystem::BeginGpuProfFmt(const char* fmt, ...)
@@ -1219,7 +1232,7 @@ namespace rendersystem
 
     void RenderSystem::EndGpuProf()
     {
-        GetFrameProfiler().EndZone(m_renderContext.cmd);
+        GetFrameProfiler().EndZone(GetCommandList());
     }
 
     TextureCache::TextureCache(render::Device* device)
