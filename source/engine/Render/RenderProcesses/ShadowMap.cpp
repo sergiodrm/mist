@@ -312,7 +312,7 @@ namespace Mist
 				m_shadowMapPipeline.RenderShadowMap(rs, scene, i);
 		}
 		rs->ClearState();
-		rs->SetDefaultState();
+		rs->SetDefaultGraphicsState();
 	}
 
 	void ShadowMapProcess::ImGuiDraw()

@@ -131,7 +131,7 @@ namespace Mist
 			// Composition
 			rs->BeginMarker("Deferred lighting");
 			rs->ClearState();
-			rs->SetDefaultState();
+			rs->SetDefaultGraphicsState();
 			rs->SetShader(shader);
 			rs->SetRenderTarget(m_lightingOutput);
 			rs->SetDepthEnable(true, false);
@@ -219,7 +219,7 @@ namespace Mist
 
 			rs->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
 			rs->ClearState();
-			rs->SetDefaultState();
+			rs->SetDefaultGraphicsState();
 
 			rs->EndMarker();
 		}
@@ -247,7 +247,7 @@ namespace Mist
 			rs->SetShaderProperty("u_HdrParams", &params, sizeof(params));
 			rs->SetTextureSlot("u_hdrtex", m_lightingOutput->m_description.colorAttachments[0].texture);
 			rs->DrawFullscreenQuad();
-			rs->SetDefaultState();
+			rs->SetDefaultGraphicsState();
 			rs->EndMarker();
 		}
 		rs->ClearState();

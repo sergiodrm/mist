@@ -156,7 +156,7 @@ namespace Mist
 		 * Downsample
 		 */
 		rs->BeginMarker("Downsampling");
-		rs->SetDefaultState();
+		rs->SetDefaultGraphicsState();
 		rs->SetShader(m_downsampleShader);
 		for (uint32_t i = 1; i < BLOOM_MIPMAP_LEVELS; ++i)
 		{
@@ -188,7 +188,7 @@ namespace Mist
 		 * Upsample
 		 */
 		rs->BeginMarker("Upsampling");
-		rs->SetDefaultState();
+		rs->SetDefaultGraphicsState();
 		rs->SetShader(m_upsampleShader);
         for (uint32_t i = BLOOM_MIPMAP_LEVELS - 2; i < BLOOM_MIPMAP_LEVELS; --i)
         {
@@ -223,7 +223,7 @@ namespace Mist
 					 */
 			rs->BeginMarker("Composition");
 			check(m_composeTarget);
-			rs->SetDefaultState();
+			rs->SetDefaultGraphicsState();
 			rs->SetShader(m_composeShader);
 			rs->SetRenderTarget(m_composeTarget);
 			rs->SetViewport(0.f, 0.f, (float)m_composeTarget->m_info.extent.width, (float)m_composeTarget->m_info.extent.height);
@@ -236,7 +236,7 @@ namespace Mist
 			rs->SetDepthEnable(false, false);
 			rs->DrawFullscreenQuad();
 			rs->ClearState();
-			rs->SetDefaultState();
+			rs->SetDefaultGraphicsState();
 			rs->EndMarker();
 
 			rs->EndMarker();

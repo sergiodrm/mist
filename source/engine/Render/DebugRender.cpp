@@ -278,7 +278,7 @@ namespace Mist
 			CPU_PROFILE_SCOPE(DebugPass);
 
 			g_render->ClearState();
-			g_render->SetDefaultState();
+			g_render->SetDefaultGraphicsState();
 			// process batches before render passes.
 			const bool processQuad = DebugRenderPipeline.QuadBatch.Flush();
 			const bool processLine = DebugRenderPipeline.LineBatch.Flush();
@@ -296,7 +296,7 @@ namespace Mist
 				g_render->SetDepthEnable(false, false);
 				g_render->SetShaderProperty("camera", &cameraData, sizeof(cameraData));
 				g_render->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize());
-				g_render->SetDefaultState();
+				g_render->SetDefaultGraphicsState();
 				DebugRenderPipeline.LineBatch.Reset();
 			}
 
@@ -312,7 +312,7 @@ namespace Mist
 				g_render->SetTextureSlot("u_tex", DebugRenderPipeline.QuadBatch.Textures.GetData(), DebugRenderPipeline.QuadBatch.Textures.GetSize());
 				g_render->SetDepthEnable(false, false);
 				g_render->DrawIndexed(DebugRenderPipeline.QuadBatch.QuadArray.GetSize() / 4 * 6);
-				g_render->SetDefaultState();
+				g_render->SetDefaultGraphicsState();
 				DebugRenderPipeline.QuadBatch.Reset();
 			}
 		}

@@ -62,7 +62,8 @@ namespace Mist
 	void GBuffer::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
-		rendersystem::RenderSystem* renderSystem = rs;
+		rs->ClearState();
+		rs->SetDefaultGraphicsState();
 		rs->SetRenderTarget(m_renderTarget);
 		rs->SetShader(m_gbufferShader);
 		rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
@@ -73,7 +74,7 @@ namespace Mist
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 		GetEngine()->GetScene()->Draw(rs, RenderFlags_Fixed | RenderFlags_Emissive);
 		rs->ClearState();
-		rs->SetDefaultState();
+		rs->SetDefaultGraphicsState();
 	}
 
 	void GBuffer::ImGuiDraw()

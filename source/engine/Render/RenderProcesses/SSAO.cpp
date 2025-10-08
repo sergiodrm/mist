@@ -62,7 +62,7 @@ namespace Mist
 			m_ssaoParams.Radius = CVar_SSAORadius.Get();
 			m_ssaoParams.Bypass = m_mode == SSAO_Disabled ? 0.f : 1.f;
 
-			rs->SetDefaultState();
+			rs->SetDefaultGraphicsState();
 			rs->BeginMarker("SSAO");
 			rs->ClearState();
 			rs->SetShader(m_ssaoShader);
