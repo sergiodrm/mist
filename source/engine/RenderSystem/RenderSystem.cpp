@@ -695,16 +695,8 @@ namespace rendersystem
 
     void RenderSystem::SetTextureAsResourceBinding(render::TextureHandle texture)
     {
-        if (render::utils::IsDepthFormat(texture->m_description.format))
-        {
-            for (uint32_t i = 0; i < texture->m_description.layers; ++i)
-                SetTextureLayout(texture, render::ImageLayout_DepthStencilReadOnly, render::TextureSubresourceRange(0, 1, i, 1));
-        }
-        else
-        {
-            for (uint32_t i = 0; i < texture->m_description.layers; ++i)
-                SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, render::TextureSubresourceRange(0, 1, i, 1));
-        }
+        for (uint32_t i = 0; i < texture->m_description.layers; ++i)
+            SetTextureLayout(texture, render::ImageLayout_ShaderReadOnly, render::TextureSubresourceRange(0, 1, i, 1));
     }
 
     void RenderSystem::SetTextureAsRenderTargetAttachment(render::TextureHandle texture)
