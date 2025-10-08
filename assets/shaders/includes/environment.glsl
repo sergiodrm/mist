@@ -43,6 +43,6 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     return lightColor;
 #else
     vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
-    return lightColor + ambientColor;
+    return (lightColor + ambientColor) * ao;
 #endif
 }

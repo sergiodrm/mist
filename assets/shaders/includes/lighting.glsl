@@ -282,7 +282,7 @@ vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, flo
     vec3 prefilteredColor = textureLod(PREFILTERED_MAP, r, mipLevel).rgb;
     vec3 specular = prefilteredColor * (kS * envBrdf.x + envBrdf.y);
     //return specular;
-    return (kD * diffuse + specular) * ao;
+    return (kD * diffuse + specular);
 }
 
 /**
