@@ -8,34 +8,36 @@ Execute `GenerateProject.bat` to create a sln file for Visual Studio 2022. If yo
 
 ## Features
 Nowadays, the engine implements the following features:
-* Deferred rendering
+* Deferred rendering.
 ![img](/docs/02_SceneEditor.png)
-* SSAO
-* Shadow mapping
+* SSAO.
+* Shadow mapping.
 ![img](/docs/03_ShadowMapDebug.png)
-* Bloom post process
+* Bloom post process.
 ![img](/docs/04_ProfilingAndBloom.png)
-* Scene management
-* Scene load and save from/to file
-* PBR
-* GLTF model loading
-* System memory tracker
-* Gpu memory tracker
-* Shader reflection
-* Shader include libraries
-* Hot shader reload
-* Compute shaders
+* Scene management.
+* Scene load and save from/to file.
+* PBR.
+* GLTF model loading.
+* System memory tracker.
+* Gpu memory tracker.
+* Shader reflection.
+* Shader include libraries.
+* Hot shader reload.
+* Compute shaders.
 ![img](/docs/05_GPUParticles.png)
-* CPU and GPU profiling
-* Tags for external GPU profiling tools (NSight, RenderDoc, PIX...)
+* CPU and GPU profiling.
+* Tags for external GPU profiling tools (NSight, RenderDoc, PIX...).
 ![img](/docs/06_NSight.png)
-* Debug render primitives
-* CVar system
-* Cfg files
+* Debug render primitives.
+* CVar system.
+* Cfg files.
+
 Latest features:
-* IBL
-* RenderAPI layer abstraction. Currently using just Vulkan.
-* Compute shaders support by new render api layer.
+* IBL.
+* RenderSystem layer. Renderers or the render processes don't need to know about render pipelines or handle the render state. Now the top-level render engine is more OpenGL like.
+* Render API layer abstraction used by RenderSystem.
+* Compute shaders support by new render api layer and render system layer.
 
 
 ## First steps
@@ -54,35 +56,35 @@ To see all the command functions, run this: `cmdlist`.
 
 ## Future work
 Here are some features that I will develop from now on:
-* Forward lighting+
-* Material system
-* DX12 backend
-* HBAO
-* SSR
-* Skinning animation
-* Capsule shadows
-* Cascaded shadows
-* Mesh LODs
-* CPU culling
-* GPU culling
-* Job system
-* Instance meshes
-* Tesselation
-* Terrains
-* Lib project for custom data containers (wip)
-* CMake instead of premake to generate the project
-* CTest
+* Forward lighting+.
+* Material system.
+* DX12 backend.
+* HBAO.
+* SSR.
+* Skinning animation.
+* Capsule shadows.
+* Cascaded shadows.
+* Mesh LODs.
+* CPU culling.
+* GPU culling.
+* Job system.
+* Instance meshes.
+* Tesselation.
+* Terrains.
+* Use custom data containers instead of STL.
+* CMake instead of premake to generate the project.
+* CTest.
 * ...
 
 ## Dependencies
-* Vulkan API (https://www.vulkan.org/)
-* glm (included in vulkan)
-* SDL2 (included in vulkan)
-* shaderc (included in vulkan)
-* vma (https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)
-* yaml-cpp (https://github.com/jbeder/yaml-cpp)
-* imgui (https://github.com/ocornut/imgui)
-* cgltf (https://github.com/jkuhlmann/cgltf)
-* stb_image (https://github.com/nothings/stb)
-* vkbootstrap (https://github.com/charles-lunarg/vk-bootstrap)
-* premake (https://premake.github.io/)
+* Vulkan API (https://www.vulkan.org/).
+* glm (included in vulkan).
+* SDL2 (included in vulkan).
+* shaderc (included in vulkan).
+* vma (https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator).
+* yaml-cpp (https://github.com/jbeder/yaml-cpp).
+* imgui (https://github.com/ocornut/imgui).
+* cgltf (https://github.com/jkuhlmann/cgltf).
+* stb_image (https://github.com/nothings/stb).
+* vkbootstrap (https://github.com/charles-lunarg/vk-bootstrap).
+* premake (https://premake.github.io/).
