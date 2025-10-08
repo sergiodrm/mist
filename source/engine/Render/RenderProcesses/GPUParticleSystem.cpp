@@ -10,8 +10,9 @@
 #include "Core/SystemMemory.h"
 #include "../VulkanRenderEngine.h"
 #include "RenderSystem/RenderSystem.h"
+#include "RenderSystem/TextureLoader.h"
 
-#define PARTICLE_COUNT 512 * 256
+#define PARTICLE_COUNT 512 * 512
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
 
 namespace Mist
@@ -75,6 +76,8 @@ namespace Mist
 		// Fill particles
 		ResetParticles(device);
 
+		rendersystem::textureloader::LoadTextureFromFile(&m_circleGradientTexture, renderSystem->GetDevice(), cAssetPath("textures/circlegradient.jpg"));
+
 #if 0
 		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), &m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
 		m_circleGradientTexture->CreateView(context, tViewDescription());
@@ -123,12 +126,12 @@ namespace Mist
 		{
 			params.MovementMode = m_flags & GPU_PARTICLES_REPULSE ? 1 : -1;
 		}
-		//frameContext.GlobalBuffer->SetUniform(context, "GPUParticles", &params, sizeof(ParameterUBO));
-		check(false);
+		m_params = params;
 
 		if (m_flags & GPU_PARTICLES_RESET_PARTICLES)
 		{
 			m_flags &= ~GPU_PARTICLES_RESET_PARTICLES;
+			renderSystem->GetDevice()->WaitIdle();
 			ResetParticles(renderSystem->GetDevice());
 		}
 	}
@@ -136,6 +139,14 @@ namespace Mist
 	void GPUParticleSystem::Dispatch(rendersystem::RenderSystem* renderSystem)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDispatch);
+
+		UpdateBuffers(renderSystem);
+
+		renderSystem->ClearState();
+		renderSystem->SetShader(m_computeShader);
+		renderSystem->BindUAV("u_particles", m_particlesBuffer);
+		renderSystem->SetShaderProperty("u_movParams", &m_params, sizeof(ParameterUBO));
+		renderSystem->Dispatch(PARTICLE_COUNT / 256, 1, 1);
 #if 0
 		CommandList* commandList = context.CmdList;
 
@@ -179,16 +190,22 @@ namespace Mist
 	void GPUParticleSystem::Draw(rendersystem::RenderSystem* renderSystem)
 	{
 		CPU_PROFILE_SCOPE(ParticlesDraw);
-		return;
         
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
 			renderSystem->SetRenderTarget(m_renderTarget);
+			renderSystem->ClearColor();
+			renderSystem->SetViewport(m_renderTarget->m_info.GetViewport());
+			renderSystem->SetScissor(m_renderTarget->m_info.GetScissor());
+			renderSystem->SetBlendEnable(true);
 			renderSystem->SetShader(m_graphicsShader);
 			renderSystem->SetVertexBuffer(m_particlesBuffer);
+			renderSystem->SetPrimitive(render::PrimitiveType_PointList);
 			
 			renderSystem->SetTextureSlot("u_gradientTex", m_circleGradientTexture);
 			renderSystem->Draw(m_particleCount);
+			renderSystem->ClearState();
+			renderSystem->SetDefaultGraphicsState();
 		}
 		
 		if (m_flags & GPU_PARTICLES_SHOW_RT)
@@ -206,6 +223,7 @@ namespace Mist
 	{
 		m_renderTarget = nullptr;
 		m_particlesBuffer = nullptr;
+		m_circleGradientTexture = nullptr;
 		renderSystem->DestroyShader(&m_graphicsShader);
 		renderSystem->DestroyShader(&m_computeShader);
 	}

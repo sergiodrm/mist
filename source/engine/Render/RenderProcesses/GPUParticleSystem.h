@@ -58,7 +58,6 @@ namespace Mist
 
 	private:
 		rendersystem::ShaderProgram* m_computeShader;
-		VkDescriptorSet m_singleBufferDescriptorSet;
 		render::BufferHandle m_particlesBuffer;
 		render::TextureHandle m_circleGradientTexture;
 
