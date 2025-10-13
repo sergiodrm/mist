@@ -43,7 +43,7 @@ namespace Mist
 
 	bool FileSystem::Mkdir(const char* directory)
 	{
-		return mkdir(directory) != 0;
+		return _mkdir(directory) != 0;
 	}
 
 	bool FileSystem::ReadFile(const char* filename, tDynArray<uint32_t>& data)
@@ -218,27 +218,27 @@ namespace Mist
 		return Result_Ok;
 	}
 
-	uint32_t cFile::Read(void* out, uint32_t bufferSize, uint32_t elementSize, uint32_t elementCount)
+	size_t cFile::Read(void* out, size_t bufferSize, size_t elementSize, size_t elementCount)
 	{
 		check(m_id);
 		FILE* f = (FILE*)m_id;
-		return (uint32_t)fread_s(out, bufferSize, elementSize, elementCount, f);
+		return fread_s(out, bufferSize, elementSize, elementCount, f);
 	}
 
-	uint32_t cFile::Write(const void* data, uint32_t bufferSize)
+	size_t cFile::Write(const void* data, size_t bufferSize)
 	{
 		check(m_id);
 		FILE* f = (FILE*)m_id;
-		return (uint32_t)fwrite(data, 1, bufferSize, f);
+		return fwrite(data, 1, bufferSize, f);
 	}
 
-	uint32_t cFile::GetContentSize() const
+	size_t cFile::GetContentSize() const
 	{
 		check(m_id);
 		FILE* f = (FILE*)m_id;
 		size_t c = ftell(f);
 		fseek(f, 0L, SEEK_END);
-		uint32_t s = (uint32_t)ftell(f);
+		size_t s = ftell(f);
 		fseek(f, 0L, (int)c);
 		check(ftell(f) == c);
 		return s;
@@ -257,9 +257,9 @@ namespace Mist
 			return;
 		}
 
-		uint32_t size = file.GetContentSize()+1;
+		size_t size = file.GetContentSize()+1;
 		char* bf = _new char[size];
-		uint32_t r = file.Read(bf, size, 1, size);
+		size_t r = file.Read(bf, size, 1, size);
 		// size is the content size plus one, so r must be least than size.
 		check(r && r < size);
 		bf[r] = 0;
@@ -285,9 +285,9 @@ namespace Mist
 		const char* v = nullptr;
 		if (FindValue(key, v))
 		{
-			if (!stricmp(v, "true"))
+			if (!_stricmp(v, "true"))
 				value = true;
-			else if (!stricmp(v, "false"))
+			else if (!_stricmp(v, "false"))
 				value = false;
 			else
 				value = atoi(v) != 0;
@@ -302,7 +302,7 @@ namespace Mist
         const char* v = nullptr;
         if (FindValue(key, v))
         {
-            value = atof(v);
+            value = limits_cast<float>(atof(v));
             return true;
         }
         value = defaultValue;
@@ -407,7 +407,7 @@ namespace Mist
 	const char* cAssetPath::GetAssetPath() const
 	{
 		size_t l = strlen(CVar_Workspace.Get())-1;
-		check(!strnicmp(CVar_Workspace.Get(), m_path, l));
+		check(!_strnicmp(CVar_Workspace.Get(), m_path, l));
 		const char* s = &m_path[l+1];
 		check(*s);
 		return s;

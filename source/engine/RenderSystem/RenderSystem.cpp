@@ -275,7 +275,6 @@ namespace rendersystem
         }
         {
             m_presentRts.resize(swapchain.images.size());
-            char buff[256];
             for (uint32_t i = 0; i < (uint32_t)swapchain.images.size(); ++i)
             {
                 render::TextureHandle texture = swapchain.images[i];
@@ -284,7 +283,7 @@ namespace rendersystem
                 desc.debugName = "RT_PRESENT";
                 m_presentRts[i] = m_device->CreateRenderTarget(desc);
             }
-            m_frameSyncronization.Init(m_device, swapchain.images.size());
+            m_frameSyncronization.Init(m_device, Mist::limits_cast<uint32_t>(swapchain.images.size()));
         }
         {
             render::TextureDescription desc;
@@ -437,10 +436,10 @@ namespace rendersystem
         SetFillMode();
         SetCullMode();
         SetViewport(0.f, 0.f,
-            m_renderResolution.width,
-            m_renderResolution.height);
-		SetScissor(0.f, m_renderResolution.width,
-            0.f, m_renderResolution.height);
+            static_cast<float>(m_renderResolution.width),
+            static_cast<float>(m_renderResolution.height));
+		SetScissor(0.f, static_cast<float>(m_renderResolution.width),
+            0.f, static_cast<float>(m_renderResolution.height));
         SetPrimitive();
     }
 
@@ -1458,7 +1457,7 @@ namespace rendersystem
                     break;
                 }
                 check(format != render::Format_Undefined);
-                attributes[att.location] = { format };
+                attributes[Mist::limits_cast<uint32_t>(att.location)] = { format };
             }
 
             return render::VertexInputLayout::BuildVertexInputLayout(attributes.GetData(), attributes.GetSize());

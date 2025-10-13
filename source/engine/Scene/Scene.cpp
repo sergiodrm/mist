@@ -358,10 +358,10 @@ namespace Mist
 
 		cFile file;
 		check(file.OpenText(filepath, cFile::FileMode_Read) == cFile::Result_Ok);
-		uint32_t size = file.GetContentSize();
+		size_t size = file.GetContentSize();
 		check(size);
 		char* content = _new char[size];
-		uint32_t contentReaded = file.Read(content, size, sizeof(char), size);
+		size_t contentReaded = file.Read(content, size, sizeof(char), size);
 		file.Close();
 		check(contentReaded <= size);
 		content[contentReaded == size ? size - 1 : contentReaded] = 0;
@@ -1088,7 +1088,7 @@ namespace Mist
 						{
 							for (index_t m = 0; m < m_drawListArray.GetSize(); ++m)
 							{
-								index_t materialIndex = mesh.primitiveArray[k].Material - model.m_materials.GetData();
+								index_t materialIndex = limits_cast<index_t>(mesh.primitiveArray[k].Material - model.m_materials.GetData());
 
 								// the transform index match with the node index inside model node graph
 								m_drawListArray[m].SubmitRenderPrimitive(&mesh, k, transformGlobalIndex + j, materialIndex + materialGlobalIndex);

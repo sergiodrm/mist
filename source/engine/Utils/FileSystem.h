@@ -51,7 +51,7 @@ namespace Mist
 		{
 			check(!strchr(path, ':') && "Absolute path not allowed.");
 			// check if path is already processed to our workspace.
-			if (!strnicmp(CVar_Workspace.Get(), path, strlen(CVar_Workspace.Get()) - 1))
+			if (!_strnicmp(CVar_Workspace.Get(), path, strlen(CVar_Workspace.Get()) - 1))
 				strcpy_s(dst, path);
 			else
 				sprintf_s(dst, "%s/%s", CVar_Workspace.Get(), path);
@@ -100,9 +100,9 @@ namespace Mist
 		eResult Open(const char* filepath, const char* mode);
 		eResult Close();
 
-		uint32_t Read(void* out, uint32_t bufferSize, uint32_t elementSize, uint32_t elementCount);
-		uint32_t Write(const void* data, uint32_t bufferSize);
-		uint32_t GetContentSize() const;
+		size_t Read(void* out, size_t bufferSize, size_t elementSize, size_t elementCount);
+		size_t Write(const void* data, size_t bufferSize);
+		size_t GetContentSize() const;
 	private:
 		void* m_id{ nullptr };
 	};
