@@ -83,9 +83,8 @@ One powerfull feature is hot shader reloading. To reload shaders in runtime we c
 ## Samples
 ![img](/docs/ssao.gif)
 ![img](/docs/02_SceneEditor.png)
-![img](/docs/03_ShadowMapDebug.png)
+<!--![img](/docs/03_ShadowMapDebug.png)-->
 ![img](/docs/shadow_mapping.gif)
-![img](/docs/shadowmapping.gif)
 ![img](/docs/04_ProfilingAndBloom.png)
 ![img](/docs/05_GPUParticles.png)
 ![img](/docs/06_NSight.png)
