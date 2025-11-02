@@ -40,11 +40,20 @@ namespace Mist
 
 		struct tLineBatch
 		{
-			static constexpr index_t MaxLines = 500;
+			static constexpr index_t MaxLines = 2700;
 			tStaticArray<tLineVertex, MaxLines> LineArray;
+			uint32_t LineArrayOverflow = 0;
 			render::BufferHandle vertexBuffer;
 
-			inline void Reset() { LineArray.Clear(); }
+			inline void Reset() 
+			{ 
+				if (LineArrayOverflow)
+				{
+					logferror("DebugRender_LineBatch: too many lines (Requested: %d / BatchSize: %d)\n", LineArray.GetSize() + LineArrayOverflow, MaxLines);
+					LineArrayOverflow = 0; 
+				}
+				LineArray.Clear();
+			}
 
 			void Init()
 			{
@@ -62,7 +71,7 @@ namespace Mist
 				if (LineArray.GetSize() < tLineBatch::MaxLines)
 					LineArray.Push({ glm::vec4(pos, 1.f), glm::vec4(color, 1.f) });
 				else
-					logferror("DebugRender line overflow. Increase MaxLines (Current: %u)\n", tLineBatch::MaxLines);
+					++LineArrayOverflow;
 			}
 
 			void PushLine(const glm::vec3& init, const glm::vec3& end, const glm::vec3& color)
@@ -321,7 +330,7 @@ namespace Mist
 
 			if (processQuad)
 			{
-				render::Extent2D extent = g_render->GetBackbufferResolution();
+				render::Extent2D extent = rt->m_info.extent;
 				const glm::mat4 orthoproj = glm::ortho(0.f, (float)extent.width, 0.f, (float)extent.height, -1.f, 1.f);
 				g_render->SetShader(DebugRenderPipeline.m_quadShader);
 				g_render->SetVertexBuffer(DebugRenderPipeline.QuadBatch.vertexBuffer);
