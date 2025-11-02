@@ -30,7 +30,7 @@ do \
 
 #define unreachable_code() check(false && "Unreachable code")
 
-#define MIST_TRACY_ENABLE
+//#define MIST_TRACY_ENABLE
 #ifdef MIST_TRACY_ENABLE
 
 #include "tracy/public/tracy/Tracy.hpp"

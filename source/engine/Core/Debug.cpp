@@ -14,7 +14,6 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
 #include "RenderSystem/RenderSystem.h"
-#include "glm/ext/quaternion_common.inl"
 
 
 #pragma comment(lib,"Dbghelp.lib")
