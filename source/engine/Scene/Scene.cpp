@@ -1009,25 +1009,6 @@ namespace Mist
 			ImGui::PopStyleColor();
 			ImGui::EndChild();
 		}
-		if (ImGui::TreeNode("Render transforms"))
-		{
-			for (uint32_t i = 0; i < m_renderTransforms.GetSize(); ++i)
-			{
-				ImGui::Text("%3d", i);
-				for (uint32_t row = 0; row < 4; ++row)
-					ImGui::Text("%6.3f, %6.3f, %6.3f, %6.3f", m_renderTransforms[i][0][row], m_renderTransforms[i][1][row], m_renderTransforms[i][2][row], m_renderTransforms[i][3][row]);
-			}
-			ImGui::TreePop();
-		}
-		if (ImGui::TreeNode("Render passes"))
-		{
-			for (uint32_t i = 0; i < m_drawListArray.GetSize(); ++i)
-			{
-				const tDrawList& list = m_drawListArray[i];
-				ImGui::Text("Render flags: %4d | Render items: %4d/%4d", list.RenderFlags, list.Items.GetSize(), list.Items.GetReservedSize());
-			}
-			ImGui::TreePop();
-		}
 		if (ImGui::TreeNode("IBL cubemap"))
 		{
 			if (ImGui::Button("Reload IBL"))
