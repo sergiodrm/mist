@@ -2,14 +2,14 @@
 #include "Application/Event.h"
 #include <windows.h>
 #include <cstdint>
-#include <imgui/imgui.h>
-#include "SDL_scancode.h"
-#include "SDL_keyboard.h"
+#include "imgui/imgui.h"
+#include "SDL2/SDL_scancode.h"
+#include "SDL2/SDL_keyboard.h"
 #include "Core/Debug.h"
-#include "SDL_mouse.h"
-#include "SDL_events.h"
+#include "SDL2/SDL_mouse.h"
+#include "SDL2/SDL_events.h"
 #include "Application/CmdParser.h"
-#include "imgui_impl_sdl2.h"
+#include "imgui/backends/imgui_impl_sdl2.h"
 #include "Core/Logger.h"
 
 namespace Mist

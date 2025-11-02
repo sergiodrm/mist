@@ -1,7 +1,7 @@
 #include "GPUParticleSystem.h"
 #include <random>
 #include <imgui/imgui.h>
-#include "SDL_stdinc.h"
+#include "SDL2/SDL_stdinc.h"
 #include "Render/DebugRender.h"
 #include "Core/Debug.h"
 #include "Application/Application.h"

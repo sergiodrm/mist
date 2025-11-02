@@ -5,7 +5,7 @@
 #include "Application/CmdParser.h"
 #include "Utils/FileSystem.h"
 #include "Event.h"
-#include "SDL_events.h"
+#include "SDL2/SDL_events.h"
 
 extern Mist::tApplication* CreateGameApplication();
 extern void DestroyGameApplication(Mist::tApplication*);

@@ -1,10 +1,12 @@
 #pragma once
 
+#include <atomic>
 #include <stdarg.h>
 #include <stdint.h>
 #include <cstring>
 #include <string.h>
 #include <vector>
+#include <array>
 #include <unordered_map>
 #include <string>
 #include <vcruntime_string.h>

@@ -1,11 +1,13 @@
 #pragma once
 
+#include "version.h"
+
 #ifndef RBE_VK
-#error .
+#error Currently render backend only supports Vulkan API. Define RBE_VK.
 #endif
 
 #ifdef RBE_VK
-#include <vk_mem_alloc.h>
+#include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 #endif
 

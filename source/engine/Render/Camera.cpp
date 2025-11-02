@@ -5,7 +5,7 @@
 
 #include <imgui/imgui.h>
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include "Core/Logger.h"
 #include "Core/Debug.h"
 #include "Utils/GenericUtils.h"
