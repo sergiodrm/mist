@@ -9,9 +9,10 @@ find_package(Vulkan REQUIRED COMPONENTS SPIRV-Tools shaderc_combined)
 set(CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED True)
 
-#list(APPEND extra_includes "${PROJECT_SOURCE_DIR}/source/engine")
-
 add_subdirectory(source/thirdparty)
 add_subdirectory(source/engine)
 add_subdirectory(source/test)
+
+set_target_properties(mist_engine PROPERTIES FOLDER "Engine")
+set_target_properties(sandbox PROPERTIES FOLDER "Sandbox")
 

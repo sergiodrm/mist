@@ -2,7 +2,6 @@
 set(THIRDPARTY_DIR "${CMAKE_SOURCE_DIR}/source/thirdparty")
 set(SDL2_LIBRARY "$ENV{VULKAN_SDK}/Lib/SDL2.lib")
 
-
 list(APPEND SPIRV_CROSS_OPT_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-c.lib")
 list(APPEND SPIRV_CROSS_OPT_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-core.lib")
 list(APPEND SPIRV_CROSS_OPT_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-cpp.lib")
@@ -43,23 +42,14 @@ file(GLOB VKBOOTSTRAP_SOURCES
 	${THIRDPARTY_DIR}/vkbootstrap/*.cpp
 	)
 
-# fetch yamp-cpp
-include(FetchContent)
-
-FetchContent_Declare(
-  yaml-cpp
-  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-  GIT_TAG a83cd31
-)
-FetchContent_MakeAvailable(yaml-cpp)
 
 option(RBE_VK "Use Vulkan API" ON)
 
 configure_file(version.h.in version.h)
 
-include_directories(${THIRDPARTY_DIR}/yaml-cpp)
-
-
+if (RBE_VK)
+	add_compile_definitions(RBE_VK)
+endif(RBE_VK)
 add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 add_library(mist_engine ${ENGINE_SOURCES} ${IMGUI_SOURCES} ${VKBOOTSTRAP_SOURCES})
 set_target_properties(mist_engine PROPERTIES LINKER_LANGUAGE CXX)
@@ -80,13 +70,6 @@ target_link_libraries(mist_engine
 	debug ${SPIRV_CROSS_DEBUG_LIBS}
 	optimized ${SPIRV_CROSS_OPT_LIBS}
 )
-
-message("Vulkan directory -> $ENV{VULKAN_SDK}")
-message("Linking vulkan lib ->${Vulkan_LIBRARY}")
-message("Linking sdl2 lib ->${SDL2_LIBRARY}")
-message("Using vulkan include dir -> ${Vulkan_INCLUDE_DIRS}")
-message("spirv-cross opt -> ${SPIRV_CROSS_OPT_LIBS}")
-message("spirv-cross debug -> ${SPIRV_CROSS_DEBUG_LIBS}")
 
 target_include_directories(mist_engine
 		PUBLIC 
