@@ -214,6 +214,25 @@ namespace Mist
 			DebugRenderPipeline.LineBatch.PushLine(init, end, color);
 		}
 
+		void DrawBox(const glm::vec3& min, const glm::vec3& max, const glm::vec3& color)
+		{
+			// Bottom
+			DrawLine3D({ min.x, min.y, min.z }, { max.x, min.y, min.z }, color);
+			DrawLine3D({ min.x, min.y, min.z }, { min.x, min.y, max.z }, color);
+			DrawLine3D({ max.x, min.y, max.z }, { min.x, min.y, max.z }, color);
+			DrawLine3D({ max.x, min.y, max.z }, { max.x, min.y, min.z }, color);
+			// Top
+			DrawLine3D({ min.x, max.y, min.z }, { max.x, max.y, min.z }, color);
+			DrawLine3D({ min.x, max.y, min.z }, { min.x, max.y, max.z }, color);
+			DrawLine3D({ max.x, max.y, max.z }, { min.x, max.y, max.z }, color);
+			DrawLine3D({ max.x, max.y, max.z }, { max.x, max.y, min.z }, color);
+			// Link bottom to top
+			DrawLine3D({ min.x, min.y, min.z }, { min.x, max.y, min.z }, color);
+			DrawLine3D({ max.x, min.y, min.z }, { max.x, max.y, min.z }, color);
+			DrawLine3D({ min.x, min.y, max.z }, { min.x, max.y, max.z }, color);
+			DrawLine3D({ max.x, min.y, max.z }, { max.x, max.y, max.z }, color);
+		}
+
 		void DrawAxis(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl)
 		{
 			glm::mat4 tras = glm::translate(glm::mat4{ 1.f }, pos);
