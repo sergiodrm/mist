@@ -4,8 +4,8 @@
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
 #include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_vulkan.h>
+#include <imgui/backends/imgui_impl_sdl2.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 #include "Core/Console.h"
 #include "Utils/FileSystem.h"
 #include "Render/RendererBase.h"
@@ -175,11 +175,9 @@ namespace rendersystem
                     .Device = m_device->GetContext().device,
                     .Queue = m_device->GetCommandQueue(render::Queue_Graphics)->m_queue,
                     .DescriptorPool = m_imguiPool,
-                    .RenderPass = rt->m_renderPass,
                     .MinImageCount = 3,
                     .ImageCount = 3,
-                    .MSAASamples = VK_SAMPLE_COUNT_1_BIT,
-                    .Subpass = 0,
+                    .PipelineInfoMain = {rt->m_renderPass, 0, VK_SAMPLE_COUNT_1_BIT }, // {RenderPass, Subpass, MSAASamples}
                 };
                 ImGui_ImplVulkan_Init(&initInfo);
 #if 0
