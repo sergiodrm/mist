@@ -1,0 +1,6 @@
+
+
+#define mist_engine_VERSION_MAJOR @mist_engine_VERSION_MAJOR@
+#define mist_engine_VERSION_MINOR @mist_engine_VERSION_MINOR@
+
+#cmakedefine RBE_VK
