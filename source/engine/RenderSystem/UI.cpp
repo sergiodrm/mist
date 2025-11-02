@@ -278,6 +278,7 @@ namespace rendersystem
 
         void Show()
         {
+            CPU_PROFILE_SCOPE(UIProcessDeferred);
             if (ImGui::BeginMainMenuBar())
             {
                 if (ImGui::BeginMenu("Windows"))
