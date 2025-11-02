@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef RBE_VK
-#include <vk_mem_alloc.h>
+#include <vma/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 #include "Utils.h"
 #endif

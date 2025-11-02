@@ -1,7 +1,5 @@
 #pragma once
 
-#include "version.h"
-
 #ifndef RBE_VK
 #error Currently render backend only supports Vulkan API. Define RBE_VK.
 #endif

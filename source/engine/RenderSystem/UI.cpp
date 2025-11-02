@@ -3,9 +3,9 @@
 #include "Render/Globals.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Application/Application.h"
-#include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_vulkan.h>
+#include <imgui/imgui.h>
+#include <imgui/backends/imgui_impl_sdl2.h>
+#include <imgui/backends/imgui_impl_vulkan.h>
 #include "Core/Console.h"
 #include "Utils/FileSystem.h"
 #include "Render/RendererBase.h"
