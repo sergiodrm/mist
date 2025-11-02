@@ -299,6 +299,8 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(CpuShadowMapping);
 		Scene* scene = GetEngine()->GetScene();
+		if (!scene)
+			return;
 		CollectLightData(*scene);
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);

@@ -62,6 +62,9 @@ namespace Mist
 	void GBuffer::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
+		const Scene* scene = GetEngine()->GetScene();
+		if (!scene)
+			return;
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 		rs->SetRenderTarget(m_renderTarget);
@@ -72,7 +75,7 @@ namespace Mist
 		rs->SetStencilEnable(true);
 		rs->SetStencilMask(0xff, 0xff, 1);
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
-		GetEngine()->GetScene()->Draw(rs, RenderFlags_Fixed | RenderFlags_Emissive);
+		scene->Draw(rs, RenderFlags_Fixed | RenderFlags_Emissive);
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 	}

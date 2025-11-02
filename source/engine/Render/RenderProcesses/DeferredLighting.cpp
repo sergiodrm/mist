@@ -117,118 +117,127 @@ namespace Mist
 
 	void DeferredLighting::Draw(rendersystem::RenderSystem* rs)
 	{
+		Scene* scene = GetEngine()->GetScene();
+
         const GBuffer* gbuffer = (const GBuffer*)GetRenderer()->GetRenderProcess(RENDERPROCESS_GBUFFER);
         check(gbuffer);
 		const SSAO* ssao = (const SSAO*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SSAO);
 		check(ssao);
         render::TextureHandle depthTexture = gbuffer->m_renderTarget->m_description.depthStencilAttachment.texture;
-		Scene* scene = GetEngine()->GetScene();
-		check(scene);
+
+		if (scene)
 		{
-			CPU_PROFILE_SCOPE(DeferredLighting);
-			rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
-
-			// Composition
-			rs->BeginMarker("Deferred lighting");
-			rs->ClearState();
-			rs->SetDefaultGraphicsState();
-			rs->SetShader(shader);
-			rs->SetRenderTarget(m_lightingOutput);
-			rs->SetDepthEnable(true, false);
-			
-			///////////////////////////////////////////////////////////commandList->ClearColor();
-
-			// GBUFFER textures
-			rs->SetTextureSlot("u_GBufferPosition", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture);
-			rs->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
-			rs->SetTextureSlot("u_GBufferAlbedo", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
-			rs->SetTextureSlot("u_GBufferEmissive", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_EMISSIVE].texture);
-			rs->SetTextureSlot("u_GBufferDepth", *gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
-
-			// SSAO textures
-			rs->SetTextureSlot("u_ssao", ssao->GetRenderTarget()->m_description.colorAttachments[0].texture);
-
-			// ShadowMapping textures
-			const ShadowMapProcess* shadowMapping = (const ShadowMapProcess*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
-			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
-			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-				shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->m_description.depthStencilAttachment.texture;
-			rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
-
-			// Shadow map lights matrix projection
-			tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
-			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-				shadowMapMatrices[i] = shadowMapping->GetPipeline().GetLightVP(i);
-			rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
-
-			render::TextureHandle brdf = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().brdf : nullptr;
-			render::TextureHandle irradiance = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().irradiance : scene->GetSkyboxTexture();
-			render::TextureHandle specular = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().specular : scene->GetSkyboxTexture();
-
-			const EnvironmentData& env = scene->GetEnvironmentData();
-			rs->SetShaderProperty("u_env", &env, sizeof(env));
-			rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
-
-			rs->SetTextureSlot("u_irradianceMap", irradiance);
-			rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-				render::SamplerAddressMode_ClampToEdge,
-				render::SamplerAddressMode_ClampToEdge,
-				render::SamplerAddressMode_ClampToEdge);
-
-			if (brdf)
 			{
-				rs->SetTextureSlot("u_brdfMap", brdf);
-				rs->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+				CPU_PROFILE_SCOPE(DeferredLighting);
+				rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
+
+				// Composition
+				rs->BeginMarker("Deferred lighting");
+				rs->ClearState();
+				rs->SetDefaultGraphicsState();
+				rs->SetShader(shader);
+				rs->SetRenderTarget(m_lightingOutput);
+				rs->SetDepthEnable(true, false);
+
+				///////////////////////////////////////////////////////////commandList->ClearColor();
+
+				// GBUFFER textures
+				rs->SetTextureSlot("u_GBufferPosition", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture);
+				rs->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
+				rs->SetTextureSlot("u_GBufferAlbedo", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
+				rs->SetTextureSlot("u_GBufferEmissive", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_EMISSIVE].texture);
+				rs->SetTextureSlot("u_GBufferDepth", *gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
+
+				// SSAO textures
+				rs->SetTextureSlot("u_ssao", ssao->GetRenderTarget()->m_description.colorAttachments[0].texture);
+
+				// ShadowMapping textures
+				const ShadowMapProcess* shadowMapping = (const ShadowMapProcess*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
+				render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
+				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+					shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->m_description.depthStencilAttachment.texture;
+				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
+
+				// Shadow map lights matrix projection
+				tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
+				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+					shadowMapMatrices[i] = shadowMapping->GetPipeline().GetLightVP(i);
+				rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+
+				render::TextureHandle brdf = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().brdf : nullptr;
+				render::TextureHandle irradiance = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().irradiance : scene->GetSkyboxTexture();
+				render::TextureHandle specular = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().specular : scene->GetSkyboxTexture();
+
+				const EnvironmentData& env = scene->GetEnvironmentData();
+				rs->SetShaderProperty("u_env", &env, sizeof(env));
+				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+
+				rs->SetTextureSlot("u_irradianceMap", irradiance);
+				rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge);
+
+				if (brdf)
+				{
+					rs->SetTextureSlot("u_brdfMap", brdf);
+					rs->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
+				}
+
+				rs->SetTextureSlot("u_prefilterMap", specular);
+				rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
+
+				rs->DrawFullscreenQuad();
+				rs->EndMarker();
 			}
 
-			rs->SetTextureSlot("u_prefilterMap", specular);
-			rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-				render::SamplerAddressMode_ClampToEdge, 
-				render::SamplerAddressMode_ClampToEdge, 
-				render::SamplerAddressMode_ClampToEdge);
+			// SKY
+			{
+				check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
+				rs->BeginMarker("Sky");
 
-			rs->DrawFullscreenQuad();
-			rs->EndMarker();
+				rs->SetShader(m_skyboxShader);
+				rs->SetStencilEnable(true);
+				rs->SetStencilMask(0xff, 0x00, 0x00);
+				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
+				rs->SetDepthEnable(false, false);
+				rs->SetCullMode(render::RasterCullMode_Front);
+
+				rs->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
+				rs->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
+
+				glm::mat4 view = GetCameraData()->View;
+				view[3] = { 0.f, 0.f, 0.f, 1.f};
+				glm::mat4 proj = GetCameraData()->Projection;
+				CameraData cameraData;
+				cameraData.Set(view, proj);
+				rs->SetShaderProperty("u_camera", &cameraData, sizeof(CameraData));
+
+				rs->SetTextureSlot("u_cubemap", scene->GetSkyboxTexture());
+
+				rs->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
+				rs->ClearState();
+				rs->SetDefaultGraphicsState();
+
+				rs->EndMarker();
+			}
+
+			// BLOOM
+			{
+				m_bloomEffect.m_composeTarget = m_lightingOutput;
+				m_bloomEffect.m_inputTarget = m_lightingOutput->m_description.colorAttachments[0].texture;
+				m_bloomEffect.m_blendTexture = gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture; //temp, TODO: need a default texture for dummy slot.
+				m_bloomEffect.Draw(rs);
+			}
 		}
 
-		{
-			check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
-			rs->BeginMarker("Sky");
-
-			rs->SetShader(m_skyboxShader);
-			rs->SetStencilEnable(true);
-			rs->SetStencilMask(0xff, 0x00, 0x00);
-			rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
-			rs->SetDepthEnable(false, false);
-			rs->SetCullMode(render::RasterCullMode_Front);
-
-			rs->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
-			rs->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
-
-			glm::mat4 view = GetCameraData()->View;
-			view[3] = { 0.f, 0.f, 0.f, 1.f};
-			glm::mat4 proj = GetCameraData()->Projection;
-			CameraData cameraData;
-			cameraData.Set(view, proj);
-            rs->SetShaderProperty("u_camera", &cameraData, sizeof(CameraData));
-
-            rs->SetTextureSlot("u_cubemap", scene->GetSkyboxTexture());
-
-			rs->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
-			rs->ClearState();
-			rs->SetDefaultGraphicsState();
-
-			rs->EndMarker();
-		}
-
-		m_bloomEffect.m_composeTarget = m_lightingOutput;
-		m_bloomEffect.m_inputTarget = m_lightingOutput->m_description.colorAttachments[0].texture;
-		m_bloomEffect.m_blendTexture = gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture; //temp, TODO: need a default texture for dummy slot.
-		m_bloomEffect.Draw(rs);
-
+		// HDR
 		{
 			CPU_PROFILE_SCOPE(CpuHDR);
 			rs->BeginMarker("HDR");
