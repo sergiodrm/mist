@@ -66,7 +66,7 @@ namespace Mist
 
 	glm::vec3 math::GetDir(const glm::mat4& transform)
 	{
-		return transform[2];
+		return GetForwardFromTransform(transform);
 	}
 
 	glm::vec3 math::GetPos(const glm::mat4& transform)

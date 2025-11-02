@@ -18,6 +18,10 @@ namespace Mist
 		inline float Lerp(float a, float b, float f) { return a + f * (b - a); }
 		template <typename T>
 		inline T Clamp(const T& v, const T& _min, const T& _max) { return v > _max ? _max : (v < _min ? _min : v); }
+
+		inline glm::vec3 ComposeMinVector(const glm::vec3& a, const glm::vec3& b) { return { __min(a.x, b.x), __min(a.y, b.y), __min(a.z, b.z) }; }
+		inline glm::vec3 ComposeMaxVector(const glm::vec3& a, const glm::vec3& b) { return { __max(a.x, b.x), __max(a.y, b.y), __max(a.z, b.z) }; }
+
 		glm::vec3 ToRot(const glm::vec3& direction);
 		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
 		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
@@ -27,6 +31,22 @@ namespace Mist
 		glm::vec3 GetDir(const glm::mat4& transform);
 		glm::vec3 GetPos(const glm::mat4& transform);
 		void DecomposeMatrix(const glm::mat4& transform, glm::vec3& pos, glm::vec3& rot, glm::vec3& scale);
+
+		inline glm::vec3 GetRightFromTransform(const glm::mat4& transform) { return glm::vec3(transform[0]); }
+		inline glm::vec3 GetUpFromTransform(const glm::mat4& transform) { return glm::vec3(transform[1]); }
+		inline glm::vec3 GetForwardFromTransform(const glm::mat4& transform) { return glm::vec3(transform[2]); }
+
+		struct Plane
+		{
+			float distance;
+			glm::vec3 normal;
+
+			Plane() {}
+			Plane(const glm::vec3& _point, const glm::vec3& _normal) : normal(glm::normalize(_normal)), distance(glm::dot(normal, _point)) {}
+
+			float GetSignedDistance(const glm::vec3& point) const { return glm::dot(normal, point) - distance; }
+		};
+
 	}
 
 	void PrintMat(const glm::mat4& mat);
