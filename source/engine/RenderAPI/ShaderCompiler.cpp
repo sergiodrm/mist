@@ -17,11 +17,16 @@
 #define shaderlabel "[shaders] "
 #define shaderlog(fmt) loginfo(shaderlabel fmt)
 #define shaderlogf(fmt, ...) logfinfo(shaderlabel fmt, __VA_ARGS__)
-#define profile_shader_scope(scope_name, msg) PROFILE_SCOPE_LOG(scope_name, msg)
-#define profile_shader_scope_f(scope_name, fmt, ...) PROFILE_SCOPE_LOGF(scope_name, fmt, __VA_ARGS__)
 #else
 #define shaderlog(fmt) DUMMY_MACRO
 #define shaderlogf(fmt, ...) DUMMY_MACRO
+#endif
+
+#define SHADER_DUMP_BUILD_TIMES
+#ifdef SHADER_DUMP_BUILD_TIMES
+#define profile_shader_scope(scope_name, msg) PROFILE_SCOPE_LOG(scope_name, msg)
+#define profile_shader_scope_f(scope_name, fmt, ...) PROFILE_SCOPE_LOGF(scope_name, fmt, __VA_ARGS__)
+#else
 #define profile_shader_scope(scope_name, msg) DUMMY_MACRO
 #define profile_shader_scope_f(scope_name, fmt, ...) DUMMY_MACRO
 #endif
