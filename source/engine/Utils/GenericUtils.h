@@ -42,7 +42,7 @@ namespace Mist
 			glm::vec3 normal;
 
 			Plane() {}
-			Plane(const glm::vec3& _point, const glm::vec3& _normal) : normal(glm::normalize(_normal)), distance(glm::dot(normal, _point)) {}
+			Plane(const glm::vec3& _point, const glm::vec3& _normal) : normal(glm::normalize(_normal)), distance(glm::dot(_normal, _point)) {}
 
 			float GetSignedDistance(const glm::vec3& point) const { return glm::dot(normal, point) - distance; }
 		};
