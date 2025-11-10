@@ -746,7 +746,7 @@ namespace Mist
 		const cMesh* lastMesh = nullptr;
 		uint32_t nodeCount = GetRenderObjectCount();
 		index_t renderTransformOffset = 0;
-		index_t materialOffset = 0;
+
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			sRenderObject renderObject = i;
@@ -771,8 +771,6 @@ namespace Mist
 						if (primitive.RenderFlags & renderFlags)
 						{
 							check(primitive.Material);
-							index_t offset = limits_cast<index_t>(primitive.Material - model.m_materials.GetData());
-							check(materialOffset + offset < m_materials.GetSize());
 							primitive.Material->BindTextures(renderSystem);
 							sMaterialRenderData materialData = primitive.Material->GetRenderData();
 							renderSystem->SetShaderProperty("u_material", &materialData, sizeof(materialData));
@@ -872,7 +870,7 @@ namespace Mist
 					sprintf_s(buff, "##TransformComponent%u", i);
 					if (ImGui::TreeNode(buff, "Transform component"))
 					{
-						TransformComponent& t = m_transformComponents[i];
+						TransformComponent t = m_transformComponents[i];
 						ImGui::Columns(2);
 						ImGui::Text("Position");
 						ImGui::NextColumn();
@@ -890,7 +888,7 @@ namespace Mist
 						ImGui::TreePop();
 
 						if (dirty)
-							MarkAsDirty(i);
+							SetTransform(i, t);
 					}
 					sprintf_s(buff, "##LightComponent%u", i);
 					if (m_lightComponentMap.contains(i))
@@ -955,6 +953,21 @@ namespace Mist
 							ImGui::Text("Model name: %s", m_models[meshComp.MeshIndex].GetName());
 							ImGui::TreePop();
 						}
+					}
+
+					if (m_cameraComponentMap.contains(i))
+					{
+						sprintf_s(buff, "##CameraComponent%u", i);
+						ImGui::PushID(buff);
+						if (ImGui::TreeNode(buff, "Camera Component"))
+						{
+							CameraComponent& cc = m_cameraComponentMap[i];
+							tFrustum f = m_cameras[cc.CameraIndex].GetCamera().CalculateFrustum();
+							f.DrawDebug(glm::vec3(1,0,1));
+							m_cameras[cc.CameraIndex].GetCamera().ImGuiDraw();
+							ImGui::TreePop();
+						}
+						ImGui::PopID();
 					}
 
 					ImGui::TreePop();
