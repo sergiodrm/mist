@@ -140,43 +140,6 @@ namespace Mist
 		}
 	};
 
-	struct tViewRenderInfo
-	{
-		// View info
-		CameraData view;
-
-		// Shadow map
-		uint32_t shadowMapTexturesSlot;
-		tShadowMapData shadowMap;
-		render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
-
-		// Scene info
-		EnvironmentData environment;
-
-		uint32_t cubemapSlot;
-		const cTexture* cubemap;
-		render::TextureHandle cubemapTex;
-
-		// Render flags
-		uint16_t flags;
-	};
-
-	struct tDrawListItem
-	{
-		index_t TransformIndex = index_invalid;
-		index_t MaterialIndex = index_invalid;
-		index_t PrimitiveIndex = index_invalid;
-		const cMesh* Mesh = nullptr;
-	};
-	
-	struct tDrawList
-	{
-		uint32_t RenderFlags;
-		tFixedHeapArray<tDrawListItem> Items;
-
-		void SubmitRenderPrimitive(const cMesh* mesh, index_t primitiveIndex, index_t transformOffset, index_t materialIndex);
-	};
-
 	struct Skybox
 	{
 		enum
@@ -267,14 +230,6 @@ namespace Mist
 		bool IsDirty() const;
 		const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
 
-		void InitRenderPass();
-		void PushRenderPipeline(uint32_t pipelineFlags);
-		const tDrawList* FindRenderPipeline(uint32_t pipelineFlags) const;
-		void DestroyRenderLists();
-		void ClearDrawLists();
-
-		void RenderPipelineDraw(uint32_t pipelineFlags, index_t materialSetIndex = index_invalid, rendersystem::ShaderProgram* program = nullptr);
-
 	protected:
 		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
 		void RecalculateTransforms();
@@ -307,8 +262,6 @@ namespace Mist
 		tFixedHeapArray<glm::mat4> m_localTransforms;
 		tFixedHeapArray<glm::mat4> m_globalTransforms;
 		tFixedHeapArray<glm::mat4> m_renderTransforms;
-		tFixedHeapArray<sMaterialRenderData> m_materials;
-		tMap<index_t, index_t> m_modelMaterialMap;
 		index_t m_editingModel = index_invalid;
 		
 		tFixedHeapArray<index_t> m_dirtyNodes[MaxNodeLevel];
@@ -318,7 +271,6 @@ namespace Mist
 		Skybox m_skybox;
 		IrradianceCube m_irradianceCube;
 		EnvironmentData m_environmentData;
-		tStaticArray<tDrawList, 4> m_drawListArray;
 
 		index_t m_cameraIndex = index_invalid;
 
