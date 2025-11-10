@@ -298,14 +298,16 @@ namespace Mist
 
 		struct sProfiler
 		{
-			tCircularBuffer<float, 128> CPUTimeArray;
-			tCircularBuffer<float, 128> GPUTimeArray;
+			static constexpr uint32_t MaxSamples = 64;
+			typedef tCircularBuffer<float, MaxSamples> TimesCircularBuffer;
+			TimesCircularBuffer CPUTimeArray;
+			TimesCircularBuffer GPUTimeArray;
 
 			typedef tStackTree<tCpuProfItem, 64> tCpuProfStackTree;
 			tCpuProfStackTree CpuProfStack[2];
 			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 
-			static void GetStats(tCircularBuffer<float, 128>& data, float& min, float& max, float& mean, float& last)
+			static void GetStats(TimesCircularBuffer& data, float& min, float& max, float& mean, float& last)
 			{
 				mean = 0.f;
 				min = FLT_MAX;
