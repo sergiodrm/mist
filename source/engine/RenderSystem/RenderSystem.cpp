@@ -445,6 +445,11 @@ namespace rendersystem
 
     void RenderSystem::ClearState()
     {
+        if (AllowsGraphicsCommand() && (m_graphicsContext.pendingClearColor || m_graphicsContext.pendingClearDepthStencil))
+        {
+            check(m_graphicsContext.graphicsState.rt);
+            ResolveClearRenderTarget();
+        }
         m_computeContext.Invalidate();
         m_graphicsContext.Invalidate();
         m_shaderContext.Invalidate();
@@ -969,17 +974,7 @@ namespace rendersystem
         // Process graphics pipeline
         m_graphicsContext.graphicsState.pipeline = GetPso(m_graphicsContext.pso, m_graphicsContext.graphicsState.rt);
 
-        GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
-        if (m_graphicsContext.pendingClearColor)
-        {
-            m_graphicsContext.pendingClearColor = false;
-            GetCommandList()->ClearColor(m_graphicsContext.clearColor[0], m_graphicsContext.clearColor[1], m_graphicsContext.clearColor[2], m_graphicsContext.clearColor[3]);
-        }
-        if (m_graphicsContext.pendingClearDepthStencil)
-        {
-            m_graphicsContext.pendingClearDepthStencil = false;
-            GetCommandList()->ClearDepthStencil(m_graphicsContext.clearDepth, m_graphicsContext.clearStencil);
-        }
+        ResolveClearRenderTarget();
 
         FrameResourceTrack& resources = GetFrameResources();
         resources.buffers.emplace_back(m_graphicsContext.graphicsState.indexBuffer);
@@ -1000,6 +995,21 @@ namespace rendersystem
 		// Flush memory before process bindings
 		ShaderMemoryContext* memoryContext = GetMemoryContext();
 		memoryContext->FlushMemory();
+    }
+
+    void RenderSystem::ResolveClearRenderTarget()
+    {
+		GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
+		if (m_graphicsContext.pendingClearColor)
+		{
+			m_graphicsContext.pendingClearColor = false;
+			GetCommandList()->ClearColor(m_graphicsContext.clearColor[0], m_graphicsContext.clearColor[1], m_graphicsContext.clearColor[2], m_graphicsContext.clearColor[3]);
+		}
+		if (m_graphicsContext.pendingClearDepthStencil)
+		{
+			m_graphicsContext.pendingClearDepthStencil = false;
+			GetCommandList()->ClearDepthStencil(m_graphicsContext.clearDepth, m_graphicsContext.clearStencil);
+		}
     }
 
     void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray)

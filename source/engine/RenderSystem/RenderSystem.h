@@ -634,6 +634,7 @@ namespace rendersystem
         void FlushBeforeDraw();
         void FlushBeforeDispatch();
         void FlushMemoryContext();
+        void ResolveClearRenderTarget();
         void ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray);
         render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
         render::ComputePipelineHandle GetPso(const render::ComputePipelineDescription& psoDesc);
