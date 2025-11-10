@@ -22,7 +22,16 @@ list(APPEND SPIRV_CROSS_DEBUG_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-msld.lib")
 list(APPEND SPIRV_CROSS_DEBUG_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-reflectd.lib")
 list(APPEND SPIRV_CROSS_DEBUG_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-utild.lib")
 
-#file(GLOB SPIRV_CROSS_LIBS "$ENV{VULKAN_SDK}/Lib/spirv-cross-*d.lib")
+list(APPEND ENGINE_GENERIC_LIBS ${SDL2_LIBRARY})
+list(APPEND ENGINE_GENERIC_LIBS Vulkan::Vulkan)
+list(APPEND ENGINE_GENERIC_LIBS Vulkan::SPIRV-Tools)
+list(APPEND ENGINE_GENERIC_LIBS Vulkan::shaderc_combined)
+list(APPEND ENGINE_GENERIC_LIBS cppcoda_lib)
+list(APPEND ENGINE_GENERIC_LIBS yaml-cpp::yaml-cpp)
+
+list(APPEND ENGINE_DEBUG_LIBS ${SPIRV_CROSS_DEBUG_LIBS})
+
+list(APPEND ENGINE_RELEASE_LIBS ${SPIRV_CROSS_OPT_LIBS})
 
 file(GLOB ENGINE_SOURCES */*.cpp */*.h */*/*.cpp */*/*.h)
 
@@ -59,17 +68,17 @@ if (!Vulkan_SPIRV-Tools_FOUND)
 	message("Vulkan spirv-tools not found")
 endif(!Vulkan_SPIRV-Tools_FOUND)
 
-target_link_libraries(mist_engine 
-	PUBLIC 
-		${SDL2_LIBRARY} 
-		Vulkan::Vulkan
-		Vulkan::SPIRV-Tools
-		Vulkan::shaderc_combined
-		cppcoda_lib
-		yaml-cpp::yaml-cpp
-	debug ${SPIRV_CROSS_DEBUG_LIBS}
-	optimized ${SPIRV_CROSS_OPT_LIBS}
-)
+target_link_libraries(mist_engine PUBLIC ${ENGINE_GENERIC_LIBS})
+
+# Link debug libs
+foreach (entry ${ENGINE_DEBUG_LIBS})
+	target_link_libraries(mist_engine PUBLIC debug ${entry})
+endforeach()
+
+# Link release libs
+foreach (entry ${ENGINE_RELEASE_LIBS})
+	target_link_libraries(mist_engine PUBLIC optimized ${entry})
+endforeach()
 
 target_include_directories(mist_engine
 		PUBLIC 
