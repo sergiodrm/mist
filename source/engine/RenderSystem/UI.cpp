@@ -20,7 +20,7 @@ namespace rendersystem
 
         struct WindowCallbackEntry
         {
-            char buff[32];
+            char id[32];
             ImGuiWindowCallback fn = nullptr;
             bool open = false;
             void* userData = nullptr;
@@ -284,7 +284,7 @@ namespace rendersystem
                 if (ImGui::BeginMenu("Windows"))
                 {
                     for (uint32_t i = 0; i < g_windowCallbackIndex; ++i)
-                        ImGui::Checkbox(g_windowCallbacks[i].buff, &g_windowCallbacks[i].open);
+                        ImGui::Checkbox(g_windowCallbacks[i].id, &g_windowCallbacks[i].open);
                     ImGui::EndMenu();
                 }
                 if (ImGui::BeginMenu("Console vars"))
@@ -303,15 +303,37 @@ namespace rendersystem
             }
         }
 
+        uint32_t FindWindowCallback(const char* id)
+        {
+            for (uint32_t i = 0; i < g_windowCallbackIndex; ++i)
+            {
+                if (!stricmp(id, g_windowCallbacks[i].id))
+                    return i;
+            }
+            return UINT32_MAX;
+        }
+
         void AddWindowCallback(const char* id, ImGuiWindowCallback fn, void* userData, bool openByDefault)
         {
             check(g_windowCallbackIndex < MaxWindowCallbacks);
             check(id && *id && fn);
-            strcpy_s(g_windowCallbacks[g_windowCallbackIndex].buff, id);
-            g_windowCallbacks[g_windowCallbackIndex].fn = fn;
-            g_windowCallbacks[g_windowCallbackIndex].open = openByDefault;
-            g_windowCallbacks[g_windowCallbackIndex].userData = userData;
-            ++g_windowCallbackIndex;
+            uint32_t callbackIndex = FindWindowCallback(id);
+            if (callbackIndex != UINT32_MAX)
+            {
+                logfwarn("Overriding existing callback \"%s\" [index: %d]. Old (%0xp, %0xp, %d). New (%0xp, %0xp, %d).\n", 
+                    id, callbackIndex, g_windowCallbacks[callbackIndex].fn, g_windowCallbacks[callbackIndex].userData, g_windowCallbacks[callbackIndex].open ? 1 : 0,
+                    fn, userData, openByDefault ? 1 : 0);
+            }
+            else
+            {
+                callbackIndex = g_windowCallbackIndex;
+                ++g_windowCallbackIndex;
+                strcpy_s(g_windowCallbacks[callbackIndex].id, id);
+            }
+            check(callbackIndex < MaxWindowCallbacks);
+            g_windowCallbacks[callbackIndex].fn = fn;
+            g_windowCallbacks[callbackIndex].open = openByDefault;
+            g_windowCallbacks[callbackIndex].userData = userData;
         }
 
         void AddMenuCallback(const char* id, ImGuiMenuCallback fn)
