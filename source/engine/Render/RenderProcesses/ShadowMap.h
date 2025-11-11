@@ -13,7 +13,14 @@ namespace Mist
 {
 	class Scene;
 
+	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip);
+	glm::mat4 GetDirectionalLightProjection(float left, float right, float bottom, float top, float nearClip, float farClip);
 
+	// Calculate the VP matrix used as "camera" for geometry pass on shadow mapping.
+	// It computes the translation matrix and adapts the projection to right axis and returns the mul result.
+	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, const glm::mat4& proj);
+	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, float cutoff, float nearClip, float farClip);
+	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, float left, float right, float bottom, float top, float nearClip, float farClip);
 
 	class ShadowMapPipeline
 	{
@@ -30,15 +37,10 @@ namespace Mist
 		void Init(rendersystem::RenderSystem* rs);
 		void Destroy(rendersystem::RenderSystem* rs);
 
-		void SetPerspectiveClip(float nearClip, float farClip);
-		void SetOrthographicClip(float nearClip, float farClip);
-		glm::mat4 GetProjection(EShadowMapProjectionType projType) const;
-		void SetProjection(float fov, float aspectRatio);
-		void SetProjection(float minX, float maxX, float minY, float maxY);
 		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const tAngles& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix);
 
 		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
-		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float nearClip = 0.1f, float farClip = 1000.f);
+		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float left, float right, float bottom, float top, float nearClip = 0.1f, float farClip = 1000.f);
 
 		void RenderShadowMap(rendersystem::RenderSystem* rs, const Scene* scene, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
@@ -60,10 +62,6 @@ namespace Mist
 		// Cache for save depth view projection data until flush to gpu buffer.
 		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
 		glm::mat4 m_lightMVPCache[globals::MaxShadowMapAttachments];
-	public:
-		// Projection params
-		float m_perspectiveParams[4];
-		float m_orthoParams[6];
 	};
 
 	class ShadowMapProcess : public RenderProcess
@@ -93,21 +91,6 @@ namespace Mist
 		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
-		uint32_t m_debugIndex = 0;
-		struct
-		{
-			bool show = false;
-			glm::vec3 pos;
-			tAngles rot;
-			float cutoff;
-			float clips[2];
-		} m_debugLightParams;
-		struct
-		{
-			bool show = false;
-			glm::vec3 pos;
-			tAngles rot;
-			float clips[6];
-		} m_debugDirParams;
+		uint32_t m_textureDebugIndex = 0;
 	};
 }

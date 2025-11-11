@@ -46,13 +46,36 @@ namespace Mist
 
 	struct LightComponent
 	{
-		ELightType Type = ELightType::Point;
-		glm::vec3 Color = { 1.f, 1.f, 1.f };
-		float Radius = 10.f;
-		float Compression = 1.f;
-		float OuterCutoff = 30.f;	// Degrees
-		float Cutoff = 30.f;			// Degrees
+		ELightType Type;
+		glm::vec3 Color;
+		float Radius;
+		float Compression;
+		float OuterCutoff;	// Degrees
+		float Cutoff;		// Degrees
+
 		bool ProjectShadows = false;
+		float OrthoLeft;
+		float OrthoRight;
+		float OrthoBottom;
+		float OrthoTop;
+		float NearClip;
+		float FarClip;
+
+		LightComponent()
+			: Type(ELightType::Point),
+			Color({ 1.f,1.f,1.f }),
+			Radius(100.f),
+			Compression(1.f),
+			OuterCutoff(30.f),
+			Cutoff(30.f),
+			ProjectShadows(false),
+			OrthoLeft(-160.f),
+			OrthoRight(160.f),
+			OrthoBottom(-120.f),
+			OrthoTop(120.f),
+			NearClip(1.f),
+			FarClip(100.f)
+		{ }
 	};
 
 	struct MeshComponent

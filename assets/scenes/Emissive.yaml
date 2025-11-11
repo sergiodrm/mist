@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.01, 0.01, 0.01]
+  Ambient: [0.00999999978, 0.00999999978, 0.00999999978]
   Skybox:
     Front: textures/yokohama/posz.jpg
     Back: textures/yokohama/negz.jpg
@@ -19,17 +19,23 @@ RenderObjects:
     Name: Light
     Parent: 0
     TransformComponent:
-      Position: [58.5, 18, -1.5]
+      Position: [94.5, 3, -1.5]
       Rotation: [0, -91.5, 0]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
-      Color: [0.067114115, 0.04594389, 0.04594389]
-      Radius: 10000
-      Compression: 10000
-      OuterCutoff: 26.5
-      Cutoff: 0
+      Color: [0.431372553, 0.80392158, 0.4627451]
+      Radius: 75
+      Compression: 75
+      OuterCutoff: 28.5
+      Cutoff: 1.89999998
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 2
     Name: Light_2
     Parent: 0
@@ -39,12 +45,18 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [0.34228188, 0.21363902, 0.21363902]
+      Color: [0.342281878, 0.213639021, 0.213639021]
       Radius: 1000
       Compression: 1000
-      OuterCutoff: 0.8
+      OuterCutoff: 0.800000012
       Cutoff: 1
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 3
     Name: Light_3
     Parent: 0
@@ -54,12 +66,18 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.8389262, 0.682636, 0.34345302]
+      Color: [0.838926196, 0.682636023, 0.34345302]
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
-      Cutoff: 41.8
+      Cutoff: 41.7999992
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 4
     Name: Sponza
     Parent: 0
@@ -96,5 +114,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [49.16987, 6.2133474, -9.746765]
-      Rotation: [0.1111109, 3.1932375, 0]
+      Position: [-28.2341461, 30.62397, 4.65030575]
+      Rotation: [-0.201852664, -1.482283, 0]

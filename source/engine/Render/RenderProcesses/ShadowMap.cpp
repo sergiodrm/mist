@@ -24,15 +24,45 @@ namespace Mist
 {
 	bool GUseCameraForShadowMapping = false;
 
+	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip)
+	{
+		return glm::perspective(2.f * glm::radians(cutOff), 1.f, nearClip, farClip);
+	}
+
+	glm::mat4 GetDirectionalLightProjection(float left, float right, float bottom, float top, float nearClip, float farClip)
+	{
+		return glm::ortho(left, right, bottom, top, nearClip, farClip);
+	}
+
+	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, const glm::mat4& proj)
+	{
+		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
+		glm::mat4 rot = angles.ToMat4();
+		//lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
+		// Light translation
+		glm::mat4 tras = math::PosToMat4(pos);
+
+		glm::mat4 depthView = glm::inverse(tras * rot);
+		glm::mat4 depthProj = proj;
+		depthProj[1][1] *= -1.f;
+		return depthProj * depthView;
+	}
+
+	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, float cutoff, float nearClip, float farClip)
+	{
+		return GetLightVPMatrix(pos, angles, GetSpotLightProjection(cutoff, nearClip, farClip));
+	}
+
+	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, float left, float right, float bottom, float top, float nearClip, float farClip)
+	{
+		return GetLightVPMatrix(pos, angles, GetDirectionalLightProjection(left, right, bottom, top, nearClip, farClip));
+	}
+
 	ShadowMapPipeline::ShadowMapPipeline()
 		: m_shader(nullptr)
 	{
-		SetProjection(glm::radians(45.f), 16.f / 9.f);
-		SetProjection(-160.f, 160.f, -120.f, 120.f);
-		SetPerspectiveClip(1.f, 1000.f);
-		SetOrthographicClip(-500.f, 150.f);
-
 		memset(m_depthMVPCache, 0, sizeof(m_depthMVPCache));
+		memset(m_lightMVPCache, 0, sizeof(m_lightMVPCache));
 	}
 
 	ShadowMapPipeline::~ShadowMapPipeline()
@@ -51,46 +81,6 @@ namespace Mist
 		rs->DestroyShader(&m_shader);
 	}
 
-	void ShadowMapPipeline::SetPerspectiveClip(float nearClip, float farClip)
-	{
-		m_perspectiveParams[2] = nearClip;
-		m_perspectiveParams[3] = farClip;
-		//DebugRender::SetDebugClipParams(nearClip, farClip);
-	}
-
-	void ShadowMapPipeline::SetOrthographicClip(float nearClip, float farClip)
-	{
-		m_orthoParams[4] = nearClip;
-		m_orthoParams[5] = farClip;
-		//DebugRender::SetDebugClipParams(nearClip, farClip);
-	}
-
-	glm::mat4 ShadowMapPipeline::GetProjection(EShadowMapProjectionType projType) const
-	{
-		switch (projType)
-		{
-		case PROJECTION_PERSPECTIVE:
-			return glm::perspective(m_perspectiveParams[0], m_perspectiveParams[1], m_perspectiveParams[2], m_perspectiveParams[3]);
-		case PROJECTION_ORTHOGRAPHIC:
-			return glm::ortho(m_orthoParams[0], m_orthoParams[1], m_orthoParams[2], m_orthoParams[3], m_orthoParams[4], m_orthoParams[5]);
-		}
-		return glm::mat4(1.f);
-	}
-
-	void ShadowMapPipeline::SetProjection(float fov, float aspectRatio)
-	{
-		m_perspectiveParams[0] = fov;
-		m_perspectiveParams[1] = aspectRatio;
-	}
-
-	void ShadowMapPipeline::SetProjection(float minX, float maxX, float minY, float maxY)
-	{
-		m_orthoParams[0] = minX;
-		m_orthoParams[1] = maxX;
-		m_orthoParams[2] = minY;
-		m_orthoParams[3] = maxY;
-	}
-
 	void ShadowMapPipeline::SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const tAngles& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix)
 	{
 		static constexpr glm::mat4 depthBias =
@@ -100,17 +90,8 @@ namespace Mist
 			0.0f, 0.0f, 1.0f, 0.0f,
 			0.5f, 0.5f, 0.0f, 1.0f
 		};
+		glm::mat4 depthVP = GetLightVPMatrix(lightPos, lightRot, lightProj);
 
-		// Projection goes to Z*-1.f, rotate lightRot 180 yaw to make it match to light.
-		glm::mat4 lightRotMat = lightRot.ToMat4();
-		//lightRotMat = math::PitchYawRollToMat4({ 0.f, (float)M_PI, 0.f}) * lightRotMat;
-		// Light translation
-		glm::mat4 t = math::PosToMat4(lightPos);
-
-		glm::mat4 depthView = glm::inverse(t * lightRotMat);
-		glm::mat4 depthProj = lightProj;
-		depthProj[1][1] *= -1.f;
-		glm::mat4 depthVP = depthProj * depthView;
 		// Light Matrix with inverse(viewMatrix) because gbuffer calculates position buffer in view space.
 		glm::mat4 lightVP = depthBias * depthVP * glm::inverse(viewMatrix);
 		SetDepthVP(lightIndex, depthVP);
@@ -119,14 +100,14 @@ namespace Mist
 	
 	void ShadowMapPipeline::SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip)
 	{
-		glm::mat4 depthProj = glm::perspective(2.f*glm::radians(cutoff), 1.f, nearClip, farClip);
+		glm::mat4 depthProj = GetSpotLightProjection(cutoff, nearClip, farClip);
 		SetupLight(lightIndex, pos, rot, depthProj, cameraView);
 	}
 
-	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float nearClip, float farClip)
+	void ShadowMapPipeline::SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float left, float right, float bottom, float top, float nearClip, float farClip)
 	{
 #if 1
-		const glm::mat4 depthProj = GetProjection(PROJECTION_ORTHOGRAPHIC);
+		const glm::mat4 depthProj = GetDirectionalLightProjection(left, right, bottom, top, nearClip, farClip);
 		const glm::vec3 camerapos = glm::vec3(0.f);// math::GetPos(cameraView);
 		SetupLight(lightIndex, camerapos, lightRot, depthProj, cameraView);
 #else
@@ -265,8 +246,6 @@ namespace Mist
 	ShadowMapProcess::ShadowMapProcess(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
 	{
-		m_debugLightParams.clips[0] = 1.f;
-		m_debugLightParams.clips[1] = 1000.f;
 	}
 
 	void ShadowMapProcess::Init(rendersystem::RenderSystem* rs)
@@ -333,22 +312,10 @@ namespace Mist
 		}
 		if (m_debugMode == DEBUG_SINGLE_RT)
 		{
-			ImGui::InputInt("ShadowMap index", (int*)&m_debugIndex);
-			m_debugIndex = math::Clamp(m_debugIndex, 0u, globals::MaxShadowMapAttachments - 1);
+			ImGui::InputInt("ShadowMap index", (int*)&m_textureDebugIndex);
+			m_textureDebugIndex = math::Clamp(m_textureDebugIndex, 0u, globals::MaxShadowMapAttachments - 1);
 		}
 		ImGui::Checkbox("Use camera for shadow mapping", &GUseCameraForShadowMapping);
-		ImGui::Checkbox("Debug spot frustum", &m_debugLightParams.show);
-		ImGui::Checkbox("Debug dir frustum", &m_debugDirParams.show);
-		ImGui::Separator();
-		ImGui::Text("Debug proj params");
-		ImGui::DragFloat("Near clip", &m_debugLightParams.clips[0], 1.f);
-		ImGui::DragFloat("Far clip", &m_debugLightParams.clips[1], 1.f);
-		ImGui::DragFloat("FOV", &m_shadowMapPipeline.m_perspectiveParams[0], 0.01f);
-		ImGui::DragFloat("Aspect ratio", &m_shadowMapPipeline.m_perspectiveParams[1], 0.01f);
-		ImGui::DragFloat2("Ortho x", &m_shadowMapPipeline.m_orthoParams[0]);
-		ImGui::DragFloat2("Ortho y", &m_shadowMapPipeline.m_orthoParams[2]);
-		ImGui::DragFloat("Ortho Near clip", &m_shadowMapPipeline.m_orthoParams[4], 1.f);
-		ImGui::DragFloat("Ortho Far clip", &m_shadowMapPipeline.m_orthoParams[5], 1.f);
 		ImGui::End();
 	}
 
@@ -383,24 +350,11 @@ namespace Mist
 					switch (light->Type)
 					{
 					case ELightType::Directional:
-						if (m_debugDirParams.show)
-						{
-							m_debugDirParams.pos = glm::vec3(0.f);
-							m_debugDirParams.rot = t.Rotation;
-							for (uint32_t j = 0; j < CountOf(m_debugDirParams.clips); ++j)
-								m_debugDirParams.clips[j] = m_shadowMapPipeline.m_orthoParams[j];
-						}
-						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, view, cameraProj, t.Rotation);
+						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, view, cameraProj, t.Rotation, light->OrthoLeft, light->OrthoRight, light->OrthoBottom, light->OrthoTop, light->NearClip, light->FarClip);
 						break;
 					case ELightType::Spot:
 					{
-						if (m_debugLightParams.show)
-						{
-							m_debugLightParams.pos = t.Position;
-							m_debugLightParams.rot = t.Rotation;
-							m_debugLightParams.cutoff = light->OuterCutoff;
-						}
-						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, view, t.Position, t.Rotation, light->OuterCutoff, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
+						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, view, t.Position, t.Rotation, light->OuterCutoff, light->NearClip, light->FarClip);
 					}
 					break;
 					default:
@@ -424,7 +378,7 @@ namespace Mist
 		case DEBUG_SINGLE_RT:
 			{	
 				float f = 0.33f;
-				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, m_shadowMapTargetArray[m_debugIndex]->m_description.depthStencilAttachment.texture);
+				DebugRender::DrawScreenQuad({ w * (1.f-f), 0.f }, { w * f, h * f }, m_shadowMapTargetArray[m_textureDebugIndex]->m_description.depthStencilAttachment.texture);
 			}
 			break;
 		case DEBUG_ALL:
@@ -440,24 +394,6 @@ namespace Mist
 				}
 			}
 			break;
-		}
-		if (m_debugLightParams.show)
-		{
-			tFrustum f = Camera::CalculateFrustum(m_debugLightParams.pos,
-				m_debugLightParams.rot, glm::radians(m_debugLightParams.cutoff), 1.f, m_debugLightParams.clips[0], m_debugLightParams.clips[1]);
-			glm::vec3 color = glm::vec3(0.2f, 0.96f, 0.5f);
-			f.DrawDebug(color);
-		}
-		if (m_debugDirParams.show)
-		{
-			tFrustum f = Camera::CalculateFrustum(m_debugDirParams.pos, m_debugDirParams.rot,
-				m_debugDirParams.clips[0],
-				m_debugDirParams.clips[1],
-				m_debugDirParams.clips[2],
-				m_debugDirParams.clips[3],
-				m_debugDirParams.clips[4],
-				m_debugDirParams.clips[5]);
-			f.DrawDebug({ 0.7f, 0.2f, 0.5f });
 		}
 	}
 }

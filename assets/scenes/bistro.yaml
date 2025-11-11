@@ -30,6 +30,12 @@ RenderObjects:
       OuterCutoff: 26.5
       Cutoff: 0
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 2
     Name: Light_2
     Parent: 0
@@ -45,6 +51,12 @@ RenderObjects:
       OuterCutoff: 0.800000012
       Cutoff: 1
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 3
     Name: Light_3
     Parent: 0
@@ -60,6 +72,12 @@ RenderObjects:
       OuterCutoff: 46.9000015
       Cutoff: 32.7999992
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 4
     Name: Bistro
     Parent: 0
@@ -78,3 +96,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]

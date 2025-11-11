@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.01, 0.01, 0.01]
+  Ambient: [0.00999999978, 0.00999999978, 0.00999999978]
   Skybox:
     Front: textures/yokohama/posz.jpg
     Back: textures/yokohama/negz.jpg
@@ -24,12 +24,18 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
-      Color: [0.067114115, 0.04594389, 0.04594389]
+      Color: [0.0671141148, 0.0459438898, 0.0459438898]
       Radius: 10000
       Compression: 10000
       OuterCutoff: 26.5
       Cutoff: 0
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 2
     Name: Light_2
     Parent: 0
@@ -39,12 +45,18 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [0.34228188, 0.21363902, 0.21363902]
+      Color: [0.342281878, 0.213639021, 0.213639021]
       Radius: 1000
       Compression: 1000
-      OuterCutoff: 0.8
+      OuterCutoff: 0.800000012
       Cutoff: 1
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 3
     Name: Light_3
     Parent: 0
@@ -54,12 +66,18 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Color: [0.8389262, 0.682636, 0.34345302]
+      Color: [0.838926196, 0.682636023, 0.34345302]
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
-      Cutoff: 41.8
+      Cutoff: 41.7999992
       ProjectShadows: true
+      OrthoLeft: -160
+      OrthoRight: 160
+      OrthoBottom: -120
+      OrthoTop: 120
+      NearClip: 1
+      FarClip: 100
   - RenderObject: 4
     Name: Sponza
     Parent: 0
@@ -96,5 +114,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [36.18186, 9.263116, -17.896446]
-      Rotation: [-0.062037203, 2.5156343, 0]
+      Position: [36.1818619, 9.26311588, -17.8964462]
+      Rotation: [-0.0620372035, 2.5156343, 0]

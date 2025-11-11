@@ -402,6 +402,12 @@ namespace Mist
 				lightComponent.Cutoff = lightNode["Cutoff"].as<float>();
 				lightComponent.ProjectShadows = lightNode["ProjectShadows"].as<bool>();
 				lightComponent.Type = StrToLightType(lightNode["Type"].as<std::string>().c_str());
+				lightComponent.OrthoLeft = lightNode["OrthoLeft"].as<float>();
+				lightComponent.OrthoRight = lightNode["OrthoRight"].as<float>();
+				lightComponent.OrthoBottom = lightNode["OrthoBottom"].as<float>();
+				lightComponent.OrthoTop = lightNode["OrthoTop"].as<float>();
+				lightComponent.NearClip = lightNode["NearClip"].as<float>();
+				lightComponent.FarClip = lightNode["FarClip"].as<float>();
 				SetLight(rb, lightComponent);
 			}
 
@@ -493,6 +499,12 @@ namespace Mist
 				emitter << YAML::Key << "OuterCutoff" << YAML::Value << light.OuterCutoff;
 				emitter << YAML::Key << "Cutoff" << YAML::Value << light.Cutoff;
 				emitter << YAML::Key << "ProjectShadows" << YAML::Value << light.ProjectShadows;
+				emitter << YAML::Key << "OrthoLeft" << YAML::Value << light.OrthoLeft;
+				emitter << YAML::Key << "OrthoRight" << YAML::Value << light.OrthoRight;
+				emitter << YAML::Key << "OrthoBottom" << YAML::Value << light.OrthoBottom;
+				emitter << YAML::Key << "OrthoTop" << YAML::Value << light.OrthoTop;
+				emitter << YAML::Key << "NearClip" << YAML::Value << light.NearClip;
+				emitter << YAML::Key << "FarClip" << YAML::Value << light.FarClip;
 				emitter << YAML::EndMap;
 			}
 
@@ -939,7 +951,71 @@ namespace Mist
 							ImGui::Checkbox(buff, &light.ProjectShadows);
 							ImGui::NextColumn();
 
+							ImGui::Text("Near clip");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightNearClip%u", i);
+							ImGui::DragFloat(buff, &light.NearClip, 1.f);
+							ImGui::NextColumn();
+
+							ImGui::Text("Far clip");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightFarClip%u", i);
+							ImGui::DragFloat(buff, &light.FarClip, 1.f);
+							ImGui::NextColumn();
+
+							ImGui::Text("Ortho left");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightLeft%u", i);
+							ImGui::DragFloat(buff, &light.OrthoLeft, 1.f);
+							ImGui::NextColumn();
+
+							ImGui::Text("Ortho right");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightRight%u", i);
+							ImGui::DragFloat(buff, &light.OrthoRight, 1.f);
+							ImGui::NextColumn();
+
+							ImGui::Text("Ortho bottom");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightBottom%u", i);
+							ImGui::DragFloat(buff, &light.OrthoBottom, 1.f);
+							ImGui::NextColumn();
+
+							ImGui::Text("Ortho top");
+							ImGui::NextColumn();
+							sprintf_s(buff, "##LightTop%u", i);
+							ImGui::DragFloat(buff, &light.OrthoTop, 1.f);
+							ImGui::NextColumn();
+
 							ImGui::Columns();
+
+							// Draw debug
+							switch (light.Type)
+							{
+							case ELightType::Point:
+								DebugRender::DrawSphere(m_transformComponents[i].Position, light.Radius, light.Color, 32);
+								break;
+							case ELightType::Directional:
+							{
+								glm::mat4 vp = GetLightVPMatrix(m_transformComponents[i].Position, m_transformComponents[i].Rotation, 
+									light.OrthoLeft, light.OrthoRight, light.OrthoBottom, light.OrthoTop, light.NearClip, light.FarClip);
+								Frustum f(vp);
+								f.DrawDebug(light.Color);
+							}
+								break;
+							case ELightType::Spot:
+							{
+								glm::mat4 vp = GetLightVPMatrix(m_transformComponents[i].Position, m_transformComponents[i].Rotation, 
+									light.Cutoff, light.NearClip, light.FarClip);
+								Frustum f(vp);
+								f.DrawDebug(light.Color);
+							}
+								break;
+							default:
+								break;
+
+							}
+
 							ImGui::TreePop();
 						}
 					}

@@ -120,47 +120,6 @@ namespace Mist
 		RecalculateProjection();
 	}
 
-	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const tAngles& rot, float fov, float aspectRatio, float nearClip, float farClip)
-	{
-		auto calculatePlane = [](float fov, float aspectRatio, float clip, glm::vec3& lt, glm::vec3& rt, glm::vec3& lb, glm::vec3& rb)
-			{
-				const float h2 = clip * tanf(fov * 0.5f) * 2.f;
-				const float w2 = h2 * aspectRatio;
-				lt = { -w2, h2, -clip };
-				rt = { w2, h2, -clip };
-				lb = { -w2, -h2, -clip };
-				rb = { w2, -h2, -clip };
-			};
-		tFrustum f;
-		calculatePlane(fov, aspectRatio, nearClip, f.NearLeftTop, f.NearRightTop, f.NearLeftBottom, f.NearRightBottom);
-		calculatePlane(fov, aspectRatio, farClip, f.FarLeftTop, f.FarRightTop, f.FarLeftBottom, f.FarRightBottom);
-		glm::mat4 m = math::ToMat4(pos, rot, glm::vec3(1.f));
-		f.Points[0] = m * glm::vec4(f.Points[0], 1.f);
-		f.Points[1] = m * glm::vec4(f.Points[1], 1.f);
-		f.Points[2] = m * glm::vec4(f.Points[2], 1.f);
-		f.Points[3] = m * glm::vec4(f.Points[3], 1.f);
-		f.Points[4] = m * glm::vec4(f.Points[4], 1.f);
-		f.Points[5] = m * glm::vec4(f.Points[5], 1.f);
-		f.Points[6] = m * glm::vec4(f.Points[6], 1.f);
-		f.Points[7] = m * glm::vec4(f.Points[7], 1.f);
-		return f;
-	}
-
-	tFrustum Camera::CalculateFrustum(const glm::vec3& pos, const tAngles& rot, float minX, float maxX, float minY, float maxY, float nearClip, float farClip)
-	{
-		glm::mat4 m = math::ToMat4(pos, rot, glm::vec3(1.f));
-		tFrustum f;
-		f.NearLeftTop = m * glm::vec4(minX, maxY, -nearClip, 1.f);
-		f.NearRightTop = m * glm::vec4(maxX, maxY, -nearClip, 1.f);
-		f.NearLeftBottom = m * glm::vec4(minX, minY, -nearClip, 1.f);
-		f.NearRightBottom = m * glm::vec4(maxX, minY, -nearClip, 1.f);
-		f.FarLeftTop = m * glm::vec4(minX, maxY, -farClip, 1.f);
-		f.FarRightTop = m * glm::vec4(maxX, maxY, -farClip, 1.f);
-		f.FarLeftBottom = m * glm::vec4(minX, minY, -farClip, 1.f);
-		f.FarRightBottom = m * glm::vec4(maxX, minY, -farClip, 1.f);
-		return f;
-	}
-
 	void Camera::ImGuiDraw(bool createWindow)
 	{
 		if (createWindow)
@@ -358,24 +317,5 @@ namespace Mist
 			}
 			break;
 		}
-	}
-
-	void tFrustum::DrawDebug(const glm::vec3& color)
-	{
-		// Near plane
-		DebugRender::DrawLine3D(NearLeftTop, NearLeftBottom, color);
-		DebugRender::DrawLine3D(NearRightTop, NearRightBottom, color);
-		DebugRender::DrawLine3D(NearLeftTop, NearRightTop, color);
-		DebugRender::DrawLine3D(NearLeftBottom, NearRightBottom, color);
-		// Far plane
-		DebugRender::DrawLine3D(FarLeftTop, FarLeftBottom, color);
-		DebugRender::DrawLine3D(FarRightTop, FarRightBottom, color);
-		DebugRender::DrawLine3D(FarLeftTop, FarRightTop, color);
-		DebugRender::DrawLine3D(FarLeftBottom, FarRightBottom, color);
-		// Join planes
-		DebugRender::DrawLine3D(FarLeftTop, NearLeftTop, color);
-		DebugRender::DrawLine3D(FarRightTop, NearRightTop, color);
-		DebugRender::DrawLine3D(FarLeftBottom, NearLeftBottom, color);
-		DebugRender::DrawLine3D(FarRightBottom, NearRightBottom, color);
 	}
 }

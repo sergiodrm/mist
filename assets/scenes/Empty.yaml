@@ -15,3 +15,14 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
+  - RenderObject: 1
+    Name: DefaultMainCamera
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Main: true
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
