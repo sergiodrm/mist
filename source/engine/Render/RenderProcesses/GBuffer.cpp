@@ -75,7 +75,7 @@ namespace Mist
 		rs->SetStencilEnable(true);
 		rs->SetStencilMask(0xff, 0xff, 1);
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
-		scene->Draw(rs, RenderFlags_Fixed | RenderFlags_Emissive);
+		scene->Draw(rs, GetCameraData()->ViewProjection, RenderFlags_Fixed | RenderFlags_Emissive);
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 	}

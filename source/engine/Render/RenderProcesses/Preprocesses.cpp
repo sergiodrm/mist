@@ -46,8 +46,8 @@ namespace Mist
 	{
 		rs->SetShader(shader);
 		rs->SetDepthEnable(false, false);
-		rs->SetVertexBuffer(cubeModel.m_meshes[0].vb);
-		rs->SetIndexBuffer(cubeModel.m_meshes[0].ib);
+		rs->SetVertexBuffer(cubeModel.GetMesh(0).GetVertexBuffer());
+		rs->SetIndexBuffer(cubeModel.GetMesh(0).GetIndexBuffer());
 		rs->SetRenderTarget(_rt);
 		rs->SetViewport(0.f, 0.f, (float)viewportSize.width, (float)viewportSize.height);
 		rs->SetScissor(0.f, (float)viewportSize.width, 0.f, (float)viewportSize.height);
@@ -56,7 +56,7 @@ namespace Mist
 
 	void PreprocessIrradianceResources::DrawCube(rendersystem::RenderSystem* rs)
 	{
-		rs->DrawIndexed(cubeModel.m_meshes[0].indexCount);
+		rs->DrawIndexed(cubeModel.GetMesh(0).GetIndexCount());
 	}
 
 	void PreprocessIrradianceResources::Destroy(rendersystem::RenderSystem* rs)

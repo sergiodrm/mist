@@ -199,7 +199,7 @@ namespace Mist
 
 			// SKY
 			{
-				check(m_skyModel && m_skyModel->m_meshes.GetSize() == 1);
+				check(m_skyModel && m_skyModel->GetMeshCount() == 1);
 				rs->BeginMarker("Sky");
 
 				rs->SetShader(m_skyboxShader);
@@ -209,8 +209,8 @@ namespace Mist
 				rs->SetDepthEnable(false, false);
 				rs->SetCullMode(render::RasterCullMode_Front);
 
-				rs->SetVertexBuffer(m_skyModel->m_meshes[0].vb);
-				rs->SetIndexBuffer(m_skyModel->m_meshes[0].ib);
+				rs->SetVertexBuffer(m_skyModel->GetMesh(0).GetVertexBuffer());
+				rs->SetIndexBuffer(m_skyModel->GetMesh(0).GetIndexBuffer());
 
 				glm::mat4 view = GetCameraData()->View;
 				view[3] = { 0.f, 0.f, 0.f, 1.f};
@@ -221,7 +221,7 @@ namespace Mist
 
 				rs->SetTextureSlot("u_cubemap", scene->GetSkyboxTexture());
 
-				rs->DrawIndexed(m_skyModel->m_meshes[0].indexCount);
+				rs->DrawIndexed(m_skyModel->GetMesh(0).GetIndexCount());
 				rs->ClearState();
 				rs->SetDefaultGraphicsState();
 

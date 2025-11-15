@@ -332,10 +332,10 @@ namespace Mist
 
 	void Scene::PrepareMeshToDraw(rendersystem::RenderSystem* renderSystem, const cModel& model, uint32_t meshIndex, uint32_t transformOffset) const
 	{
-		const cMesh& mesh = model.m_meshes[meshIndex];
-		renderSystem->SetVertexBuffer(mesh.vb);
-		renderSystem->SetIndexBuffer(mesh.ib);
-		renderSystem->SetShaderProperty("u_model", &m_renderTransforms[transformOffset + model.m_meshNodeIndex[meshIndex]], sizeof(glm::mat4));
+		const cMesh& mesh = model.GetMesh(meshIndex);
+		renderSystem->SetVertexBuffer(mesh.GetVertexBuffer());
+		renderSystem->SetIndexBuffer(mesh.GetIndexBuffer());
+		renderSystem->SetShaderProperty("u_model", &m_renderTransforms[transformOffset + model.GetNodeFromMeshIndex(meshIndex)], sizeof(glm::mat4));
 	}
 
 	void Scene::LoadScene(const char* filepath)
@@ -666,7 +666,7 @@ namespace Mist
 			if (m_meshComponentMap.contains(i))
 			{
 				index_t meshIndex = m_meshComponentMap[i].MeshIndex;
-				cModel& model = m_models[meshIndex];
+				const cModel& model = m_models[meshIndex];
 				uint32_t count = model.GetTransformsCount();
 				check(offset + count < m_renderTransforms.GetSize());
 				model.UpdateRenderTransforms(m_renderTransforms.GetData() + offset, m_globalTransforms[i]);
@@ -749,44 +749,50 @@ namespace Mist
 		return nullptr;
 	}
 
-	void Scene::Draw(rendersystem::RenderSystem* renderSystem, uint16_t renderFlags) const
+	void Scene::Draw(rendersystem::RenderSystem* renderSystem, const glm::mat4& viewProjection, uint16_t renderFlags) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
-		
-		// Iterate scene graph to render models.
-		const cMaterial* lastMaterial = nullptr;
-		const cMesh* lastMesh = nullptr;
+
 		uint32_t nodeCount = GetRenderObjectCount();
 		index_t renderTransformOffset = 0;
+		Frustum frustum(viewProjection);
 
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			sRenderObject renderObject = i;
 			const MeshComponent* meshComponent = GetMesh(renderObject);
 			if (meshComponent)
-			{
+			{ 
 				PROF_ZONE_SCOPED("DrawMesh");
 				check(meshComponent->MeshIndex != index_invalid);
 				const cModel& model = m_models[meshComponent->MeshIndex];
 
-				// BaseOffset in buffer is already setted when descriptor was created.
-				index_t meshCount = model.m_meshes.GetSize();
-				for (index_t j = 0; j < meshCount; ++j)
+				AABB_t aabb = model.GetAABB().ApplyTransform(m_globalTransforms[i]);
+				if (IsAABBVisible(aabb, frustum))
 				{
-					PrepareMeshToDraw(renderSystem, model, j, renderTransformOffset);
-					const cMesh& mesh = model.m_meshes[j];
-
-					index_t primitiveCount = mesh.primitiveArray.GetSize();
-					for (index_t k = 0; k < primitiveCount; ++k)
+					// BaseOffset in buffer is already setted when descriptor was created.
+					index_t meshCount = model.GetMeshCount();
+					for (index_t j = 0; j < meshCount; ++j)
 					{
-						const PrimitiveMeshData& primitive = mesh.primitiveArray[k];
-						if (primitive.RenderFlags & renderFlags)
+						const cMesh& mesh = model.GetMesh(j);
+						aabb = mesh.GetAABB().ApplyTransform(m_globalTransforms[i]);
+						if (!IsAABBVisible(aabb, frustum))
+							continue;
+						PrepareMeshToDraw(renderSystem, model, j, renderTransformOffset);
+
+						index_t primitiveCount = mesh.GetPrimitiveCount();
+						for (index_t k = 0; k < primitiveCount; ++k)
 						{
-							check(primitive.Material);
-							primitive.Material->BindTextures(renderSystem);
-							sMaterialRenderData materialData = primitive.Material->GetRenderData();
-							renderSystem->SetShaderProperty("u_material", &materialData, sizeof(materialData));
-							renderSystem->DrawIndexed(primitive.Count, 1, primitive.FirstIndex);
+							const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[k];
+							aabb = primitive.AABB.ApplyTransform(m_globalTransforms[i]);
+							if (primitive.RenderFlags & renderFlags && IsAABBVisible(aabb, frustum))
+							{
+								check(primitive.Material);
+								primitive.Material->BindTextures(renderSystem);
+								sMaterialRenderData materialData = primitive.Material->GetRenderData();
+								renderSystem->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+								renderSystem->DrawIndexed(primitive.Count, 1, primitive.FirstIndex);
+							}
 						}
 					}
 				}
@@ -796,13 +802,14 @@ namespace Mist
 		}
 	}
 
-	void Scene::DrawGeometry(rendersystem::RenderSystem* renderSystem, uint16_t renderFlags) const
+	void Scene::DrawGeometry(rendersystem::RenderSystem* renderSystem, const glm::mat4& viewProjection, uint16_t renderFlags) const
 	{
 		CPU_PROFILE_SCOPE(Scene_DrawGeometry);
 
 		// Iterate scene graph to render models.
 		uint32_t nodeCount = GetRenderObjectCount();
 		index_t renderTransformOffset = 0;
+		Frustum frustum(viewProjection);
 		for (uint32_t i = 0; i < nodeCount; ++i)
 		{
 			sRenderObject renderObject = i;
@@ -812,12 +819,15 @@ namespace Mist
 				PROF_ZONE_SCOPED("DrawMeshGeometry");
 				check(meshComponent->MeshIndex != index_invalid);
 				const cModel& model = m_models[meshComponent->MeshIndex];
+				if (!IsAABBVisible(model.GetAABB(), frustum))
+					continue;
 				// BaseOffset in buffer is already setted when descriptor was created.
-				for (index_t j = 0; j < model.m_meshes.GetSize(); ++j)
+				for (index_t j = 0; j < model.GetMeshCount(); ++j)
 				{
+					if (!IsAABBVisible(model.GetMesh(j).GetAABB(), frustum))
+						continue;
 					PrepareMeshToDraw(renderSystem, model, j, renderTransformOffset);
-
-					renderSystem->DrawIndexed(model.m_meshes[j].indexCount, 1, 0);
+					renderSystem->DrawIndexed(model.GetMesh(j).GetIndexCount(), 1, 0);
 				}
 				renderTransformOffset += model.GetTransformsCount();
 				check(renderTransformOffset < m_renderTransforms.GetSize());
@@ -1038,7 +1048,7 @@ namespace Mist
 						if (ImGui::TreeNode(buff, "Camera Component"))
 						{
 							CameraComponent& cc = m_cameraComponentMap[i];
-							tFrustum f = m_cameras[cc.CameraIndex].GetCamera().CalculateFrustum();
+							Frustum f(m_cameras[cc.CameraIndex].GetCamera().GetProjection() * m_cameras[cc.CameraIndex].GetCamera().GetView());
 							f.DrawDebug(glm::vec3(1,0,1));
 							m_cameras[cc.CameraIndex].GetCamera().ImGuiDraw();
 							ImGui::TreePop();

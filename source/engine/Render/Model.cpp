@@ -22,6 +22,7 @@
 #include "VulkanRenderEngine.h"
 #include "RenderSystem/TextureLoader.h"
 #include "RenderSystem/RenderSystem.h"
+#include "DebugRender.h"
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
 #define GLTF_LOAD_GEOMETRY_NORMAL 0x02
@@ -47,14 +48,21 @@
 #define GLTF_WRAPPER_REPEAT 10497
 
 
+#define loadmeshlabel "[loadmesh] "
 //#define MESH_DUMP_LOAD_INFO
 #ifdef MESH_DUMP_LOAD_INFO
-#define loadmeshlabel "[loadmesh] "
 #define loadmeshlogf(fmt, ...) logfinfo(loadmeshlabel fmt, __VA_ARGS__)
 #define loadmeshlog(fmt, ...) loginfo(loadmeshlabel fmt)
 #else
 #define loadmeshlogf(fmt, ...) DUMMY_MACRO
 #define loadmeshlog(fmt, ...) DUMMY_MACRO
+#endif
+
+#define MESH_PROFILE
+#ifdef MESH_PROFILE
+#define loadmesh_profile_log_scope(msg) PROFILE_SCOPE_LOG(loadmesh_##msg, loadmeshlabel #msg)
+#else
+#define profile_log_mesh_scope(msg) DUMMY_MACRO
 #endif
 
 #define LOAD_MESH_CHECK_READ_ACCESSOR
@@ -526,6 +534,7 @@ namespace Mist
 
 		if (data->materials_count)
 		{
+			loadmesh_profile_log_scope(LoadMaterials);
 			InitMaterials((index_t)data->materials_count);
 			for (uint32_t i = 0; i < data->materials_count; ++i)
 			{
@@ -543,6 +552,7 @@ namespace Mist
 
 		InitNodes((index_t)data->nodes_count);
 		InitMeshes((index_t)data->meshes_count);
+		m_aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
 
 		tDynArray<Vertex> tempVertices;
 		tDynArray<uint32_t> tempIndices;
@@ -565,42 +575,53 @@ namespace Mist
 			// Process mesh
 			if (node.mesh)
 			{
+				loadmesh_profile_log_scope(LoadMesh);
 				index_t meshIndex = CreateMesh();
 				m_nodes[nodeIndex].MeshId = meshIndex;
 				m_meshNodeIndex[meshIndex] = nodeIndex;
+
 				cMesh& mesh = m_meshes[meshIndex];
 				mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
-
 				loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
 
-				tFixedHeapArray<PrimitiveMeshData>& primitives = mesh.primitiveArray;
-				primitives.Allocate((index_t)node.mesh->primitives_count);
-				primitives.Resize((index_t)node.mesh->primitives_count);
+				mesh.InitPrimitives(node.mesh->primitives_count);
+				check(mesh.GetPrimitiveCount() <= node.mesh->primitives_count);
 				loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
 				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
 				{
 					const cgltf_primitive& cgltfprimitive = node.mesh->primitives[j];
-					PrimitiveMeshData& primitive = primitives[j];
+					PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
+
 					check(cgltfprimitive.type == cgltf_primitive_type_triangles);
 					check(cgltfprimitive.indices && cgltfprimitive.indices->type == cgltf_type_scalar && cgltfprimitive.indices->count % 3 == 0);
 					check(cgltfprimitive.attributes && cgltfprimitive.attributes->data);
 
+					// Reserve size in temporal buffers
 					uint32_t indexCount = (uint32_t)cgltfprimitive.indices->count;
 					uint32_t vertexCount = (uint32_t)cgltfprimitive.attributes[0].data->count;
 					uint32_t vertexOffset = (uint32_t)tempVertices.size();
 					uint32_t indexOffset = (uint32_t)tempIndices.size();
 					tempIndices.resize(indexOffset + indexCount);
 					tempVertices.resize(vertexOffset + vertexCount);
+					loadmeshlogf("** primitive %2d: [vertices %6d | %6d bytes][indices %4d | %6d bytes]\n", 
+						j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
 
-					loadmeshlogf("** primitive %2d: [vertices %6d | %6d bytes][indices %4d | %6d bytes]\n", j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
-
-					primitive.FirstIndex = indexOffset;
-					primitive.Count = indexCount;
-
+					// Read gltf primitive in temporal buffers
 					gltf_api::LoadIndices(cgltfprimitive, tempIndices.data() + indexOffset, vertexOffset);
 					gltf_api::LoadVertices(cgltfprimitive, tempVertices.data() + vertexOffset, vertexCount);
 
-					primitive.RenderFlags = RenderFlags_Fixed;
+					// Calculate AABB
+					// calculate min and max of vertices in mesh space. After load all vertices and nodes, aabb will be transformed to model space.
+					// only calculate primitives bounding boxes.
+					primitive.AABB = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+					const Vertex* vertices = tempVertices.data() + vertexOffset;
+					for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
+						primitive.AABB = { math::ComposeMinVector(primitive.AABB.min, vertices[vertexIndex].Position), math::ComposeMaxVector(primitive.AABB.max, vertices[vertexIndex].Position) };
+
+					// Set primitive
+					primitive.RenderFlags = RenderFlags_Fixed; 
+					primitive.FirstIndex = indexOffset;
+					primitive.Count = indexCount;
 					if (cgltfprimitive.material)
 					{
 						index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
@@ -622,13 +643,15 @@ namespace Mist
 					check(cgltfprimitive.indices->count == primitive.Count);
 				}
 
+				loadmeshlogf("* mesh %d: %d vertices (%lld b), %d indices (%lld b)\n",
+					meshIndex, tempVertices.size(), tempVertices.size() * sizeof(Vertex), tempIndices.size(), tempIndices.size() * sizeof(uint32_t));
+
 				//BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
 
-				//mesh.SetupIndexBuffer(context, tempIndices.data(), (uint32_t)tempIndices.size());
-				//mesh.SetupVertexBuffer(context, tempVertices.data(), (uint32_t)tempVertices.size() * sizeof(Vertex));
-				mesh.vb = render::utils::CreateVertexBuffer(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex));
-				mesh.ib = render::utils::CreateIndexBuffer(device, tempIndices.data(), tempIndices.size() * sizeof(uint32_t));
-				mesh.indexCount = Mist::limits_cast<uint32_t>(tempIndices.size());
+				// Create mesh resources.
+				mesh.InitBuffers(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex), tempIndices.data(), tempIndices.size());
+
+				// Clear temp buffers without release memory
 				tempIndices.clear();
 				tempVertices.clear();
 			}
@@ -637,6 +660,33 @@ namespace Mist
 		}
 		loadmeshlog("=== End loading model ===\n");
 		gltf_api::FreeData(data);
+
+
+		// Transform AABB to model space
+		{
+			loadmesh_profile_log_scope(CalculateAABB);
+			glm::mat4* modelTransforms = _new glm::mat4[m_transforms.GetSize()];
+			UpdateRenderTransforms(modelTransforms, glm::mat4(1.f));
+			m_aabb.Invalidate();
+			for (uint32_t i = 0; i < m_nodes.GetSize(); ++i)
+			{
+				if (m_nodes[i].MeshId != index_invalid)
+				{
+					cMesh& mesh = m_meshes[m_nodes[i].MeshId];
+					AABB_t meshAABB = AABB_t::InvalidAABB();
+					for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.GetPrimitiveCount(); ++primitiveIndex)
+					{
+						AABB_t& aabb = mesh.GetPrimitiveArray()[primitiveIndex].AABB;
+						aabb.min = modelTransforms[i] * glm::vec4(aabb.min, 1.f);
+						aabb.max = modelTransforms[i] * glm::vec4(aabb.max, 1.f);
+						meshAABB = { math::ComposeMinVector(aabb.min, meshAABB.min), math::ComposeMaxVector(aabb.max, meshAABB.max) };
+					}
+					mesh.SetAABB(meshAABB);
+					m_aabb = { math::ComposeMinVector(m_aabb.min,  meshAABB.min), math::ComposeMaxVector(m_aabb.max,  meshAABB.max) };
+				}
+			}
+			delete[] modelTransforms;
+		}
 		return true;
 	}
 
@@ -659,10 +709,20 @@ namespace Mist
 
 	void cModel::ImGuiDraw()
 	{
+		extern CIntVar CVar_DrawAABB2;
+		auto textAABBFn = [](const AABB_t& bb)
+			{
+				ImGui::Text("Bounding box [{%.3f, %.3f, %.3f}, {%.3f, %.3f, %.3f}]",
+					bb.min.x, bb.min.x, bb.min.x,
+					bb.max.x, bb.max.x, bb.max.x);
+			};
 		if (ImGui::TreeNode("Model tree"))
 		{
+			textAABBFn(m_aabb);
+			DebugRender::DrawBox(m_aabb.min, m_aabb.max, { 0,1,0 });
 			if (ImGui::Button("Dump info"))
 				DumpInfo();
+			ImGui::PushID(GetName());
 			for (index_t i = 0; i < m_nodes.GetSize(); ++i)
 			{
 				const sNode& node = m_nodes[i];
@@ -676,22 +736,44 @@ namespace Mist
 						if (ImGui::TreeNode(buff, m_meshes[node.MeshId].GetName()))
 						{
 							cMesh& mesh = m_meshes[node.MeshId];
-							ImGui::Text("Primitives: %5d", mesh.primitiveArray.GetSize());
-							ImGui::Text("Triangles:  %5d", mesh.indexCount / 3);
-							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.indexCount / 3.f * sizeof(Vertex) / 1024.f);
+							DebugRender::DrawBox(mesh.GetAABB().min, mesh.GetAABB().max, glm::vec3(1, 1, 0));
+							textAABBFn(mesh.GetAABB());
+
+							ImGui::SeparatorText("Info");
+							ImGui::Text("Primitives: %5d", mesh.GetPrimitiveCount());
+							ImGui::Text("Triangles:  %5d", mesh.GetIndexCount() / 3);
+							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.GetIndexCount() / 3.f * sizeof(Vertex) / 1024.f);
+							ImGui::SeparatorText("Control");
+							int flags = mesh.GetRenderFlags();
+							sprintf_s(buff, "##m%d", i);
+							ImGui::PushID(buff);
+							if (ImGui::CheckboxFlags("No shadows", &flags, RenderFlags_ShadowMap))
+								mesh.SetRenderFlags((uint32_t)flags);
+							if (ImGui::CheckboxFlags("No visible", &flags, RenderFlags_Fixed))
+								mesh.SetRenderFlags((uint32_t)flags);
+							ImGui::PopID();
+
 							sprintf_s(buff, "##prim%d", i);
 							if (ImGui::TreeNode(buff, "Primitives"))
 							{
-								for (index_t i = 0; i < mesh.primitiveArray.GetSize(); ++i)
+								for (index_t j = 0; j < mesh.GetPrimitiveCount(); ++j)
 								{
-									PrimitiveMeshData& primitive = mesh.primitiveArray[i];
+									PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
+									DebugRender::DrawBox(primitive.AABB.min, primitive.AABB.max, glm::vec3(1, 1, 0));
+									textAABBFn(primitive.AABB);
+									ImGui::SeparatorText("Info");
 									ImGui::Text("Material:   %s", primitive.Material ? primitive.Material->GetName() : "none");
 									ImGui::Text("Triangles: %4d", primitive.Count/3);
-									int flags = primitive.RenderFlags;
+
+									ImGui::SeparatorText("Control");
+									flags = primitive.RenderFlags;
+									sprintf_s(buff, "##m%dp%d", i, j);
+									ImGui::PushID(buff);
 									if (ImGui::CheckboxFlags("No shadows", &flags, RenderFlags_ShadowMap))
-										primitive.RenderFlags = (uint16_t)flags;
+										primitive.RenderFlags = (uint32_t)flags;
 									if (ImGui::CheckboxFlags("No visible", &flags, RenderFlags_Fixed))
-										primitive.RenderFlags = (uint16_t)flags;
+										primitive.RenderFlags = (uint32_t)flags;
+									ImGui::PopID();
 								}
 								ImGui::TreePop();
 							}
@@ -704,6 +786,7 @@ namespace Mist
 				}
 			}
 			ImGui::TreePop();
+			ImGui::PopID();
 		}
 		if (ImGui::TreeNode("Material list"))
 		{

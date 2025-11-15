@@ -123,7 +123,7 @@ namespace Mist
 		check(lightIndex < globals::MaxShadowMapAttachments);
 		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
 		rs->SetShaderProperty("u_ubo", &m_depthMVPCache[lightIndex], sizeof(glm::mat4));
-		scene->DrawGeometry(rs, RenderFlags_ShadowMap | RenderFlags_NoTextures);
+		scene->DrawGeometry(rs, m_depthMVPCache[lightIndex], RenderFlags_ShadowMap | RenderFlags_NoTextures);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
