@@ -235,21 +235,24 @@ namespace Mist
 
 	void VulkanRenderEngine::SetScene(Scene* scene)
 	{
-		m_scene = static_cast<Scene*>(scene);
-		m_scene->Init();
-		for (uint32_t i = 0; i < globals::MaxOverlappedFrames; ++i)
+		if (m_scene)
 		{
-			//m_renderContext.FrameContextArray[i].Scene = m_scene;
-			//if (scene)
-			//	m_scene->InitFrameData(m_renderContext, m_renderContext.FrameContextArray[i]);
+			m_scene->Destroy();
+			delete m_scene;
+			m_scene = nullptr;
 		}
+		if (scene)
+		{
+			m_scene = scene;
+			m_scene->Init();
 
-		rendersystem::ui::AddWindowCallback("Scene", [](void* data)
-			{
-				check(data);
-				Scene* s = static_cast<Scene*>(data);
-				s->ImGuiDraw();
-			}, m_scene);
+			rendersystem::ui::AddWindowCallback("Scene", [](void* data)
+				{
+					check(data);
+					Scene* s = static_cast<Scene*>(data);
+					s->ImGuiDraw();
+				}, m_scene);
+		}
 	}
 
 	void VulkanRenderEngine::ReloadShaders()
