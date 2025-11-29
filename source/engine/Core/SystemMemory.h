@@ -13,6 +13,7 @@ void operator delete[](void* p, const char* file, int lin);
 #define _new ::new(__FILE__ " " __FUNCTION__, __LINE__)
 #define _malloc(size) Mist::Malloc(size, __FILE__, __LINE__)
 #define _realloc(_p, _size) Mist::Realloc(_p, _size, __FILE__, __LINE__)
+#define _free(_p) Mist::Free(_p)
 
 namespace Mist
 {
@@ -20,6 +21,7 @@ namespace Mist
 	{
 		const void* Data = nullptr;
 		size_t Size = 0;
+		size_t Frame = 0;
 		unsigned int Line = 0;
 		char File[512];
 	};

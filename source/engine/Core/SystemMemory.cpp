@@ -4,20 +4,23 @@
 #include "Core/Types.h"
 #include "Core/Debug.h"
 #include "Core/Console.h"
+#include "Application/Application.h"
 
-#define MEM_BLOCK_HEADER
+//#define MEM_BLOCK_HEADER
 //#define MEM_BLOCK_HEADER_INTENSIVE_CHECK
 
 #if defined(MEM_BLOCK_HEADER_INTENSIVE_CHECK)
 #define MEM_BLOCK_HEADER
 #endif
 
-#define MEM_TRACE_ON
+//#define MEM_TRACE_ON
 
 #define MEM_BLOCK_HEADER_MASK 0x0F
 
 namespace Mist
 {
+	size_t GetFrame() { return tApplication::GetFrame(); }
+
 	tSystemMemStats SystemMemStats;
 
     struct BlockHeader
@@ -67,10 +70,10 @@ namespace Mist
     void SysMem_IntegrityCheck() { IntegrityCheck(SystemMemStats); }
 
 
-	void AddMemTrace(tSystemMemStats& stats, const void* p, size_t size, const char* file, uint32_t line)
+	void AddMemTrace(tSystemMemStats& stats, const void* p, size_t size, const char* file, uint32_t line, size_t frame)
 	{
-#ifdef MEM_TRACE_ON
 		check(p && size && file);
+#ifdef MEM_TRACE_ON
 		tSystemAllocTrace* trace = nullptr;
 		if (stats.FreeIndicesIndex)
 		{
@@ -92,6 +95,7 @@ namespace Mist
 		trace->Data = p;
 		trace->Size = size;
 		trace->Line = line;
+		trace->Frame = frame;
 		strcpy_s(trace->File, file);
 		stats.Allocated += size;
 		stats.MaxAllocated = __max(stats.Allocated, stats.MaxAllocated);
@@ -111,9 +115,6 @@ namespace Mist
 				stats.FreeIndicesArray[stats.FreeIndicesIndex++] = i;
 				stats.Allocated -= stats.MemTraceArray[i].Size;
 				stats.MemTraceArray[i].Data = nullptr;
-				stats.MemTraceArray[i].Size = 0;
-				stats.MemTraceArray[i].Line = 0;
-				*stats.MemTraceArray[i].File = 0;
 				return true;
 			}
 		}
@@ -128,7 +129,8 @@ namespace Mist
 		for (uint32_t i = 0; i < memStats.MemTraceSize; ++i)
 		{
 			if (memStats.MemTraceArray[i].Data)
-				logfinfo("[%4d] 0x%p | %9lld bytes | %256s (%5d)\n", i, 
+				logfinfo("[%4d][frame: %5ld] 0x%p | %9lld bytes | %256s (%5d)\n", i, 
+					memStats.MemTraceArray[i].Frame,
 					memStats.MemTraceArray[i].Data, 
 					memStats.MemTraceArray[i].Size, 
 					memStats.MemTraceArray[i].File, 
@@ -209,7 +211,7 @@ namespace Mist
 		void* ret = malloc(size);
 		check(ret);
 #endif // MEM_BLOCK_HEADER && MEM_TRACE_ON
-		AddMemTrace(SystemMemStats, ret, size, file, line);
+		AddMemTrace(SystemMemStats, ret, size, file, line, GetFrame());
 		return ret;
 	}
 
@@ -233,14 +235,14 @@ namespace Mist
 		else
 			r = realloc(p, size);
 		check(size < UINT32_MAX);
-		AddMemTrace(SystemMemStats, r, size, file, line);
+		AddMemTrace(SystemMemStats, r, size, file, line, GetFrame());
 		check(r);
 		return r;
 #else
 		RemoveMemTrace(SystemMemStats, p);
 		void* q = realloc(p, size);
 		check(q);
-		AddMemTrace(SystemMemStats, p, size, file, line);
+		AddMemTrace(SystemMemStats, p, size, file, line, GetFrame());
 		return q;
 #endif // MEM_BLOCK_HEADER
 	}
