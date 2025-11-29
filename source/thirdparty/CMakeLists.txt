@@ -12,6 +12,11 @@ FetchContent_Declare(
 set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "")
 FetchContent_MakeAvailable(yaml-cpp)
 
+option(TRACY_ENABLE "" ON)
+option(TRACY_ON_DEMMAND "" ON)
+add_subdirectory(tracy)
+
+
 set_target_properties(cppcoda_lib PROPERTIES FOLDER "ThirdParty")
 set_target_properties(yaml-cpp PROPERTIES FOLDER "ThirdParty")
 set_target_properties(yaml-cpp-parse PROPERTIES FOLDER "ThirdParty")
