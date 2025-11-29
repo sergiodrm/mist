@@ -240,9 +240,14 @@ Mist::Debug::eDialogMessageResult Mist::Debug::DialogMsgErrorF(eDialogButtonType
 
 #define PROFILING_AVERAGE_DATA_COUNT 64
 
-namespace Mist::Debug
+namespace Mist
 {
-	extern uint32_t GVulkanLayerValidationErrors;
+	extern CBoolVar CVar_EnableValidationLayer;
+
+	namespace Debug
+	{
+		extern uint32_t GVulkanLayerValidationErrors;
+	}
 }
 
 namespace Mist
@@ -501,6 +506,8 @@ namespace Mist
                     "RELEASE"
 #endif
 				);
+				if (CVar_EnableValidationLayer.Get())
+					ImGui::TextColored(ImVec4(0.7f, 0.2f, 0.1f, 1.f), "Vulkan validation layers enabled");
 				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
 				ImGui::Text("Cpu %2.3f ms", cpuTimes.meanMs);
 				ImGui::Text("Gpu %2.3f ms", g_render->GetGpuTimeUs() * 0.001f);
