@@ -61,8 +61,10 @@
 #define MESH_PROFILE
 #ifdef MESH_PROFILE
 #define loadmesh_profile_log_scope(msg) PROFILE_SCOPE_LOG(loadmesh_##msg, loadmeshlabel #msg)
+#define loadmesh_profile_logf_scope(msg, fmt, ...) PROFILE_SCOPE_LOGF(loadmesh_##msg, loadmeshlabel fmt, __VA_ARGS__)
 #else
-#define profile_log_mesh_scope(msg) DUMMY_MACRO
+#define loadmesh_profile_log_scope(msg) DUMMY_MACRO
+#define loadmesh_profile_logf_scope(msg, fmt, ...) DUMMY_MACRO
 #endif
 
 #define LOAD_MESH_CHECK_READ_ACCESSOR
@@ -451,6 +453,12 @@ namespace gltf_api
 		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
 		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
+		switch (cgltfmtl.alpha_mode)
+		{
+		case cgltf_alpha_mode_opaque: material.m_flags |= Mist::MATERIAL_FLAG_OPAQUE; break;
+		case cgltf_alpha_mode_mask: material.m_flags |= Mist::MATERIAL_FLAG_MASK; break;
+		case cgltf_alpha_mode_blend: material.m_flags |= Mist::MATERIAL_FLAG_BLEND; break;
+		}
 	}
 
 }
@@ -532,161 +540,171 @@ namespace Mist
 		loadmeshlogf("* meshes:		%4d\n", data->meshes_count);
 		loadmeshlogf("* textures:	%4d\n", data->textures_count);
 
-		if (data->materials_count)
 		{
-			loadmesh_profile_log_scope(LoadMaterials);
-			InitMaterials((index_t)data->materials_count);
-			for (uint32_t i = 0; i < data->materials_count; ++i)
+			loadmesh_profile_logf_scope(LoadMaterials, "Load materials (%s)(%d)", assetPath, data->materials_count);
+			if (data->materials_count)
 			{
-				m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
-				gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
-				//m_materials[i].SetupShader(context);
-			}
-		}
-		else
-		{
-			logfwarn("Model without materials: %s\n", assetPath);
-			InitMaterials(1);
-			m_materials[0] = *GetDefaultMaterial();
-		}
-
-		InitNodes((index_t)data->nodes_count);
-		InitMeshes((index_t)data->meshes_count);
-		m_aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
-
-		tDynArray<Vertex> tempVertices;
-		tDynArray<uint32_t> tempIndices;
-		for (index_t i = 0; i < (index_t)data->nodes_count; ++i)
-		{
-			const cgltf_node& node = data->nodes[i];
-			index_t parentIndex = index_invalid;
-			if (node.parent)
-				parentIndex = gltf_api::GetArrayElementOffset(data->nodes, node.parent);
-			index_t nodeIndex = BuildNode(i, parentIndex, node.name);
-
-			// Process transform
-			gltf_api::ReadNodeLocalTransform(node, m_transforms[i]);
-			glm::vec3 pos, rot, scl;
-			math::DecomposeMatrix(m_transforms[i], pos, rot, scl);
-			loadmeshlogf("node %4d %s child of %4d\n", i, m_nodeNames[i].CStr(), parentIndex);
-			loadmeshlogf("node %4d %s [pos %4.3f, %4.3f, %4.3f][rot %2.3f, %2.3f, %2.3f][scl %2.3f, %2.3f, %2.3f]\n", i, m_nodeNames[i].CStr(),
-				pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, scl.x, scl.y, scl.z);
-
-			// Process mesh
-			if (node.mesh)
-			{
-				loadmesh_profile_log_scope(LoadMesh);
-				index_t meshIndex = CreateMesh();
-				m_nodes[nodeIndex].MeshId = meshIndex;
-				m_meshNodeIndex[meshIndex] = nodeIndex;
-
-				cMesh& mesh = m_meshes[meshIndex];
-				mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
-				loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
-
-				mesh.InitPrimitives(node.mesh->primitives_count);
-				check(mesh.GetPrimitiveCount() <= node.mesh->primitives_count);
-				loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
-				for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
+				InitMaterials((index_t)data->materials_count);
+				for (uint32_t i = 0; i < data->materials_count; ++i)
 				{
-					const cgltf_primitive& cgltfprimitive = node.mesh->primitives[j];
-					PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
-
-					check(cgltfprimitive.type == cgltf_primitive_type_triangles);
-					check(cgltfprimitive.indices && cgltfprimitive.indices->type == cgltf_type_scalar && cgltfprimitive.indices->count % 3 == 0);
-					check(cgltfprimitive.attributes && cgltfprimitive.attributes->data);
-
-					// Reserve size in temporal buffers
-					uint32_t indexCount = (uint32_t)cgltfprimitive.indices->count;
-					uint32_t vertexCount = (uint32_t)cgltfprimitive.attributes[0].data->count;
-					uint32_t vertexOffset = (uint32_t)tempVertices.size();
-					uint32_t indexOffset = (uint32_t)tempIndices.size();
-					tempIndices.resize(indexOffset + indexCount);
-					tempVertices.resize(vertexOffset + vertexCount);
-					loadmeshlogf("** primitive %2d: [vertices %6d | %6d bytes][indices %4d | %6d bytes]\n", 
-						j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
-
-					// Read gltf primitive in temporal buffers
-					gltf_api::LoadIndices(cgltfprimitive, tempIndices.data() + indexOffset, vertexOffset);
-					gltf_api::LoadVertices(cgltfprimitive, tempVertices.data() + vertexOffset, vertexCount);
-
-					// Calculate AABB
-					// calculate min and max of vertices in mesh space. After load all vertices and nodes, aabb will be transformed to model space.
-					// only calculate primitives bounding boxes.
-					primitive.AABB = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
-					const Vertex* vertices = tempVertices.data() + vertexOffset;
-					for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
-						primitive.AABB = { math::ComposeMinVector(primitive.AABB.min, vertices[vertexIndex].Position), math::ComposeMaxVector(primitive.AABB.max, vertices[vertexIndex].Position) };
-
-					// Set primitive
-					primitive.RenderFlags = RenderFlags_Fixed; 
-					primitive.FirstIndex = indexOffset;
-					primitive.Count = indexCount;
-					if (cgltfprimitive.material)
-					{
-						index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
-						check(materialIndex < m_materials.GetSize());
-						cMaterial* material = &m_materials[materialIndex];
-						primitive.Material = material;
-						if (!(material->m_flags & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
-							primitive.RenderFlags |= RenderFlags_ShadowMap;
-						if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
-							primitive.RenderFlags |= RenderFlags_Emissive;
-					}
-					else
-					{
-						logfwarn("Primitive mesh without material: %s (Primitive %d)\n", mesh.GetName(), j);
-						check(!m_materials.IsEmpty());
-						primitive.Material = &m_materials[0];
-					}
-
-					check(cgltfprimitive.indices->count == primitive.Count);
+					m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
+					gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
+					//m_materials[i].SetupShader(context);
 				}
-
-				loadmeshlogf("* mesh %d: %d vertices (%lld b), %d indices (%lld b)\n",
-					meshIndex, tempVertices.size(), tempVertices.size() * sizeof(Vertex), tempIndices.size(), tempIndices.size() * sizeof(uint32_t));
-
-				//BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
-
-				// Create mesh resources.
-				mesh.InitBuffers(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex), tempIndices.data(), tempIndices.size());
-
-				// Clear temp buffers without release memory
-				tempIndices.clear();
-				tempVertices.clear();
 			}
 			else
-				loadmeshlogf("node %d %s has no mesh\n", i, m_nodeNames[i].CStr());
+			{
+				logfwarn("Model without materials: %s\n", assetPath);
+				InitMaterials(1);
+				m_materials[0] = *GetDefaultMaterial();
+			}
+		}
+
+		{
+			loadmesh_profile_logf_scope(LoadMesh, "Load meshes (%s)(%d)", assetPath, data->meshes_count);
+			InitNodes((index_t)data->nodes_count);
+			InitMeshes((index_t)data->meshes_count);
+			m_aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+
+			tDynArray<Vertex> tempVertices;
+			tDynArray<uint32_t> tempIndices;
+			for (index_t i = 0; i < (index_t)data->nodes_count; ++i)
+			{
+				const cgltf_node& node = data->nodes[i];
+				index_t parentIndex = index_invalid;
+				if (node.parent)
+					parentIndex = gltf_api::GetArrayElementOffset(data->nodes, node.parent);
+				index_t nodeIndex = BuildNode(i, parentIndex, node.name);
+
+				// Process transform
+				gltf_api::ReadNodeLocalTransform(node, m_transforms[i]);
+				glm::vec3 pos, rot, scl;
+				math::DecomposeMatrix(m_transforms[i], pos, rot, scl);
+				loadmeshlogf("node %4d %s child of %4d\n", i, m_nodeNames[i].CStr(), parentIndex);
+				loadmeshlogf("node %4d %s [pos %4.3f, %4.3f, %4.3f][rot %2.3f, %2.3f, %2.3f][scl %2.3f, %2.3f, %2.3f]\n", i, m_nodeNames[i].CStr(),
+					pos.x, pos.y, pos.z, rot.x, rot.y, rot.z, scl.x, scl.y, scl.z);
+
+				// Process mesh
+				if (node.mesh)
+				{
+					index_t meshIndex = CreateMesh();
+					m_nodes[nodeIndex].MeshId = meshIndex;
+					m_meshNodeIndex[meshIndex] = nodeIndex;
+
+					cMesh& mesh = m_meshes[meshIndex];
+					mesh.SetRenderFlags(0);
+					mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
+					loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
+
+					mesh.InitPrimitives(node.mesh->primitives_count);
+					check(mesh.GetPrimitiveCount() <= node.mesh->primitives_count);
+					loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
+					for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
+					{
+						const cgltf_primitive& cgltfprimitive = node.mesh->primitives[j];
+						PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
+
+						check(cgltfprimitive.type == cgltf_primitive_type_triangles);
+						check(cgltfprimitive.indices && cgltfprimitive.indices->type == cgltf_type_scalar && cgltfprimitive.indices->count % 3 == 0);
+						check(cgltfprimitive.attributes && cgltfprimitive.attributes->data);
+
+						// Reserve size in temporal buffers
+						uint32_t indexCount = (uint32_t)cgltfprimitive.indices->count;
+						uint32_t vertexCount = (uint32_t)cgltfprimitive.attributes[0].data->count;
+						uint32_t vertexOffset = (uint32_t)tempVertices.size();
+						uint32_t indexOffset = (uint32_t)tempIndices.size();
+						tempIndices.resize(indexOffset + indexCount);
+						tempVertices.resize(vertexOffset + vertexCount);
+						loadmeshlogf("** primitive %2d: [vertices %6d | %6d bytes][indices %4d | %6d bytes]\n",
+							j, vertexCount, sizeof(Vertex) * vertexCount, indexCount, sizeof(uint32_t) * indexCount);
+
+						// Read gltf primitive in temporal buffers
+						gltf_api::LoadIndices(cgltfprimitive, tempIndices.data() + indexOffset, vertexOffset);
+						gltf_api::LoadVertices(cgltfprimitive, tempVertices.data() + vertexOffset, vertexCount);
+
+						// Calculate AABB
+						// calculate min and max of vertices in mesh space. After load all vertices and nodes, aabb will be transformed to model space.
+						// only calculate primitives bounding boxes.
+						primitive.AABB = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+						const Vertex* vertices = tempVertices.data() + vertexOffset;
+						for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
+							primitive.AABB = { math::ComposeMinVector(primitive.AABB.min, vertices[vertexIndex].Position), math::ComposeMaxVector(primitive.AABB.max, vertices[vertexIndex].Position) };
+
+						// Set primitive
+						primitive.RenderFlags = 0;
+						primitive.FirstIndex = indexOffset;
+						primitive.Count = indexCount;
+						if (cgltfprimitive.material)
+						{
+							index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
+							check(materialIndex < m_materials.GetSize());
+							cMaterial* material = &m_materials[materialIndex];
+							primitive.Material = material;
+							if (!(material->m_flags & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
+								primitive.RenderFlags |= RenderPass_ShadowMap;
+							//if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
+							//	primitive.RenderFlags |= RenderFlags_Emissive;
+							if (material->m_flags & MATERIAL_FLAG_OPAQUE)
+								primitive.RenderFlags |= RenderPass_Opaque;
+							if (material->m_flags & (MATERIAL_FLAG_MASK | MATERIAL_FLAG_BLEND))
+								primitive.RenderFlags |= RenderPass_Transparent;
+						}
+						else
+						{
+							logfwarn("Primitive mesh without material: %s (Primitive %d)\n", mesh.GetName(), j);
+							check(!m_materials.IsEmpty());
+							primitive.Material = &m_materials[0];
+						}
+						mesh.SetRenderFlags(mesh.GetRenderFlags() | primitive.RenderFlags);
+
+						check(cgltfprimitive.indices->count == primitive.Count);
+					}
+
+					loadmeshlogf("* mesh %d: %d vertices (%lld b), %d indices (%lld b), render mask %d\n",
+						meshIndex, tempVertices.size(), tempVertices.size() * sizeof(Vertex), tempIndices.size(), tempIndices.size() * sizeof(uint32_t), mesh.GetRenderFlags());
+
+					//BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
+
+					// Create mesh resources.
+					mesh.InitBuffers(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex), tempIndices.data(), tempIndices.size());
+
+					// Clear temp buffers without release memory
+					tempIndices.clear();
+					tempVertices.clear();
+				}
+				else
+					loadmeshlogf("node %d %s has no mesh\n", i, m_nodeNames[i].CStr());
+			}
+
+			// Transform AABB to model space
+			{
+				glm::mat4* modelTransforms = _new glm::mat4[m_transforms.GetSize()];
+				UpdateRenderTransforms(modelTransforms, glm::mat4(1.f));
+				m_aabb.Invalidate();
+				for (uint32_t i = 0; i < m_nodes.GetSize(); ++i)
+				{
+					if (m_nodes[i].MeshId != index_invalid)
+					{
+						cMesh& mesh = m_meshes[m_nodes[i].MeshId];
+						AABB_t meshAABB = AABB_t::InvalidAABB();
+						for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.GetPrimitiveCount(); ++primitiveIndex)
+						{
+							AABB_t& aabb = mesh.GetPrimitiveArray()[primitiveIndex].AABB;
+							aabb.min = modelTransforms[i] * glm::vec4(aabb.min, 1.f);
+							aabb.max = modelTransforms[i] * glm::vec4(aabb.max, 1.f);
+							meshAABB = { math::ComposeMinVector(aabb.min, meshAABB.min), math::ComposeMaxVector(aabb.max, meshAABB.max) };
+						}
+						mesh.SetAABB(meshAABB);
+						m_aabb = { math::ComposeMinVector(m_aabb.min,  meshAABB.min), math::ComposeMaxVector(m_aabb.max,  meshAABB.max) };
+					}
+				}
+				delete[] modelTransforms;
+			}
 		}
 		loadmeshlog("=== End loading model ===\n");
 		gltf_api::FreeData(data);
 
 
-		// Transform AABB to model space
-		{
-			loadmesh_profile_log_scope(CalculateAABB);
-			glm::mat4* modelTransforms = _new glm::mat4[m_transforms.GetSize()];
-			UpdateRenderTransforms(modelTransforms, glm::mat4(1.f));
-			m_aabb.Invalidate();
-			for (uint32_t i = 0; i < m_nodes.GetSize(); ++i)
-			{
-				if (m_nodes[i].MeshId != index_invalid)
-				{
-					cMesh& mesh = m_meshes[m_nodes[i].MeshId];
-					AABB_t meshAABB = AABB_t::InvalidAABB();
-					for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.GetPrimitiveCount(); ++primitiveIndex)
-					{
-						AABB_t& aabb = mesh.GetPrimitiveArray()[primitiveIndex].AABB;
-						aabb.min = modelTransforms[i] * glm::vec4(aabb.min, 1.f);
-						aabb.max = modelTransforms[i] * glm::vec4(aabb.max, 1.f);
-						meshAABB = { math::ComposeMinVector(aabb.min, meshAABB.min), math::ComposeMaxVector(aabb.max, meshAABB.max) };
-					}
-					mesh.SetAABB(meshAABB);
-					m_aabb = { math::ComposeMinVector(m_aabb.min,  meshAABB.min), math::ComposeMaxVector(m_aabb.max,  meshAABB.max) };
-				}
-			}
-			delete[] modelTransforms;
-		}
 		return true;
 	}
 
@@ -704,111 +722,6 @@ namespace Mist
 		for (index_t i = 0; i < m_materials.GetSize(); ++i)
 		{
 			materials[i] = m_materials[i].GetRenderData();
-		}
-	}
-
-	void cModel::ImGuiDraw()
-	{
-		extern CIntVar CVar_DrawAABB2;
-		auto textAABBFn = [](const AABB_t& bb)
-			{
-				ImGui::Text("Bounding box [{%.3f, %.3f, %.3f}, {%.3f, %.3f, %.3f}]",
-					bb.min.x, bb.min.x, bb.min.x,
-					bb.max.x, bb.max.x, bb.max.x);
-			};
-		if (ImGui::TreeNode("Model tree"))
-		{
-			textAABBFn(m_aabb);
-			DebugRender::DrawBox(m_aabb.min, m_aabb.max, { 0,1,0 });
-			if (ImGui::Button("Dump info"))
-				DumpInfo();
-			ImGui::PushID(GetName());
-			for (index_t i = 0; i < m_nodes.GetSize(); ++i)
-			{
-				const sNode& node = m_nodes[i];
-				char buff[16];
-				sprintf_s(buff, "##node%d", i);
-				if (ImGui::TreeNode(buff, m_nodeNames[i].CStr()))
-				{
-					sprintf_s(buff, "##mesh%d", i);
-					if (node.MeshId != index_invalid)
-					{
-						if (ImGui::TreeNode(buff, m_meshes[node.MeshId].GetName()))
-						{
-							cMesh& mesh = m_meshes[node.MeshId];
-							DebugRender::DrawBox(mesh.GetAABB().min, mesh.GetAABB().max, glm::vec3(1, 1, 0));
-							textAABBFn(mesh.GetAABB());
-
-							ImGui::SeparatorText("Info");
-							ImGui::Text("Primitives: %5d", mesh.GetPrimitiveCount());
-							ImGui::Text("Triangles:  %5d", mesh.GetIndexCount() / 3);
-							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.GetIndexCount() / 3.f * sizeof(Vertex) / 1024.f);
-							ImGui::SeparatorText("Control");
-							int flags = mesh.GetRenderFlags();
-							sprintf_s(buff, "##m%d", i);
-							ImGui::PushID(buff);
-							if (ImGui::CheckboxFlags("No shadows", &flags, RenderFlags_ShadowMap))
-								mesh.SetRenderFlags((uint32_t)flags);
-							if (ImGui::CheckboxFlags("No visible", &flags, RenderFlags_Fixed))
-								mesh.SetRenderFlags((uint32_t)flags);
-							ImGui::PopID();
-
-							sprintf_s(buff, "##prim%d", i);
-							if (ImGui::TreeNode(buff, "Primitives"))
-							{
-								for (index_t j = 0; j < mesh.GetPrimitiveCount(); ++j)
-								{
-									PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
-									DebugRender::DrawBox(primitive.AABB.min, primitive.AABB.max, glm::vec3(1, 1, 0));
-									textAABBFn(primitive.AABB);
-									ImGui::SeparatorText("Info");
-									ImGui::Text("Material:   %s", primitive.Material ? primitive.Material->GetName() : "none");
-									ImGui::Text("Triangles: %4d", primitive.Count/3);
-
-									ImGui::SeparatorText("Control");
-									flags = primitive.RenderFlags;
-									sprintf_s(buff, "##m%dp%d", i, j);
-									ImGui::PushID(buff);
-									if (ImGui::CheckboxFlags("No shadows", &flags, RenderFlags_ShadowMap))
-										primitive.RenderFlags = (uint32_t)flags;
-									if (ImGui::CheckboxFlags("No visible", &flags, RenderFlags_Fixed))
-										primitive.RenderFlags = (uint32_t)flags;
-									ImGui::PopID();
-								}
-								ImGui::TreePop();
-							}
-							ImGui::TreePop();
-						}
-					}
-					else
-						ImGui::Text("No mesh");
-					ImGui::TreePop();
-				}
-			}
-			ImGui::TreePop();
-			ImGui::PopID();
-		}
-		if (ImGui::TreeNode("Material list"))
-		{
-			for (index_t i = 0; i < m_materials.GetSize(); ++i)
-			{
-				if (ImGui::TreeNode(&m_materials[i], "Material %d: %s", i, m_materials[i].GetName()))
-				{
-					cMaterial& material = m_materials[i];
-					for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
-						ImGui::Text("%s: %s", 
-							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ?material.m_textures[j]->m_description.debugName.c_str() : "none");
-					ImGui::ColorEdit3("Albedo", &material.m_albedo[0]);
-					ImGui::DragFloat("Metallic", &material.m_metallicFactor, 0.05f, 0.f, 1.f);
-					ImGui::DragFloat("Roughness", &material.m_roughnessFactor, 0.05f, 0.f, 1.f);
-					ImGui::ColorEdit3("Emissive", &material.m_emissiveFactor[0]);
-					ImGui::DragFloat("Emissive strength", &material.m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
-					
-					//ImGui::Button("Reload");
-					ImGui::TreePop();
-				}
-			}
-			ImGui::TreePop();
 		}
 	}
 

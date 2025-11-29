@@ -48,6 +48,8 @@ namespace Mist
 	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
 
+	CBoolVar CVar_EnableRenderLists("r_enableRenderLists", true);
+
 	extern CIntVar CVar_ShowCpuProf;
 
 	namespace Debug
@@ -142,6 +144,7 @@ namespace Mist
 		g_render = m_renderSystem;
 		g_device = m_renderSystem->GetDevice();
 
+		SceneRenderer::Init();
 		m_renderer.Init(m_renderSystem, this);
 		m_gpuParticleSystem.Init(g_render);
 		DebugRender::Init();
@@ -191,9 +194,13 @@ namespace Mist
 		if (m_scene)
 		{
 			m_scene->UpdateRenderData();
-			ShadowMapProcess* shadowMap = static_cast<ShadowMapProcess*>(m_renderer.GetRenderProcess(RENDERPROCESS_SHADOWMAP));
-			shadowMap->CollectLightData(*m_scene);
+			m_renderer.Update();
+			if (CVar_EnableRenderLists.Get())
+				SceneRenderer::GetSceneRenderer()->BuildRenderLists(m_scene);
 		}
+		else
+			m_renderer.Update();
+
 		FlushPendingConsoleCommands();
 		Draw();
 		return true;
@@ -212,6 +219,7 @@ namespace Mist
 		m_gpuParticleSystem.Destroy(g_render);
 		DebugRender::Destroy();
 		m_renderer.Destroy(m_renderSystem);
+		SceneRenderer::Destroy();
 		g_device = nullptr;
 		g_render = nullptr;
 		m_renderSystem->Destroy();
@@ -310,6 +318,7 @@ namespace Mist
 			rendersystem::ui::Show();
 			Profiling::CpuProf_ImGuiDraw();
 			tApplication::ImGuiDraw();
+			SceneRenderer::GetSceneRenderer()->ImGuiDraw();
 		}
 	}
 

@@ -9,6 +9,15 @@ namespace Mist
 	class cMaterial;
 	struct sMaterialRenderData;
 
+	enum RenderPassTypeBit
+	{
+		RenderPass_Opaque = 0x01,
+		RenderPass_Transparent = 0x02,
+		RenderPass_ShadowMap = 0x04,
+	};
+	typedef uint8_t RenderPassType;
+	inline bool IsGeometryPass(RenderPassType type) { return type == RenderPass_ShadowMap; }
+
 	class cModel : public cRenderResource<RenderResource_Model>
 	{
 	public:
@@ -23,19 +32,24 @@ namespace Mist
 		bool LoadModel(render::Device* device, const char* filepath);
 		void Destroy();
 		
-		inline index_t GetTransformsCount() const { return m_nodes.GetSize(); }
+		inline const glm::mat4& GetTransform(index_t nodeIndex) const { return m_transforms[nodeIndex]; }
+		inline index_t GetTransformsCount() const { return m_transforms.GetSize(); }
+		inline const cMaterial& GetMaterial(index_t index) const { return m_materials[index]; }
 		inline index_t GetMaterialCount() const { return m_materials.GetSize(); }
 		void UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform) const;
 		void UpdateMaterials(sMaterialRenderData* materials) const;
-		void ImGuiDraw();
 		index_t GetRoot() const { return m_root; }
+		index_t GetNodeIndex(const sNode* node) const { check(m_nodes.GetData() <= node); return node - m_nodes.GetData(); }
 		const sNode* GetNode(index_t nodeIndex) const { return nodeIndex < m_nodes.GetSize() ? &m_nodes[nodeIndex] : nullptr; }
+		const char* GetNodeName(index_t nodeIndex) const { return nodeIndex < m_nodes.GetSize() ? m_nodeNames[nodeIndex].CStr() : nullptr; }
 		inline index_t GetNodeFromMeshIndex(uint32_t meshIndex) const { return m_meshNodeIndex[meshIndex]; }
 
 		const cMesh& GetMesh(uint32_t index) const { return m_meshes[index]; }
 		uint32_t GetMeshCount() const { return m_meshes.GetSize(); }
 
 		inline const AABB_t& GetAABB() const { return m_aabb; }
+		inline uint8_t GetFlags() const { check(false); return 0; }
+		void DumpInfo() const;
 	private:
 		void InitNodes(index_t n);
 		void InitMeshes(index_t n);
@@ -51,7 +65,6 @@ namespace Mist
 		index_t CreateMesh();
 		index_t CreateMaterial();
 
-		void DumpInfo() const;
 
 		index_t m_root = index_invalid;
 	private:

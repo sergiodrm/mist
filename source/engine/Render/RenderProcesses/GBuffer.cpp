@@ -15,6 +15,8 @@ namespace Mist
 {
 	GBuffer* g_gbuffer = nullptr;
 
+	extern CBoolVar CVar_EnableRenderLists;
+
 	GBuffer::GBuffer(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
 	{ }
@@ -46,6 +48,8 @@ namespace Mist
 		}
 		m_renderTarget = device->CreateRenderTarget(rtDesc);
 		InitPipeline(rs);
+
+		m_renderListId = SceneRenderer::GetSceneRenderer()->CreateRenderList({ RenderPass_Opaque | RenderPass_Transparent, {} });
 	}
 
 	void GBuffer::Destroy(rendersystem::RenderSystem* rs)
@@ -59,12 +63,19 @@ namespace Mist
 		rs->DestroyShader(&m_gbufferShader);
 	}
 
+	void GBuffer::Update()
+	{
+		SceneRenderer* sr = SceneRenderer::GetSceneRenderer();
+		sr->SetRenderListInfo(m_renderListId, { RenderPass_Opaque | RenderPass_Transparent, *GetCameraData() });
+	}
+
 	void GBuffer::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuGBuffer);
 		const Scene* scene = GetEngine()->GetScene();
 		if (!scene)
 			return;
+
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 		rs->SetRenderTarget(m_renderTarget);
@@ -75,7 +86,10 @@ namespace Mist
 		rs->SetStencilEnable(true);
 		rs->SetStencilMask(0xff, 0xff, 1);
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
-		scene->Draw(rs, GetCameraData()->ViewProjection, RenderFlags_Fixed | RenderFlags_Emissive);
+		if (CVar_EnableRenderLists.Get())
+			SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListId);
+		else
+			scene->Draw(rs, GetCameraData()->ViewProjection, RenderPass_Opaque);
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 	}

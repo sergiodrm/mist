@@ -142,6 +142,20 @@ namespace YAML
 namespace Mist
 {
 	CIntVar CVar_DebugCubes("r_debugCubes", 0);
+	CStrVar CVar_RenderInclude("r_renderInclude", "");
+	CStrVar CVar_RenderExclude("r_renderExclude", "");
+	CStrVar CVar_ShowAABBMeshName("r_showAABBMeshName", "");
+
+	SceneRenderer* g_sceneRenderer = nullptr;
+
+	bool SceneFilter(const char* name)
+	{
+		if (*CVar_RenderInclude.Get() && !WildStricmp(CVar_RenderInclude.Get(), name))
+			return false;
+		if (*CVar_RenderExclude.Get() && WildStricmp(CVar_RenderExclude.Get(), name))
+			return false;
+		return true;
+	}
 
 	const char* LightTypeToStr(ELightType e)
 	{
@@ -312,6 +326,93 @@ namespace Mist
 		}
 		check(model);
 		return (index_t)(model-m_models.GetData());
+	}
+
+	void Scene::ImGuiDrawModel(const cModel* model, const glm::mat4& transform)
+	{
+		auto textAABBFn = [](const AABB_t& bb)
+			{
+				ImGui::Text("Bounding box [{%.3f, %.3f, %.3f}, {%.3f, %.3f, %.3f}]",
+					bb.min.x, bb.min.x, bb.min.x,
+					bb.max.x, bb.max.x, bb.max.x);
+			};
+		if (ImGui::TreeNode("Model tree"))
+		{
+			AABB_t aabb = model->GetAABB().ApplyTransform(transform);
+			textAABBFn(aabb);
+			DebugRender::DrawBox(aabb.min, aabb.max, { 0,1,0 });
+			if (ImGui::Button("Dump info"))
+				model->DumpInfo();
+			ImGui::PushID(model->GetName());
+			for (index_t i = 0; i < model->GetTransformsCount(); ++i)
+			{
+				const cModel::sNode& node = *model->GetNode(i);
+				ImGui::PushID(i);
+				if (ImGui::TreeNode(model->GetNodeName(i)))
+				{
+					if (node.MeshId != index_invalid)
+					{
+						const cMesh& mesh = model->GetMesh(node.MeshId);
+						if (ImGui::TreeNode(mesh.GetName()))
+						{
+							AABB_t aabb = mesh.GetAABB().ApplyTransform(transform);
+							DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(1, 1, 0));
+							textAABBFn(aabb);
+
+							ImGui::SeparatorText("Info");
+							ImGui::Text("Primitives: %5d", mesh.GetPrimitiveCount());
+							ImGui::Text("Triangles:  %5d", mesh.GetIndexCount() / 3);
+							ImGui::Text("Gpu memory: %5.2f KB", (float)mesh.GetIndexCount() / 3.f * sizeof(Vertex) / 1024.f);
+							ImGui::SeparatorText("Control");
+
+							if (ImGui::TreeNode("Primitives"))
+							{
+								for (index_t j = 0; j < mesh.GetPrimitiveCount(); ++j)
+								{
+									const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
+									aabb = primitive.AABB.ApplyTransform(transform);
+									DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(1, 1, 0));
+									textAABBFn(aabb);
+									ImGui::SeparatorText("Info");
+									ImGui::Text("Material:   %s", primitive.Material ? primitive.Material->GetName() : "none");
+									ImGui::Text("Triangles: %4d", primitive.Count / 3);
+								}
+								ImGui::TreePop();
+							}
+							ImGui::TreePop();
+						}
+					}
+					else
+						ImGui::Text("No mesh");
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+			ImGui::TreePop();
+			ImGui::PopID();
+		}
+		if (ImGui::TreeNode("Material list"))
+		{
+			for (index_t i = 0; i < model->GetMaterialCount(); ++i)
+			{
+				cMaterial& material = *const_cast<cMaterial*>(&model->GetMaterial(i));
+				if (ImGui::TreeNode(&material, "Material %d: %s", i, material.GetName()))
+				{
+					for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
+						ImGui::Text("%s: %s",
+							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ? material.m_textures[j]->m_description.debugName.c_str() : "none");
+					ImGui::ColorEdit3("Albedo", &material.m_albedo[0]);
+					ImGui::DragFloat("Metallic", &material.m_metallicFactor, 0.05f, 0.f, 1.f);
+					ImGui::DragFloat("Roughness", &material.m_roughnessFactor, 0.05f, 0.f, 1.f);
+					ImGui::ColorEdit3("Emissive", &material.m_emissiveFactor[0]);
+					ImGui::DragFloat("Emissive strength", &material.m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
+
+					//ImGui::Button("Reload");
+					ImGui::TreePop();
+				}
+			}
+			ImGui::TreePop();
+		}
 	}
 
 	index_t Scene::NewCamera()
@@ -635,42 +736,51 @@ namespace Mist
 	void Scene::RecalculateTransforms()
 	{
 		CPU_PROFILE_SCOPE(RecalculateTransforms);
-		check(m_localTransforms.GetSize() == m_transformComponents.GetSize());
-		check(m_globalTransforms.GetSize() == m_transformComponents.GetSize());
-		TransformComponentToMatrix(m_transformComponents.GetData(), m_localTransforms.GetData(), m_transformComponents.GetSize());
-		// Process root level first
-		if (!m_dirtyNodes[0].IsEmpty())
 		{
-			for (uint32_t i = 0; i < m_dirtyNodes[0].GetSize(); ++i)
-			{
-				uint32_t nodeIndex = m_dirtyNodes[0][i];
-				m_globalTransforms[nodeIndex] = m_localTransforms[nodeIndex];
-			}
-			m_dirtyNodes[0].Clear();
+			CPU_PROFILE_SCOPE(TransformComponentToMatrices);
+			check(m_localTransforms.GetSize() == m_transformComponents.GetSize());
+			check(m_globalTransforms.GetSize() == m_transformComponents.GetSize());
+			TransformComponentToMatrix(m_transformComponents.GetData(), m_localTransforms.GetData(), m_transformComponents.GetSize());
 		}
-		// Iterate over the deeper levels
-		for (uint32_t level = 1; level < MaxNodeLevel; ++level)
 		{
-			for (uint32_t nodeIndex = 0; nodeIndex < m_dirtyNodes[level].GetSize(); ++nodeIndex)
+			CPU_PROFILE_SCOPE(SceneUpdate);
+			// Process root level first
+			if (!m_dirtyNodes[0].IsEmpty())
 			{
-				int32_t node = m_dirtyNodes[level][nodeIndex];
-				int32_t parentNode = m_hierarchy[node].Parent;
-				m_globalTransforms[node] = m_globalTransforms[parentNode] * m_localTransforms[node];
+				for (uint32_t i = 0; i < m_dirtyNodes[0].GetSize(); ++i)
+				{
+					uint32_t nodeIndex = m_dirtyNodes[0][i];
+					m_globalTransforms[nodeIndex] = m_localTransforms[nodeIndex];
+				}
+				m_dirtyNodes[0].Clear();
 			}
-			m_dirtyNodes[level].Clear();
+			// Iterate over the deeper levels
+			for (uint32_t level = 1; level < MaxNodeLevel; ++level)
+			{
+				for (uint32_t nodeIndex = 0; nodeIndex < m_dirtyNodes[level].GetSize(); ++nodeIndex)
+				{
+					int32_t node = m_dirtyNodes[level][nodeIndex];
+					int32_t parentNode = m_hierarchy[node].Parent;
+					m_globalTransforms[node] = m_globalTransforms[parentNode] * m_localTransforms[node];
+				}
+				m_dirtyNodes[level].Clear();
+			}
 		}
 
-		index_t offset = 0;
-		for (index_t i = 0; i < m_hierarchy.GetSize(); ++i)
 		{
-			if (m_meshComponentMap.contains(i))
+			CPU_PROFILE_SCOPE(ModelUpdate);
+			index_t offset = 0;
+			for (index_t i = 0; i < m_hierarchy.GetSize(); ++i)
 			{
-				index_t meshIndex = m_meshComponentMap[i].MeshIndex;
-				const cModel& model = m_models[meshIndex];
-				uint32_t count = model.GetTransformsCount();
-				check(offset + count < m_renderTransforms.GetSize());
-				model.UpdateRenderTransforms(m_renderTransforms.GetData() + offset, m_globalTransforms[i]);
-				offset += count;
+				if (m_meshComponentMap.contains(i))
+				{
+					index_t meshIndex = m_meshComponentMap[i].MeshIndex;
+					const cModel& model = m_models[meshIndex];
+					uint32_t count = model.GetTransformsCount();
+					check(offset + count < m_renderTransforms.GetSize());
+					model.UpdateRenderTransforms(m_renderTransforms.GetData() + offset, m_globalTransforms[i]);
+					offset += count;
+				}
 			}
 		}
 
@@ -752,6 +862,19 @@ namespace Mist
 	void Scene::Draw(rendersystem::RenderSystem* renderSystem, const glm::mat4& viewProjection, uint16_t renderFlags) const
 	{
 		CPU_PROFILE_SCOPE(Scene_Draw);
+
+		/**
+		 * What data do i need to draw a primitive:
+		 * * Material for textures and shading
+		 * * Mesh for VB and IB
+		 * * Indices inside the mesh
+		 * * World transform of the mesh
+		 * 
+		 * What data do i need to filter a primitive:
+		 * * AABB (model -> mesh -> primitive) (in local space)
+		 * * Render flags (model -> mesh -> primitive)
+		 * * World transform to place the AABB in world
+		 */
 
 		uint32_t nodeCount = GetRenderObjectCount();
 		index_t renderTransformOffset = 0;
@@ -1035,8 +1158,29 @@ namespace Mist
 						if (ImGui::TreeNode(buff, "Mesh component"))
 						{
 							const MeshComponent& meshComp = m_meshComponentMap.at(i);
+							const cModel& model = m_models[meshComp.MeshIndex];
+							AABB_t aabb = model.GetAABB().ApplyTransform(transform);
+							DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(0, 1, 0));
 							ImGui::Text("Model: [%u] %s", meshComp.MeshIndex, meshComp.MeshAssetPath);
-							ImGui::Text("Model name: %s", m_models[meshComp.MeshIndex].GetName());
+							ImGui::Text("Model name: %s", model.GetName());
+							if (ImGui::Button("Dump info"))
+								model.DumpInfo();
+							if (ImGui::TreeNode(buff, "Meshes"))
+							{
+								for (uint32_t j = 0; j < model.GetMeshCount(); ++j)
+								{
+									const cMesh& mesh = model.GetMesh(j);
+									aabb = mesh.GetAABB().ApplyTransform(transform);
+									ImGui::Text("%s [%4d triangles; %4d indices; %3d primitives] (VB: %lld B; IB: %lld B) (Extent: (%3.3f, %3.3f, %3.3f; %3.3f, %3.3f, %3.3f))",
+										mesh.GetName(), mesh.GetIndexCount()/3, mesh.GetIndexCount(), mesh.GetPrimitiveCount(),
+										mesh.GetVertexBuffer()->m_description.size, mesh.GetIndexBuffer()->m_description.size,
+										aabb.min.x, aabb.min.y, aabb.min.z,
+										aabb.max.x, aabb.max.y, aabb.max.z);
+									if (*CVar_ShowAABBMeshName.Get() && WildStricmp(CVar_ShowAABBMeshName.Get(), mesh.GetName()))
+										DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(1, 1, 0));
+								}
+								ImGui::TreePop();
+							}
 							ImGui::TreePop();
 						}
 					}
@@ -1081,18 +1225,20 @@ namespace Mist
 			}
 			ImGui::Columns();
 			ImGui::TreePop();
-		}
-		if (m_editingModel != index_invalid)
-		{
-			ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-			if (ImGui::BeginChild("EditingModelChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
+
+			if (m_editingModel != index_invalid)
 			{
-				ImGui::Text("Editing model %s", m_models[m_editingModel].GetName());
-				ImGui::Separator();
-				m_models[m_editingModel].ImGuiDraw();
+				ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+				if (ImGui::BeginChild("EditingModelChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
+				{
+					ImGui::Text("Editing model %s", m_models[m_editingModel].GetName());
+					ImGui::Separator();
+					//m_models[m_editingModel].ImGuiDraw();
+					//ImGuiDrawModel(m_models[m_editingModel], )
+				}
+				ImGui::PopStyleColor();
+				ImGui::EndChild();
 			}
-			ImGui::PopStyleColor();
-			ImGui::EndChild();
 		}
 		if (ImGui::TreeNode("IBL cubemap"))
 		{
@@ -1210,5 +1356,266 @@ namespace Mist
 		}
 		check(shadowMapIndex <= globals::MaxShadowMapAttachments);
 	}
+
+	SceneRenderer::SceneRenderer(uint32_t size)
+	{
+		m_creationInfo.Allocate(size);
+		m_renderPasses.Allocate(size);
+	}
+
+	SceneRenderer::~SceneRenderer()
+	{
+		m_renderPasses.Delete();
+		m_creationInfo.Delete();
+	}
+
+	uint32_t SceneRenderer::CreateRenderList(const RenderPassInfo& info)
+	{
+		check(((info.pass & (RenderPass_Opaque|RenderPass_Transparent)) && !(info.pass & RenderPass_ShadowMap)) || (info.pass & RenderPass_ShadowMap) == info.pass);
+		m_creationInfo.Push(info);
+		m_renderPasses.Push();
+		return m_renderPasses.GetSize()-1;
+	}
+
+	void SceneRenderer::SetRenderListInfo(uint32_t id, const RenderPassInfo& info)
+	{
+		check(id < m_creationInfo.GetSize());
+		m_creationInfo[id] = info;
+	}
+
+	void SceneRenderer::BuildRenderLists(const Scene* scene)
+	{
+		CPU_PROFILE_SCOPE(BuildRenderLists);
+		if (!scene)
+			return;
+		check(m_renderPasses.GetSize() == m_creationInfo.GetSize());
+		for (uint32_t i = 0; i < m_renderPasses.GetSize(); ++i)
+			m_renderPasses[i].Clear();
+
+		const glm::mat4* worldTransforms = scene->GetRawGlobalTransforms();
+		for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
+		{
+			const MeshComponent* mc = scene->GetMesh(i);
+			if (mc)
+			{
+				check(mc->MeshIndex != UINT32_MAX);
+				const cModel* model = scene->GetModel(mc->MeshIndex);
+				ProcessModelNode(model, model->GetRoot(), worldTransforms[i], worldTransforms[i]);
+			}
+		}
+		DoCulling();
+	}
+
+	void SceneRenderer::DrawList(rendersystem::RenderSystem* rs, uint32_t renderListId)
+	{
+		check(rs);
+
+		RenderPass& pass = m_renderPasses[renderListId];
+		const cMaterial* lastMaterial = nullptr;
+		const cMesh* lastMesh = nullptr;
+		if (!IsGeometryPass(m_creationInfo[renderListId].pass))
+		{
+			CPU_PROFILE_SCOPE(Scene_Draw);
+			if (IsCullingEnabled())
+			{ 
+				for (uint32_t i = 0; i < pass.drawList.size(); ++i)
+					DrawItem(rs, pass.items[pass.drawList[i]], lastMesh, lastMaterial);
+			}
+			else
+			{
+				for (uint32_t i = 0; i < pass.items.size(); ++i)
+					DrawItem(rs, pass.items[i], lastMesh, lastMaterial);
+			}
+		}
+		else
+		{
+			CPU_PROFILE_SCOPE(Scene_DrawGeometry);
+			for (uint32_t i = 0; i < pass.items.size(); ++i)
+				DrawGeometryItem(rs, pass.items[i]);
+		}
+	}
+
+	void SceneRenderer::ImGuiDraw()
+	{
+		ImGui::Begin("SceneRenderer");
+		{
+			char buff[256];
+			for (uint32_t i = 0; i < m_renderPasses.GetSize(); ++i)
+			{
+				sprintf_s(buff, "RenderPass_%d", i);
+				ImGui::PushID(buff);
+				if (ImGui::TreeNode(buff))
+				{
+					ImGui::Text("Mask			: %d", m_creationInfo[i].pass);
+					ImGui::Text("Item count		: %d", m_renderPasses[i].items.size());
+					ImGui::Text("Culling count	: %d", m_renderPasses[i].drawList.size());
+					if (ImGui::TreeNode("Draw list"))
+					{
+						for (uint32_t j = 0; j < m_renderPasses[i].items.size(); ++j)
+						{
+							ImGui::Text("(#%3d) mesh: %s; primitive: %d; material: 0x%p",
+								j,
+								m_renderPasses[i].items[j].mesh->GetName(),
+								m_renderPasses[i].items[j].primitive,
+								m_renderPasses[i].items[j].mesh->GetPrimitiveArray()[m_renderPasses[i].items[j].primitive].Material);
+						}
+						ImGui::TreePop();
+					}
+
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+			}
+		}
+		ImGui::End();
+	}
+
+	void SceneRenderer::Init()
+	{
+		check(!g_sceneRenderer);
+		g_sceneRenderer = _new SceneRenderer();
+	}
+
+	void SceneRenderer::Destroy()
+	{
+		check(g_sceneRenderer);
+		delete g_sceneRenderer;
+	}
+
+	SceneRenderer* SceneRenderer::GetSceneRenderer()
+	{
+		check(g_sceneRenderer);
+		return g_sceneRenderer;
+	}
+
+	void SceneRenderer::ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, const glm::mat4& worldTransform)
+	{
+		check(model && nodeIndex != index_invalid);
+		glm::mat4 transform = parentTransform * model->GetTransform(nodeIndex);
+		const cModel::sNode& node = *model->GetNode(nodeIndex);
+		if (node.MeshId != index_invalid)
+			ProcessMesh(model->GetMesh(node.MeshId), transform, worldTransform);
+		if (node.Sibling != index_invalid)
+			ProcessModelNode(model, node.Sibling, parentTransform, worldTransform);
+		if (node.Child != index_invalid)
+			ProcessModelNode(model, node.Child, transform, worldTransform);
+	}
+
+	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeTransform, const glm::mat4& modelTransform)
+	{
+		// process mesh flags
+		static constexpr uint32_t maxCount = 8;
+		check(m_creationInfo.GetSize() <= maxCount);
+		struct  
+		{
+			uint32_t indices[maxCount];
+			uint32_t index = 0;
+		} primitiveRenderPasses;
+
+		if (!SceneFilter(mesh.GetName()))
+			return;
+
+		for (uint32_t i = 0; i < m_creationInfo.GetSize(); ++i)
+		{
+			AABB_t aabb = mesh.GetAABB().ApplyTransform(modelTransform);
+			if ((mesh.GetRenderFlags() & m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_creationInfo[i].cameraData.ViewProjection))))
+			{
+				if (!IsGeometryPass(m_creationInfo[i].pass))
+					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = i;
+				else if (m_creationInfo[i].pass & RenderPass_ShadowMap)
+				{
+					// add whole mesh to the list
+					RenderItem& item = m_renderPasses[i].items.emplace_back();
+					item.mesh = &mesh;
+					item.primitive = UINT32_MAX;
+					item.transform = nodeTransform;
+				}
+			}
+		}
+
+		// primitive lists
+		for (uint32_t i = 0; i < mesh.GetPrimitiveCount(); ++i)
+		{
+			const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[i];
+			for (uint32_t j = 0; j < primitiveRenderPasses.index; ++j)
+			{
+				check(primitive.Material);
+				const RenderPassInfo& info = m_creationInfo[primitiveRenderPasses.indices[j]];
+				RenderPass& pass = m_renderPasses[primitiveRenderPasses.indices[j]];
+				if (primitive.RenderFlags & info.pass)
+				{
+					// Render info
+					RenderItem& item = pass.items.emplace_back();
+					item.mesh = &mesh;
+					item.primitive = i;
+					item.transform = nodeTransform;
+
+					// Culling info
+					pass.cullingData.emplace_back(primitive.AABB.ApplyTransform(modelTransform));
+				}
+			}
+		}
+	}
+
+	void SceneRenderer::BindMesh(rendersystem::RenderSystem* rs, const RenderItem& item)
+	{
+		rs->SetVertexBuffer(item.mesh->GetVertexBuffer());
+		rs->SetIndexBuffer(item.mesh->GetIndexBuffer());
+		rs->SetShaderProperty("u_model", &item.transform, sizeof(item.transform));
+	}
+
+	void SceneRenderer::BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material)
+	{
+		material.BindTextures(rs);
+		sMaterialRenderData materialData = material.GetRenderData();
+		rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+	}
+
+	void SceneRenderer::DoCulling()
+	{
+		CPU_PROFILE_SCOPE(Culling);
+		if (!IsCullingEnabled())
+			return;
+		for (uint32_t i = 0; i < m_creationInfo.GetSize(); ++i)
+		{
+			// Culling already done before insert mesh on the list
+			if (IsGeometryPass(m_creationInfo[i].pass))
+				continue;
+			const CameraData& cd = m_creationInfo[i].cameraData;
+			Frustum f(cd.ViewProjection);
+			RenderPass& pass = m_renderPasses[i];
+			check(pass.cullingData.size() == pass.items.size());
+
+			for (uint32_t j = 0; j < pass.cullingData.size(); ++j)
+			{
+				const AABB_t& aabb = pass.cullingData[j];
+				if (IsAABBVisible(aabb, f))
+					pass.drawList.emplace_back(j);
+			}
+		}
+	}
+
+	void SceneRenderer::DrawItem(rendersystem::RenderSystem* rs, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial)
+	{
+		if (lastMesh != item.mesh)
+		{
+			lastMesh = item.mesh;
+			BindMesh(rs, item);
+		}
+		const PrimitiveMeshData& primitive = item.mesh->GetPrimitiveArray()[item.primitive];
+		if (lastMaterial != primitive.Material)
+		{
+			lastMaterial = primitive.Material;
+			BindMaterial(rs, *primitive.Material);
+		}
+		rs->DrawIndexed(primitive.Count, 1, primitive.FirstIndex);
+	}
+
+	void SceneRenderer::DrawGeometryItem(rendersystem::RenderSystem* rs, const RenderItem& item)
+	{
+		BindMesh(rs, item);
+		rs->DrawIndexed(item.mesh->GetIndexCount());
+	}
+
 }
 

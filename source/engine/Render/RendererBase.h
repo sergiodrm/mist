@@ -11,6 +11,7 @@ namespace Mist
 	public:
 		void Init(rendersystem::RenderSystem* rs, IRenderEngine* engine);
 		void Destroy(rendersystem::RenderSystem* rs);
+		void Update();
 		void Draw(rendersystem::RenderSystem* rs);
 		void DebugRender();
 		void ImGuiDraw();

@@ -43,6 +43,7 @@ namespace Mist
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_GBUFFER;  }
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;
+		virtual void Update();
 		virtual void Draw(rendersystem::RenderSystem* rs) override;
 		virtual void ImGuiDraw() override;
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const override;
@@ -58,5 +59,7 @@ namespace Mist
 		render::RenderTargetHandle m_renderTarget;
 		rendersystem::ShaderProgram* m_gbufferShader;
 		EDebugMode m_debugMode = DEBUG_NONE;
+
+		uint32_t m_renderListId;
 	};
 }

@@ -24,6 +24,8 @@ namespace Mist
 {
 	bool GUseCameraForShadowMapping = false;
 
+	extern CBoolVar CVar_EnableRenderLists;
+
 	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip)
 	{
 		return glm::perspective(2.f * glm::radians(cutOff), 1.f, nearClip, farClip);
@@ -121,9 +123,8 @@ namespace Mist
 	void ShadowMapPipeline::RenderShadowMap(rendersystem::RenderSystem* rs, const Scene* scene, uint32_t lightIndex)
 	{
 		check(lightIndex < globals::MaxShadowMapAttachments);
-		uint32_t depthVPOffset = sizeof(glm::mat4) * lightIndex; 
 		rs->SetShaderProperty("u_ubo", &m_depthMVPCache[lightIndex], sizeof(glm::mat4));
-		scene->DrawGeometry(rs, m_depthMVPCache[lightIndex], RenderFlags_ShadowMap | RenderFlags_NoTextures);
+		scene->DrawGeometry(rs, m_depthMVPCache[lightIndex], RenderPass_ShadowMap);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -261,6 +262,8 @@ namespace Mist
 			render::RenderTargetDescription rtDesc;
 			rtDesc.SetDepthStencilAttachment(depthTex);
 			m_shadowMapTargetArray[i] = rs->GetDevice()->CreateRenderTarget(rtDesc);
+
+			m_renderListIds[i] = SceneRenderer::GetSceneRenderer()->CreateRenderList({ RenderPass_ShadowMap, {} });
 		}
 
 		// Init shadow map pipeline when render target is created
@@ -274,13 +277,19 @@ namespace Mist
 		m_shadowMapPipeline.Destroy(rs);
 	}
 
+	void ShadowMapProcess::Update()
+	{
+		Scene* scene = GetEngine()->GetScene();
+		if (scene)
+			CollectLightData(*scene);
+	}
+
 	void ShadowMapProcess::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(CpuShadowMapping);
 		Scene* scene = GetEngine()->GetScene();
 		if (!scene)
 			return;
-		CollectLightData(*scene);
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);
 		rs->SetShader(m_shadowMapPipeline.GetShader());
@@ -290,7 +299,15 @@ namespace Mist
 			rs->ClearDepthStencil();
 			rs->SetDepthEnable();
 			if (i < m_lightCount)
-				m_shadowMapPipeline.RenderShadowMap(rs, scene, i);
+			{
+				if (CVar_EnableRenderLists.Get())
+				{
+					rs->SetShaderProperty("u_ubo", &m_shadowMapPipeline.GetDepthVP(i), sizeof(glm::mat4));
+					SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListIds[i]);
+				}
+				else
+					m_shadowMapPipeline.RenderShadowMap(rs, scene, i);
+			}
 		}
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
@@ -327,6 +344,8 @@ namespace Mist
 
 	void ShadowMapProcess::CollectLightData(const Scene& scene)
 	{
+		SceneRenderer* sr = SceneRenderer::GetSceneRenderer();
+
 		// Update shadow map matrix
 		if (GUseCameraForShadowMapping)
 		{
@@ -347,19 +366,26 @@ namespace Mist
 				if (light && light->Type != ELightType::Point && light->ProjectShadows)
 				{
 					const TransformComponent& t = scene.GetTransform(i);
+					CameraData cameraData;
+					glm::mat4 lightView;
+					TransformComponentToMatrix(&t, &lightView, 1);
+					lightView = glm::inverse(lightView);
 					switch (light->Type)
 					{
 					case ELightType::Directional:
-						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount++, view, cameraProj, t.Rotation, light->OrthoLeft, light->OrthoRight, light->OrthoBottom, light->OrthoTop, light->NearClip, light->FarClip);
-						break;
+					{
+						cameraData.Set(lightView, GetDirectionalLightProjection(light->OrthoLeft, light->OrthoRight, light->OrthoBottom, light->OrthoTop, light->NearClip, light->FarClip));
+						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount, view, cameraProj, t.Rotation, light->OrthoLeft, light->OrthoRight, light->OrthoBottom, light->OrthoTop, light->NearClip, light->FarClip);
+					} break;
 					case ELightType::Spot:
 					{
-						m_shadowMapPipeline.SetupSpotLight(m_lightCount++, view, t.Position, t.Rotation, light->OuterCutoff, light->NearClip, light->FarClip);
-					}
-					break;
+						cameraData.Set(lightView, GetSpotLightProjection(light->OuterCutoff, light->NearClip, light->FarClip));
+						m_shadowMapPipeline.SetupSpotLight(m_lightCount, view, t.Position, t.Rotation, light->OuterCutoff, light->NearClip, light->FarClip);
+					} break;
 					default:
 						check(false && "Unreachable");
 					}
+					sr->SetRenderListInfo(m_renderListIds[m_lightCount++], { RenderPass_ShadowMap, cameraData });
 				}
 			}
 			check(m_lightCount <= globals::MaxShadowMapAttachments);

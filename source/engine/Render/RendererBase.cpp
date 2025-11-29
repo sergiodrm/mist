@@ -53,11 +53,19 @@ namespace Mist
 		}
 	}
 
+	void Renderer::Update()
+	{
+		CPU_PROFILE_SCOPE(RendererUpdate);
+		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
+			m_processArray[i]->Update();
+	}
+
 	void Renderer::Draw(rendersystem::RenderSystem* rs)
 	{
 		CPU_PROFILE_SCOPE(RendererDraw);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 		{
+			CPU_PROFILE_SCOPE(RendererDraw_Slot);
 			g_render->BeginMarker(RenderProcessNames[i]);
 			m_processArray[i]->Draw(rs);
 			g_render->EndMarker();

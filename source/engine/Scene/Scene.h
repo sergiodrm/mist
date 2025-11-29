@@ -226,6 +226,7 @@ namespace Mist
 
 		const MeshComponent* GetMesh(sRenderObject renderObject) const;
 		void SetMesh(sRenderObject renderObject, const MeshComponent& meshComponent);
+		const cModel* GetModel(uint32_t index) const { return &m_models[index]; }
 
 		const char* GetRenderObjectName(sRenderObject object) const;
 		void SetRenderObjectName(sRenderObject renderObject, const char* name);
@@ -262,6 +263,7 @@ namespace Mist
 		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
 		cModel* GetModel(const char* modelName);
 		index_t LoadModel(const char* filepath);
+		void ImGuiDrawModel(const cModel* model, const glm::mat4& transform);
 
 		index_t NewCamera();
 		void SetCamera(sRenderObject r, const CameraComponent& cameraIndex);
@@ -298,5 +300,70 @@ namespace Mist
 		index_t m_cameraIndex = index_invalid;
 
 		PreprocessIrradianceInfo* m_irradianceRequestInfo;
+	};
+
+	struct RenderItem
+	{
+		uint32_t primitive;
+		const cMesh* mesh;
+		glm::mat4 transform;
+	};
+
+	struct RenderPass
+	{
+		tDynArray<RenderItem> items;
+		tDynArray<AABB_t> cullingData;
+		tDynArray<uint32_t> drawList;
+
+		RenderPass() = default;
+		DELETE_COPY_CONSTRUCTORS(RenderPass);
+
+		inline void Clear()
+		{
+			items.clear();
+			cullingData.clear();
+			drawList.clear();
+		}
+	};
+
+	struct RenderPassInfo
+	{
+		RenderPassType pass;
+		CameraData cameraData;
+	};
+
+	class SceneRenderer
+	{
+	public:
+
+		SceneRenderer(uint32_t size = 4);
+		~SceneRenderer();
+
+		uint32_t CreateRenderList(const RenderPassInfo& info);
+		void SetRenderListInfo(uint32_t id, const RenderPassInfo& info);
+
+		void BuildRenderLists(const Scene* scene);
+		void DrawList(rendersystem::RenderSystem* rs, uint32_t renderListId);
+
+		void ImGuiDraw();
+
+		static void Init();
+		static void Destroy();
+		static SceneRenderer* GetSceneRenderer();
+	private:
+		void ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, const glm::mat4& worldTransform);
+		void ProcessMesh(const cMesh& mesh, const glm::mat4& nodeTransform, const glm::mat4& modelTransform);
+
+		void BindMesh(rendersystem::RenderSystem* rs, const RenderItem& item);
+		void BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material);
+
+		void DoCulling();
+
+		void DrawItem(rendersystem::RenderSystem* rs, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial);
+		void DrawGeometryItem(rendersystem::RenderSystem* rs, const RenderItem& item);
+
+	private:
+		tFixedHeapArray<RenderPassInfo> m_creationInfo;
+		tFixedHeapArray<RenderPass> m_renderPasses;
 	};
 }

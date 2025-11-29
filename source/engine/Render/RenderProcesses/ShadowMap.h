@@ -77,6 +77,7 @@ namespace Mist
 		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_SHADOWMAP; }
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;
+		virtual void Update();
 		virtual void Draw(rendersystem::RenderSystem* rs) override;
 		virtual void ImGuiDraw() override;
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
@@ -92,5 +93,7 @@ namespace Mist
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_textureDebugIndex = 0;
+
+		uint32_t m_renderListIds[globals::MaxShadowMapAttachments];
 	};
 }

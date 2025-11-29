@@ -59,7 +59,12 @@ namespace Mist
 		glm::vec3 m_points[8];
 	};
 
-	inline bool IsAABBVisible(const AABB_t& aabb, const Frustum& frustum) { return !CVar_EnableCulling.Get() || frustum.IsBoxVisible(aabb.min, aabb.max); }
+	// Check if culling is enabled by CVar
+	inline bool IsCullingEnabled() { return CVar_EnableCulling.Get(); }
+	// Calculate AABB visibility without check if culling is enabled
+	inline bool IsAABBVisible(const AABB_t& aabb, const Frustum& frustum) { return frustum.IsBoxVisible(aabb.min, aabb.max); }
+	// Calculate AABB visibility if culling enabled. True by default if culling disabled
+	inline bool IsAABBVisibleConditional(const AABB_t& aabb, const Frustum& frustum) { return !IsCullingEnabled() || IsAABBVisible(aabb, frustum); }
 
 	///////////////////////////////////////////////////////////////////////////////////////
 	// AABB_t
