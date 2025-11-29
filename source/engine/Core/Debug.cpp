@@ -335,6 +335,7 @@ namespace Mist
 					ImGui::TableNextColumn();
 					tCpuProfStackTree::tItem& item = stack.Items[index];
 					tCpuProfItem& data = stack.Data[item.DataIndex];
+					ImGui::PushID(index);
 					if (item.Child != index_invalid)
 					{
 						bool treeOpen = ImGui::TreeNodeEx(data.Label.CStr(),
@@ -358,6 +359,7 @@ namespace Mist
 						glm::vec4 c = glm::mix(goodColor, badColor, (v - minValue) / (maxValue - minValue));
 						ImGui::TextColored({c.x, c.y, c.z, c.w}, valuefmt, v);
 					}
+					ImGui::PopID();
 					index = item.Sibling;
 				}
 			}
