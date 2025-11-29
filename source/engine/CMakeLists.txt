@@ -28,6 +28,7 @@ list(APPEND ENGINE_GENERIC_LIBS Vulkan::SPIRV-Tools)
 list(APPEND ENGINE_GENERIC_LIBS Vulkan::shaderc_combined)
 list(APPEND ENGINE_GENERIC_LIBS cppcoda_lib)
 list(APPEND ENGINE_GENERIC_LIBS yaml-cpp::yaml-cpp)
+list(APPEND ENGINE_GENERIC_LIBS Tracy::TracyClient)
 
 list(APPEND ENGINE_DEBUG_LIBS ${SPIRV_CROSS_DEBUG_LIBS})
 
