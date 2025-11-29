@@ -1132,7 +1132,7 @@ namespace rendersystem
             CPU_PROFILE_SCOPE(RenderSystem_WaitFrameInFlight);
 			// wait for last frame before acquire swapchain image
 			if (GetPresentSubmissionId())
-				m_device->WaitForSubmissionId(GetPresentSubmissionId());
+				check(m_device->WaitForSubmissionId(GetPresentSubmissionId()));
 		}
 
         {
