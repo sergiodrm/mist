@@ -282,7 +282,6 @@ namespace Mist
 		//DumpMemoryStats();
 
 		g_render->BeginFrame();
-		ImGuiDraw();
 
 		g_render->BeginMarker("Renderer");
 		m_renderer.Draw(m_renderSystem);
@@ -299,6 +298,7 @@ namespace Mist
 		DebugRender::Draw(g_render->GetLDRTarget());
 		g_render->EndMarker();
 		
+		ImGuiDraw();
 		g_render->EndFrame();
 	}
 
