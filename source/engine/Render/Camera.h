@@ -28,7 +28,6 @@ namespace Mist
 
 		const glm::vec3& GetPosition() const;
 		const glm::vec3& GetRotation() const;
-		inline tAngles GetAngles() const { return tAngles(m_rotation.y, m_rotation.z, m_rotation.x); }
 		void SetPosition(const glm::vec3& pos);
 		void SetRotation(const glm::vec3& rot);
 
