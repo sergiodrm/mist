@@ -1834,7 +1834,7 @@ namespace rendersystem
     {
         m_device = nullptr;
         if (m_tempBuffer)
-            Mist::Free(m_tempBuffer);
+            _free(m_tempBuffer);
         m_tempBuffer = nullptr;
         m_pointer = 0;
         m_size = 0;
@@ -1992,11 +1992,11 @@ namespace rendersystem
 			timestampQueries[i].~GpuFrameProfiler();
 		}
 
-        Mist::Free(renderQueueSemaphores);
-        Mist::Free(presentSemaphores);
-        Mist::Free(presentSubmission);
-        Mist::Free(frameResources);
-        Mist::Free(timestampQueries);
+        _free(renderQueueSemaphores);
+        _free(presentSemaphores);
+        _free(presentSubmission);
+        _free(frameResources);
+        _free(timestampQueries);
         memset(this, 0, sizeof(FrameSyncContext));
     }
 

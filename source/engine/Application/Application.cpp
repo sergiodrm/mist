@@ -211,6 +211,7 @@ namespace Mist
 		while (!m_windowClosed)
 		{
 			PROF_FRAME_MARK("loop");
+			memory::Slot();
 			GFrame++;
 			Profiling::CpuProf_Reset();
 			CPU_PROFILE_SCOPE(CpuTime);

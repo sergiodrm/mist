@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 	int exitCode = 0;
 	{
 		PROFILE_SCOPE_LOG(InitApp, "Init app");
-		Mist::InitSytemMemory();
+		Mist::memory::InitSytemMemory();
 		Mist::InitLog("log.html");
 		app = Mist::tApplication::CreateApplication(argc, argv);
 	}
@@ -22,6 +22,6 @@ int main(int argc, char* argv[])
 		Mist::tApplication::DestroyApplication(app);
 	}
 	Mist::TerminateLog();
-	Mist::TerminateSystemMemory();
+	Mist::memory::TerminateSystemMemory();
 	return exitCode;
 }

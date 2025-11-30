@@ -150,7 +150,8 @@ namespace render
             {
                 if (data)
                 {
-                    delete data->content;
+                    char* p = const_cast<char*>(data->content);
+                    Mist::FileSystem::FreeFileContent(&p);
                     delete data->source_name;
                     delete data;
                 }
@@ -247,7 +248,7 @@ namespace render
             size_t numbytes = ftell(f);
             fseek(f, 0L, SEEK_SET);
             *binaryCount = numbytes / sizeof(uint32_t);
-            *binaryData = (uint32_t*)malloc(numbytes);
+            *binaryData = (uint32_t*)_malloc(numbytes);
             size_t contentRead = fread_s(*binaryData, numbytes, 1, numbytes, f);
             check(contentRead == numbytes);
             fclose(f);
@@ -319,7 +320,7 @@ namespace render
                     break;
                 }
             }
-            delete[] content;
+            Mist::FileSystem::FreeFileContent(&content);
             return containsNewerFile;
         }
 
@@ -398,7 +399,7 @@ namespace render
         {
             if (binary.binary)
             {
-                delete[] binary.binary;
+                _free(binary.binary);
                 binary.binary = nullptr;
                 binary.binaryCount = 0;
             }

@@ -141,6 +141,14 @@ namespace Mist
 		return true;
 	}
 
+	void FileSystem::FreeFileContent(char** content)
+	{
+		check(content && *content);
+		char* p = *content;
+		*content = nullptr;
+		free(p);
+	}
+
 	void FileSystem::GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size)
 	{
 		size_t len = strlen(filepath);

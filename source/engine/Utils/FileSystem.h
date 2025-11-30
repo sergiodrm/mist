@@ -15,12 +15,13 @@ namespace Mist
 		bool Mkdir(const char* directory);
 
 		bool ReadFile(const char* filename, tDynArray<uint32_t>& data);
-		// Dynamic memory allocated, ownership by caller.
+		// Dynamic memory allocated, ownership by caller. Call FreeFileContent to release memory.
 		bool ReadFile(const char* filename, uint32_t** data, size_t& size);
-		// Returns non null terminated data. Dynamic memory allocated, ownership by caller.
+		// Returns non null terminated data. Dynamic memory allocated, ownership by caller. Call FreeFileContent to release memory.
 		bool ReadFile(const char* filename, char** out, size_t& size);
-		// Returns null terminated data. Dynamic memory allocated, ownership by caller.
+		// Returns null terminated data. Dynamic memory allocated, ownership by caller. Call FreeFileContent to release memory.
 		bool ReadTextFile(const char* filename, char** out, size_t& size);
+		void FreeFileContent(char** content);
 
 		void GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size);
 		void GetDirectoryFromFilepath(const char* filepath, size_t filepathSize, char* dir, size_t size);
