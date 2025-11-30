@@ -73,6 +73,24 @@ namespace Mist
 		seed ^= hasher(v) + 0x933779b9 + (seed << 6) + (seed >> 2);
 	}
 
+	inline uint64_t hash_FNV(const void* key, uint64_t h)
+	{
+		// See: https://github.com/aappleby/smhasher/blob/master/src/Hashes.cpp
+		h ^= 2166136261UL;
+		const uint8_t* data = (const uint8_t*)key;
+		for (int i = 0; data[i] != '\0'; i++)
+		{
+			h ^= data[i];
+			h *= 16777619;
+		}
+		return h;
+	}
+
+	inline uint64_t hash(const char* str, uint64_t seed = 0x12345678)
+	{
+		return hash_FNV(str, seed);
+	}
+
 	template <uint32_t Size>
 	class tFixedString
 	{
@@ -673,7 +691,18 @@ namespace std
 	{
 		size_t operator()(const Mist::String& str) const
 		{
-			return std::hash<std::string>()(str.c_str());
+			return ::Mist::hash(str.c_str());
+			//return std::hash<std::string>()(str.c_str());
+		}
+	};
+
+	template <uint32_t N>
+	struct hash<Mist::tFixedString<N>>
+	{
+		size_t operator()(const Mist::tFixedString<N>& str) const
+		{
+			return ::Mist::hash(str.CStr());
+			//return std::hash<std::string>()(str.c_str());
 		}
 	};
 }

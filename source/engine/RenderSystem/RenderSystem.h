@@ -185,7 +185,7 @@ namespace rendersystem
         Mist::tDynArray<render::BufferHandle> m_buffers;
         Mist::tDynArray<uint32_t> m_freeBuffers;
         Mist::tDynArray<uint32_t> m_usedBuffers;
-        Mist::tMap<Mist::String, PropertyMemory> m_properties;
+        Mist::tMap<Mist::tFixedString<32>, PropertyMemory> m_properties;
     };
 
     class ShaderMemoryPool
