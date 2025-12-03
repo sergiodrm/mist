@@ -41,6 +41,7 @@ namespace render
         VkImageUsageFlags ConvertImageUsage(ImageUsage usage);
         VkDescriptorType ConvertToDescriptorType(ResourceType type);
         VkFormat ConvertFormat(Format format);
+        const char* ConvertFormatToStr(Format format);
         uint32_t GetBytesPerPixel(Format format);
 		uint32_t GetFormatSize(Format format);
         VkImageLayout ConvertImageLayout(ImageLayout layout);
@@ -50,6 +51,7 @@ namespace render
 #else
         VkMemoryPropertyFlags GetMemPropertyFlags(MemoryUsage usage);
 #endif
+        const char* ConvertMemoryUsageToStr(MemoryUsage usage);
         VkImageType ConvertImageType(ImageDimension dim);
         VkImageViewType ConvertImageViewType(ImageDimension dim);
         VkImageAspectFlags ConvertImageAspectFlags(Format format);

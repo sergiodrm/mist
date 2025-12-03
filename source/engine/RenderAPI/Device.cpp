@@ -2304,67 +2304,121 @@ namespace render
 
     void Device::SetDebugName(Semaphore* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_semaphore, debugName, VK_OBJECT_TYPE_SEMAPHORE);
     }
 
     void Device::SetDebugName(Buffer* object, const char* debugName) const
     {
-        SetDebugName(object->m_buffer, debugName, VK_OBJECT_TYPE_BUFFER);
+        check(object);
+        char buff[128];
+        const char* str = debugName;
+        if (!debugName || !*debugName)
+        {
+            sprintf_s(buff, "%lldb;%s;0x%08x",
+                object->m_description.size,
+                utils::ConvertMemoryUsageToStr(object->m_description.memoryUsage),
+                object->m_description.bufferUsage);
+            str = buff;
+        }
+        SetDebugName(object->m_buffer, str, VK_OBJECT_TYPE_BUFFER);
     }
 
     void Device::SetDebugName(Texture* object, const char* debugName) const
     {
-        SetDebugName(object->m_image, debugName, VK_OBJECT_TYPE_IMAGE);
+        check(object);
+        const char* str = debugName;
+        char buff[128];
+        if (!str || !*str)
+        {
+            sprintf_s(buff, "%s;%dx%d;RT:%d;RSV:%d;STG:%d", 
+                utils::ConvertFormatToStr(object->m_description.format), 
+                object->m_description.extent.width, 
+                object->m_description.extent.height,
+                object->m_description.isRenderTarget?1:0,
+                object->m_description.isShaderResource?1:0,
+                object->m_description.isStorageTexture?1:0
+                );
+            str = buff;
+        }
+        SetDebugName(object->m_image, str, VK_OBJECT_TYPE_IMAGE);
         for (auto& it : object->m_views)
-            SetDebugName(it.second.m_view, debugName, VK_OBJECT_TYPE_IMAGE_VIEW);
+            SetDebugName(it.second.m_view, str, VK_OBJECT_TYPE_IMAGE_VIEW);
     }
 
     void Device::SetDebugName(Sampler* object, const char* debugName) const
     {
+		check(object);
+        if (!debugName || !*debugName)
+            return;
         SetDebugName(object->m_sampler, debugName, VK_OBJECT_TYPE_SAMPLER);
     }
 
     void Device::SetDebugName(Shader* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_shader, debugName, VK_OBJECT_TYPE_SHADER_MODULE);
     }
 
     void Device::SetDebugName(RenderTarget* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_renderPass, debugName, VK_OBJECT_TYPE_RENDER_PASS);
         SetDebugName(object->m_framebuffer, debugName, VK_OBJECT_TYPE_FRAMEBUFFER);
     }
 
     void Device::SetDebugName(GraphicsPipeline* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_pipeline, debugName, VK_OBJECT_TYPE_PIPELINE);
         SetDebugName(object->m_pipelineLayout, debugName, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
     }
 
     void Device::SetDebugName(BindingLayout* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_layout, debugName, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
     }
 
     void Device::SetDebugName(BindingSet* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_set, debugName, VK_OBJECT_TYPE_DESCRIPTOR_SET);
         SetDebugName(object->m_pool, debugName, VK_OBJECT_TYPE_DESCRIPTOR_POOL);
     }
 
     void Device::SetDebugName(ComputePipeline* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_pipeline, debugName, VK_OBJECT_TYPE_PIPELINE);
         SetDebugName(object->m_pipelineLayout, debugName, VK_OBJECT_TYPE_PIPELINE_LAYOUT);
     }
 
     void Device::SetDebugName(QueryPool* object, const char* debugName) const
     {
+		check(object);
+		if (!debugName || !*debugName)
+			return;
         SetDebugName(object->m_queryPool, debugName, VK_OBJECT_TYPE_QUERY_POOL);
     }
 
     void Device::SetDebugName(const void* object, const char* debugName, uint32_t type) const
     {
+        check(object && debugName && *debugName);
         VkDebugUtilsObjectNameInfoEXT info{ .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, .pNext = nullptr };
         info.objectType = (VkObjectType)type;
         info.objectHandle = *(const uint64_t*)(&object);
