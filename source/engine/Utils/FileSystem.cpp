@@ -81,7 +81,7 @@ namespace Mist
 		// Tell size (remember cursor at the end of the file)
 		size_t bytes = (size_t)file.tellg();
 		// SpirV expects a uint32 buffer
-		*data = (uint32_t*)malloc(bytes);
+		*data = (uint32_t*)_malloc(bytes);
 		// Move cursor file to the beginning
 		file.seekg(0);
 		// Read the entire file to the buffer
@@ -105,7 +105,7 @@ namespace Mist
 		// Tell size (remember cursor at the end of the file)
 		size = (size_t)file.tellg();
 		// SpirV expects a uint32 buffer
-		*out = (char*)malloc(size);
+		*out = (char*)_malloc(size);
 		// Move cursor file to the beginning
 		file.seekg(0);
 		// Read the entire file to the buffer
@@ -128,7 +128,7 @@ namespace Mist
 		// Tell size (remember cursor at the end of the file)
 		size = (size_t)file.tellg() + 1;
 		// SpirV expects a uint32 buffer
-		*out = (char*)malloc(size);
+		*out = (char*)_malloc(size);
 		// Move cursor file to the beginning
 		file.seekg(0);
 		// Read the entire file to the buffer
@@ -146,7 +146,7 @@ namespace Mist
 		check(content && *content);
 		char* p = *content;
 		*content = nullptr;
-		free(p);
+		_free(p);
 	}
 
 	void FileSystem::GetDirectoryFromFilepath(const char* filepath, char* dir, size_t size)
