@@ -347,6 +347,8 @@ namespace Mist
 
 		void Free(void* p)
 		{
+			if (!p)
+				return;
 	#ifdef MEM_BLOCK_HEADER_INTENSIVE_CHECK
 			IntegrityCheck(g_stats);
 	#endif // MEM_BLOCK_HEADER_INTENSIVE_CHECK
