@@ -346,7 +346,7 @@ namespace Mist
 		const char* begvar = it++;
 		while (*it && *it != ' ' && *it != '=') ++it;
 		check(*it);
-		uint32_t varnamelength = uint32_t((it++) - begvar);
+		uint32_t varnamelength = uint32_t((it) - begvar);
 		char var[32];
 		strncpy_s(var, begvar, varnamelength);
 		check(*it);
