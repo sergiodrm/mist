@@ -390,8 +390,10 @@ namespace render
 
             CompiledBinary bin;
             bin.binaryCount = (spv.cend() - spv.cbegin());
-            bin.binary = (uint32_t*)malloc(bin.binaryCount * sizeof(uint32_t));
+            bin.binary = (uint32_t*)_malloc(bin.binaryCount * sizeof(uint32_t));
             memcpy_s(bin.binary, bin.binaryCount * sizeof(uint32_t), spv.cbegin(), bin.binaryCount * sizeof(uint32_t));
+
+            Mist::FileSystem::FreeFileContent(&source);
             return bin;
         }
 
@@ -408,8 +410,17 @@ namespace render
         CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions, bool forceCompilation)
         {
             Mist::cAssetPath assetPath(filepath);
-            profile_shader_scope_f(ProcessShaderFile, "Shader file process (%s)", assetPath);
-            shaderlogf("Compiling shader: [%s]\n", assetPath);
+            profile_shader_scope_f(ProcessShaderFile, "shader_compiler::BuildShader (%s)", assetPath);
+            shaderlog("******************************\n");
+            shaderlogf("Compiling shader source: [%s]\n", assetPath);
+            if (additionalOptions)
+            {
+                shaderlogf("* Generate debug info: %s\n", additionalOptions->generateDebugInfo);
+                shaderlogf("* Entry point: %s\n", additionalOptions->entryPoint);
+                shaderlog("* Macro definitions:\n");
+                for (uint32_t i = 0; i < additionalOptions->macroDefinitionArray.size(); ++i)
+                    shaderlogf("** %s [value: %s]\n", additionalOptions->macroDefinitionArray[i].macro.CStr(), additionalOptions->macroDefinitionArray[i].value.CStr());
+            }
 
             CompilationOptions defaultOptions;
             if (!additionalOptions)
