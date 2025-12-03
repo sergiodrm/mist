@@ -84,7 +84,7 @@ namespace Mist
 		rs->ClearColor();
 		rs->ClearDepthStencil();
 		rs->SetStencilEnable(true);
-		rs->SetStencilMask(0xff, 0xff, 1);
+		rs->SetStencilMask(0xff, 0xff, GBUFFER_GEOMETRY_STENCIL_MASK);
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 		if (CVar_EnableRenderLists.Get())
 			SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListId);
@@ -97,7 +97,7 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Position", "Normal", "Albedo", "Emissive", "Depth", "All"};
+		static const char* rts[] = { "None", "Normal", "Albedo", "Emissive", "Depth", "All"};
 		static int index = 0;
 		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
@@ -142,10 +142,10 @@ namespace Mist
 			float x = w * 0.75f;
 			float y = 0.f;
 			float ydiff = h / (float)RT_COUNT;
+			static_assert(RT_COUNT > 0);
 			pos = { x, y };
 			size = { w * 0.25f, ydiff };
-			static_assert(RT_COUNT > 0);
-			for (uint32_t i = RT_POSITION; i < RT_DEPTH_STENCIL; ++i)
+			for (uint32_t i = 0; i < RT_DEPTH_STENCIL; ++i)
 			{
 				DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[i].texture);
 				pos.y += ydiff;
@@ -196,7 +196,6 @@ namespace Mist
 	{
 		switch (target)
 		{
-		case RT_POSITION:
 		case RT_NORMAL: return render::Format_R16G16B16A16_SFloat;
 		case RT_ALBEDO: return render::Format_R8G8B8A8_UNorm;
 		case RT_EMISSIVE: return render::Format_R16G16B16A16_SFloat;

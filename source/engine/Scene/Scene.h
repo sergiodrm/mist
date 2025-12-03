@@ -152,6 +152,7 @@ namespace Mist
 		glm::mat4 View;
 		glm::mat4 InvView;
 		glm::mat4 Projection;
+		glm::mat4 InvProjection;
 		glm::mat4 ViewProjection;
 
 		inline void Set(const glm::mat4& view, const glm::mat4& projection)
@@ -159,6 +160,7 @@ namespace Mist
 			View = view;
 			InvView = glm::inverse(view);
 			Projection = projection;
+			InvProjection = glm::inverse(projection);
 			ViewProjection = projection * view;
 		}
 	};

@@ -10,10 +10,9 @@ layout (location = 3) in vec3 inWorldPos;
 layout (location = 4) in vec3 inTangent;
 layout (location = 5) in mat3 inTBN;
 
-layout (location = 0) out vec4 outPosition;
-layout (location = 1) out vec4 outNormal;
-layout (location = 2) out vec4 outAlbedo;
-layout (location = 3) out vec4 outEmissive;
+layout (location = 0) out vec4 outNormal;
+layout (location = 1) out vec4 outAlbedo;
+layout (location = 2) out vec4 outEmissive;
 
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
 layout(set = 3, binding = 0) uniform MaterialBlock
@@ -22,7 +21,6 @@ layout(set = 3, binding = 0) uniform MaterialBlock
 } u_material;
 
 
-#define GBUFFER_POSITION_TEX outPosition
 #define GBUFFER_NORMAL_TEX outNormal
 #define GBUFFER_ALBEDO_TEX outAlbedo
 #define GBUFFER_EMISSIVE_TEX outEmissive
@@ -33,9 +31,6 @@ void main()
 {
 	GBuffer data;
 
-	// Positions
-	data.position = inWorldPos;
-	
 	// Normals
 	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_NORMAL_MAP))
 		data.normal = inTBN * normalize(texture(u_Textures[MATERIAL_TEXTURE_NORMAL], inUV).xyz * 2.0 - vec3(1.0));
@@ -60,5 +55,5 @@ void main()
 	data.opacity = albedo.a;
 	data.emissive = u_material.data.Emissive.w * u_material.data.Emissive.rgb;
 
-	WriteMRT(data);
+	GBuffer_Write(data);
 }

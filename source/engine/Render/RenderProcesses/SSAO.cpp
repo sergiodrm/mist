@@ -74,9 +74,8 @@ namespace Mist
 			rs->SetShaderProperty("u_ssao", &m_ssaoParams, sizeof(m_ssaoParams));
 
 			const GBuffer* gbuffer = static_cast<const GBuffer*>(GetRenderer()->GetRenderProcess(RENDERPROCESS_GBUFFER));
-			rs->SetTextureSlot("u_GBufferPosition", *gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_POSITION].texture);
 			rs->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::RT_NORMAL].texture);
-			//rs->SetTextureSlot("u_GBufferDepth", gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
+			rs->SetTextureSlot("u_GBufferDepth", gbuffer->GetRenderTarget()->m_description.depthStencilAttachment.texture);
 			rs->SetTextureSlot("u_SSAONoise", m_noiseTexture);
 			rs->DrawFullscreenQuad();
 			rs->ClearState();

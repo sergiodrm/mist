@@ -29,9 +29,12 @@ layout(set = 0, binding = 0) uniform SSAOUniform
 //layout(set = 0, binding = 4) uniform sampler2D u_DepthBuffer;
 //layout(set = 0, binding = 5) uniform sampler2D u_SSAONoise;
 
-layout (set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
+layout (set = 1, binding = 0) uniform sampler2D u_GBufferDepth;
 layout (set = 2, binding = 0) uniform sampler2D u_GBufferNormal;
 layout (set = 3, binding = 0) uniform sampler2D u_SSAONoise;
+
+#define CAMERA_DATA_INV_PROJECTION u_ssao.InverseProjection
+#include <shaders/includes/gbuffer.glsl>
 
 vec3 GetPosVSFromDepth(float depth, vec2 uv)
 {
@@ -58,7 +61,8 @@ void main()
     }
 
     // Current fragment 
-	vec3 fragPos = texture(u_GBufferPosition, inTexCoords).xyz;
+    float depth = texture(u_GBufferDepth, inTexCoords).r;
+    vec3 fragPos = GBuffer_ReprojectPosition(inTexCoords, depth);
     vec3 normal = normalize(texture(u_GBufferNormal, inTexCoords).xyz);
 
     // Calculate uvcoords for noise texture
@@ -90,11 +94,10 @@ void main()
         vec2 uv = offset.xy;
 
         // get depth from samplePos in clip space
-        float sampleDepth = texture(u_GBufferPosition, uv).z;
+        float sampleDepth = texture(u_GBufferDepth, uv).r;
         float rangeCheck = smoothstep(0.f, 1.f, radius / abs(fragPos.z - sampleDepth));
         occlusion += (sampleDepth >= samplePos.z + bias ? 1.f : 0.f) * rangeCheck;
     }
     occlusion = 1.f - (occlusion / float(KERNEL_SIZE));
     fragColor = occlusion;
-    //fragColor = linearDepth(fragPos.z, 1.f, 1000.f);
 }

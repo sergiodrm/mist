@@ -9,6 +9,8 @@ namespace rendersystem
     class ShaderProgram;
 }
 
+#define GBUFFER_GEOMETRY_STENCIL_MASK 0x0001
+
 namespace Mist
 {
 	class cModel;
@@ -18,9 +20,9 @@ namespace Mist
 		enum EDebugMode
 		{
 			DEBUG_NONE,
-			DEBUG_POSITION,
 			DEBUG_NORMAL,
 			DEBUG_ALBEDO,
+			DEBUG_EMISSIVE,
 			DEBUG_DEPTH,
 			DEBUG_ALL
 		};
@@ -29,7 +31,6 @@ namespace Mist
 
 		enum EGBufferTarget
 		{
-			RT_POSITION,
 			RT_NORMAL,
 			RT_ALBEDO,
 			RT_EMISSIVE,

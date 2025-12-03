@@ -21,7 +21,6 @@ namespace Mist
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const override{ return m_hdrOutput.GetPtr(); }
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw() override;
-		render::RenderTargetHandle m_lightingOutput;
 	private:
 		rendersystem::ShaderProgram* m_lightingShader;
 		rendersystem::ShaderProgram* m_lightingFogShader;
@@ -32,6 +31,9 @@ namespace Mist
 		render::RenderTargetHandle m_hdrOutput;
 
 		BloomEffect m_bloomEffect;
+
+		render::RenderTargetHandle m_lightingRt;
+		render::RenderTargetHandle m_skyboxRt;
 	};
 
 #if 0

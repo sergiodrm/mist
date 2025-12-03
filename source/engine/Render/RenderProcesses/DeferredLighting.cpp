@@ -39,6 +39,7 @@ namespace Mist
 		uint32_t height = rs->GetRenderResolution().height;
 		render::TextureHandle depthTexture = gbuffer->m_renderTarget->m_description.depthStencilAttachment.texture;
         {
+			// Deferred lighting pass does not need depth-stencil buffer as attachment
             render::TextureDescription texDesc;
 			texDesc.format = render::Format_R16G16B16A16_SFloat;
 			texDesc.extent = { width, height, 1 };
@@ -48,9 +49,16 @@ namespace Mist
 
             render::RenderTargetDescription rtDesc;
 			rtDesc.AddColorAttachment(texture);
-			rtDesc.SetDepthStencilAttachment(depthTexture);
-			m_lightingOutput = device->CreateRenderTarget(rtDesc);
+			m_lightingRt = device->CreateRenderTarget(rtDesc);
         }
+
+		{
+			// Skybox pass writes on the lighting texture, but it uses stencil buffer to fill the pixels that gbuffer didn't write.
+			render::RenderTargetDescription rtDesc;
+			rtDesc.AddColorAttachment(m_lightingRt->m_description.colorAttachments[0].texture);
+			rtDesc.SetDepthStencilAttachment(depthTexture);
+			m_skyboxRt = device->CreateRenderTarget(rtDesc);
+		}
 
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
@@ -84,7 +92,7 @@ namespace Mist
 			m_hdrShader = rs->CreateShader(shaderDesc);
 		}
 		// ComposeTarget needs to be != nullptr on create shaders
-		m_bloomEffect.m_composeTarget = m_lightingOutput;
+		m_bloomEffect.m_composeTarget = m_lightingRt;
 		m_bloomEffect.Init(rs);
 
         m_skyModel = _new cModel();
@@ -109,7 +117,8 @@ namespace Mist
 		rs->DestroyShader(&m_lightingShader);
 		rs->DestroyShader(&m_lightingFogShader);
 		rs->DestroyShader(&m_skyboxShader);
-		m_lightingOutput = nullptr;
+		m_skyboxRt = nullptr;
+		m_lightingRt = nullptr;
 		m_hdrOutput = nullptr;
 		//m_ssaoRenderTarget = nullptr;
 		//m_gbufferRenderTarget = nullptr;
@@ -136,13 +145,15 @@ namespace Mist
 				rs->ClearState();
 				rs->SetDefaultGraphicsState();
 				rs->SetShader(shader);
-				rs->SetRenderTarget(m_lightingOutput);
-				rs->SetDepthEnable(true, false);
+				rs->SetRenderTarget(m_lightingRt);
+				rs->SetDepthEnable(false, false);
+				rs->SetStencilEnable(true);
+				rs->SetStencilMask(0xff, 0x00, GBUFFER_GEOMETRY_STENCIL_MASK);
+				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
 
 				///////////////////////////////////////////////////////////commandList->ClearColor();
 
 				// GBUFFER textures
-				rs->SetTextureSlot("u_GBufferPosition", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture);
 				rs->SetTextureSlot("u_GBufferNormal", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_NORMAL].texture);
 				rs->SetTextureSlot("u_GBufferAlbedo", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture);
 				rs->SetTextureSlot("u_GBufferEmissive", gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_EMISSIVE].texture);
@@ -203,6 +214,7 @@ namespace Mist
 				rs->BeginMarker("Sky");
 
 				rs->SetShader(m_skyboxShader);
+				rs->SetRenderTarget(m_skyboxRt);
 				rs->SetStencilEnable(true);
 				rs->SetStencilMask(0xff, 0x00, 0x00);
 				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
@@ -230,9 +242,9 @@ namespace Mist
 
 			// BLOOM
 			{
-				m_bloomEffect.m_composeTarget = m_lightingOutput;
-				m_bloomEffect.m_inputTarget = m_lightingOutput->m_description.colorAttachments[0].texture;
-				m_bloomEffect.m_blendTexture = gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_POSITION].texture; //temp, TODO: need a default texture for dummy slot.
+				m_bloomEffect.m_composeTarget = m_lightingRt;
+				m_bloomEffect.m_inputTarget = m_lightingRt->m_description.colorAttachments[0].texture;
+				m_bloomEffect.m_blendTexture = gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture; //temp, TODO: need a default texture for dummy slot.
 				m_bloomEffect.Draw(rs);
 			}
 		}
@@ -254,7 +266,7 @@ namespace Mist
 			rs->ClearColor();
 			rs->SetDepthEnable(false, false);
 			rs->SetShaderProperty("u_HdrParams", &params, sizeof(params));
-			rs->SetTextureSlot("u_hdrtex", m_lightingOutput->m_description.colorAttachments[0].texture);
+			rs->SetTextureSlot("u_hdrtex", m_lightingRt->m_description.colorAttachments[0].texture);
 			rs->DrawFullscreenQuad();
 			rs->SetDefaultGraphicsState();
 			rs->EndMarker();

@@ -40,10 +40,11 @@ layout(set = 2, binding = 2) uniform sampler2D u_brdfMap;
 #define BRDF_MAP u_brdfMap
 #include <shaders/includes/environment_data.glsl>
 
-#define GBUFFER_POSITION_TEX u_GBufferPosition
 #define GBUFFER_NORMAL_TEX u_GBufferNormal
 #define GBUFFER_ALBEDO_TEX u_GBufferAlbedo
 #define GBUFFER_EMISSIVE_TEX u_GBufferEmissive
+#define GBUFFER_DEPTH_TEX u_GBufferDepth
+#define CAMERA_DATA_INV_PROJECTION CAMERA_DATA.invProjection
 #include <shaders/includes/gbuffer_read.glsl>
 
 layout (std140, set = 0, binding = 0) uniform EnvBlock
@@ -79,12 +80,14 @@ vec4 ApplyFog(vec4 lightingColor, vec4 fogColor)
 
 void main()
 {
-    GBuffer data = ReadMRT(inTexCoords);
+    GBuffer data = GBuffer_Read(inTexCoords);
+    float depth = GBuffer_ReadDepth(inTexCoords);
+    vec3 posVS = GBuffer_ReprojectPosition(inTexCoords, depth);
     float ao = texture(u_ssao, inTexCoords).r;
     //if (data.opacity <= 0.1f)
     //    discard;
     data.albedo += data.emissive;
-    vec4 lightingColor = main_PBR(data.position, data.normal, data.albedo, data.metallic, data.roughness, ao);
+    vec4 lightingColor = main_PBR(posVS, data.normal, data.albedo, data.metallic, data.roughness, ao);
     lightingColor.rgb += data.emissive;
 #if defined(DEFERRED_APPLY_FOG)
     vec4 c = vec4(0.1, 0.1, 0.1, 1.f);
