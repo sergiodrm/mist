@@ -2208,6 +2208,7 @@ namespace render
                 BufferHandle buffer = item.buffer;
                 bindingSet->m_buffers.push_back(buffer);
                 BufferRange range = item.bufferRange.Resolve(buffer->m_description);
+                check(item.type == ResourceType_BufferUAV || range.size < GetContext().GetMaxUniformBufferRange());
 
                 VkDescriptorBufferInfo& bufferInfo = bufferInfos.Push();
                 bufferInfo.buffer = buffer->m_buffer;
