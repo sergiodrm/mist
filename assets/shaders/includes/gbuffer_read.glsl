@@ -1,42 +1,28 @@
 
-#ifndef GBUFFER_NORMAL_TEX
-#error Must define in/out macros to read/write from textures
-#endif
-
-#ifndef GBUFFER_ALBEDO_TEX
-#error Must define in/out macros to read/write from textures
-#endif
-
-#ifndef GBUFFER_EMISSIVE_TEX
-#error Must define in/out macros to read/write from textures
-#endif
-
-#ifndef GBUFFER_DEPTH_TEX
-#error Must define GBUFFER_DEPTH_TEX
-#endif
-
 #include <shaders/includes/gbuffer.glsl>
 
 GBuffer GBuffer_Read(vec2 uv)
 {
     GBuffer data;
 
-    vec4 gbufferNormal = texture(GBUFFER_NORMAL_TEX, uv);
-	vec4 albedo = texture(GBUFFER_ALBEDO_TEX, uv);
-    vec4 emissive = texture(GBUFFER_EMISSIVE_TEX, uv);
+    vec4 gbufferNormal = texture(u_GBufferNormal, uv);
+	vec4 albedo = texture(u_GBufferAlbedo, uv);
+    vec4 emissive = texture(u_GBufferEmissive, uv);
+    vec4 specular = texture(u_GBufferSpecular, uv);
 
 	data.normal = normalize(gbufferNormal.xyz);
-    data.metallic = emissive.a;
-    data.roughness = gbufferNormal.a;
+    data.metallic = specular.b;
+    data.roughness = specular.g;
     data.albedo = albedo.rgb;
     data.opacity = albedo.a;
     data.emissive = emissive.rgb;
+    data.specular = specular.w;
 
     return data;
 }
 
 float GBuffer_ReadDepth(vec2 texCoords)
 {
-    float d = texture(GBUFFER_DEPTH_TEX, texCoords).x;
+    float d = texture(u_GBufferDepth, texCoords).x;
     return d;
 }

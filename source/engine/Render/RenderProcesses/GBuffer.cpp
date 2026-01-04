@@ -97,7 +97,7 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Normal", "Albedo", "Emissive", "Depth", "All"};
+		static const char* rts[] = { "None", "Normal", "Albedo", "Emissive", "Specular", "Depth", "All"};
 		static int index = 0;
 		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
@@ -199,6 +199,7 @@ namespace Mist
 		case RT_NORMAL: return render::Format_R16G16B16A16_SFloat;
 		case RT_ALBEDO: return render::Format_R8G8B8A8_UNorm;
 		case RT_EMISSIVE: return render::Format_R16G16B16A16_SFloat;
+		case RT_SPECULAR: return render::Format_R8G8B8A8_UNorm;
 		case RT_DEPTH_STENCIL: return render::Format_D24_UNorm_S8_UInt;
 		}
 		return render::Format_Undefined;

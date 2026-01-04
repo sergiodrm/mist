@@ -23,6 +23,7 @@ namespace Mist
 			DEBUG_NORMAL,
 			DEBUG_ALBEDO,
 			DEBUG_EMISSIVE,
+			DEBUG_SPECULAR,
 			DEBUG_DEPTH,
 			DEBUG_ALL
 		};
@@ -34,6 +35,7 @@ namespace Mist
 			RT_NORMAL,
 			RT_ALBEDO,
 			RT_EMISSIVE,
+			RT_SPECULAR,
 			RT_DEPTH_STENCIL,
 
 			RT_COUNT

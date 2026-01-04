@@ -55,7 +55,8 @@ namespace Mist
 		
 		float Metallic;
 		float Roughness;
-		float _padding[2];
+		float Specular;
+		float _padding;
 		
 		tMaterialFlags Flags;
 		uint32_t _padding2[3];
@@ -74,21 +75,17 @@ namespace Mist
 		// Material flags
 		tMaterialFlags m_flags;
 		// Texture maps
-		//cTexture* m_textures[MATERIAL_TEXTURE_COUNT];
-		VkDescriptorSet m_textureSet;
 		render::TextureHandle m_textures[MATERIAL_TEXTURE_COUNT];
 		render::SamplerHandle m_samplers[MATERIAL_TEXTURE_COUNT];
 		rendersystem::ShaderProgram* m_shaderProgram;
 
-		// Emissive
 		glm::vec3 m_emissiveFactor;
 		float m_emissiveStrength;
 
-		// Metallic roughness
 		float m_metallicFactor;
 		float m_roughnessFactor;
+		float m_specularFactor;
 
-		// Albedo
 		glm::vec3 m_albedo;
 	};
 }

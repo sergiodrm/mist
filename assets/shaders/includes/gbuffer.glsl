@@ -7,6 +7,8 @@ struct GBuffer
 	float opacity;
 	vec3 albedo;
 	float metallic;
+	vec3 padding;
+	float specular;
 };
 
 #ifdef CAMERA_DATA_INV_PROJECTION

@@ -420,12 +420,11 @@ namespace gltf_api
 			material.m_emissiveStrength = cgltfmtl.emissive_strength.emissive_strength;
 			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_EMISSIVE;
 			if (LoadTexture(device, rootAssetPath, cgltfmtl.emissive_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
-			{
 				material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
-			}
 			else
 				logfwarn("Emissive material without texture: %s\n", material.GetName());
 		}
+
 		// Metallic roughness
 		if (cgltfmtl.has_pbr_metallic_roughness)
 		{
@@ -433,26 +432,42 @@ namespace gltf_api
 			material.m_roughnessFactor = cgltfmtl.pbr_metallic_roughness.roughness_factor;
 			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS;
 			if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
-			{
 				material.m_flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
-			}
 			else
 				logfwarn("Metallic roughness material without texture: %s\n", material.GetName());
 		}
+
+		// Specular
+		if (cgltfmtl.has_specular)
+		{
+			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_SPECULAR;
+			if (LoadTexture(device, rootAssetPath, cgltfmtl.specular.specular_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
+			{
+				// must not have specular and metalic roughness map at the same time.
+				check(!(material.m_flags & Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP));
+				material.m_flags |= Mist::MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP;
+			}
+			else
+				logfwarn("Specular material without texture: %s\n", material.GetName());
+			material.m_specularFactor = cgltfmtl.specular.specular_factor;
+		}
+		if (cgltfmtl.has_pbr_specular_glossiness)
+			check(false && "has pbr specular glossiness");
+
 		// Unlit
 		if (cgltfmtl.unlit)
-		{
 			material.m_flags |= Mist::MATERIAL_FLAG_UNLIT;
-		}
+
 		// Normal
 		if (LoadTexture(device, rootAssetPath, cgltfmtl.normal_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL], &material.m_samplers[Mist::MATERIAL_TEXTURE_NORMAL]))
-		{
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
-		}
+
 		// Albedo
 		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
 		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
-			material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
+			material.m_flags |= Mist::MATERIAL_FLAG_HAS_ALBEDO_MAP;
+
+		// Alpha mode
 		switch (cgltfmtl.alpha_mode)
 		{
 		case cgltf_alpha_mode_opaque: material.m_flags |= Mist::MATERIAL_FLAG_OPAQUE; break;

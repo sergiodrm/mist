@@ -46,10 +46,9 @@ vec3 GetPosVSFromDepth(float depth, vec2 uv)
     return posVS.xyz / posVS.w;
 }
 
-float linearDepth(float depth, float near, float far)
+float LinearizeDepth(float z, float n, float f)
 {
-	float z = depth * 2.0f - 1.0f; 
-	return (2.0f * near * far) / (far + near - z * (far - near));	
+    return (2.0 * n) / (f + n - z * (f - n));	
 }
 
 void main()
@@ -95,8 +94,9 @@ void main()
 
         // get depth from samplePos in clip space
         float sampleDepth = texture(u_GBufferDepth, uv).r;
-        float rangeCheck = smoothstep(0.f, 1.f, radius / abs(fragPos.z - sampleDepth));
-        occlusion += (sampleDepth >= samplePos.z + bias ? 1.f : 0.f) * rangeCheck;
+        float z = GBuffer_ReprojectPosition(uv, sampleDepth).z;
+        float rangeCheck = smoothstep(0.f, 1.f, radius / abs(fragPos.z - z));
+        occlusion += ((z >= (samplePos.z + bias)) ? 1.f : 0.f) * rangeCheck;
     }
     occlusion = 1.f - (occlusion / float(KERNEL_SIZE));
     fragColor = occlusion;

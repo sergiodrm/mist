@@ -17,7 +17,7 @@ layout(set = 0, binding = 2) uniform CameraInfo
 #define CAMERA_DATA u_camera.data
 
 // GBuffer textures
-layout(set = 1, binding = 0) uniform sampler2D u_GBufferPosition;
+layout(set = 1, binding = 0) uniform sampler2D u_GBufferSpecular;
 layout(set = 1, binding = 1) uniform sampler2D u_GBufferNormal;
 layout(set = 1, binding = 2) uniform sampler2D u_GBufferAlbedo;
 layout(set = 1, binding = 3) uniform sampler2D u_GBufferEmissive;

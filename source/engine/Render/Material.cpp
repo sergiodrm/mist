@@ -76,6 +76,7 @@ namespace Mist
         data.Metallic = m_metallicFactor;
         data.Roughness = m_roughnessFactor;
         data.Flags = m_flags;
+        data.Specular = m_specularFactor;
         return data;
     }
 }
