@@ -105,7 +105,7 @@ namespace Mist
 						trace = &memoryTracking.traceData[memoryTracking.index++];
 						trace->data = nullptr;
 					}
-					if (memoryTracking.index > memoryTracking.memTraceCapacity * 3 / 4)
+					if (memoryTracking.index > memoryTracking.memTraceCapacity * 3 / 4 && memoryTracking.index < memoryTracking.memTraceCapacity)
 						logfwarn("MemTraceIndex close to overflow: %d/%d\n", memoryTracking.index, memoryTracking.memTraceCapacity);
 				}
 				// there is no more room for tracking memory.
