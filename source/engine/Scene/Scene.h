@@ -245,8 +245,6 @@ namespace Mist
 
 		void UpdateRenderData();
 		
-		void Draw(rendersystem::RenderSystem* renderSystem, const glm::mat4& viewProjection, uint16_t renderFlags = 0) const;
-		void DrawGeometry(rendersystem::RenderSystem* renderSystem, const glm::mat4& viewProjection, uint16_t renderFlags = 0) const;
 		// can be nullptr
 		render::TextureHandle GetSkyboxTexture() const;
 		void SetSkyboxTexture(const render::TextureHandle& t) { m_skybox.texture = t; }
