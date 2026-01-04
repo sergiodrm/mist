@@ -24,8 +24,6 @@ namespace Mist
 {
 	bool GUseCameraForShadowMapping = false;
 
-	extern CBoolVar CVar_EnableRenderLists;
-
 	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip)
 	{
 		return glm::perspective(2.f * glm::radians(cutOff), 1.f, nearClip, farClip);
@@ -118,13 +116,6 @@ namespace Mist
 		glm::mat4 viewProj = ComputeShadowVolume(cameraView, cameraProj, lightDir, 1.f, 10.f);
 		SetupLight(lightIndex, viewProj, cameraView);
 #endif // 0
-	}
-
-	void ShadowMapPipeline::RenderShadowMap(rendersystem::RenderSystem* rs, const Scene* scene, uint32_t lightIndex)
-	{
-		check(lightIndex < globals::MaxShadowMapAttachments);
-		rs->SetShaderProperty("u_ubo", &m_depthMVPCache[lightIndex], sizeof(glm::mat4));
-		scene->DrawGeometry(rs, m_depthMVPCache[lightIndex], RenderPass_ShadowMap);
 	}
 
 	const glm::mat4& ShadowMapPipeline::GetDepthVP(uint32_t index) const
@@ -300,13 +291,8 @@ namespace Mist
 			rs->SetDepthEnable();
 			if (i < m_lightCount)
 			{
-				if (CVar_EnableRenderLists.Get())
-				{
-					rs->SetShaderProperty("u_ubo", &m_shadowMapPipeline.GetDepthVP(i), sizeof(glm::mat4));
-					SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListIds[i]);
-				}
-				else
-					m_shadowMapPipeline.RenderShadowMap(rs, scene, i);
+				rs->SetShaderProperty("u_ubo", &m_shadowMapPipeline.GetDepthVP(i), sizeof(glm::mat4));
+				SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListIds[i]);
 			}
 		}
 		rs->ClearState();

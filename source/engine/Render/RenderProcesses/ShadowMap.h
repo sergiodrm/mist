@@ -42,7 +42,6 @@ namespace Mist
 		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
 		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float left, float right, float bottom, float top, float nearClip = 0.1f, float farClip = 1000.f);
 
-		void RenderShadowMap(rendersystem::RenderSystem* rs, const Scene* scene, uint32_t lightIndex);
 		const glm::mat4& GetDepthVP(uint32_t index) const;
 		const glm::mat4& GetLightVP(uint32_t index) const;
 		void SetDepthVP(uint32_t index, const glm::mat4& mat);

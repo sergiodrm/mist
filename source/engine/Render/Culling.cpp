@@ -3,7 +3,7 @@
 
 namespace Mist
 {
-	CIntVar CVar_EnableCulling("r_enableCulling", 0);
+	CIntVar CVar_EnableCulling("r_enableCulling", 1);
 
 #if 0
 	/**

@@ -48,8 +48,6 @@ namespace Mist
 	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
 
-	CBoolVar CVar_EnableRenderLists("r_enableRenderLists", true);
-
 	extern CIntVar CVar_ShowCpuProf;
 
 	namespace Debug
@@ -206,8 +204,7 @@ namespace Mist
 		{
 			m_scene->UpdateRenderData();
 			m_renderer.Update();
-			if (CVar_EnableRenderLists.Get())
-				SceneRenderer::GetSceneRenderer()->BuildRenderLists(m_scene);
+			SceneRenderer::GetSceneRenderer()->BuildRenderLists(m_scene);
 		}
 		else
 			m_renderer.Update();

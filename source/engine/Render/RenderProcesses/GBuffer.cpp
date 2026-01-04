@@ -15,8 +15,6 @@ namespace Mist
 {
 	GBuffer* g_gbuffer = nullptr;
 
-	extern CBoolVar CVar_EnableRenderLists;
-
 	GBuffer::GBuffer(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
 	{ }
@@ -86,10 +84,8 @@ namespace Mist
 		rs->SetStencilEnable(true);
 		rs->SetStencilMask(0xff, 0xff, GBUFFER_GEOMETRY_STENCIL_MASK);
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
-		if (CVar_EnableRenderLists.Get())
-			SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListId);
-		else
-			scene->Draw(rs, GetCameraData()->ViewProjection, RenderPass_Opaque);
+		rs->SetDepthEnable(true, true);
+		SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListId);
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 	}
