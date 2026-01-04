@@ -185,6 +185,13 @@ namespace Mist
 			}, & m_gol);
 #endif // 0
 
+		rendersystem::ui::AddWindowCallback("Scene renderer",
+			[](void* data)
+			{
+				check(data);
+				static_cast<SceneRenderer*>(data)->ImGuiDraw();
+			}, SceneRenderer::GetSceneRenderer());
+
 
 		for (uint32_t i = 0; i < m_renderer.GetRenderProcessCount(); ++i)
 			rendersystem::ui::AddWindowCallback(RenderProcessNames[i], [](void* data) 
@@ -326,7 +333,6 @@ namespace Mist
 			rendersystem::ui::Show();
 			Profiling::CpuProf_ImGuiDraw();
 			tApplication::ImGuiDraw();
-			SceneRenderer::GetSceneRenderer()->ImGuiDraw();
 		}
 	}
 

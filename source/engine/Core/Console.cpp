@@ -33,6 +33,11 @@ namespace Mist
 		g_Console.Draw();
 	}
 
+	void DrawConsoleFunctions()
+	{
+		g_Console.DrawFunctions();
+	}
+
 	void FlushPendingConsoleCommands()
 	{
 		g_Console.ExecuteDeferredCommand();
@@ -159,6 +164,15 @@ namespace Mist
 		if (reclaimFocus)
 			ImGui::SetKeyboardFocusHere(-1);
 		ImGui::End();
+	}
+
+	void Console::DrawFunctions()
+	{
+		for (uint32_t i = 0; i < m_callbacksNames.GetSize(); ++i)
+		{
+			if (ImGui::Button(m_callbacksNames[i].CStr()))
+				ExecCommand(m_callbacksNames[i].CStr());
+		}
 	}
 
 	void Console::PrintCommandList()

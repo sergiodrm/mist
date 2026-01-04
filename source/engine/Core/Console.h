@@ -16,6 +16,7 @@ namespace Mist
 	typedef void(*FnExecCommandCallback)(const char* cmd);
 	void AddConsoleCommand(const char* cmdname, FnExecCommandCallback fn);
 	void DrawConsole();
+	void DrawConsoleFunctions();
 	void FlushPendingConsoleCommands();
 	void ConsoleLog(LogLevel level, const char* msg);
 
@@ -56,6 +57,7 @@ namespace Mist
 		void LogFmt(LogLevel level, const char* fmt, ...);
 
 		void Draw();
+		void DrawFunctions();
 		void PrintCommandList();
 		void ExecuteDeferredCommand();
 	private:

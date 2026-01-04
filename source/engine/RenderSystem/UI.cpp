@@ -292,6 +292,11 @@ namespace rendersystem
                     Mist::ImGuiDrawCVars();
                     ImGui::EndMenu();
                 }
+                if (ImGui::BeginMenu("Functions"))
+                {
+                    Mist::DrawConsoleFunctions();
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMainMenuBar();
             }
 
