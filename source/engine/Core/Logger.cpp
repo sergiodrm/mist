@@ -186,8 +186,9 @@ namespace Mist
 			return;
 #endif // !_DEBUG
 		uint64_t frame = tApplication::GetFrame();
+		float appTime = tApplication::GetAppTime();
         if (level == LogLevel::Error && CVar_LogToConsole.Get() > 0 || CVar_LogToConsole.Get() == 2)
-			printf("%s[%6lld][%7s]%s %s%s", ANSI_COLOR_CYAN, frame, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
+			printf("%s[%6lld][%4.2f][%7s]%s %s%s", ANSI_COLOR_CYAN, frame, appTime, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
 #ifdef UNICODE
 		wchar_t str[LOG_MSG_MAX_SIZE];
 		MultiByteToWideChar(CP_ACP, 0, msg, -1, str, 4096);

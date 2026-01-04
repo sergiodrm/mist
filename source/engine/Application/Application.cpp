@@ -21,6 +21,7 @@ namespace Mist
 	CIntVar CVar_ResizableWindow("ResizableWindow", 0);
 
 	uint64_t GFrame = 0;
+	tTimePoint g_appTimestamp = 0;
 	tApplication* GApp = nullptr;
 
 	SDL_WindowFlags WindowFlagsToSDL(eWindowFlags f)
@@ -143,6 +144,7 @@ namespace Mist
 	tApplication::tApplication()
 		: m_windowClosed(false)
 	{
+		g_appTimestamp = GetTimePoint();
 	}
 
 	void tApplication::Init(int argc, char** argv)
@@ -243,6 +245,12 @@ namespace Mist
 	uint64_t tApplication::GetFrame()
 	{
 		return GFrame;
+	}
+
+	float tApplication::GetAppTime()
+	{
+		tTimePoint diff = GetTimePoint() - g_appTimestamp;
+		return GetMiliseconds(diff) * 0.001f;
 	}
 
 	void tApplication::ImGuiDraw()
