@@ -30,19 +30,15 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     //return directionalLightColor;
 
     // Ambient color
-    vec3 N = normalize(mat3(CAMERA_DATA.invView) * normal);
-    vec4 wspos = ((CAMERA_DATA.invView) * vec4(fragPos, 1));
-    vec3 pos = (wspos/wspos.w).xyz;
-    vec3 camPos = (CAMERA_DATA.invView)[3].xyz;
-    vec3 V = normalize(camPos - pos);
+    vec3 N = normal;
+    vec3 V = -fragPos;
 
+    vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
 #if defined(DEBUG_AMBIENT)
-    vec3 ambientColor = ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
 	return ambientColor;
 #elif defined(DEBUG_LIGHTS)
     return lightColor;
 #else
-    vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
-    return lightColor + ambientColor * ao;
+    return lightColor + ambientColor;
 #endif
 }
