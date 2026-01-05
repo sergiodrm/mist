@@ -22,7 +22,7 @@
 #define shaderlogf(fmt, ...) DUMMY_MACRO
 #endif
 
-#define SHADER_DUMP_BUILD_TIMES
+//#define SHADER_DUMP_BUILD_TIMES
 #ifdef SHADER_DUMP_BUILD_TIMES
 #define profile_shader_scope(scope_name, msg) PROFILE_SCOPE_LOG(scope_name, msg)
 #define profile_shader_scope_f(scope_name, fmt, ...) PROFILE_SCOPE_LOGF(scope_name, fmt, __VA_ARGS__)
@@ -475,7 +475,7 @@ namespace render
             // At this point we must have a valid binary.
             check(bin.IsCompilationSucceed());
 
-            logfok("Shader built successfully (%s; %lld bytes)\n", assetPath, bin.binaryCount * sizeof(uint32_t));
+            shaderlogf("Shader built successfully (%s; %lld bytes)\n", assetPath, bin.binaryCount * sizeof(uint32_t));
             return bin;
         }
 
