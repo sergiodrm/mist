@@ -139,7 +139,7 @@ namespace Mist
 		int ActiveSpotLightsCount;
 		glm::vec3 ViewPosition;
 		int ActiveLightsCount;
-		static constexpr uint32_t MaxLights = 8;
+		static constexpr uint32_t MaxLights = 500;
 		LightData Lights[MaxLights];
 		LightData DirectionalLight;
 		LightData SpotLights[MaxLights];

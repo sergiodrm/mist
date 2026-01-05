@@ -222,9 +222,9 @@ namespace Mist
 		m_irradianceRequestInfo->irradianceCubemapWidthHeight = 32;
 		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
 		m_irradianceRequestInfo->minCubemapClamp = glm::vec3(0.f);
-		m_irradianceRequestInfo->maxCubemapClamp = glm::vec3(4.f);
-		m_irradianceRequestInfo->hdrFilepath = "textures/flamingo_pan_4k.hdr";
-		//m_irradianceRequestInfo->hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
+		m_irradianceRequestInfo->maxCubemapClamp = glm::vec3(2.f);
+		//m_irradianceRequestInfo->hdrFilepath = "textures/flamingo_pan_4k.hdr";
+		m_irradianceRequestInfo->hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
 		//m_irradianceRequestInfo->hdrFilepath = "textures/climbing_gym_4k.hdr";
 		m_irradianceRequestInfo->userData = this;
 	}
@@ -903,7 +903,7 @@ namespace Mist
 		{
 			for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 			{
-				char treeId[2];
+				char treeId[16];
 				sprintf_s(treeId, "%u", i);
 				if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
 				{
@@ -1225,8 +1225,8 @@ namespace Mist
 						data.Position = pos;
 						data.Radius = light.Radius;
 					}
-					else
-						logferror("Too many point lights in scene. Current MaxLights is %d.\n", EnvironmentData::MaxLights);
+					//else
+					//	logferror("Too many point lights in scene. Current MaxLights is %d.\n", EnvironmentData::MaxLights);
 				}
 					break;
 				case ELightType::Directional:

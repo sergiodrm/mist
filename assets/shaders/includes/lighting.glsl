@@ -16,12 +16,12 @@ struct LightData
     //16 bytes
 
     vec3 Dir;
-    int Type;
+    float _padding;
     //16 bytes
 
     vec2 CosCutoff; // x: inner, y: outer
     int ShadowMapIndex;
-    float _padding;
+    int _padding2;
     //16 bytes
 };
 
@@ -267,12 +267,10 @@ vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, flo
     vec3 kS = FresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kD = 1.f-kS;
     kD *= 1.f-metallic;
-    //return kD;
     vec3 i = texture(IRRADIANCE_MAP, N).rgb;
     vec3 diffuse = i * albedo;
     // debug diffuse
     //return kD * diffuse * ao;
-    //return kD;
 
     // specular reflection
     vec2 envBrdf = texture(BRDF_MAP, vec2(NdotV, roughness)).rg;
@@ -281,8 +279,7 @@ vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, flo
     const float mipLevel = roughness * MAX_REFLECTION_LOD;
     vec3 prefilteredColor = textureLod(PREFILTERED_MAP, r, mipLevel).rgb;
     vec3 specular = prefilteredColor * (kS * envBrdf.x + envBrdf.y);
-    //return specular;
-    return (kD * diffuse + specular);
+    return (kD * diffuse + specular) * ao;
 }
 
 /**
