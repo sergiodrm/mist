@@ -58,6 +58,7 @@ namespace Mist
 		bool CheckboxCBoolVar(CBoolVar& var);
 		bool EditCIntVar(CIntVar& var);
 		bool EditCFloatVar(CFloatVar& var);
+		bool DragCFloatVar(CFloatVar& var, float step = 1.f, float minValue = 0.f, float maxValue = 0.f);
 		bool EditCStrVar(CStrVar& var);
 		bool EditCVar(CVar& cvar);
 

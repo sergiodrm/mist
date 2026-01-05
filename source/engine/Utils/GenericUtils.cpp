@@ -150,6 +150,17 @@ bool Mist::ImGuiUtils::EditCFloatVar(CFloatVar& var)
 	return false;
 }
 
+bool Mist::ImGuiUtils::DragCFloatVar(CFloatVar& var, float step, float minValue, float maxValue)
+{
+	float v = var.Get();
+	if (ImGui::DragFloat(var.GetName(), &v, step, minValue, maxValue) && !(var.GetFlags() & (CVarFlag_Const | CVarFlag_SetOnlyByCmd)))
+	{
+		var.Set(v);
+		return true;
+	}
+	return false;
+}
+
 bool Mist::ImGuiUtils::EditCStrVar(CStrVar& var)
 {
 	char buff[64];

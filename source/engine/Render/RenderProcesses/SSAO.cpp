@@ -15,8 +15,8 @@
 
 namespace Mist
 {
-	CFloatVar CVar_SSAORadius("r_ssaoRadius", 1.98f);
-	CFloatVar CVar_SSAOBias("r_ssaoBias", 0.087f);
+	CFloatVar CVar_SSAORadius("r_ssaoRadius", 1.5f);
+	CFloatVar CVar_SSAOBias("r_ssaoBias", 0.03f);
 	CBoolVar CVar_SSAOHalfRes("r_ssaoHalfRes", false);
 
 
@@ -101,8 +101,8 @@ namespace Mist
 	void SSAO::ImGuiDraw()
 	{
 		ImGui::Begin("SSAO");
-		ImGuiUtils::EditCFloatVar(CVar_SSAORadius);
-		ImGuiUtils::EditCFloatVar(CVar_SSAOBias);
+		ImGuiUtils::DragCFloatVar(CVar_SSAORadius, 0.1f, 0.f, FLT_MAX);
+		ImGuiUtils::DragCFloatVar(CVar_SSAOBias, 0.1f, 0.f, FLT_MAX);
 		if (ImGui::BeginCombo("Debug texture", SSAOModeStr[m_mode]))
 		{
 			for (uint32_t i = 0; i < CountOf(SSAOModeStr); ++i)
