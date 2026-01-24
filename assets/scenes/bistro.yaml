@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0, 0, 0]
+  Ambient: [0.196078435, 0.196078435, 0.196078435]
   Skybox:
     Front: textures/yokohama/posz.jpg
     Back: textures/yokohama/negz.jpg
@@ -96,5 +96,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [0, 0, 0]
-      Rotation: [0, 0, 0]
+      Position: [-14.8338747, 2.56419754, 5.21129656]
+      Rotation: [-0.131481484, -1.00937498, 0]
