@@ -159,5 +159,6 @@ namespace render
 
         CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions = nullptr, bool forceCompilation = false);
         bool BuildShaderParams(const CompiledBinary& bin, ShaderType type, ShaderReflectionProperties& outProperties);
+        uint64_t BuildShaderHash(const char* filepath, const CompilationOptions& options);
     }
 }

@@ -324,6 +324,28 @@ namespace rendersystem
 
     class ShaderDb
     {
+		struct Hasher
+		{
+			std::size_t operator()(const ShaderBuildDescription& desc) const
+			{
+				uint64_t h = 0;
+				switch (desc.type)
+				{
+				case ShaderProgram_Graphics:
+					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.vsDesc.filePath.c_str(), desc.vsDesc.options));
+					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.fsDesc.filePath.c_str(), desc.fsDesc.options));
+					break;
+				case ShaderProgram_Compute:
+					h = render::shader_compiler::BuildShaderHash(desc.csDesc.filePath.c_str(), desc.csDesc.options);
+					break;
+				}
+				return h;
+			}
+		};
+        using ShaderMap = Mist::tMap<ShaderBuildDescription, ShaderProgram*, Hasher>;
+        using ShaderMapIterator = ShaderMap::iterator;
+        using ShaderMapConstIterator = ShaderMap::const_iterator;
+
     public:
         ShaderDb()
         {
@@ -343,35 +365,34 @@ namespace rendersystem
         void AddProgram(ShaderProgram* program)
         {
             check(program);
-            m_programs.push_back(program);
+            ShaderMapIterator it = m_programs.find(program->GetDescription());
+            check(it == m_programs.end());
+            m_programs[program->GetDescription()] = program;
+        }
+
+        ShaderProgram* FindShader(const ShaderBuildDescription& desc) const
+        {
+            ShaderMapConstIterator it = m_programs.find(desc);
+            return it != m_programs.end() ? it->second : nullptr;
         }
 
         void RemoveProgram(ShaderProgram* program)
         {
-            for (uint32_t i = (uint32_t)m_programs.size()-1; i < (uint32_t)m_programs.size(); --i)
-            {
-                if (program == m_programs[i])
-                {
-                    if (i != (uint32_t)m_programs.size() - 1)
-                        m_programs[i] = m_programs.back();
-                    m_programs.pop_back();
-                    return;
-                }
-            }
-            unreachable_code();
+            ShaderMapIterator it = m_programs.find(program->GetDescription());
+            check(it != m_programs.end());
+            m_programs.erase(it);
         }
 
         void ReloadAll()
         {
-            for (uint32_t i = 0; i < (uint32_t)m_programs.size(); ++i)
+            for (ShaderMapIterator it = m_programs.begin(); it != m_programs.end(); ++it)
             {
-                m_programs[i]->Reload();
-                check(m_programs[i]->IsLoaded());
+                it->second->Reload();
+                check(it->second->IsLoaded());
             }
         }
 
-
-        Mist::tDynArray<ShaderProgram*> m_programs;
+        ShaderMap m_programs;
     };
 
     class RenderSystem
@@ -498,6 +519,7 @@ namespace rendersystem
 
         render::Device* GetDevice() const { return m_device; }
         ShaderProgram* CreateShader(const ShaderBuildDescription& desc);
+        ShaderProgram* FindShader(const ShaderBuildDescription& desc) const { return m_shaderDb.FindShader(desc); }
         void DestroyShader(ShaderProgram** shader);
         void ReloadAllShaders();
 
@@ -605,8 +627,6 @@ namespace rendersystem
 
         void BindUAV(const char* id, const render::TextureHandle& texture);
 
-
-        ShaderMemoryPool* GetMemoryPool() const { return m_memoryPool; }
         const render::CommandListHandle& GetCommandList() const { return m_cmd; }
 
         /**

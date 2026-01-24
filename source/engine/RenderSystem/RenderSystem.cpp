@@ -328,6 +328,9 @@ namespace rendersystem
         delete m_bindingCache;
         delete m_memoryPool;
         delete m_samplerCache;
+        for (auto it = m_shaderDb.m_programs.begin(); it != m_shaderDb.m_programs.end(); ++it)
+            delete it->second;
+        m_shaderDb.m_programs.clear();
         m_defaultTexture = nullptr;
         m_graphicsContext.pso = {};
         m_computeContext.pso = {};
@@ -345,8 +348,12 @@ namespace rendersystem
 
     ShaderProgram* RenderSystem::CreateShader(const ShaderBuildDescription& desc)
     {
-        ShaderProgram* shader = _new ShaderProgram(m_device, desc);
-        m_shaderDb.AddProgram(shader);
+        ShaderProgram* shader = FindShader(desc);
+        if (!shader)
+        {
+            shader = _new ShaderProgram(m_device, desc);
+            m_shaderDb.AddProgram(shader);
+        }
         return shader;
     }
 

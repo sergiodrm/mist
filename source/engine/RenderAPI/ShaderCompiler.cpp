@@ -38,24 +38,9 @@ namespace render
         template <uint32_t Size>
         void GenerateSpvFileName(char(&outFilepath)[Size], const char* srcFile, const CompilationOptions& options)
         {
-            sprintf_s(outFilepath, Size, "%s.[%s]", srcFile, options.entryPoint);
-            if (!options.macroDefinitionArray.empty())
-            {
-                strcat_s(outFilepath, Size, ".[");
-                for (uint32_t i = 0; i < (uint32_t)options.macroDefinitionArray.size(); ++i)
-                {
-                    char buff[256];
-                    sprintf_s(buff, "%s(%s).", options.macroDefinitionArray[i].macro.CStr(), options.macroDefinitionArray[i].value.CStr());
-                    strcat_s(outFilepath, Size, buff);
-                }
-                strcat_s(outFilepath, Size, "]");
-            }
-
-            size_t h = std::hash<std::string>()(outFilepath);
+            size_t h = BuildShaderHash(srcFile, options);
             Mist::FileSystem::GetDirectoryFromFilepath(srcFile, outFilepath, Size);
             sprintf_s(outFilepath, "%s%s/%llu%s", outFilepath, SHADER_BINARY_FILE_DIRECTORY, h, SHADER_BINARY_FILE_EXTENSION);
-
-            //strcat_s(outFilepath, Size, SHADER_BINARY_FILE_EXTENSION);
         }
 
         AttributeType ConvertAttributeType(spirv_cross::SPIRType::BaseType type)
@@ -603,6 +588,27 @@ namespace render
             logdebug("End shader reflection.\n");
 #endif // MIST_SHADER_REFLECTION_LOG
             return true;
+        }
+
+        uint64_t BuildShaderHash(const char* filepath, const CompilationOptions& options)
+        {
+            static constexpr uint32_t buffSize = 1024;
+            char buff[buffSize];
+			sprintf_s(buff, buffSize, "%s.[%s]", filepath, options.entryPoint);
+			if (!options.macroDefinitionArray.empty())
+			{
+				strcat_s(buff, buffSize, ".[");
+				for (uint32_t i = 0; i < (uint32_t)options.macroDefinitionArray.size(); ++i)
+				{
+					char tempBuff[256];
+					sprintf_s(tempBuff, sizeof(tempBuff), "%s:%s.", options.macroDefinitionArray[i].macro.CStr(), options.macroDefinitionArray[i].value.CStr());
+					strcat_s(buff, buffSize, tempBuff);
+				}
+				strcat_s(buff, buffSize, "]");
+			}
+
+			size_t h = Mist::hash(buff);
+            return h;
         }
     }
 }
