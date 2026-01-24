@@ -227,8 +227,8 @@ namespace Mist
 
 	void FlushLogToFile()
 	{
-		check(GLogFile);
-		GLogFile->Flush();
+		if (GLogFile)
+			GLogFile->Flush();
 	}
 
 	void InitLog(const char* outputFile)
