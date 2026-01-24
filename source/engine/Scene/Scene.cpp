@@ -596,7 +596,7 @@ namespace Mist
 				emitter << YAML::Key << "Type" << YAML::Value << LightTypeToStr(light.Type);
 				emitter << YAML::Key << "Color" << YAML::Value << light.Color;
 				emitter << YAML::Key << "Radius" << YAML::Value << light.Radius;
-				emitter << YAML::Key << "Compression" << YAML::Value << light.Radius;
+				emitter << YAML::Key << "Compression" << YAML::Value << light.Compression;
 				emitter << YAML::Key << "OuterCutoff" << YAML::Value << light.OuterCutoff;
 				emitter << YAML::Key << "Cutoff" << YAML::Value << light.Cutoff;
 				emitter << YAML::Key << "ProjectShadows" << YAML::Value << light.ProjectShadows;
