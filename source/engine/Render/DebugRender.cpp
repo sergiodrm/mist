@@ -40,7 +40,7 @@ namespace Mist
 
 		struct tLineBatch
 		{
-			static constexpr index_t MaxLines = 2700;
+			static constexpr index_t MaxLines = 4000;
 			tStaticArray<tLineVertex, MaxLines> LineArray;
 			uint32_t LineArrayOverflow = 0;
 			render::BufferHandle vertexBuffer;
