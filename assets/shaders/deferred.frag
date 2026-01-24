@@ -3,7 +3,6 @@
 layout(location = 0) in vec2 inTexCoords;
 layout(location = 0) out vec4 outColor;
 
-#define MAX_SHADOW_MAPS 3
 layout(set = 0, binding = 1) uniform ShadowMapInfo
 {
     mat4 LightViewMat[MAX_SHADOW_MAPS];
@@ -84,8 +83,6 @@ void main()
     float depth = GBuffer_ReadDepth(inTexCoords);
     vec3 posVS = GBuffer_ReprojectPosition(inTexCoords, depth);
     float ao = texture(u_ssao, inTexCoords).r;
-    //if (data.opacity <= 0.1f)
-    //    discard;
     data.albedo += data.emissive;
     vec4 lightingColor = main_PBR(posVS, data.normal, data.albedo, data.metallic, data.roughness, ao);
     lightingColor.rgb += data.emissive;

@@ -8,7 +8,7 @@ layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec2 inTexCoords;
 
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
-layout(set = 3, binding = 0) uniform MaterialParams
+layout(set = 3, binding = 0) uniform MaterialUniformBuffer
 {
 	vec4 Emissive;
 } u_material;

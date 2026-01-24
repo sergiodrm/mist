@@ -7,6 +7,9 @@
 //#define DEBUG_AMBIENT
 //#define DEBUG_LIGHTS 
 
+/// DoEnvironmentLighting
+/// * fragPos: fragment position in view space
+/// * normal: fragment normal in view space
 vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metallic, float roughness, float ao, ShadowInfo shadowInfo)
 {
     // Point lights

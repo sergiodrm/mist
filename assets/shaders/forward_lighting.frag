@@ -3,10 +3,9 @@
 
 // Color output
 layout(location = 0) out vec4 outColor;
-layout(location = 1) out vec4 outEmissive;
 
 // Vertex shader input
-layout(location = 0) in vec4 inFragPosWS;
+layout(location = 0) in vec4 inFragPosVS;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec2 inTexCoords;
@@ -20,13 +19,24 @@ layout(location = 7) in mat3 inTBN;
 #error Must define MAX_SHADOW_MAPS value
 #endif // MAX_SHADOW_MAPS
 
+// Shadow mapping
 layout (set = 2, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
-//layout (set = 0, binding = 4) uniform sampler2D u_SSAOTex;
-
+// SSAO
+layout (set = 2, binding = 1) uniform sampler2D u_ssao;
+// Irradiance maps
+layout(set = 2, binding = 2) uniform samplerCube u_irradianceMap;
+layout(set = 2, binding = 3) uniform samplerCube u_prefilterMap;
+layout(set = 2, binding = 4) uniform sampler2D u_brdfMap;
+layout(set = 2, binding = 5) uniform samplerCube u_cubemap;
+// Material maps
 layout(set = 3, binding = 0) uniform sampler2D u_Textures[6];
 
+#define LIGHTING_NO_SHADOWS
 #define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
 #define ENVIRONMENT_DATA u_env.data
+#define IRRADIANCE_MAP u_irradianceMap
+#define PREFILTERED_MAP u_prefilterMap
+#define BRDF_MAP u_brdfMap
 #include <shaders/includes/environment_data.glsl>
 #include <shaders/includes/material.glsl>
 
@@ -39,10 +49,9 @@ layout (std140, set = 4, binding = 0) uniform EnvBlock
 
 layout (set = 5, binding = 0) uniform MaterialBlock
 {
-    MaterialParams data;
+    MaterialUniformBuffer data;
 } u_material;
 
-layout (set = 6, binding = 0) uniform samplerCube u_cubemap;
 
 vec3 ComputeNormalMapping(vec3 normal)
 {
@@ -72,65 +81,45 @@ vec4 DoLighting(vec3 fragPos, vec3 normal, vec4 albedo, float metallic, float ro
     shadowInfo.ShadowCoordArray[1] = inLightSpaceFragPos_1;
     shadowInfo.ShadowCoordArray[2] = inLightSpaceFragPos_2;
     
-#if 0
-    // Point lights
-    vec3 pointLightsColor = vec3(0.f);
-    for (int i = 0; i < u_env.data.NumOfPointLights; ++i)
-    {
-        pointLightsColor += ProcessPointLight(fragPos, normal, u_env.data.Lights[i], albedo.rgb, metallic, roughness);
-    }
+    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, albedo.rgb, metallic, roughness, 1.f, shadowInfo);
+    vec4 color = vec4(lightColor, albedo.a);
 
-    // Spot lights
-    vec3 spotLightsColor = vec3(0.f);
-    for (int i = 0; i < u_env.data.NumOfSpotLights; ++i)
-    {
-        spotLightsColor += ProcessSpotLight(fragPos, normal, u_env.data.SpotLights[i], albedo.rgb, metallic, roughness, shadowInfo);
-    }
-
-    // Directional light
-    vec3 directionalLightColor = ProcessDirectionalLight(fragPos, normal, u_env.data.DirectionalLight, albedo.rgb, metallic, roughness, shadowInfo);
-
-    vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
-
-    // Ambient color
-#if 0
-    vec2 texSize = textureSize(u_SSAOTex, 0);
-    vec2 uv = gl_FragCoord.xy / texSize;
-    vec3 ambientColor = vec3(u_env.data.AmbientColor) * texture(u_SSAOTex, uv).r;
-#else
-    vec3 ambientColor = vec3(u_env.data.AmbientColor);
-#endif
-
-    // Mix
-    vec4 color = vec4(lightColor, 1.f) + albedo*vec4(ambientColor, 1.f);
-#else
-    vec3 lightColor = DoEnvironmentLighting(fragPos, normal, albedo.rgb, metallic, roughness, 0.f, shadowInfo);
-    vec4 color = vec4(lightColor, 1.f);
-#endif
-
-#ifdef CUBEMAP_REFLECTION
-    // Cubemap reflection
-    vec3 reflection = ComputeCubemapReflection(fragPos, normal, vec3(0.f));
-    color = vec4(mix(color.rgb, reflection, 0.02f*metallic), color.a);
-#endif // CUBEMAP_REFLECTION
-#ifdef DEBUG_SPECULAR
-    color = vec4(lightColor, 1.f);
-#endif // DEBUG_SPECULAR
+//#ifdef CUBEMAP_REFLECTION
+//    // Cubemap reflection
+//    vec3 reflection = ComputeCubemapReflection(fragPos, normal, vec3(0.f));
+//    color = vec4(mix(color.rgb, reflection, 0.02f*metallic), color.a);
+//#endif // CUBEMAP_REFLECTION
+//#ifdef DEBUG_SPECULAR
+//    color = vec4(lightColor, 1.f);
+//#endif // DEBUG_SPECULAR
     return color;
 }
 
 void main()
 {
-    vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inTexCoords);
-    if (albedo.a <= 0.1f)
-        discard;
+    // Albedo
+    vec4 albedo = u_material.data.Albedo;
+    if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_ALBEDO_MAP))
+        albedo *= texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inTexCoords);
 
 #ifndef UNLIT
+
+    // Normal
     vec3 normal = ComputeNormalMapping(inNormal);
-    vec4 metallicRoughness = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inTexCoords);
-    float metallic = metallicRoughness.b;
-    float roughness = metallicRoughness.g;
-    outColor = DoLighting(inFragPosWS.xyz, normal, albedo, metallic, roughness);
+
+    // MetallicRoughness
+	float roughness = u_material.data.MetallicRoughness.g;
+	float metallic = u_material.data.MetallicRoughness.r;
+	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP))
+	{
+		vec3 mr = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inTexCoords).rgb;
+		roughness *= mr.g;
+		metallic *= mr.b;
+	}
+
+    outColor = DoLighting(inFragPosVS.xyz, normal, albedo, metallic, roughness);
+    //outColor = vec4(0,0,0,0);
+    //outColor.r = albedo.a;
 #else
     outColor = albedo;
 #endif // !UNLIT

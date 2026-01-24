@@ -18,7 +18,7 @@ layout (location = 3) out vec4 outGBufferSpecular;
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
 layout(set = 3, binding = 0) uniform MaterialBlock
 {
-	MaterialParams data;
+	MaterialUniformBuffer data;
 } u_material;
 
 #include <shaders/includes/gbuffer_write.glsl>
@@ -29,10 +29,21 @@ void main()
 	GBuffer data;
 
 	// Albedo and emissive
-	vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inUV);
-	data.albedo = albedo.rgb * u_material.data.Albedo.rgb;
-	data.opacity = albedo.a;
+	data.albedo = u_material.data.Albedo.rgb;
+	data.opacity = u_material.data.Albedo.a;
+	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_ALBEDO_MAP))
+	{
+		vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inUV);
+		data.albedo *= albedo.rgb;
+		data.opacity *= albedo.a;
+	}
 	data.emissive = u_material.data.Emissive.w * u_material.data.Emissive.rgb;
+
+#ifdef ALPHA_TEST
+	// Do alpha test
+	if (data.opacity < u_material.data.MetallicRoughness.a)
+		discard;
+#endif
 
 	// Normals
 	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_NORMAL_MAP))
@@ -51,7 +62,7 @@ void main()
 	}
 
 	// Specular
-	data.specular = u_material.data.Specular;
+	data.specular = u_material.data.MetallicRoughness.b;
 	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP))
 	{
 		vec4 specular = texture(u_Textures[MATERIAL_TEXTURE_SPECULAR], inUV);
