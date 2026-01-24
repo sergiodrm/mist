@@ -292,7 +292,10 @@ namespace Mist
 			if (i < m_lightCount)
 			{
 				rs->SetShaderProperty("u_ubo", &m_shadowMapPipeline.GetDepthVP(i), sizeof(glm::mat4));
-				SceneRenderer::GetSceneRenderer()->DrawList(rs, m_renderListIds[i]);
+				RenderContext rc;
+				rc.rs = rs;
+				rc.passId = m_renderListIds[i];
+				SceneRenderer::GetSceneRenderer()->DrawList(rc);
 			}
 		}
 		rs->ClearState();
