@@ -45,9 +45,32 @@ namespace Mist
         return nullptr;
     }
 
+    void cMaterial::ConfigureShaderDescription(rendersystem::ShaderBuildDescription& shaderDesc)
+    {
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+#undef DECLARE_MACRO_ENUM
+    }
+
     cMaterial::cMaterial()
-        : m_shader(nullptr), m_flags(MATERIAL_FLAG_NONE), 
-        m_emissiveFactor{0.f}, m_emissiveStrength(0.f),
+        : m_shaderProgram(nullptr), m_flags(MATERIAL_FLAG_NONE), 
+        m_emissiveFactor{0.f}, m_emissiveStrength(0.f), m_specularFactor(0.f),
         m_metallicFactor(0.f), m_roughnessFactor(0.f), m_albedo(1.f)
     {
         Invalidate();
@@ -62,6 +85,39 @@ namespace Mist
         }
     }
 
+    void cMaterial::SetupShader(rendersystem::RenderSystem* renderSystem)
+    {
+        static const char* gbuffervs = "shaders/gbuffer_main.vert";
+        static const char* gbufferfs = "shaders/gbuffer_main.frag";
+        static const char* forwardvs = "shaders/forward_lighting.vert";
+        static const char* forwardfs = "shaders/forward_lighting.frag";
+        static const char* alphaTestFlag = "ALPHA_TEST";
+
+        check(!m_shaderProgram);
+        rendersystem::ShaderBuildDescription desc;
+        desc.type = rendersystem::ShaderProgram_Graphics;
+        if (m_flags & MATERIAL_FLAG_BLEND)
+        {
+            check(!(m_flags & MATERIAL_FLAG_OPAQUE) && !(m_flags & MATERIAL_FLAG_MASK));
+            desc.vsDesc.filePath = forwardvs;
+            desc.fsDesc.filePath = forwardfs;
+            desc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
+        }
+        else
+        {
+            desc.vsDesc.filePath = gbuffervs;
+            desc.fsDesc.filePath = gbufferfs;
+            if (m_flags & MATERIAL_FLAG_MASK)
+            {
+                check(!(m_flags & MATERIAL_FLAG_OPAQUE));
+                desc.fsDesc.options.PushMacroDefinition(alphaTestFlag);
+            }
+        }
+        ConfigureShaderDescription(desc);
+        m_shaderProgram = renderSystem->CreateShader(desc);
+        check(m_shaderProgram);
+    }
+
     void cMaterial::BindTextures(rendersystem::RenderSystem* renderSystem) const
     {
         g_render->SetTextureSlot("u_Textures", m_textures, MATERIAL_TEXTURE_COUNT);
@@ -71,12 +127,13 @@ namespace Mist
     sMaterialRenderData cMaterial::GetRenderData() const
     {
         sMaterialRenderData data = {};
-        data.Emissive = glm::vec4(m_emissiveFactor.x, m_emissiveFactor.y, m_emissiveFactor.z, m_emissiveStrength);
-        data.Albedo = glm::vec4(m_albedo.x, m_albedo.y, m_albedo.z, 1.f);
-        data.Metallic = m_metallicFactor;
-        data.Roughness = m_roughnessFactor;
-        data.Flags = m_flags;
-        data.Specular = m_specularFactor;
+        data.emissive = glm::vec4(m_emissiveFactor.x, m_emissiveFactor.y, m_emissiveFactor.z, m_emissiveStrength);
+        data.albedo = m_albedo;
+        data.metallic = m_metallicFactor;
+        data.roughness = m_roughnessFactor;
+        data.specular = m_specularFactor;
+        data.alphaCutoff = m_alphaCutoff;
+        data.flags = m_flags;
         return data;
     }
 }

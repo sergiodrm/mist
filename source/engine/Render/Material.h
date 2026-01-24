@@ -10,11 +10,11 @@ namespace rendersystem
 {
 	class RenderSystem;
 	class ShaderProgram;
+	struct ShaderBuildDescription;
 }
 
 namespace Mist
 {
-	class ShaderProgram;
 	enum eMaterialTexture
 	{
 		MATERIAL_TEXTURE_ALBEDO,
@@ -49,29 +49,31 @@ namespace Mist
 	struct sMaterialRenderData
 	{
 		// w -> emissive strength
-		glm::vec4 Emissive;
-		// w -> unused
-		glm::vec4 Albedo;
+		glm::vec4 emissive;
+		glm::vec4 albedo;
 		
-		float Metallic;
-		float Roughness;
-		float Specular;
-		float _padding;
+		float metallic;
+		float roughness;
+		float specular;
+		float alphaCutoff;
 		
-		tMaterialFlags Flags;
-		uint32_t _padding2[3];
+		tMaterialFlags flags;
+		uint32_t _padding[3];
 	};
 
 	class cMaterial : public cRenderResource<RenderResource_Material>
 	{
 	public:
+
+		static void ConfigureShaderDescription(rendersystem::ShaderBuildDescription& shaderDesc);
+
 		cMaterial();
 		void Invalidate();
+		void SetupShader(rendersystem::RenderSystem* renderSystem);
 
 		void BindTextures(rendersystem::RenderSystem* renderSystem) const;
 		sMaterialRenderData GetRenderData() const;
 
-		ShaderProgram* m_shader;
 		// Material flags
 		tMaterialFlags m_flags;
 		// Texture maps
@@ -85,7 +87,8 @@ namespace Mist
 		float m_metallicFactor;
 		float m_roughnessFactor;
 		float m_specularFactor;
+		float m_alphaCutoff;
 
-		glm::vec3 m_albedo;
+		glm::vec4 m_albedo;
 	};
 }

@@ -161,31 +161,11 @@ namespace Mist
 
 	void GBuffer::InitPipeline(rendersystem::RenderSystem* rs)
 	{
-		{
-			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.vsDesc.filePath = "shaders/gbuffer_main.vert";
-			shaderDesc.fsDesc.filePath = "shaders/gbuffer_main.frag";
-#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
-            DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
-			DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
-
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
-            DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
-			DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
-#undef DECLARE_MACRO_ENUM
-			m_gbufferShader = rs->CreateShader(shaderDesc);
-		}
+		rendersystem::ShaderBuildDescription shaderDesc;
+		shaderDesc.vsDesc.filePath = "shaders/gbuffer_main.vert";
+		shaderDesc.fsDesc.filePath = "shaders/gbuffer_main.frag";
+		cMaterial::ConfigureShaderDescription(shaderDesc);
+		m_gbufferShader = rs->CreateShader(shaderDesc);
 	}
 
 	render::Format GBuffer::GetGBufferFormat(EGBufferTarget target)
