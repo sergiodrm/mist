@@ -463,14 +463,18 @@ namespace gltf_api
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
 
 		// Albedo
-		ToVec3(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
+		ToVec4(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
 		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
 			material.m_flags |= Mist::MATERIAL_FLAG_HAS_ALBEDO_MAP;
+
+		// Alpha cutoff
+		material.m_alphaCutoff = cgltfmtl.alpha_cutoff;
+		check_accessor(material.m_alphaCutoff >= 0.f);
 
 		// Alpha mode
 		switch (cgltfmtl.alpha_mode)
 		{
-		case cgltf_alpha_mode_opaque: material.m_flags |= Mist::MATERIAL_FLAG_OPAQUE; break;
+		case cgltf_alpha_mode_opaque: material.m_flags |= Mist::MATERIAL_FLAG_OPAQUE; material.m_alphaCutoff = 1.f; break;
 		case cgltf_alpha_mode_mask: material.m_flags |= Mist::MATERIAL_FLAG_MASK; break;
 		case cgltf_alpha_mode_blend: material.m_flags |= Mist::MATERIAL_FLAG_BLEND; break;
 		}
@@ -564,7 +568,7 @@ namespace Mist
 				{
 					m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
 					gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
-					//m_materials[i].SetupShader(context);
+					m_materials[i].SetupShader(g_render);
 				}
 			}
 			else
@@ -659,9 +663,9 @@ namespace Mist
 								primitive.RenderFlags |= RenderPass_ShadowMap;
 							//if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
 							//	primitive.RenderFlags |= RenderFlags_Emissive;
-							if (material->m_flags & MATERIAL_FLAG_OPAQUE)
+							if (material->m_flags & (MATERIAL_FLAG_OPAQUE | MATERIAL_FLAG_MASK))
 								primitive.RenderFlags |= RenderPass_Opaque;
-							if (material->m_flags & (MATERIAL_FLAG_MASK | MATERIAL_FLAG_BLEND))
+							if (material->m_flags & MATERIAL_FLAG_BLEND)
 								primitive.RenderFlags |= RenderPass_Transparent;
 						}
 						else

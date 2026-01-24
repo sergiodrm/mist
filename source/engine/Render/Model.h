@@ -11,9 +11,12 @@ namespace Mist
 
 	enum RenderPassTypeBit
 	{
+		RenderPass_None = 0x00,
 		RenderPass_Opaque = 0x01,
 		RenderPass_Transparent = 0x02,
 		RenderPass_ShadowMap = 0x04,
+
+		RenderPass_All = 0xff
 	};
 	typedef uint8_t RenderPassType;
 	inline bool IsGeometryPass(RenderPassType type) { return type == RenderPass_ShadowMap; }

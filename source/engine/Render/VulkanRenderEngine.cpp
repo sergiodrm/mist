@@ -106,7 +106,7 @@ namespace Mist
 		{
 			DefaultMaterial = _new cMaterial();
 			DefaultMaterial->SetName("DefaultMaterial");
-			DefaultMaterial->m_albedo = glm::vec3(1.f, 0.f, 1.f);
+			DefaultMaterial->m_albedo = glm::vec4(1.f, 0.f, 1.f,1.f);
 		}
 		return DefaultMaterial;
 	}
