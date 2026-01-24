@@ -14,12 +14,7 @@
 
 namespace Mist
 {
-	struct RenderContext;
-	struct RenderFrameContext;
 	class IRenderEngine;
-	class ShaderProgram;
-	class DescriptorLayoutCache;
-	class DescriptorAllocator;
 	class cTexture;
 	class cModel;
 	struct PreprocessIrradianceInfo;

@@ -14,8 +14,6 @@ namespace rendersystem
 
 namespace Mist
 {
-	class ShaderProgram;
-
 	struct tBloomConfig
 	{
 		enum
@@ -60,7 +58,7 @@ namespace Mist
 		tArray<render::RenderTargetHandle, BLOOM_MIPMAP_LEVELS> m_renderTargetArray;
 		tArray<render::TextureHandle, BLOOM_MIPMAP_LEVELS> m_renderTargetTexturesArray;
 
-		float m_threshold = 1.f;
+		float m_threshold = 1.5f;
 		float m_knee = 0.1f;
 	};
 }

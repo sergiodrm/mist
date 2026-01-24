@@ -7,7 +7,7 @@
 #include "Application/Application.h"
 
 //#define MEM_TRACE_ON
-#define MEM_BLOCK_HEADER
+//#define MEM_BLOCK_HEADER
 //#define MEM_BLOCK_HEADER_INTENSIVE_CHECK
 #define MEM_CHUNK_INITIALIZATION
 #define MEM_CHUNK_INITIALIZATION_VALUE 0xfafa

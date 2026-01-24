@@ -13,7 +13,6 @@
 #include "Render/DebugRender.h"
 #include "RenderProcess.h"
 #include "GBuffer.h"
-#include "DeferredLighting.h"
 #include "Utils/GenericUtils.h"
 #include "RenderSystem/RenderSystem.h"
 
@@ -224,12 +223,13 @@ namespace Mist
 			rs->BeginMarker("Composition");
 			check(m_composeTarget);
 			rs->SetDefaultGraphicsState();
+			rs->ClearState();
 			rs->SetShader(m_composeShader);
 			rs->SetRenderTarget(m_composeTarget);
 			rs->SetViewport(0.f, 0.f, (float)m_composeTarget->m_info.extent.width, (float)m_composeTarget->m_info.extent.height);
 			rs->SetScissor(0.f, (float)m_composeTarget->m_info.extent.width, 0.f, (float)m_composeTarget->m_info.extent.height);
 			rs->SetDepthEnable(false, false);
-			rs->SetTextureSlot("u_tex0", m_blendTexture);
+			//rs->SetTextureSlot("u_tex0", nullptr/*m_blendTexture*/);
 			rs->SetTextureSlot("u_tex1", m_renderTargetTexturesArray[0]);
 			rs->SetBlendEnable(true);
 			rs->SetBlendFactor(render::BlendFactor_One, render::BlendFactor_One);

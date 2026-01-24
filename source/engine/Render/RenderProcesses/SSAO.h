@@ -8,8 +8,6 @@
 
 namespace Mist
 {
-	class ShaderProgram;
-	class UniformBufferMemoryPool;
 	class GBuffer;
 
 	class SSAO : public RenderProcess

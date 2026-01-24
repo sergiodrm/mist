@@ -1259,6 +1259,7 @@ namespace Mist
 	}
 
 	SceneRenderer::SceneRenderer(uint32_t size)
+		: m_filter(RenderPass_All)
 	{
 		m_creationInfo.Allocate(size);
 		m_renderPasses.Allocate(size);
