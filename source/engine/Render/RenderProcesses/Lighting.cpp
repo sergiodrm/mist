@@ -1,4 +1,4 @@
-#include "DeferredLighting.h"
+#include "Lighting.h"
 #include <vector>
 #include "Render/VulkanRenderEngine.h"
 #include "Core/Logger.h"
@@ -20,15 +20,12 @@ namespace Mist
 {
 	CBoolVar CVar_FogEnabled("r_fogenabled", false);
 
-	CFloatVar CVar_GammaCorrection("r_gammacorrection", 2.2f);
-	CFloatVar CVar_Exposure("r_exposure", 2.5f);
-
-	DeferredLighting::DeferredLighting(Renderer* renderer, IRenderEngine* engine)
+	Lighting::Lighting(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
 	{
 	}
 
-	void DeferredLighting::Init(rendersystem::RenderSystem* rs)
+	void Lighting::Init(rendersystem::RenderSystem* rs)
 	{
 		const GBuffer* gbuffer = (const GBuffer*)GetRenderer()->GetRenderProcess(RENDERPROCESS_GBUFFER);
 		check(gbuffer);
@@ -44,7 +41,7 @@ namespace Mist
 			texDesc.format = render::Format_R16G16B16A16_SFloat;
 			texDesc.extent = { width, height, 1 };
 			texDesc.isRenderTarget = true;
-			texDesc.debugName = "DeferredLighting_HDR";
+			texDesc.debugName = "Lighting_HDR";
 			render::TextureHandle texture = device->CreateTexture(texDesc);
 
             render::RenderTargetDescription rtDesc;
@@ -64,9 +61,18 @@ namespace Mist
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
 			shaderDesc.fsDesc.filePath = "shaders/deferred.frag";
+			shaderDesc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
 			m_lightingShader = rs->CreateShader(shaderDesc);
 			shaderDesc.fsDesc.options.PushMacroDefinition("DEFERRED_APPLY_FOG");
 			m_lightingFogShader = rs->CreateShader(shaderDesc);
+		}
+		{
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.vsDesc.filePath = "shaders/forward_lighting.vert";
+			shaderDesc.fsDesc.filePath = "shaders/forward_lighting.frag";
+			shaderDesc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
+			cMaterial::ConfigureShaderDescription(shaderDesc);
+			m_forwardLightingShader = rs->CreateShader(shaderDesc);
 		}
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
@@ -74,57 +80,34 @@ namespace Mist
 			shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
             m_skyboxShader = rs->CreateShader(shaderDesc);
 		}
-		{
-			render::TextureDescription texDesc;
-			texDesc.format = render::Format_R8G8B8A8_UNorm;
-			texDesc.extent = { width, height, 1 };
-			texDesc.isRenderTarget = true;
-			texDesc.debugName = "DeferredLighting_LDR";
-			render::TextureHandle texture = device->CreateTexture(texDesc);
-
-			render::RenderTargetDescription rtDesc;
-			rtDesc.AddColorAttachment(texture);
-			m_hdrOutput = device->CreateRenderTarget(rtDesc);
-
-			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/hdr.frag";
-			m_hdrShader = rs->CreateShader(shaderDesc);
-		}
-		// ComposeTarget needs to be != nullptr on create shaders
-		m_bloomEffect.m_composeTarget = m_lightingRt;
-		m_bloomEffect.Init(rs);
 
         m_skyModel = _new cModel();
         m_skyModel->LoadModel(device, ASSET_PATH("models/cube.gltf"));
 
-		rendersystem::ui::AddWindowCallback("Bloom", [](void* data) 
-			{
-				check(data);
-				BloomEffect* b = static_cast<BloomEffect*>(data);
-				b->ImGuiDraw();
-			}, &m_bloomEffect);
+		m_forwardRenderListId = SceneRenderer::GetSceneRenderer()->CreateRenderList({ .pass = RenderPass_Transparent });
 	}
 
-	void DeferredLighting::Destroy(rendersystem::RenderSystem* rs)
+	void Lighting::Destroy(rendersystem::RenderSystem* rs)
 	{
 		m_skyModel->Destroy();
 		delete m_skyModel;
 		m_skyModel = nullptr;
-		m_bloomEffect.Destroy(rs);
 
-		rs->DestroyShader(&m_hdrShader);
+		rs->DestroyShader(&m_forwardLightingShader);
 		rs->DestroyShader(&m_lightingShader);
 		rs->DestroyShader(&m_lightingFogShader);
 		rs->DestroyShader(&m_skyboxShader);
 		m_skyboxRt = nullptr;
 		m_lightingRt = nullptr;
-		m_hdrOutput = nullptr;
-		//m_ssaoRenderTarget = nullptr;
-		//m_gbufferRenderTarget = nullptr;
 	}
 
-	void DeferredLighting::Draw(rendersystem::RenderSystem* rs)
+	void Lighting::Update()
+	{
+		RenderProcess::Update();
+		SceneRenderer::GetSceneRenderer()->SetRenderListInfo(m_forwardRenderListId, { .pass = RenderPass_Transparent, .cameraData = *GetCameraData() });
+	}
+
+	void Lighting::Draw(rendersystem::RenderSystem* rs)
 	{
 		Scene* scene = GetEngine()->GetScene();
 
@@ -136,8 +119,23 @@ namespace Mist
 
 		if (scene)
 		{
+			// Shadow map lights matrix projection
+			const ShadowMapProcess* shadowMapping = (const ShadowMapProcess*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
+			tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
+			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+				shadowMapMatrices[i] = shadowMapping->GetPipeline().GetLightVP(i);
+			// Shadow map textures
+			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
+			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+				shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->m_description.depthStencilAttachment.texture;
+
+			// GI textures
+			render::TextureHandle brdf = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().brdf : nullptr;
+			render::TextureHandle irradiance = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().irradiance : scene->GetSkyboxTexture();
+			render::TextureHandle specular = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().specular : scene->GetSkyboxTexture();
+
 			{
-				CPU_PROFILE_SCOPE(DeferredLighting);
+				CPU_PROFILE_SCOPE(Lighting);
 				rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
 
 				// Composition
@@ -162,23 +160,16 @@ namespace Mist
 
 				// SSAO textures
 				rs->SetTextureSlot("u_ssao", ssao->GetRenderTarget()->m_description.colorAttachments[0].texture);
+				rs->SetSampler("u_ssao", render::Filter_Nearest, render::Filter_Nearest, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
 
 				// ShadowMapping textures
-				const ShadowMapProcess* shadowMapping = (const ShadowMapProcess*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
-				render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
-				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-					shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->m_description.depthStencilAttachment.texture;
 				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
-
-				// Shadow map lights matrix projection
-				tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
-				for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-					shadowMapMatrices[i] = shadowMapping->GetPipeline().GetLightVP(i);
 				rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
 
-				render::TextureHandle brdf = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().brdf : nullptr;
-				render::TextureHandle irradiance = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().irradiance : scene->GetSkyboxTexture();
-				render::TextureHandle specular = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().specular : scene->GetSkyboxTexture();
+				
 
 				const EnvironmentData& env = scene->GetEnvironmentData();
 				rs->SetShaderProperty("u_env", &env, sizeof(env));
@@ -206,6 +197,54 @@ namespace Mist
 					render::SamplerAddressMode_ClampToEdge);
 
 				rs->DrawFullscreenQuad();
+				rs->EndMarker();
+			}
+
+			// Forward lighting for blending materials
+			{
+				rs->BeginMarker("Forward lighting");
+				rs->SetDefaultGraphicsState();
+				rs->SetRenderTarget(m_lightingRt);
+				rs->SetShader(m_forwardLightingShader);
+				rs->SetBlendEnable(true);
+				rs->SetBlendWriteMask(render::ColorMask_All);
+				rs->SetBlendFactor(m_colorSrc, m_colorDst, m_blendOp);
+				rs->SetBlendAlphaState(m_alphaSrc, m_alphaDst);
+				rs->SetDepthEnable(true, false);
+
+				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
+				rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+				// SSAO textures
+				rs->SetTextureSlot("u_ssao", ssao->GetRenderTarget()->m_description.colorAttachments[0].texture);
+				rs->SetSampler("u_ssao", render::Filter_Nearest, render::Filter_Nearest, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
+				const EnvironmentData& env = scene->GetEnvironmentData();
+				rs->SetShaderProperty("u_env", &env, sizeof(env));
+				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+
+				rs->SetTextureSlot("u_irradianceMap", irradiance);
+				rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
+
+				if (brdf)
+				{
+					rs->SetTextureSlot("u_brdfMap", brdf);
+					rs->SetSampler("u_brdfMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
+				}
+
+				rs->SetTextureSlot("u_prefilterMap", specular);
+				rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge);
+				SceneRenderer::GetSceneRenderer()->DrawList({ .passId = m_forwardRenderListId, .rs = rs });
 				rs->EndMarker();
 			}
 
@@ -240,46 +279,54 @@ namespace Mist
 
 				rs->EndMarker();
 			}
-
-			// BLOOM
-			{
-				m_bloomEffect.m_composeTarget = m_lightingRt;
-				m_bloomEffect.m_inputTarget = m_lightingRt->m_description.colorAttachments[0].texture;
-				m_bloomEffect.m_blendTexture = gbuffer->GetRenderTarget()->m_description.colorAttachments[GBuffer::EGBufferTarget::RT_ALBEDO].texture; //temp, TODO: need a default texture for dummy slot.
-				m_bloomEffect.Draw(rs);
-			}
 		}
 
-		// HDR
-		{
-			CPU_PROFILE_SCOPE(CpuHDR);
-			rs->BeginMarker("HDR");
-			// HDR and tone mapping
-			struct
-			{
-				float gamma;
-				float exposure;
-			} params{ CVar_GammaCorrection.Get(), CVar_Exposure.Get() };
-			render::RenderTargetHandle rt = rs->GetLDRTarget();
-
-			rs->SetShader(m_hdrShader);
-			rs->SetRenderTarget(rt);
-			rs->ClearColor();
-			rs->SetDepthEnable(false, false);
-			rs->SetShaderProperty("u_HdrParams", &params, sizeof(params));
-			rs->SetTextureSlot("u_hdrtex", m_lightingRt->m_description.colorAttachments[0].texture);
-			rs->DrawFullscreenQuad();
-			rs->SetDefaultGraphicsState();
-			rs->EndMarker();
-		}
 		rs->ClearState();
 	}
 
-	void DeferredLighting::ImGuiDraw()
+	void Lighting::ImGuiDraw()
 	{
+		ImGui::Begin("Blend");
+		static const char* blendFactorStr[] = { 
+			"BlendFactor_Zero",
+			"BlendFactor_One",
+			"BlendFactor_SrcColor",
+			"BlendFactor_OneMinusSrcColor",
+			"BlendFactor_DstColor",
+			"BlendFactor_OneMinusDstColor",
+			"BlendFactor_SrcAlpha",
+			"BlendFactor_OneMinusSrcAlpha",
+			"BlendFactor_DstAlpha",
+			"BlendFactor_OneMinusDstAlpha",
+			"BlendFactor_ConstantColor",
+			"BlendFactor_OneMinusConstantColor",
+			"BlendFactor_ConstantAlpha",
+			"BlendFactor_OneMinusConstantAlpha",
+			"BlendFactor_SrcAlphaSaturate",
+		};
+		static const char* blendOpStr[] = { 
+			"BlendOp_Add",
+			"BlendOp_Subtract",
+			"BlendOp_ReverseSubtract",
+			"BlendOp_Min",
+			"BlendOp_Max",
+		};
+
+#define COMBO_BOX(_title, _name, _values) \
+	int* _name = (int*)(&m_##_name); \
+	ImGuiUtils::ComboBox(_title, _name, _values, Mist::CountOf(_values))
+
+		COMBO_BOX("Color Src", colorSrc, blendFactorStr);
+		COMBO_BOX("Color Dst", colorDst, blendFactorStr);
+		COMBO_BOX("Alpha Src", alphaSrc, blendFactorStr);
+		COMBO_BOX("Alpha Dst", alphaDst, blendFactorStr);
+		COMBO_BOX("Blend Op", blendOp, blendOpStr);
+
+#undef COMBO_BOX
+		ImGui::End();
 	}
 
-	void DeferredLighting::DebugDraw()
+	void Lighting::DebugDraw()
 	{
 	}
 

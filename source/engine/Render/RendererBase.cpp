@@ -1,8 +1,8 @@
 #include "RendererBase.h"
 #include "RenderProcesses/SSAO.h"
 #include "RenderProcesses/GBuffer.h"
-#include "RenderProcesses/DeferredLighting.h"
-#include "RenderProcesses/ForwardLighting.h"
+#include "RenderProcesses/Lighting.h"
+#include "RenderProcesses/PostProcess.h"
 #include "RenderProcesses/Preprocesses.h"
 #include "RenderProcesses/ShadowMap.h"
 #include "Core/SystemMemory.h"
@@ -32,13 +32,16 @@ namespace Mist
 
 		m_processArray[RENDERPROCESS_SSAO] = _new SSAO(this, engine);
 		m_processArray[RENDERPROCESS_GBUFFER] = _new GBuffer(this, engine);
-		m_processArray[RENDERPROCESS_LIGHTING] = _new DeferredLighting(this, engine);
-		m_processArray[RENDERPROCESS_FORWARD_LIGHTING] = _new ForwardLighting(this, engine);
+		m_processArray[RENDERPROCESS_LIGHTING] = _new Lighting(this, engine);
 		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess(this, engine);
 		m_processArray[RENDERPROCESS_PREPROCESSES] = _new Preprocess(this, engine);
+		m_processArray[RENDERPROCESS_POSTPRO] = _new PostProcess(this, engine);
 
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
+		{
+			check(m_processArray[i]->GetProcessType() == i);
 			m_processArray[i]->Init(rs);
+		}
 	}
 
 	void Renderer::Destroy(rendersystem::RenderSystem* rs)
