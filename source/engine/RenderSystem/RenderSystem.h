@@ -126,6 +126,9 @@ namespace rendersystem
         ~BindingLayoutCache() { m_cache.clear(); }
 
         render::BindingLayoutHandle GetCachedLayout(const render::BindingLayoutDescription& desc);
+		uint32_t GetCacheSize() const { return (uint32_t)m_cache.size(); }
+		float GetLoadFactor() const { return m_cache.load_factor(); }
+		float GetMaxLoadFactor() const { return m_cache.max_load_factor(); }
     private:
         render::Device* m_device;
         Mist::tMap<render::BindingLayoutDescription, render::BindingLayoutHandle> m_cache;
@@ -197,6 +200,10 @@ namespace rendersystem
         ShaderMemoryContext* GetContext(uint32_t context);
         void Submit(uint64_t submissionId, uint32_t* contexts, uint32_t count);
         void ProcessInFlight();
+
+        inline size_t GetContextCount() const { return m_contexts.size(); }
+        inline size_t GetFreeContextCount() const { return m_freeContexts.size(); }
+        inline size_t GetUsedContextCount() const { return m_usedContexts.size(); }
 
     private:
         render::Device* m_device;
@@ -299,6 +306,7 @@ namespace rendersystem
         render::ShaderHandle GetComputeShader() const { return m_cs; }
 
         const render::shader_compiler::ShaderPropertyDescription* GetPropertyDescription(const char* id, uint32_t* setIndexOut) const;
+        const ShaderBuildDescription& GetDescription() const { return *m_description; }
 
     private:
         bool ReloadGraphics();
@@ -669,8 +677,6 @@ namespace rendersystem
         Mist::tCircularBuffer<uint32_t, 6> m_swapchainHistoric;
         // Frame counter
         uint64_t m_frame;
-        // Store transform block data 
-        HeapArray<glm::mat4> m_transforms;
 
         render::Extent2D m_renderResolution;
         render::Extent2D m_backbufferResolution;

@@ -924,10 +924,10 @@ namespace rendersystem
 
         ImGui::SeparatorText("Gpu memory");
         const render::MemoryContext& memstats = m_device->GetContext().memoryContext;
-        ImGui::Text("Buffers:           %7d (%9d b/%9d b)", memstats.bufferStats.allocationCounts,
-            memstats.bufferStats.currentAllocated, memstats.bufferStats.maxAllocated);
-        ImGui::Text("Images:            %7d (%9d b/%9d b)", memstats.imageStats.allocationCounts,
-            memstats.imageStats.currentAllocated, memstats.imageStats.maxAllocated);
+        ImGui::Text("Buffers:           %7d (%4.4f MB/%4.4f MB)", memstats.bufferStats.allocationCounts,
+            (double)memstats.bufferStats.currentAllocated / 1024.f / 1024.f , (double)memstats.bufferStats.maxAllocated / 1024.f / 1024.f);
+        ImGui::Text("Images:            %7d (%4.4f b/%4.4f b)", memstats.imageStats.allocationCounts,
+            (double)memstats.imageStats.currentAllocated / 1024.f / 1024.f, (double)memstats.imageStats.maxAllocated / 1024.f / 1024.f);
 
         ImGui::SeparatorText("Command buffer");
         const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
@@ -936,13 +936,29 @@ namespace rendersystem
         ImGui::Text("CB pool:           %7d", queue->GetPoolCommandBuffersCount());
 
         ImGui::SeparatorText("Cache state");
-        ImGui::Text("Pso cache:         %7d", m_graphicsPsoMap.size());
-        ImGui::Text("Pso lf:            %.4f", m_graphicsPsoMap.load_factor());
-        ImGui::Text("Binding cache:     %7d", m_bindingCache->GetCacheSize());
-        ImGui::Text("Binding lf:        %.4f", m_bindingCache->GetLoadFactor());
-        ImGui::Text("Sampler cache:     %7d", m_samplerCache->GetCacheSize());
-        ImGui::Text("Sampler lf:        %.4f", m_samplerCache->GetLoadFactor());
-        ImGui::Text("Shaders:           %7d", m_shaderDb.m_programs.size());
+        ImGui::Text("Graphics Pso cache:        %7d", m_graphicsPsoMap.size());
+        ImGui::Text("Graphics Pso lf:           %.4f", m_graphicsPsoMap.load_factor());
+        ImGui::Text("Compute Pso cache:         %7d", m_computePsoMap.size());
+        ImGui::Text("Compute Pso lf:            %.4f", m_computePsoMap.load_factor());
+        ImGui::Text("Binding cache:             %7d", m_bindingCache->GetCacheSize());
+        ImGui::Text("Binding lf:                %.4f", m_bindingCache->GetLoadFactor());
+        ImGui::Text("Sampler cache:             %7d", m_samplerCache->GetCacheSize());
+        ImGui::Text("Sampler lf:                %.4f", m_samplerCache->GetLoadFactor());
+        ImGui::Text("Shaders:                   %7d", m_shaderDb.m_programs.size());
+
+        ImGui::SeparatorText("Shader memory pool");
+        ImGui::Text("Memory pool size: %4d", m_memoryPool->GetContextCount());
+        ImGui::Text("Contexts free: %4d", m_memoryPool->GetFreeContextCount());
+        ImGui::Text("Contexts used: %4d", m_memoryPool->GetUsedContextCount());
+        ImGui::SeparatorText("Shader memory frame context");
+        ShaderMemoryContext* memoryCtx = GetMemoryContext();
+        ImGui::Text("Buffers: %4d", memoryCtx->GetBufferCount());
+        ImGui::Text("Free buffers: %4d", memoryCtx->GetFreeBufferCount());
+        ImGui::Text("Used buffers: %4d", memoryCtx->GetUsedBufferCount());
+        ImGui::Text("Temporal buffer size: %4d", memoryCtx->GetTemporalBufferSize());
+        ImGui::Text("Property count: %4d", memoryCtx->GetPropertyCount());
+        for (auto& it : memoryCtx->m_properties)
+            ImGui::Text("Property: %s [%lld B; %lld; 0x%p]", it.first.CStr(), it.second.size, it.second.offset, it.second.buffer->m_buffer);
         ImGui::End();
     }
 
