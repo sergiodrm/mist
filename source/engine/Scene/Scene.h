@@ -323,8 +323,14 @@ namespace Mist
 
 	struct RenderPassInfo
 	{
-		RenderPassType pass;
-		CameraData cameraData;
+		RenderPassType pass{ RenderPass_None };
+		CameraData cameraData {};
+	};
+
+	struct RenderContext
+	{
+		uint32_t passId = UINT32_MAX;
+		rendersystem::RenderSystem* rs = nullptr;
 	};
 
 	class SceneRenderer
@@ -338,7 +344,7 @@ namespace Mist
 		void SetRenderListInfo(uint32_t id, const RenderPassInfo& info);
 
 		void BuildRenderLists(const Scene* scene);
-		void DrawList(rendersystem::RenderSystem* rs, uint32_t renderListId);
+		void DrawList(const RenderContext& renderContext);
 
 		void ImGuiDraw();
 
@@ -354,8 +360,8 @@ namespace Mist
 
 		void DoCulling();
 
-		void DrawItem(rendersystem::RenderSystem* rs, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial);
-		void DrawGeometryItem(rendersystem::RenderSystem* rs, const RenderItem& item);
+		void DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial);
+		void DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item);
 
 	private:
 		tFixedHeapArray<RenderPassInfo> m_creationInfo;

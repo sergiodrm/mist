@@ -1259,7 +1259,6 @@ namespace Mist
 	}
 
 	SceneRenderer::SceneRenderer(uint32_t size)
-		: m_filter(RenderPass_All)
 	{
 		m_creationInfo.Allocate(size);
 		m_renderPasses.Allocate(size);
@@ -1308,32 +1307,34 @@ namespace Mist
 		DoCulling();
 	}
 
-	void SceneRenderer::DrawList(rendersystem::RenderSystem* rs, uint32_t renderListId)
+	void SceneRenderer::DrawList(const RenderContext& renderContext)
 	{
-		check(rs);
+		check(renderContext.rs);
+		check(renderContext.passId < m_renderPasses.GetSize());
+		check(renderContext.passId < m_creationInfo.GetSize());
 
-		RenderPass& pass = m_renderPasses[renderListId];
+		RenderPass& pass = m_renderPasses[renderContext.passId];
 		const cMaterial* lastMaterial = nullptr;
 		const cMesh* lastMesh = nullptr;
-		if (!IsGeometryPass(m_creationInfo[renderListId].pass))
+		if (!IsGeometryPass(m_creationInfo[renderContext.passId].pass))
 		{
 			CPU_PROFILE_SCOPE(Scene_Draw);
 			if (IsCullingEnabled())
 			{ 
 				for (uint32_t i = 0; i < pass.drawList.size(); ++i)
-					DrawItem(rs, pass.items[pass.drawList[i]], lastMesh, lastMaterial);
+					DrawItem(renderContext, pass.items[pass.drawList[i]], lastMesh, lastMaterial);
 			}
 			else
 			{
 				for (uint32_t i = 0; i < pass.items.size(); ++i)
-					DrawItem(rs, pass.items[i], lastMesh, lastMaterial);
+					DrawItem(renderContext, pass.items[i], lastMesh, lastMaterial);
 			}
 		}
 		else
 		{
 			CPU_PROFILE_SCOPE(Scene_DrawGeometry);
 			for (uint32_t i = 0; i < pass.items.size(); ++i)
-				DrawGeometryItem(rs, pass.items[i]);
+				DrawGeometryItem(renderContext, pass.items[i]);
 		}
 	}
 
@@ -1375,7 +1376,7 @@ namespace Mist
 	void SceneRenderer::Init()
 	{
 		check(!g_sceneRenderer);
-		g_sceneRenderer = _new SceneRenderer();
+		g_sceneRenderer = _new SceneRenderer(8);
 	}
 
 	void SceneRenderer::Destroy()
@@ -1497,26 +1498,27 @@ namespace Mist
 		}
 	}
 
-	void SceneRenderer::DrawItem(rendersystem::RenderSystem* rs, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial)
+	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial)
 	{
+		const PrimitiveMeshData& primitive = item.mesh->GetPrimitiveArray()[item.primitive];
+
 		if (lastMesh != item.mesh)
 		{
 			lastMesh = item.mesh;
-			BindMesh(rs, item);
+			BindMesh(renderContext.rs, item);
 		}
-		const PrimitiveMeshData& primitive = item.mesh->GetPrimitiveArray()[item.primitive];
 		if (lastMaterial != primitive.Material)
 		{
 			lastMaterial = primitive.Material;
-			BindMaterial(rs, *primitive.Material);
+			BindMaterial(renderContext.rs, *primitive.Material);
 		}
-		rs->DrawIndexed(primitive.Count, 1, primitive.FirstIndex);
+		renderContext.rs->DrawIndexed(primitive.Count, 1, primitive.FirstIndex);
 	}
 
-	void SceneRenderer::DrawGeometryItem(rendersystem::RenderSystem* rs, const RenderItem& item)
+	void SceneRenderer::DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item)
 	{
-		BindMesh(rs, item);
-		rs->DrawIndexed(item.mesh->GetIndexCount());
+		BindMesh(renderContext.rs, item);
+		renderContext.rs->DrawIndexed(item.mesh->GetIndexCount());
 	}
 
 }
