@@ -198,11 +198,16 @@ namespace rendersystem
         void WriteProperty(render::Device* device, const char* id, const void* data, uint64_t size);
         ShaderPropertyDescriptor GetProperty(const char* id) const;
         void EndUse(render::Device* device);
-    protected:
+
+        inline uint32_t GetBufferCount() const { return (uint32_t)m_buffers.size(); }
+        inline uint32_t GetPropertyCount() const { return (uint32_t)m_propertyMap.size(); }
+        inline uint64_t GetDeviceMemorySize() const { return m_buffers.size() * m_bufferSize; }
+
+    //protected:
         void FlushBuffer(render::Device* device);
         void SubmitProperty(const char* id, uint64_t offset, uint64_t size);
         void CreateBuffer(render::Device* device, uint64_t size);
-    private:
+    //private:
         Mist::tDynArray<render::BufferHandle> m_buffers;
         uint32_t m_currentBuffer{ UINT32_MAX };
         using PropertyMap = Mist::tMap<Mist::tFixedString<32>, ShaderPropertyDescriptor>;
@@ -228,7 +233,12 @@ namespace rendersystem
         ShaderBuffer* GetShaderBuffer(uint32_t index);
         void Submit(uint64_t submissionId, uint32_t bufferIndex);
         void ProcessInFlight();
-    private:
+
+        inline uint32_t GetPoolCount() const { return (uint32_t)m_items.size(); }
+        inline uint32_t GetPoolUsedCount() const { return (uint32_t)m_usedItems.size(); }
+        inline uint32_t GetPoolFreeCount() const { return (uint32_t)m_freeItems.size(); }
+        inline uint64_t GetTemporalBufferSize() const { return m_tempBuffer.GetSize(); }
+    //private:
         render::Device* m_device;
         Mist::tDynArray<PoolItem> m_items;
         Mist::tDynArray<uint32_t> m_usedItems;
@@ -260,6 +270,13 @@ namespace rendersystem
         inline size_t GetUsedBufferCount() const { return m_usedBuffers.size(); }
         inline size_t GetPropertyCount() const { return m_properties.size(); }
         inline size_t GetTemporalBufferSize() const { return m_size; }
+        inline size_t GetDeviceMemorySize() const
+        {
+            size_t s = 0;
+            for (uint32_t i = 0; i < (uint32_t)m_buffers.size(); ++i)
+                s += m_buffers[i]->m_description.size;
+            return s;
+        }
     private:
         void ResizeTempBuffer(uint64_t size);
         void Write(const void* data, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
@@ -423,6 +440,21 @@ namespace rendersystem
         void EndFrame();
         void ProcessInFlight();
         ShaderPropertyDescriptor GetPropertyDescriptor(const char* id);
+
+        inline uint32_t GetPoolCount() const { return m_useNewPool ? m_pool.GetPoolCount() : m_memoryPool.GetContextCount(); }
+        inline uint32_t GetPoolUsedCount() const { return m_useNewPool ? m_pool.GetPoolUsedCount() : m_memoryPool.GetUsedContextCount(); }
+        inline uint32_t GetPoolFreeCount() const { return m_useNewPool ? m_pool.GetPoolFreeCount() : m_memoryPool.GetFreeContextCount(); }
+        inline uint64_t GetTemporalBufferSize() const { return m_tempBuffer.GetSize(); }
+        inline uint32_t GetBufferCount() const { return m_useNewPool 
+            ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetBufferCount() 
+            : const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetBufferCount(); }
+        inline uint64_t GetDeviceMemorySize() const { return m_useNewPool 
+            ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetDeviceMemorySize()
+			: const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetDeviceMemorySize(); }
+        inline uint32_t GetPropertyCount() const { return m_useNewPool
+                ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetPropertyCount()
+                : const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetPropertyCount(); }
+
     private:
         render::Device* m_device;
         uint32_t m_currentId;

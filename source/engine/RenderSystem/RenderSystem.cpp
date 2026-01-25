@@ -15,6 +15,11 @@ Mist::CIntVar CVar_GpuProfilingRatio("r_gpuProfilingRatio", 0);
 
 namespace rendersystem
 {
+
+	Mist::CBoolVar CVar_Dump("dumpbuffer", false);
+
+    ShaderPropertyDescriptor ShaderPropertyDescriptor::Invalid = ShaderPropertyDescriptor{ nullptr, UINT64_MAX, UINT64_MAX };
+
 	GpuFrameProfiler::GpuFrameProfiler(render::Device* device)
         : m_device(device), m_queryId(0), m_state(State_Idle)
 	{
@@ -566,6 +571,7 @@ namespace rendersystem
 
     void RenderSystem::SetShader(ShaderProgram* shader)
     {
+        CPU_SCOPE_STAT(IS_SetShader);
         check(shader);
         switch (shader->m_description->type)
         {
@@ -955,18 +961,20 @@ namespace rendersystem
         ImGui::Text("Sampler lf:                %.4f", m_samplerCache->GetLoadFactor());
         ImGui::Text("Shaders:                   %7d", m_shaderDb.m_programs.size());
 
-        ImGui::SeparatorText("Shader memory pool (TODO)");
-#if 0 // TODO
-        ImGui::Text("Memory pool size: %4d", m_memoryPool->GetContextCount());
-        ImGui::Text("Contexts free: %4d", m_memoryPool->GetFreeContextCount());
-        ImGui::Text("Contexts used: %4d", m_memoryPool->GetUsedContextCount());
+        ImGui::SeparatorText("Shader memory pool");
+        ImGui::Text("Memory pool count: %4d", m_shaderContext.memoryStream->GetPoolCount());
+        ImGui::Text("Contexts free: %4d", m_shaderContext.memoryStream->GetPoolFreeCount());
+        ImGui::Text("Contexts used: %4d", m_shaderContext.memoryStream->GetPoolUsedCount());
         ImGui::SeparatorText("Shader memory frame context");
+        ImGui::Text("Buffers: %4d", m_shaderContext.memoryStream->GetBufferCount());
+        uint64_t deviceSize = m_shaderContext.memoryStream->GetDeviceMemorySize();
+        ImGui::Text("Device size: %6lld (%2.2f KB)", deviceSize, (float)deviceSize / 1024.f);
+        ImGui::Text("Temporal buffer size: %4d", m_shaderContext.memoryStream->GetTemporalBufferSize());
+        ImGui::Text("Property count: %4d", m_shaderContext.memoryStream->GetPropertyCount());
+#if 0 // TODO
         ShaderMemoryContext* memoryCtx = GetMemoryContext();
-        ImGui::Text("Buffers: %4d", memoryCtx->GetBufferCount());
         ImGui::Text("Free buffers: %4d", memoryCtx->GetFreeBufferCount());
         ImGui::Text("Used buffers: %4d", memoryCtx->GetUsedBufferCount());
-        ImGui::Text("Temporal buffer size: %4d", memoryCtx->GetTemporalBufferSize());
-        ImGui::Text("Property count: %4d", memoryCtx->GetPropertyCount());
         for (auto& it : memoryCtx->m_properties)
             ImGui::Text("Property: %s [%lld B; %lld; 0x%p]", it.first.CStr(), it.second.size, it.second.offset, it.second.buffer->m_buffer);
 #endif // 0
@@ -977,6 +985,7 @@ namespace rendersystem
     void RenderSystem::FlushBeforeDraw()
     {
         PROF_ZONE_SCOPED("FlushBeforeDraw");
+        CPU_SCOPE_STAT(IS_FlushGraphics);
         //m_graphicsContext.pso.bindingLayouts.Clear();
 
         // Flush memory before process bindings
@@ -1012,6 +1021,7 @@ namespace rendersystem
     void RenderSystem::FlushBeforeDispatch()
     {
         PROF_ZONE_SCOPED("FlushBeforeDispatch");
+        CPU_SCOPE_STAT(IS_FlushCompute);
         FlushMemoryContext();
         ResolveBindings(m_computeContext.computeState.bindings, m_computeContext.pso.bindingLayouts);
         m_computeContext.computeState.pipeline = GetPso(m_computeContext.pso);
@@ -1094,6 +1104,8 @@ namespace rendersystem
 				{
                     const ShaderPropertyDescriptor propertyDescriptor = m_shaderContext.memoryStream->GetPropertyDescriptor(property.name.c_str());
 					check(propertyDescriptor.IsValid());
+                    if (CVar_Dump.Get())
+                        logfwarn("[0x%p] %s; size: %d; offset: %d\n", propertyDescriptor.buffer.GetPtr(), property.name.c_str(), propertyDescriptor.size, propertyDescriptor.offset);
 					desc.PushConstantBuffer(property.binding, propertyDescriptor.buffer.GetPtr(), property.stage, render::BufferRange(propertyDescriptor.offset, propertyDescriptor.size));
 				}
 				break;
@@ -1710,7 +1722,6 @@ namespace rendersystem
 
     ShaderBuffer::~ShaderBuffer()
     {
-        check(m_currentBuffer == UINT32_MAX);
         for (uint32_t i = 0; i < (uint32_t)m_buffers.size(); ++i)
             m_buffers[i] = nullptr;
         m_buffers.clear();
@@ -1725,9 +1736,9 @@ namespace rendersystem
         check(m_bufferSize <= m_tempBuffer->GetSize());
         if (m_buffers.empty())
             CreateBuffer(device, m_bufferSize);
-        else
-            m_currentBuffer = 0;
+        m_currentBuffer = 0;
 	}
+
 
 	void ShaderBuffer::WriteProperty(render::Device* device, const char* id, const void* data, uint64_t size)
 	{
@@ -1736,13 +1747,17 @@ namespace rendersystem
         if (!m_tempBuffer->IsEnoughRoom(device, size))
         {
             FlushBuffer(device);
-            CreateBuffer(device, m_bufferSize);
+            ++m_currentBuffer;
+            if (m_currentBuffer >= (uint32_t)m_buffers.size())
+                CreateBuffer(device, m_bufferSize);
         }
         check(m_tempBuffer->IsEnoughRoom(device, size));
         uint64_t offset;
         uint64_t propertySize;
         m_tempBuffer->Write(device, data, size, offset, propertySize);
         SubmitProperty(id, offset, propertySize);
+        if (CVar_Dump.Get())
+            logfinfo("[0x%p] %s; size: %d; offset: %d\n", m_buffers[m_currentBuffer].GetPtr(), id, propertySize, offset);
 	}
 
 	void ShaderBuffer::FlushBuffer(render::Device* device)
@@ -1757,7 +1772,6 @@ namespace rendersystem
 
         // Clear state
         m_tempBuffer->Clear();
-        m_currentBuffer = UINT32_MAX;
 	}
 
 	ShaderPropertyDescriptor ShaderBuffer::GetProperty(const char* id) const
@@ -1780,15 +1794,14 @@ namespace rendersystem
 
     void ShaderBuffer::CreateBuffer(render::Device* device, uint64_t size)
     {
-        check(m_currentBuffer == UINT32_MAX);
         check(device && size);
+
         render::BufferDescription desc;
         desc.size = size;
         desc.bufferUsage = render::BufferUsage_UniformBuffer;
         desc.memoryUsage = render::MemoryUsage_CpuToGpu;
         desc.debugName = "ShaderBuffer";
         m_buffers.emplace_back(device->CreateBuffer(desc));
-        m_currentBuffer = static_cast<uint32_t>(m_buffers.size()) - 1;
     }
 
 	ShaderBufferPool::ShaderBufferPool(render::Device* device)
@@ -1942,7 +1955,7 @@ namespace rendersystem
         if (it != m_properties.end())
         {
             // if already created, see if there is a buffer binded to the property
-            PropertyMemory& p = it->second;
+            ShaderPropertyDescriptor& p = it->second;
             if (p.buffer)
             {
                 // if there is a buffer, override property (new property instance)
@@ -1958,11 +1971,7 @@ namespace rendersystem
         }
 
         // new allocation
-        PropertyMemory property;
-        property.buffer = nullptr;
-        property.size = size;
-        property.offset = m_pointer;
-        m_properties[id] = property;
+        m_properties[id] = ShaderPropertyDescriptor{ .buffer = nullptr, .offset = m_pointer, .size = size};
         m_pointer += size;
     }
 
@@ -1970,27 +1979,37 @@ namespace rendersystem
     {
         size = m_device->AlignUniformSize(size);
         ReserveProperty(id, size);
-        const PropertyMemory* property = GetProperty(id);
-        check(property);
-        check(!property->buffer && property->size >= size);
-        Write(data, size, 0, property->offset);
+        ShaderPropertyDescriptor property = GetProperty(id);
+        //check(property.IsValid());
+        check(!property.buffer && property.size >= size);
+        Write(data, size, 0, property.offset);
     }
 
-    const ShaderMemoryContext::PropertyMemory* ShaderMemoryContext::GetProperty(const char* id) const
+    ShaderPropertyDescriptor ShaderMemoryContext::GetProperty(const char* id) const
     {
         auto it = m_properties.find(id);
         if (it == m_properties.end())
-            return nullptr;
-        return &it->second;
+            return ShaderPropertyDescriptor::Invalid;
+        return it->second;
     }
 
 	void ShaderMemoryContext::BeginFrame()
 	{
-        uint32_t size = (uint32_t)m_usedBuffers.size();
-        m_freeBuffers.resize(size);
-        for (uint32_t i = 0; i < size; ++i)
-            m_freeBuffers[size - i - 1] = m_usedBuffers[i];
-        m_usedBuffers.clear();
+        if (!m_usedBuffers.empty())
+        {
+            uint32_t size = (uint32_t)m_usedBuffers.size();
+            uint32_t initialSize = (uint32_t)m_freeBuffers.size();
+            m_freeBuffers.resize(size + initialSize);
+            memcpy_s(m_freeBuffers.data() + initialSize, size * sizeof(uint32_t), m_usedBuffers.data(), size * sizeof(uint32_t));
+            m_usedBuffers.clear();
+
+            // integrity check: indices must be unique
+            for (uint32_t i = 0; i < m_freeBuffers.size() - 1; ++i)
+            {
+                for (uint32_t j = i + 1; j < m_freeBuffers.size(); ++j)
+                    check(m_freeBuffers[i] != m_freeBuffers[j]);
+            }
+        }
 	}
 
 	void ShaderMemoryContext::FlushMemory()
@@ -2041,18 +2060,40 @@ namespace rendersystem
 
     uint32_t ShaderMemoryContext::GetOrCreateBuffer(uint64_t size)
     {
+        CPU_SCOPE_STAT(IS_ShaderFindBuffer);
         size = m_device->AlignUniformSize(size);
+
+        uint32_t freeIndex = UINT32_MAX;
         for (uint32_t i = (uint32_t)m_freeBuffers.size() - 1; i < (uint32_t)m_freeBuffers.size(); --i)
         {
-            uint32_t index = m_freeBuffers[i];
-            if (m_buffers[index]->m_description.size >= size)
+            const render::BufferHandle& buffer = m_buffers[m_freeBuffers[i]];
+            if (buffer->m_description.size > size)
             {
-                if (i != (uint32_t)m_freeBuffers.size() - 1)
-                    m_freeBuffers[i] = m_freeBuffers.back();
-                m_freeBuffers.pop_back();
-                return index;
+                if (freeIndex != UINT32_MAX)
+                {
+                    const render::BufferHandle& selectedBuffer = m_buffers[m_freeBuffers[freeIndex]];
+                    if (buffer->m_description.size < selectedBuffer->m_description.size)
+                        freeIndex = i;
+                }
+                else
+                    freeIndex = i;
+            }
+            else if (buffer->m_description.size == size)
+            {
+                freeIndex = i;
+                break;
             }
         }
+
+        if (freeIndex != UINT32_MAX)
+        {
+            uint32_t index = m_freeBuffers[freeIndex];
+			if (freeIndex != (uint32_t)m_freeBuffers.size() - 1)
+				m_freeBuffers[freeIndex] = m_freeBuffers.back();
+			m_freeBuffers.pop_back();
+			return index;
+        }
+
         m_buffers.emplace_back(render::utils::CreateUniformBuffer(m_device, size, "ShaderMemoryContext_UB"));
         return (uint32_t)m_buffers.size() - 1;
     }
@@ -2308,5 +2349,4 @@ namespace rendersystem
         _free(timestampQueries);
         memset(this, 0, sizeof(FrameSyncContext));
     }
-
 }
