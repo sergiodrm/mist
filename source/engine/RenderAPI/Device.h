@@ -1057,13 +1057,24 @@ namespace render
 
         inline bool operator==(const BindingSetItem& other) const
         {
-            return buffer == other.buffer &&
-                binding == other.binding &&
-                type == other.type &&
-                shaderStages == other.shaderStages &&
-                (utils::EqualArrays(textureSubresources.GetData(), textureSubresources.GetSize(), other.textureSubresources.GetData(), other.textureSubresources.GetSize()) || bufferRange == other.bufferRange)
-                && utils::EqualArrays(textures.GetData(), textures.GetSize(), other.textures.GetData(), other.textures.GetSize())
-                && utils::EqualArrays(samplers.GetData(), samplers.GetSize(), other.samplers.GetData(), other.samplers.GetSize());
+            if (type != other.type || binding != other.binding || shaderStages != other.shaderStages)
+                return false;
+            switch (type)
+            {
+            case ResourceType_ConstantBuffer:
+            case ResourceType_VolatileConstantBuffer:
+            case ResourceType_BufferUAV:
+            case ResourceType_DynamicBufferUAV:
+				return buffer == other.buffer && bufferRange == other.bufferRange;
+            case ResourceType_TextureSRV:
+            case ResourceType_TextureUAV:
+				return utils::EqualArrays(textureSubresources.GetData(), textureSubresources.GetSize(), other.textureSubresources.GetData(), other.textureSubresources.GetSize())
+					&& utils::EqualArrays(textures.GetData(), textures.GetSize(), other.textures.GetData(), other.textures.GetSize())
+					&& utils::EqualArrays(samplers.GetData(), samplers.GetSize(), other.samplers.GetData(), other.samplers.GetSize());
+            }
+            unreachable_code();
+            return false;
+            //return !memcmp(this, &other, sizeof(*this));
         }
 
         inline bool operator!=(const BindingSetItem& other) const
