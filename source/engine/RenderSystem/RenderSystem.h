@@ -149,15 +149,96 @@ namespace rendersystem
         BindingLayoutCache m_layoutCache;
     };
 
+    struct ShaderPropertyDescriptor
+    {
+        render::BufferHandle buffer;
+        uint64_t offset;
+        uint64_t size;
+
+        static ShaderPropertyDescriptor Invalid;
+        inline bool IsValid() const { return *this != Invalid; }
+
+        inline bool operator==(const ShaderPropertyDescriptor& other) const { return offset == other.offset && size == other.size && buffer == other.buffer; }
+        inline bool operator!=(const ShaderPropertyDescriptor& other) const { return !(*this == other); }
+    };
+
+    class ShaderBuffer
+    {
+    public:
+
+        class TemporalBuffer
+        {
+        public:
+            TemporalBuffer() = default;
+            ~TemporalBuffer();
+
+            DELETE_COPY_CONSTRUCTORS(TemporalBuffer);
+
+            void Init(uint64_t bufferSize);
+            void Destroy();
+
+            void Write(const render::Device* device, const void* data, uint64_t size, uint64_t& offsetOut, uint64_t& alignedSizeOut);
+            const uint8_t* GetData() const { return m_data; }
+            uint64_t GetOffset() const { return m_offset; }
+            uint64_t GetSize() const { return m_size; }
+            void Clear() { m_offset = 0; }
+
+            bool IsEnoughRoom(const render::Device* device, uint64_t size) const;
+
+        private:
+            uint8_t* m_data{ nullptr };
+            uint64_t m_size{ UINT64_MAX };
+            uint64_t m_offset{ UINT64_MAX };
+        };
+
+        ShaderBuffer(uint64_t bufferSize = 1 << 16); // 64 Kb/buffer
+        ~ShaderBuffer();
+
+        void BeginUse(render::Device* device, TemporalBuffer* temporalBuffer);
+        void WriteProperty(render::Device* device, const char* id, const void* data, uint64_t size);
+        ShaderPropertyDescriptor GetProperty(const char* id) const;
+        void EndUse(render::Device* device);
+    protected:
+        void FlushBuffer(render::Device* device);
+        void SubmitProperty(const char* id, uint64_t offset, uint64_t size);
+        void CreateBuffer(render::Device* device, uint64_t size);
+    private:
+        Mist::tDynArray<render::BufferHandle> m_buffers;
+        uint32_t m_currentBuffer{ UINT32_MAX };
+        using PropertyMap = Mist::tMap<Mist::tFixedString<32>, ShaderPropertyDescriptor>;
+        PropertyMap m_propertyMap;
+        TemporalBuffer* m_tempBuffer{nullptr};
+        uint64_t m_bufferSize{ 0 };
+    };
+
+    class ShaderBufferPool
+    {
+        struct PoolItem
+        {
+            uint64_t submissionId{UINT64_MAX};
+            ShaderBuffer buffer;
+        };
+    public:
+        ShaderBufferPool(render::Device* device);
+        ~ShaderBufferPool();
+
+        DELETE_COPY_CONSTRUCTORS(ShaderBufferPool);
+
+        uint32_t CreateShaderBuffer();
+        ShaderBuffer* GetShaderBuffer(uint32_t index);
+        void Submit(uint64_t submissionId, uint32_t bufferIndex);
+        void ProcessInFlight();
+    private:
+        render::Device* m_device;
+        Mist::tDynArray<PoolItem> m_items;
+        Mist::tDynArray<uint32_t> m_usedItems;
+        Mist::tDynArray<uint32_t> m_freeItems;
+        ShaderBuffer::TemporalBuffer m_tempBuffer;
+    };
+
     class ShaderMemoryContext
     {
     public:
-        struct PropertyMemory
-        {
-            render::BufferHandle buffer;
-            uint64_t offset = 0;
-            uint64_t size = 0;
-        };
 
         ShaderMemoryContext(render::Device* device);
         ~ShaderMemoryContext();
@@ -168,11 +249,17 @@ namespace rendersystem
 
         void ReserveProperty(const char* id, uint64_t size);
         void WriteProperty(const char* id, const void* data, uint64_t size);
-        const PropertyMemory* GetProperty(const char* id) const;
+        ShaderPropertyDescriptor GetProperty(const char* id) const;
 
         void BeginFrame();
         void FlushMemory();
         static constexpr uint64_t MinTempBufferSize() { return (1 << 14); }
+
+        inline size_t GetBufferCount() const { return m_buffers.size(); }
+        inline size_t GetFreeBufferCount() const { return m_freeBuffers.size(); }
+        inline size_t GetUsedBufferCount() const { return m_usedBuffers.size(); }
+        inline size_t GetPropertyCount() const { return m_properties.size(); }
+        inline size_t GetTemporalBufferSize() const { return m_size; }
     private:
         void ResizeTempBuffer(uint64_t size);
         void Write(const void* data, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
@@ -188,7 +275,7 @@ namespace rendersystem
         Mist::tDynArray<render::BufferHandle> m_buffers;
         Mist::tDynArray<uint32_t> m_freeBuffers;
         Mist::tDynArray<uint32_t> m_usedBuffers;
-        Mist::tMap<Mist::tFixedString<32>, PropertyMemory> m_properties;
+        Mist::tMap<Mist::tFixedString<32>, ShaderPropertyDescriptor> m_properties;
     };
 
     class ShaderMemoryPool
@@ -322,6 +409,30 @@ namespace rendersystem
         ShaderBuildDescription* m_description;
     };
 
+    class ShaderStream
+    {
+    public:
+
+        ShaderStream(render::Device* device);
+        ~ShaderStream();
+
+        void BeginFrame();
+        void Write(const char* id, const void* data, uint64_t size);
+        void Submit(uint64_t submissionId);
+        void Flush();
+        void EndFrame();
+        void ProcessInFlight();
+        ShaderPropertyDescriptor GetPropertyDescriptor(const char* id);
+    private:
+        render::Device* m_device;
+        uint32_t m_currentId;
+        ShaderBufferPool m_pool;
+        ShaderBuffer::TemporalBuffer m_tempBuffer;
+        ShaderMemoryPool m_memoryPool;
+
+        bool m_useNewPool = false;
+    };
+
     class ShaderDb
     {
 		struct Hasher
@@ -440,6 +551,7 @@ namespace rendersystem
 			render::SamplerHandle samplerSlots[MaxDescriptorSetSlots][MaxBindingsPerSlot][MaxTextureArrayCount];
             render::BufferHandle buffers[MaxDescriptorSetSlots][MaxBindingsPerSlot];
 			ShaderProgram* program;
+            ShaderStream* memoryStream; // owned
 			uint32_t dirtyPropertiesFlags;
 
             void Invalidate()
@@ -668,25 +780,6 @@ namespace rendersystem
         render::ComputePipelineHandle GetPso(const render::ComputePipelineDescription& psoDesc);
 
         void SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t index, render::ImageLayout layout);
-
-        inline ShaderMemoryContext* GetMemoryContext() const 
-        {
-            check(m_memoryContextId != UINT32_MAX);
-            ShaderMemoryContext* ctx = m_memoryPool->GetContext(m_memoryContextId);
-            check(ctx);
-            return ctx;
-        }
-
-        inline void CreateMemoryContext()
-        {
-            check(m_memoryContextId == UINT32_MAX);
-            m_memoryContextId = m_memoryPool->CreateContext();
-        }
-
-        inline void SubmitMemoryContext(uint64_t submissionId)
-        {
-            m_memoryPool->Submit(submissionId, &m_memoryContextId, 1);
-        }
         
         void ImGuiDrawGpuProfiler();
 
@@ -728,7 +821,6 @@ namespace rendersystem
         ComputePipelineContext m_computeContext;
         ShaderContext m_shaderContext;
 		render::CommandListHandle m_cmd;
-		uint32_t m_memoryContextId; 
 
         // Render targets and other resources.
         render::TextureHandle m_ldrTexture;
@@ -752,7 +844,6 @@ namespace rendersystem
         Mist::tMap<render::ComputePipelineDescription, render::ComputePipelineHandle> m_computePsoMap;
         BindingCache* m_bindingCache;
         SamplerCache* m_samplerCache;
-        ShaderMemoryPool* m_memoryPool;
         // optimization to keep allocated memory in FlushBeforeDraw()
         render::BindingSetDescription m_bindingDesc;
 
