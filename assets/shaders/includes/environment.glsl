@@ -7,6 +7,8 @@
 //#define DEBUG_AMBIENT
 //#define DEBUG_LIGHTS 
 
+#define ENV_APPLY_GI
+
 /// DoEnvironmentLighting
 /// * fragPos: fragment position in view space
 /// * normal: fragment normal in view space
@@ -33,10 +35,13 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
     //return directionalLightColor;
 
     // Ambient color
+#ifdef ENV_APPLY_GI
     vec3 N = normal;
     vec3 V = -fragPos;
-
     vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+#else
+    vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * albedo * ao;
+#endif
 #if defined(DEBUG_AMBIENT)
 	return ambientColor;
 #elif defined(DEBUG_LIGHTS)
