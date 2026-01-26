@@ -270,9 +270,6 @@ namespace Mist
 
 	void ShadowMapProcess::Update()
 	{
-		Scene* scene = GetEngine()->GetScene();
-		if (scene)
-			CollectLightData(*scene);
 	}
 
 	void ShadowMapProcess::Draw(rendersystem::RenderSystem* rs)

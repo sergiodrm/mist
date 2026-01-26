@@ -19,6 +19,7 @@
 namespace Mist
 {
 	CBoolVar CVar_FogEnabled("r_fogenabled", false);
+	CBoolVar CVar_ForwardPipelineEnabled("r_forwardPipelineEnabled", false);
 
 	Lighting::Lighting(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
@@ -201,6 +202,7 @@ namespace Mist
 			}
 
 			// Forward lighting for blending materials
+			if (CVar_ForwardPipelineEnabled.Get())
 			{
 				rs->BeginMarker("Forward lighting");
 				rs->SetDefaultGraphicsState();
