@@ -85,12 +85,14 @@ namespace Mist
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
 		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
-		void CollectLightData(const Scene& scene);
 
-		ShadowMapPipeline m_shadowMapPipeline;
+		uint32_t SetupDirectionalLight(const glm::vec3& pos, const tAngles& rot, float left, float right, float top, float bottom, float nearClip, float farClip);
+		uint32_t SetupSpotLight(const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip);
+
 	private:
 		virtual void DebugDraw() override;
 	private:
+		ShadowMapPipeline m_shadowMapPipeline;
 		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 		uint32_t m_lightCount = 0;
 		EDebugMode m_debugMode = DEBUG_NONE;

@@ -43,12 +43,14 @@ namespace Mist
 	{
 		ELightType Type;
 		glm::vec3 Color;
+		float Strength;
 		float Radius;
 		float Compression;
 		float OuterCutoff;	// Degrees
 		float Cutoff;		// Degrees
 
-		bool ProjectShadows = false;
+		bool ProjectShadows;
+		bool Enabled;
 		float OrthoLeft;
 		float OrthoRight;
 		float OrthoBottom;
@@ -60,10 +62,12 @@ namespace Mist
 			: Type(ELightType::Point),
 			Color({ 1.f,1.f,1.f }),
 			Radius(100.f),
+			Strength(1.f),
 			Compression(1.f),
 			OuterCutoff(30.f),
 			Cutoff(30.f),
 			ProjectShadows(false),
+			Enabled(true),
 			OrthoLeft(-160.f),
 			OrthoRight(160.f),
 			OrthoBottom(-120.f),
@@ -109,37 +113,76 @@ namespace Mist
 
 	struct LightData
 	{
-		glm::vec3 Color;
-		float Compression;
+		glm::vec3 color;
+		float compression;
 
-		glm::vec3 Position;
-		float Radius;
+		glm::vec3 position;
+		float radius;
 
-		glm::vec3 Direction;
-		int Type;
-
-		glm::vec2 CosCutoff;
-		int ShadowMapIndex;
+		glm::vec3 direction;
 		float _padding;
-	};
 
-	struct tShadowMapData
-	{
-		glm::mat4 LightViewMatrices[globals::MaxShadowMapAttachments];
+		glm::vec2 cosCutoff;
+		int shadowMapIndex;
+		float lightStrength;
+
+		inline void Set(const LightComponent& lightComponent, const glm::vec3& position, const glm::vec3& direction, int shadowMapIndex)
+		{
+			color = lightComponent.Color;
+			compression = lightComponent.Compression;
+			this->position = position;
+			this->direction = direction;
+			this->shadowMapIndex = shadowMapIndex;
+			radius = lightComponent.Radius;
+			lightStrength = lightComponent.Strength;
+			if (lightComponent.Type == ELightType::Spot)
+			{
+				cosCutoff.y = cosf(glm::radians(lightComponent.OuterCutoff));
+				cosCutoff.x = cosf(glm::radians(lightComponent.Cutoff));
+			}
+		}
 	};
 
 	struct EnvironmentData
 	{
-		glm::vec3 AmbientColor;
-		int ActiveSpotLightsCount;
-		glm::vec3 ViewPosition;
-		int ActiveLightsCount;
+		glm::vec3 ambientColor;
+		int spotLightsCount;
+		int directionalLightsCount;
+		int pointLightsCount;
+		glm::vec2 _padding;
 		static constexpr uint32_t MaxLights = 500;
-		LightData Lights[MaxLights];
-		LightData DirectionalLight;
-		LightData SpotLights[MaxLights];
+		static constexpr uint32_t MaxPointLights = MaxLights;
+		static constexpr uint32_t MaxSpotLights = MaxLights;
+		static constexpr uint32_t MaxDirectionalLights = 5;
+		LightData pointLights[MaxLights];
+		LightData directionalLights[MaxDirectionalLights];
+		LightData spotLights[MaxLights];
 
 		EnvironmentData();
+
+		inline void PushLight(const LightComponent& lightComponent, const glm::vec3& position, const glm::vec3& direction, int shadowMapIndex)
+		{
+			LightData* data = nullptr;
+			switch (lightComponent.Type)
+			{
+			case ELightType::Point:
+				if (pointLightsCount < MaxPointLights)
+					data = &pointLights[pointLightsCount++];
+				break;
+			case ELightType::Directional:
+				if (directionalLightsCount < MaxDirectionalLights)
+					data = &directionalLights[directionalLightsCount++];
+				break;
+			case ELightType::Spot:
+				if (spotLightsCount < MaxSpotLights)
+					data = &spotLights[spotLightsCount++];
+				break;
+			}
+			if (data)
+				data->Set(lightComponent, position, direction, shadowMapIndex);
+		}
+
+		inline void Reset() { spotLightsCount = 0; directionalLightsCount = 0; pointLightsCount = 0; }
 	};
 
 	struct CameraData

@@ -190,29 +190,10 @@ namespace Mist
 		sprintf_s(buff, "%s|%s", file, resname);
 	}
 
-	EnvironmentData::EnvironmentData() :
-		AmbientColor(0.02f, 0.02f, 0.02f),
-		ActiveSpotLightsCount(0),
-		ViewPosition(0.f),
-		ActiveLightsCount(0)
+	EnvironmentData::EnvironmentData()
 	{
-		DirectionalLight.Color = { 0.01f, 0.01f, 0.1f };
-		DirectionalLight.Position = { 0.f, 0.f, 1.f };
-		DirectionalLight.ShadowMapIndex = -1;
-		DirectionalLight.Compression = 0.5f;
-		for (uint32_t i = 0; i < MaxLights; ++i)
-		{
-			Lights[i] = DirectionalLight;
-			Lights[i].Radius = 50.f;
-			SpotLights[i].Direction = { 1.f, 0.f, 0.f };
-			SpotLights[i].Position = { 0.f, 0.f, 0.f };
-			SpotLights[i].Color = { 1.f, 1.f, 1.f };
-			SpotLights[i].CosCutoff.x = 1.f;
-			SpotLights[i].CosCutoff.y = 1.f;
-			SpotLights[i].ShadowMapIndex = -1;
-		}
 		ZeroMem(this, sizeof(*this));
-		AmbientColor = { 0.02f, 0.02f, 0.02f };
+		ambientColor = { 0.02f, 0.02f, 0.02f };
 	}
 
 	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine))
@@ -1200,62 +1181,32 @@ namespace Mist
 	void Scene::ProcessEnvironmentData(const glm::mat4& viewSpace, EnvironmentData& environmentData)
 	{
 		CPU_PROFILE_SCOPE(ProcessEnvData);
-		environmentData.ViewPosition = math::GetPos(glm::inverse(viewSpace));
-		environmentData.AmbientColor = m_ambientColor;
-		environmentData.ActiveLightsCount = 0;
-		environmentData.ActiveSpotLightsCount = 0;
-		uint32_t shadowMapIndex = 0;
+		environmentData.Reset();
+		environmentData.ambientColor = m_ambientColor;
+		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+		ShadowMapProcess* shadowMapping = engine->GetRenderer()->GetRenderProcessAs<ShadowMapProcess>();
+
 		for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 		{
 			if (m_lightComponentMap.contains(i))
 			{
+				const LightComponent& light = m_lightComponentMap[i];
+				if (!light.Enabled)
+					continue;
+				const TransformComponent& transform = m_transformComponents[i];
 				const glm::mat4& mat = m_globalTransforms[i];
 				const glm::vec3 pos = math::GetPos(viewSpace * mat);
 				const glm::vec3 dir = -1.f*math::GetDir(viewSpace * mat);
-				const LightComponent& light = m_lightComponentMap[i];
-				switch (light.Type)
-				{
-				case ELightType::Point:
-				{
-					if (environmentData.ActiveLightsCount < EnvironmentData::MaxLights)
-					{
-						LightData& data = environmentData.Lights[(uint32_t)environmentData.ActiveLightsCount++];
-						data.Color = light.Color;
-						data.Compression = light.Compression;
-						data.Position = pos;
-						data.Radius = light.Radius;
-					}
-					//else
-					//	logferror("Too many point lights in scene. Current MaxLights is %d.\n", EnvironmentData::MaxLights);
-				}
-					break;
-				case ELightType::Directional:
-					environmentData.DirectionalLight.Color = light.Color;
-					environmentData.DirectionalLight.ShadowMapIndex = light.ProjectShadows ? shadowMapIndex++ : -1;
-					environmentData.DirectionalLight.Direction = dir;
-					break;
-				case ELightType::Spot:
-				{
-					if (environmentData.ActiveSpotLightsCount < EnvironmentData::MaxLights)
-					{
-						LightData& data = environmentData.SpotLights[(uint32_t)environmentData.ActiveSpotLightsCount++];
-						data.Color = light.Color;
-						data.ShadowMapIndex = light.ProjectShadows ? shadowMapIndex++ : -1;
-						data.Position = pos;
-						data.Direction = dir;
-						data.CosCutoff.y = cosf(glm::radians(light.OuterCutoff));
-						data.CosCutoff.x = cosf(glm::radians(light.Cutoff));
-						data.Radius = light.Radius;
-						data.Compression = light.Compression;
-					}
-					else
-                        logferror("Too many spot lights in scene. Current MaxLights is %d.\n", EnvironmentData::MaxLights);
-				}
-					break;
-				}
+
+				uint32_t shadowMapIndex = 0;
+				if (light.ProjectShadows && light.Type != ELightType::Point)
+					shadowMapIndex = light.Type == ELightType::Directional
+					? shadowMapping->SetupDirectionalLight(transform.Position, transform.Rotation, light.OrthoLeft, light.OrthoRight, light.OrthoTop, light.OrthoBottom, light.NearClip, light.FarClip)
+					: shadowMapping->SetupSpotLight(transform.Position, transform.Rotation, light.OuterCutoff, light.NearClip, light.FarClip);
+
+				environmentData.PushLight(light, pos, dir, shadowMapIndex != UINT32_MAX ? static_cast<int>(shadowMapIndex) : -1);
 			}
 		}
-		check(shadowMapIndex <= globals::MaxShadowMapAttachments);
 	}
 
 	SceneRenderer::SceneRenderer(uint32_t size)

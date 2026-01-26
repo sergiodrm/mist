@@ -300,6 +300,7 @@ namespace Mist
 		}
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
+		m_lightCount = 0;
 	}
 
 	void ShadowMapProcess::ImGuiDraw()
@@ -331,54 +332,36 @@ namespace Mist
 		return m_shadowMapTargetArray[index].GetPtr();
 	}
 
-	void ShadowMapProcess::CollectLightData(const Scene& scene)
+	uint32_t ShadowMapProcess::SetupDirectionalLight(const glm::vec3& pos, const tAngles& rot, float left, float right, float top, float bottom, float nearClip, float farClip)
 	{
-		SceneRenderer* sr = SceneRenderer::GetSceneRenderer();
-
-		// Update shadow map matrix
-		if (GUseCameraForShadowMapping)
+		uint32_t lightIndex = UINT32_MAX;
+		if (m_lightCount < globals::MaxShadowMapAttachments)
 		{
-			m_shadowMapPipeline.SetDepthVP(0, GetCameraData()->ViewProjection);
+			lightIndex = m_lightCount++;
+			glm::mat4 view = glm::inverse(math::ToMat4(pos, rot, { 1.f, 1.f,  1.f }));
+			const CameraData* cameraData = GetCameraData();
+			CameraData lightAsCameraData;
+			lightAsCameraData.Set(view, GetDirectionalLightProjection(left, right, bottom, top, nearClip, farClip));
+			m_shadowMapPipeline.SetupDirectionalLight(lightIndex, cameraData->View, cameraData->Projection, rot, left, right, bottom, top, nearClip, farClip);
+			SceneRenderer::GetSceneRenderer()->SetRenderListInfo(m_renderListIds[lightIndex], { RenderPass_ShadowMap, lightAsCameraData });
 		}
-		else
-		{
-			float shadowMapIndex = 0.f;
-			glm::mat4 view = GetCameraData()->View;
-			glm::mat4 cameraProj = GetCameraData()->Projection;
+		return lightIndex;
+	}
 
-			// TODO: cache on scene a preprocessed light array to show. Dont iterate over ALL objects checking if they have light component.
-			uint32_t count = scene.GetRenderObjectCount();
-			m_lightCount = 0;
-			for (uint32_t i = 0; i < count; ++i)
-			{
-				const LightComponent* light = scene.GetLight(i);
-				if (light && light->Type != ELightType::Point && light->ProjectShadows)
-				{
-					const TransformComponent& t = scene.GetTransform(i);
-					CameraData cameraData;
-					glm::mat4 lightView;
-					TransformComponentToMatrix(&t, &lightView, 1);
-					lightView = glm::inverse(lightView);
-					switch (light->Type)
-					{
-					case ELightType::Directional:
-					{
-						cameraData.Set(lightView, GetDirectionalLightProjection(light->OrthoLeft, light->OrthoRight, light->OrthoBottom, light->OrthoTop, light->NearClip, light->FarClip));
-						m_shadowMapPipeline.SetupDirectionalLight(m_lightCount, view, cameraProj, t.Rotation, light->OrthoLeft, light->OrthoRight, light->OrthoBottom, light->OrthoTop, light->NearClip, light->FarClip);
-					} break;
-					case ELightType::Spot:
-					{
-						cameraData.Set(lightView, GetSpotLightProjection(light->OuterCutoff, light->NearClip, light->FarClip));
-						m_shadowMapPipeline.SetupSpotLight(m_lightCount, view, t.Position, t.Rotation, light->OuterCutoff, light->NearClip, light->FarClip);
-					} break;
-					default:
-						check(false && "Unreachable");
-					}
-					sr->SetRenderListInfo(m_renderListIds[m_lightCount++], { RenderPass_ShadowMap, cameraData });
-				}
-			}
-			check(m_lightCount <= globals::MaxShadowMapAttachments);
+	uint32_t ShadowMapProcess::SetupSpotLight(const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip)
+	{
+		uint32_t lightIndex = UINT32_MAX;
+		if (m_lightCount < globals::MaxShadowMapAttachments)
+		{
+			lightIndex = m_lightCount++;
+			glm::mat4 view = glm::inverse(math::ToMat4(pos, rot, { 1.f, 1.f,  1.f }));
+			const CameraData* cameraData = GetCameraData();
+			CameraData lightAsCameraData;
+			lightAsCameraData.Set(view, GetSpotLightProjection(cutoff, nearClip, farClip));
+			m_shadowMapPipeline.SetupSpotLight(lightIndex, cameraData->View, pos, rot, cutoff, nearClip, farClip);
+			SceneRenderer::GetSceneRenderer()->SetRenderListInfo(m_renderListIds[lightIndex], { RenderPass_ShadowMap, lightAsCameraData });
 		}
+		return lightIndex;
 	}
 
 	void ShadowMapProcess::DebugDraw()
