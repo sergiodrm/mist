@@ -12,7 +12,9 @@ namespace Mist
 	{
 	public:
 		PostProcess(Renderer* renderer, IRenderEngine* engine);
-		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_POSTPRO; }
+
+		static RenderProcessType GetProcessTypeStatic() { return RENDERPROCESS_POSTPRO; }
+		virtual RenderProcessType GetProcessType() const override { return GetProcessTypeStatic(); }
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;
 		virtual void Draw(rendersystem::RenderSystem* rs) override;

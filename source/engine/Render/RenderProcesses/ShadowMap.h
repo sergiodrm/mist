@@ -73,7 +73,10 @@ namespace Mist
 		};
 	public:
 		ShadowMapProcess(Renderer* renderer, IRenderEngine* engine);
-		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_SHADOWMAP; }
+
+		static RenderProcessType GetProcessTypeStatic() { return RENDERPROCESS_SHADOWMAP; }
+		virtual RenderProcessType GetProcessType() const override { return GetProcessTypeStatic(); }
+
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;
 		virtual void Update();

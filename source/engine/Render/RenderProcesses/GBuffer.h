@@ -43,7 +43,9 @@ namespace Mist
 
 		GBuffer(Renderer* renderer, IRenderEngine* engine);
 
-		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_GBUFFER;  }
+		static RenderProcessType GetProcessTypeStatic() { return RENDERPROCESS_GBUFFER; }
+		virtual RenderProcessType GetProcessType() const override { return GetProcessTypeStatic();  }
+
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;
 		virtual void Update();

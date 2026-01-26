@@ -56,7 +56,9 @@ namespace Mist
 
 		Preprocess(Renderer* renderer, IRenderEngine* engine);
 		virtual ~Preprocess();
-		virtual RenderProcessType GetProcessType() const { return RENDERPROCESS_PREPROCESSES; }
+
+		static RenderProcessType GetProcessTypeStatic() { return RENDERPROCESS_PREPROCESSES; }
+		virtual RenderProcessType GetProcessType() const override { return GetProcessTypeStatic(); }
 
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;

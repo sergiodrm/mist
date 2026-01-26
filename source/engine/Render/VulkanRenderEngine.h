@@ -56,6 +56,7 @@ namespace Mist
 		virtual void SetScene(Scene* scene);
 
 		const Renderer* GetRenderer() const { return &m_renderer; }
+		Renderer* GetRenderer() { return &m_renderer; }
 
 		virtual void ReloadShaders() override;
 		void DumpShadersInfo();

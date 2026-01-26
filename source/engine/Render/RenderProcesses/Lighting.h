@@ -14,7 +14,9 @@ namespace Mist
 	{
 	public:
 		Lighting(Renderer* renderer, IRenderEngine* engine);
-		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_LIGHTING; }
+
+		static RenderProcessType GetProcessTypeStatic() { return RENDERPROCESS_LIGHTING; }
+		virtual RenderProcessType GetProcessType() const override { return GetProcessTypeStatic(); }
 		virtual void Init(rendersystem::RenderSystem* rs) override;
 		virtual void Destroy(rendersystem::RenderSystem* rs) override;
 		virtual void Update() override;
