@@ -16,31 +16,34 @@ vec3 DoEnvironmentLighting(vec3 fragPos, vec3 normal, vec3 albedo, float metalli
 {
     // Point lights
     vec3 pointLightsColor = vec3(0.f);
-    for (int i = 0; i < ENVIRONMENT_DATA.NumOfPointLights; ++i)
+    for (int i = 0; i < ENVIRONMENT_DATA.numOfPointLights; ++i)
     {
-        pointLightsColor += ProcessPointLight(fragPos, normal, ENVIRONMENT_DATA.Lights[i], albedo, metallic, roughness);
+        pointLightsColor += ProcessPointLight(fragPos, normal, ENVIRONMENT_DATA.pointLights[i], albedo, metallic, roughness);
     }
 
     // Spot lights
     vec3 spotLightsColor = vec3(0.f);
-    for (int i = 0; i < ENVIRONMENT_DATA.NumOfSpotLights; ++i)
+    for (int i = 0; i < ENVIRONMENT_DATA.numOfSpotLights; ++i)
     {
-        spotLightsColor += ProcessSpotLight(fragPos, normal, ENVIRONMENT_DATA.SpotLights[i], albedo, metallic, roughness, shadowInfo);
+        spotLightsColor += ProcessSpotLight(fragPos, normal, ENVIRONMENT_DATA.spotLights[i], albedo, metallic, roughness, shadowInfo);
     }
 
     // Directional light
-    vec3 directionalLightColor = ProcessDirectionalLight(fragPos, normal, ENVIRONMENT_DATA.DirectionalLight, albedo, metallic, roughness, shadowInfo);
+    vec3 directionalLightColor = vec3(0.f);
+    for (int i = 0; i < ENVIRONMENT_DATA.numOfDirectionalLights; ++i)
+    {
+        directionalLightColor += ProcessDirectionalLight(fragPos, normal, ENVIRONMENT_DATA.directionalLights[i], albedo, metallic, roughness, shadowInfo);
+    }
 
     vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
-    //return directionalLightColor;
 
     // Ambient color
 #ifdef ENV_APPLY_GI
     vec3 N = normal;
     vec3 V = -fragPos;
-    vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
+    vec3 ambientColor = ENVIRONMENT_DATA.ambientColor * ProcessIrradiance(N, V, albedo, roughness, metallic, ao);
 #else
-    vec3 ambientColor = ENVIRONMENT_DATA.AmbientColor * albedo * ao;
+    vec3 ambientColor = ENVIRONMENT_DATA.ambientColor * albedo * ao;
 #endif
 #if defined(DEBUG_AMBIENT)
 	return ambientColor;

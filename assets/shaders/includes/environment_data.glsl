@@ -5,12 +5,15 @@
 
 struct Environment
 {
-    vec3 AmbientColor;
-    int NumOfSpotLights;
-    vec3 ViewPos;
-    int NumOfPointLights;
-    LightData Lights[MAX_LIGHTS];
-    LightData DirectionalLight;
-    LightData SpotLights[MAX_LIGHTS];
+    vec3 ambientColor;
+    int numOfSpotLights;
+
+    int numOfDirectionalLights;
+    int numOfPointLights;
+    vec2 _padding;
+
+    LightData pointLights[MAX_LIGHTS];
+    LightData directionalLights[5];
+    LightData spotLights[MAX_LIGHTS];
 };
 

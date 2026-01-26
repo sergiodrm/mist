@@ -21,7 +21,7 @@ struct LightData
 
     vec2 CosCutoff; // x: inner, y: outer
     int ShadowMapIndex;
-    int _padding2;
+    float Strength;
     //16 bytes
 };
 
@@ -309,7 +309,7 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albe
     float radius = light.Radius;
     float compression = light.Compression;
     float attenuation = CalculateAttenuation(distance, radius, compression);
-    vec3 radiance = light.Color.rgb * attenuation;
+    vec3 radiance = light.Color.rgb * attenuation * light.Strength;
 
     return CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
 }
@@ -319,7 +319,7 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     vec3 V = normalize(-fragPos);
     vec3 lightDir = normalize(vec3(-light.Dir));
     vec3 H = normalize(V + lightDir);
-    vec3 radiance = light.Color.rgb;
+    vec3 radiance = light.Color.rgb * light.Strength;
     // Calculate pbr contribution
     vec3 lighting = CalculateBRDF(fragNormal, lightDir, radiance, albedo, metallic, roughness, V, H);
 #ifndef LIGHTING_NO_SHADOWS
@@ -340,7 +340,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albed
         float compression = light.Compression;
         float distance = length(light.Pos.xyz - fragPos);
         float attenuation = CalculateAttenuation(distance, radius, compression);
-        vec3 radiance = light.Color.rgb * attenuation;
+        vec3 radiance = light.Color.rgb * attenuation * light.Strength;
         vec3 L = normalize(light.Pos.xyz - fragPos);
         vec3 V = normalize(-fragPos);
         vec3 H = normalize(V + L);
