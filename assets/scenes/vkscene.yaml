@@ -26,18 +26,20 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [1, 0.907256424, 0.523489952]
+      Enabled: true
+      Color: [0.255033553, 0.245372579, 0.205396146]
+      Strength: 1
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
       Cutoff: 1
       ProjectShadows: true
-      OrthoLeft: -160
-      OrthoRight: 160
-      OrthoBottom: -120
-      OrthoTop: 120
-      NearClip: 1
-      FarClip: 100
+      OrthoLeft: -18
+      OrthoRight: 10
+      OrthoBottom: -8
+      OrthoTop: 12
+      NearClip: -31
+      FarClip: 16
   - RenderObject: 2
     Name: DefaultMainCamera
     Parent: 0
@@ -47,5 +49,14 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [0, 0, 0]
-      Rotation: [0, 0, 0]
+      Position: [-2.200737, 4.08165646, 7.53077984]
+      Rotation: [-0.47037077, -0.0328120925, 0]
+  - RenderObject: 3
+    Name: VkScene2
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 0]
+      Rotation: [0, -0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: models/vulkanscene_shadow.gltf

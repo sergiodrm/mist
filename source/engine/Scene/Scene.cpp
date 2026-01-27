@@ -477,7 +477,9 @@ namespace Mist
 			if (lightNode)
 			{
 				LightComponent lightComponent;
+				lightComponent.Enabled = lightNode["Enabled"].as<bool>();
 				lightComponent.Color = lightNode["Color"].as<glm::vec3>();
+				lightComponent.Strength = lightNode["Strength"].as<float>();
 				lightComponent.Radius = lightNode["Radius"].as<float>();
 				lightComponent.Compression = lightNode["Compression"].as<float>();
 				lightComponent.OuterCutoff = lightNode["OuterCutoff"].as<float>();
@@ -575,7 +577,9 @@ namespace Mist
 				const LightComponent& light = m_lightComponentMap[i];
 				emitter << YAML::Key << "LightComponent" << YAML::BeginMap;
 				emitter << YAML::Key << "Type" << YAML::Value << LightTypeToStr(light.Type);
+				emitter << YAML::Key << "Enabled" << YAML::Value << light.Enabled;
 				emitter << YAML::Key << "Color" << YAML::Value << light.Color;
+				emitter << YAML::Key << "Strength" << YAML::Value << light.Strength;
 				emitter << YAML::Key << "Radius" << YAML::Value << light.Radius;
 				emitter << YAML::Key << "Compression" << YAML::Value << light.Compression;
 				emitter << YAML::Key << "OuterCutoff" << YAML::Value << light.OuterCutoff;
@@ -1198,7 +1202,7 @@ namespace Mist
 				const glm::vec3 pos = math::GetPos(viewSpace * mat);
 				const glm::vec3 dir = -1.f*math::GetDir(viewSpace * mat);
 
-				uint32_t shadowMapIndex = 0;
+				uint32_t shadowMapIndex = UINT32_MAX;
 				if (light.ProjectShadows && light.Type != ELightType::Point)
 					shadowMapIndex = light.Type == ELightType::Directional
 					? shadowMapping->SetupDirectionalLight(transform.Position, transform.Rotation, light.OrthoLeft, light.OrthoRight, light.OrthoTop, light.OrthoBottom, light.NearClip, light.FarClip)

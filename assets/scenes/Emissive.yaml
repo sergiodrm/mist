@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.026845634, 0.026845634, 0.026845634]
+  Ambient: [0.0469798446, 0.0469798446, 0.0469798446]
   Skybox:
     Front: textures/yokohama/posz.jpg
     Back: textures/yokohama/negz.jpg
@@ -24,7 +24,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.431372553, 0.80392158, 0.4627451]
+      Strength: 1
       Radius: 388
       Compression: 388
       OuterCutoff: 28.5
@@ -45,7 +47,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Color: [0.100000001, 0.100000001, 0.100000001]
+      Enabled: true
+      Color: [0.335570455, 0.309043437, 0.274762392]
+      Strength: 13.6000004
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
@@ -66,7 +70,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
+      Enabled: true
       Color: [0.838926196, 0.682636023, 0.34345302]
+      Strength: 1
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
@@ -114,8 +120,8 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [54.9550591, 9.95933533, -6.83700228]
-      Rotation: [0.193515673, -4.31093788, 0]
+      Position: [-70.4147644, 10.4421244, 7.04495239]
+      Rotation: [0.106478646, -7.60885382, 0]
   - RenderObject: 8
     Name: AlphaBlend
     Parent: 0

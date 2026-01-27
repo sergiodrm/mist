@@ -24,7 +24,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
+      Enabled: true
       Color: [0.490066171, 1, 0]
+      Strength: 1
       Radius: 10000
       Compression: 10000
       OuterCutoff: 43.5999985
@@ -45,7 +47,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
+      Enabled: true
       Color: [0.691275179, 0.571284413, 0.27836585]
+      Strength: 1
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
@@ -66,7 +70,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
+      Enabled: true
       Color: [0.926174521, 0.229989633, 0.229989633]
+      Strength: 1
       Radius: 5000
       Compression: 5000
       OuterCutoff: 54.0999985
