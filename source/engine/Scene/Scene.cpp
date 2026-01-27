@@ -888,45 +888,40 @@ namespace Mist
 		{
 			for (uint32_t i = 0; i < GetRenderObjectCount(); ++i)
 			{
-				char treeId[16];
-				sprintf_s(treeId, "%u", i);
-				if (ImGui::TreeNode(treeId, "%s", GetRenderObjectName(i)))
+				ImGui::PushID(i);
+				if (ImGui::TreeNode("ObjectTree", GetRenderObjectName(i)))
 				{
 					glm::mat4 transform;
 					TransformComponentToMatrix(&m_transformComponents[i], &transform, 1);
 					DebugRender::DrawAxis(transform);
 					const Hierarchy& node = m_hierarchy[i];
 					ImGui::Text("Parent: %s", node.Parent != UINT32_MAX ? GetRenderObjectName(node.Parent) : "None");
-					char buff[32];
-					sprintf_s(buff, "##TransformComponent%u", i);
-					if (ImGui::TreeNode(buff, "Transform component"))
+					if (ImGui::TreeNode("Transform component"))
 					{
 						TransformComponent t = m_transformComponents[i];
 						ImGui::Columns(2);
 						ImGui::Text("Position");
 						ImGui::NextColumn();
-						sprintf_s(buff, "##TransformPos%d", i);
-						bool dirty = ImGui::DragFloat3(buff, &t.Position[0], posStep);
+						bool dirty = ImGui::DragFloat3("Position", &t.Position[0], posStep);
 						ImGui::NextColumn();
-						sprintf_s(buff, "TransformRot%d", i);
-						dirty |= ImGuiUtils::EditAngles(buff, "Rotation", t.Rotation);
+						dirty |= ImGuiUtils::EditAngles("Rotation", "Rotation", t.Rotation);
 						ImGui::NextColumn();
 						ImGui::Text("Scale");
 						ImGui::NextColumn();
-						sprintf_s(buff, "##TransformScl%d", i);
-						dirty |= ImGui::DragFloat3(buff, &t.Scale[0], sclStep);
+						dirty |= ImGui::DragFloat3("Scale", &t.Scale[0], sclStep);
 						ImGui::Columns();
 						ImGui::TreePop();
 
 						if (dirty)
 							SetTransform(i, t);
 					}
-					sprintf_s(buff, "##LightComponent%u", i);
 					if (m_lightComponentMap.contains(i))
 					{
-						if (ImGui::TreeNode(buff, "Light component"))
+						if (ImGui::TreeNode("Light component"))
 						{
 							LightComponent& light = m_lightComponentMap[i];
+							ImGui::PushID(i);
+							ImGui::Checkbox("Enabled", &light.Enabled);
 							static const char* lightTypes[] = { "Point", "Directional", "Spot" };
 							uint32_t lightCount = sizeof(lightTypes) / sizeof(const char*);
 							if (ImGui::BeginCombo("Type", lightTypes[(uint32_t)light.Type]))
@@ -941,69 +936,61 @@ namespace Mist
 							ImGui::Columns(2);
 							ImGui::Text("Color");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightColor%u", i);
-							ImGui::ColorEdit3(buff, &light.Color[0]);
+							ImGui::ColorEdit3("Color", &light.Color[0]);
+							ImGui::NextColumn();
+							ImGui::Text("Strength");
+							ImGui::NextColumn();
+							ImGui::DragFloat("Strength", &light.Strength, 0.2f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
 							ImGui::Text("Radius");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightRadius%u", i);
-							ImGui::DragFloat(buff, &light.Radius, 0.5f, 0.f, FLT_MAX);
+							ImGui::DragFloat("Radius", &light.Radius, 0.5f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
 							ImGui::Text("Compression");
-							sprintf_s(buff, "##LightCompression%u", i);
 							ImGui::NextColumn();
-							ImGui::DragFloat(buff, &light.Compression, 0.05f, 0.f, FLT_MAX);
+							ImGui::DragFloat("Compression", &light.Compression, 0.05f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
 							ImGui::Text("Outer cutoff");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightOuterCutoff%u", i);
-							ImGui::DragFloat(buff, &light.OuterCutoff, 0.1f, 0.f, FLT_MAX);
+							ImGui::DragFloat("OuterCutoff", &light.OuterCutoff, 0.1f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
 							ImGui::Text("Cutoff");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightCutoff%u", i);
-							ImGui::DragFloat(buff, &light.Cutoff, 0.1f, 0.f, FLT_MAX);
+							ImGui::DragFloat("Cutoff", &light.Cutoff, 0.1f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
 							ImGui::Text("Project shadows");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightShadows%u", i);
-							ImGui::Checkbox(buff, &light.ProjectShadows);
+							ImGui::Checkbox("Shadows enabled", &light.ProjectShadows);
 							ImGui::NextColumn();
 
 							ImGui::Text("Near clip");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightNearClip%u", i);
-							ImGui::DragFloat(buff, &light.NearClip, 1.f);
+							ImGui::DragFloat("Near clip", &light.NearClip, 1.f);
 							ImGui::NextColumn();
 
 							ImGui::Text("Far clip");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightFarClip%u", i);
-							ImGui::DragFloat(buff, &light.FarClip, 1.f);
+							ImGui::DragFloat("Far clip", &light.FarClip, 1.f);
 							ImGui::NextColumn();
 
 							ImGui::Text("Ortho left");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightLeft%u", i);
-							ImGui::DragFloat(buff, &light.OrthoLeft, 1.f);
+							ImGui::DragFloat("Left", &light.OrthoLeft, 1.f);
 							ImGui::NextColumn();
 
 							ImGui::Text("Ortho right");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightRight%u", i);
-							ImGui::DragFloat(buff, &light.OrthoRight, 1.f);
+							ImGui::DragFloat("Right", &light.OrthoRight, 1.f);
 							ImGui::NextColumn();
 
 							ImGui::Text("Ortho bottom");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightBottom%u", i);
-							ImGui::DragFloat(buff, &light.OrthoBottom, 1.f);
+							ImGui::DragFloat("Bottom", &light.OrthoBottom, 1.f);
 							ImGui::NextColumn();
 
 							ImGui::Text("Ortho top");
 							ImGui::NextColumn();
-							sprintf_s(buff, "##LightTop%u", i);
-							ImGui::DragFloat(buff, &light.OrthoTop, 1.f);
+							ImGui::DragFloat("Top", &light.OrthoTop, 1.f);
 							ImGui::NextColumn();
 
 							ImGui::Columns();
@@ -1034,14 +1021,14 @@ namespace Mist
 								break;
 
 							}
+							ImGui::PopID();
 
 							ImGui::TreePop();
 						}
 					}
 					if (m_meshComponentMap.contains(i))
 					{
-						sprintf_s(buff, "##MeshComponent%u", i);
-						if (ImGui::TreeNode(buff, "Mesh component"))
+						if (ImGui::TreeNode("Mesh component"))
 						{
 							const MeshComponent& meshComp = m_meshComponentMap.at(i);
 							const cModel& model = m_models[meshComp.MeshIndex];
@@ -1051,7 +1038,7 @@ namespace Mist
 							ImGui::Text("Model name: %s", model.GetName());
 							if (ImGui::Button("Dump info"))
 								model.DumpInfo();
-							if (ImGui::TreeNode(buff, "Meshes"))
+							if (ImGui::TreeNode("Meshes"))
 							{
 								for (uint32_t j = 0; j < model.GetMeshCount(); ++j)
 								{
@@ -1073,9 +1060,7 @@ namespace Mist
 
 					if (m_cameraComponentMap.contains(i))
 					{
-						sprintf_s(buff, "##CameraComponent%u", i);
-						ImGui::PushID(buff);
-						if (ImGui::TreeNode(buff, "Camera Component"))
+						if (ImGui::TreeNode("Camera Component"))
 						{
 							CameraComponent& cc = m_cameraComponentMap[i];
 							Frustum f(m_cameras[cc.CameraIndex].GetCamera().GetProjection() * m_cameras[cc.CameraIndex].GetCamera().GetView());
@@ -1083,11 +1068,10 @@ namespace Mist
 							m_cameras[cc.CameraIndex].GetCamera().ImGuiDraw();
 							ImGui::TreePop();
 						}
-						ImGui::PopID();
 					}
-
 					ImGui::TreePop();
 				}
+				ImGui::PopID();
 			}
 			ImGui::TreePop();
 		}
