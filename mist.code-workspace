@@ -7,6 +7,14 @@
 	"settings": {
 		"files.exclude": {
 			"**/*.spv": true
+		},
+		"files.associations": {
+			"*.glsl": "glsl",
+			"*.frag": "glsl",
+			"*.vert": "glsl",
+			"chrono": "cpp",
+			"ranges": "cpp",
+			"variant": "cpp"
 		}
 	}
 }
