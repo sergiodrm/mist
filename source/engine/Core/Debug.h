@@ -16,6 +16,18 @@
 #define MIST_DEBUG_BREAK __debugbreak()
 #define MIST_INSTRUCTION_EXCEPTION __ud2()
 
+#define check_msgf(expr, fmt, ...) \
+do \
+{ \
+	if (!expand(expr)) \
+	{ \
+        ::Mist::Debug::DialogMsgErrorF(::Mist::Debug::DIALOG_BUTTON_OK, fmt, __VA_ARGS__); \
+		if (Mist::Debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__)) \
+			MIST_DEBUG_BREAK; \
+		MIST_INSTRUCTION_EXCEPTION; \
+	} \
+} while(0)
+
 #define check(expr) \
 do \
 { \
