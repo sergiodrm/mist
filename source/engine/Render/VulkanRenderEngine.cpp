@@ -43,6 +43,7 @@ namespace Mist
 	::rendersystem::RenderSystem* g_render = nullptr;
 
 	CameraData g_cameraData;
+	CameraData g_prevCameraData;
 
 	CBoolVar CVar_EnableValidationLayer("r_enableValidationLayer", true);
 	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
@@ -114,6 +115,11 @@ namespace Mist
 	const CameraData* GetCameraData()
 	{
 		return &g_cameraData;
+	}
+
+	const CameraData* GetPrevCameraData()
+	{
+		return &g_prevCameraData;
 	}
 	
 	bool VulkanRenderEngine::Init(const Window& window)
@@ -243,6 +249,7 @@ namespace Mist
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
 	{
+		g_prevCameraData = g_cameraData;
 		g_cameraData.Set(view, projection);
 	}
 

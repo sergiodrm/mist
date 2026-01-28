@@ -79,6 +79,7 @@ namespace Mist
 		rs->SetRenderTarget(m_renderTarget);
 		rs->SetShader(m_gbufferShader);
 		rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
+		rs->SetShaderProperty("u_prevCamera", GetPrevCameraData(), sizeof(CameraData));
 		rs->ClearColor();
 		rs->ClearDepthStencil();
 		rs->SetStencilEnable(true);
@@ -93,7 +94,7 @@ namespace Mist
 	void GBuffer::ImGuiDraw()
 	{
 		ImGui::Begin("GBuffer");
-		static const char* rts[] = { "None", "Normal", "Albedo", "Emissive", "Specular", "Depth", "All"};
+		static const char* rts[] = { "None", "Normal", "Albedo", "Emissive", "Specular", "MotionVectors", "Depth", "All"};
 		static int index = 0;
 		if (ImGui::BeginCombo("Debug mode", rts[index]))
 		{
@@ -154,7 +155,7 @@ namespace Mist
 			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.depthStencilAttachment.texture);
 			break;
 		default:
-			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[m_debugMode].texture);
+			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[m_debugMode-1].texture);
 			break;
 		}
 	}
@@ -177,6 +178,7 @@ namespace Mist
 		case RT_EMISSIVE: return render::Format_R16G16B16A16_SFloat;
 		case RT_SPECULAR: return render::Format_R8G8B8A8_UNorm;
 		case RT_DEPTH_STENCIL: return render::Format_D24_UNorm_S8_UInt;
+		case RT_MOTION_VECTORS: return render::Format_R8G8_SNorm;
 		}
 		return render::Format_Undefined;
 	}

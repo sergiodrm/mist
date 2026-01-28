@@ -90,6 +90,7 @@ namespace Mist
 
 	extern cMaterial* GetDefaultMaterial();
 	const CameraData* GetCameraData();
+	const CameraData* GetPrevCameraData();
 
 	extern ::render::Device* g_device;
 	extern ::rendersystem::RenderSystem* g_render;

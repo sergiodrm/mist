@@ -8,15 +8,17 @@ layout (location = 1) in vec2 inUV;
 layout (location = 2) in vec3 inColor;
 layout (location = 3) in vec3 inWorldPos;
 layout (location = 4) in vec3 inTangent;
-layout (location = 5) in mat3 inTBN;
+layout (location = 5) in vec2 inMotion;
+layout (location = 6) in mat3 inTBN;
 
 layout (location = 0) out vec4 outGBufferNormal;
 layout (location = 1) out vec4 outGBufferAlbedo;
 layout (location = 2) out vec4 outGBufferEmissive;
 layout (location = 3) out vec4 outGBufferSpecular;
+layout (location = 4) out vec4 outGBufferMotionVectors;
 
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
-layout(set = 3, binding = 0) uniform MaterialBlock
+layout(set = 2, binding = 1) uniform MaterialBlock
 {
 	MaterialUniformBuffer data;
 } u_material;
@@ -70,6 +72,9 @@ void main()
 		data.roughness *= specular.g;
 		data.metallic *= specular.b;
 	}
+
+	// Motion vectors
+	data.motionVectors = vec2(inMotion);
 
 	GBuffer_Write(data);
 }

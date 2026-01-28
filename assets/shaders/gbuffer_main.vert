@@ -18,13 +18,19 @@ layout (location = 1) out vec2 outUV;
 layout (location = 2) out vec3 outColor;
 layout (location = 3) out vec3 outWorldPos;
 layout (location = 4) out vec3 outTangent;
-layout (location = 5) out mat3 outTBN;
+layout (location = 5) out vec2 outMotion;
+layout (location = 6) out mat3 outTBN;
 
 // Uniforms
 layout (set = 0, binding = 0) uniform CameraBlock 
 {
 	Camera data;
 } u_camera;
+
+layout (set = 0, binding = 1) uniform PrevCameraBlock 
+{
+	Camera data;
+} u_prevCamera;
 
 layout (set = 1, binding = 0) uniform ModelBlock
 {
@@ -42,6 +48,11 @@ void main()
 	// Compute normals on view space.
 	//mat3 normalTransform = mat3(u_camera.data.view * u_model.data.worldTransform);
 	mat3 normalTransform = transpose(inverse(mat3(u_camera.data.view * u_model.data.worldTransform)));
+
+	// motion vectors
+	vec4 currPos = u_camera.data.viewProjection * vec4(worldPos, 1.f);
+	vec4 prevPos = u_prevCamera.data.viewProjection * vec4(worldPos, 1.f);
+	outMotion = (currPos.xy/currPos.w) - (prevPos.xy/prevPos.w);
 
 	outWorldPos = vec3(u_camera.data.view * vec4(worldPos, 1.f));
 	outNormal = normalize(normalTransform * normalize(inNormal));	

@@ -14,4 +14,6 @@ void GBuffer_Write(GBuffer data)
 
 	outGBufferSpecular.rgb = vec3(0.f, data.roughness, data.metallic);
 	outGBufferSpecular.a = data.specular;
+
+	outGBufferMotionVectors.rg = data.motionVectors;
 }

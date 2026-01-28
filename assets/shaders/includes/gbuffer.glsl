@@ -3,12 +3,17 @@ struct GBuffer
 {
 	vec3 normal;
 	float roughness;
+
 	vec3 emissive;
 	float opacity;
+
 	vec3 albedo;
 	float metallic;
+
 	vec3 padding;
 	float specular;
+
+	vec2 motionVectors;
 };
 
 #ifdef CAMERA_DATA_INV_PROJECTION

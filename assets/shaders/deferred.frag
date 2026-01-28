@@ -20,11 +20,12 @@ layout(set = 1, binding = 0) uniform sampler2D u_GBufferSpecular;
 layout(set = 1, binding = 1) uniform sampler2D u_GBufferNormal;
 layout(set = 1, binding = 2) uniform sampler2D u_GBufferAlbedo;
 layout(set = 1, binding = 3) uniform sampler2D u_GBufferEmissive;
+layout(set = 1, binding = 4) uniform sampler2D u_GBufferMotionVectors;
 // SSAO texture
-layout(set = 1, binding = 4) uniform sampler2D u_ssao;
+layout(set = 1, binding = 5) uniform sampler2D u_ssao;
 // Shadow map textures
-layout(set = 1, binding = 5) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
-layout(set = 1, binding = 6) uniform sampler2D u_GBufferDepth;
+layout(set = 1, binding = 6) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
+layout(set = 1, binding = 7) uniform sampler2D u_GBufferDepth;
 // Irradiance map
 layout(set = 2, binding = 0) uniform samplerCube u_irradianceMap;
 layout(set = 2, binding = 1) uniform samplerCube u_prefilterMap;
