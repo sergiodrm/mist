@@ -571,7 +571,6 @@ namespace rendersystem
 
     void RenderSystem::SetShader(ShaderProgram* shader)
     {
-        CPU_SCOPE_STAT(IS_SetShader);
         check(shader);
         switch (shader->m_description->type)
         {
@@ -985,7 +984,6 @@ namespace rendersystem
     void RenderSystem::FlushBeforeDraw()
     {
         PROF_ZONE_SCOPED("FlushBeforeDraw");
-        CPU_SCOPE_STAT(IS_FlushGraphics);
         //m_graphicsContext.pso.bindingLayouts.Clear();
 
         // Flush memory before process bindings
@@ -1021,7 +1019,6 @@ namespace rendersystem
     void RenderSystem::FlushBeforeDispatch()
     {
         PROF_ZONE_SCOPED("FlushBeforeDispatch");
-        CPU_SCOPE_STAT(IS_FlushCompute);
         FlushMemoryContext();
         ResolveBindings(m_computeContext.computeState.bindings, m_computeContext.pso.bindingLayouts);
         m_computeContext.computeState.pipeline = GetPso(m_computeContext.pso);
@@ -2060,7 +2057,6 @@ namespace rendersystem
 
     uint32_t ShaderMemoryContext::GetOrCreateBuffer(uint64_t size)
     {
-        CPU_SCOPE_STAT(IS_ShaderFindBuffer);
         size = m_device->AlignUniformSize(size);
 
         uint32_t freeIndex = UINT32_MAX;

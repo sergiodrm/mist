@@ -301,6 +301,14 @@ namespace Mist
 			double Max = -DBL_MAX;
 		};
 
+		struct CpuProfileScopeStat
+		{
+			double data;
+			double min;
+			double max;
+			uint32_t counter;
+		};
+
 		struct sProfiler
 		{
 			static constexpr uint32_t MaxSamples = 64;
@@ -411,6 +419,7 @@ namespace Mist
 #endif
 		}
 
+		// returns seconds
 		double sProfilingTimer::Stop()
 		{
 #ifdef _USE_CHRONO_PROFILING
