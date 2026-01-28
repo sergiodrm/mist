@@ -15,9 +15,6 @@ Mist::CIntVar CVar_GpuProfilingRatio("r_gpuProfilingRatio", 0);
 
 namespace rendersystem
 {
-
-	Mist::CBoolVar CVar_Dump("dumpbuffer", false);
-
     ShaderPropertyDescriptor ShaderPropertyDescriptor::Invalid = ShaderPropertyDescriptor{ nullptr, UINT64_MAX, UINT64_MAX };
 
 	GpuFrameProfiler::GpuFrameProfiler(render::Device* device)
@@ -1101,8 +1098,6 @@ namespace rendersystem
 				{
                     const ShaderPropertyDescriptor propertyDescriptor = m_shaderContext.memoryStream->GetPropertyDescriptor(property.name.c_str());
 					check(propertyDescriptor.IsValid());
-                    if (CVar_Dump.Get())
-                        logfwarn("[0x%p] %s; size: %d; offset: %d\n", propertyDescriptor.buffer.GetPtr(), property.name.c_str(), propertyDescriptor.size, propertyDescriptor.offset);
 					desc.PushConstantBuffer(property.binding, propertyDescriptor.buffer.GetPtr(), property.stage, render::BufferRange(propertyDescriptor.offset, propertyDescriptor.size));
 				}
 				break;
@@ -1753,8 +1748,6 @@ namespace rendersystem
         uint64_t propertySize;
         m_tempBuffer->Write(device, data, size, offset, propertySize);
         SubmitProperty(id, offset, propertySize);
-        if (CVar_Dump.Get())
-            logfinfo("[0x%p] %s; size: %d; offset: %d\n", m_buffers[m_currentBuffer].GetPtr(), id, propertySize, offset);
 	}
 
 	void ShaderBuffer::FlushBuffer(render::Device* device)
@@ -2191,10 +2184,8 @@ namespace rendersystem
 		//	lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
     }
 
-    Mist::CBoolVar CVar_UseNewMemPool("UseNewMemPool", false);
-
 	ShaderStream::ShaderStream(render::Device* device)
-        : m_device(device), m_pool(device), m_memoryPool(device), m_currentId(UINT32_MAX)
+        : m_device(device), m_pool(device), m_memoryPool(device), m_currentId(UINT32_MAX), m_useNewPool(true)
 	{
         check(m_device);
         m_tempBuffer.Init(1 << 16);
@@ -2207,8 +2198,6 @@ namespace rendersystem
 
 	void ShaderStream::BeginFrame()
 	{
-        m_useNewPool = CVar_UseNewMemPool.Get();
-
         check(m_currentId == UINT32_MAX);
         if (m_useNewPool)
             m_currentId = m_pool.CreateShaderBuffer();
