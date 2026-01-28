@@ -1508,6 +1508,14 @@ namespace render
 			}
 		}
 
+        SampleCount sampleCount = description.sampleCount;
+        SampleCount maxSampleCount = GetContext().GetMaxUsableSampleCount();
+        if (sampleCount > maxSampleCount)
+        {
+            logferror("Invalid sample count %d. Max allowed for current device %d.\n", sampleCount, maxSampleCount);
+            sampleCount = maxSampleCount;
+        }
+
         VkImageCreateInfo imageInfo = { .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, .pNext = nullptr };
         imageInfo.imageType = utils::ConvertImageType(description.dimension);
         imageInfo.flags = description.dimension == ImageDimension_Cube || description.dimension == ImageDimension_CubeArray ?
@@ -1518,7 +1526,7 @@ namespace render
         imageInfo.extent.depth = description.extent.depth;
         imageInfo.mipLevels = description.mipLevels;
         imageInfo.arrayLayers = description.layers;
-        imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+        imageInfo.samples = utils::ConvertSampleCount(sampleCount);
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = utils::ConvertImageUsage(utils::GetImageUsage(texture->m_description));
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -1682,7 +1690,7 @@ namespace render
             VkAttachmentDescription& desc = attachmentDescriptions[i];
             desc.flags = 0;
             desc.format = utils::ConvertFormat(format);
-            desc.samples = VK_SAMPLE_COUNT_1_BIT;
+            desc.samples = utils::ConvertSampleCount(texture->m_description.sampleCount);
             desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1718,7 +1726,7 @@ namespace render
             VkAttachmentDescription& desc = attachmentDescriptions.GetBack();
             desc.flags = 0;
             desc.format = utils::ConvertFormat(format);
-            desc.samples = VK_SAMPLE_COUNT_1_BIT;
+            desc.samples = utils::ConvertSampleCount(texture->m_description.sampleCount);
             desc.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
             desc.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
             desc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -1869,7 +1877,7 @@ namespace render
         multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
         multisampling.pNext = nullptr;
         multisampling.flags = 0;
-        multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+        multisampling.rasterizationSamples = utils::ConvertSampleCount(description.renderState.multisampleState.sampleCount);
         multisampling.sampleShadingEnable = VK_FALSE;
         multisampling.minSampleShading = 1.f;
         multisampling.pSampleMask = nullptr;
@@ -2564,6 +2572,7 @@ namespace render
             properties.limits.minUniformBufferOffsetAlignment);
         logfinfo("GPU max bound descriptor sets: %d\n",
             properties.limits.maxBoundDescriptorSets);
+        logfinfo("GPU max sampling: 0x%x\n", m_context->GetMaxUsableSampleCount());
     }
 
     void Device::InitMemoryContext()

@@ -584,6 +584,19 @@ namespace render
 		ImageDimension_MaxEnum
 	};
 
+	enum SampleCountFlags
+	{
+		SampleCount_1_Bit = 0x00000001,
+		SampleCount_2_Bit = 0x00000002,
+		SampleCount_4_Bit = 0x00000004,
+		SampleCount_8_Bit = 0x00000008,
+		SampleCount_16_Bit = 0x00000010,
+		SampleCount_32_Bit = 0x00000020,
+		SampleCount_64_Bit = 0x00000040,
+		SampleCount_Max = 0x7FFFFFFF
+	};
+	typedef uint32_t SampleCount;
+
 	enum Filter
 	{
 		Filter_Nearest,

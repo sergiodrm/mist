@@ -1477,6 +1477,19 @@ namespace render
             return VK_QUERY_TYPE_MAX_ENUM;
         }
 
+        VkSampleCountFlagBits ConvertSampleCount(SampleCount count)
+        {
+            VkSampleCountFlags flags = 0;
+            if (count & SampleCount_1_Bit) flags |= VK_SAMPLE_COUNT_1_BIT;
+            if (count & SampleCount_2_Bit) flags |= VK_SAMPLE_COUNT_2_BIT;
+            if (count & SampleCount_4_Bit) flags |= VK_SAMPLE_COUNT_4_BIT;
+            if (count & SampleCount_8_Bit) flags |= VK_SAMPLE_COUNT_8_BIT;
+            if (count & SampleCount_16_Bit) flags |= VK_SAMPLE_COUNT_16_BIT;
+            if (count & SampleCount_32_Bit) flags |= VK_SAMPLE_COUNT_32_BIT;
+            if (count & SampleCount_64_Bit) flags |= VK_SAMPLE_COUNT_64_BIT;
+            return static_cast<VkSampleCountFlagBits>(flags);
+        }
+
         void ComputeMipExtent(uint32_t mipLevel, uint32_t width, uint32_t height, uint32_t depth, uint32_t* mipWidth, uint32_t* mipHeight, uint32_t* mipDepth)
         {
             if (mipWidth)

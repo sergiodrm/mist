@@ -73,6 +73,7 @@ namespace render
         ImageDimension dimension = ImageDimension_2D;
         Extent3D extent = {0,0,1};
         MemoryUsage memoryUsage = MemoryUsage_Gpu;
+        SampleCount sampleCount = SampleCount_1_Bit;
         Mist::String debugName;
 
         bool isShaderResource = true;
@@ -520,6 +521,17 @@ namespace render
         inline uint64_t              GetPptimalBufferCopyOffsetAlignment() const { return physicalDeviceProperties.limits.optimalBufferCopyOffsetAlignment; }
         inline uint64_t              GetPptimalBufferCopyRowPitchAlignment() const { return physicalDeviceProperties.limits.optimalBufferCopyRowPitchAlignment; }
         inline uint64_t              GetNonCoherentAtomSize() const { return physicalDeviceProperties.limits.nonCoherentAtomSize; }
+        inline SampleCount           GetMaxUsableSampleCount() const
+        {
+            VkSampleCountFlags flags = physicalDeviceProperties.limits.framebufferColorSampleCounts & physicalDeviceProperties.limits.framebufferDepthSampleCounts;
+            if (flags & VK_SAMPLE_COUNT_64_BIT) return SampleCount_64_Bit;
+            if (flags & VK_SAMPLE_COUNT_32_BIT) return SampleCount_32_Bit;
+            if (flags & VK_SAMPLE_COUNT_16_BIT) return SampleCount_16_Bit;
+            if (flags & VK_SAMPLE_COUNT_8_BIT) return SampleCount_8_Bit;
+            if (flags & VK_SAMPLE_COUNT_4_BIT) return SampleCount_4_Bit;
+            if (flags & VK_SAMPLE_COUNT_2_BIT) return SampleCount_2_Bit;
+            return SampleCount_1_Bit;
+        }
     };
 
     /**
@@ -924,6 +936,14 @@ namespace render
 		{
 			return !(*this == other);
 		};
+
+    };
+
+    struct MultisampleState
+    {
+        SampleCount sampleCount = SampleCount_1_Bit;
+		inline bool operator==(const MultisampleState& other) const { return sampleCount == other.sampleCount; }
+		inline bool operator!=(const MultisampleState& other) const { return !(*this == other); };
     };
 
     struct RenderState
@@ -932,13 +952,15 @@ namespace render
         DepthStencilState depthStencilState;
         RasterState rasterState;
         ViewportState viewportState;
+        MultisampleState multisampleState;
 
         inline bool operator==(const RenderState& other) const
         {
             return blendState == other.blendState &&
                 depthStencilState == other.depthStencilState &&
                 rasterState == other.rasterState &&
-                viewportState == other.viewportState;
+                viewportState == other.viewportState &&
+                multisampleState == other.multisampleState;
         }
         inline bool operator!=(const RenderState& other) const
         {
@@ -1857,6 +1879,17 @@ namespace std
     };
 
     template <>
+    struct hash<render::MultisampleState>
+    {
+        size_t operator()(const render::MultisampleState& state) const
+        {
+            size_t seed = 0;
+            Mist::HashCombine(seed, state.sampleCount);
+            return seed;
+        }
+    };
+
+    template <>
     struct hash<render::RenderState>
     {
         size_t operator()(const render::RenderState& state) const
@@ -1866,6 +1899,7 @@ namespace std
             Mist::HashCombine(seed, state.rasterState);
             Mist::HashCombine(seed, state.blendState);
             Mist::HashCombine(seed, state.depthStencilState);
+            Mist::HashCombine(seed, state.multisampleState);
             return seed;
         }
     };
