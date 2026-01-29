@@ -1,2 +1,5 @@
-call scripts\premake5\premake5.exe vs2022
-pause
+
+@echo off
+
+mkdir build
+cmake -B build

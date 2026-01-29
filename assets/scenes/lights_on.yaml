@@ -24,7 +24,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.431372553, 0.80392158, 0.4627451]
+      Strength: 1
       Radius: 388
       Compression: 388
       OuterCutoff: 28.5
@@ -45,7 +47,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
+      Enabled: true
       Color: [0.100000001, 0.100000001, 0.100000001]
+      Strength: 1
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
@@ -66,7 +70,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
+      Enabled: true
       Color: [0.838926196, 0.682636023, 0.34345302]
+      Strength: 1
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
@@ -125,7 +131,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.386608481, 0.658963382, -0.662495792]
+      Strength: 1
       Radius: 19.0437031
       Compression: 0.5
       OuterCutoff: 30
@@ -146,7 +154,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.4932096, 1.30710018, 2.31987476]
+      Strength: 1
       Radius: 15.8705406
       Compression: 0.5
       OuterCutoff: 30
@@ -167,7 +177,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.182805866, -0.7125386, 0.346649528]
+      Strength: 1
       Radius: 16.8222599
       Compression: 0.5
       OuterCutoff: 30
@@ -188,7 +200,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.00933866389, -0.452291995, 0.818974316]
+      Strength: 1
       Radius: 15.0445566
       Compression: 0.5
       OuterCutoff: 30
@@ -209,7 +223,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.332468629, 0.767914414, 1.33921325]
+      Strength: 1
       Radius: 18.3152256
       Compression: 0.5
       OuterCutoff: 30
@@ -230,7 +246,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.60521257, 1.20829654, 1.35894847]
+      Strength: 1
       Radius: 17.5994148
       Compression: 0.5
       OuterCutoff: 30
@@ -251,7 +269,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.07870722, 1.56429493, 2.51966906]
+      Strength: 1
       Radius: 15.7116919
       Compression: 0.5
       OuterCutoff: 30
@@ -272,7 +292,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.68730736, 1.19914091, 0.0320037194]
+      Strength: 1
       Radius: 19.9839783
       Compression: 0.5
       OuterCutoff: 30
@@ -293,7 +315,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.68028808, -0.00679805921, 0.220709875]
+      Strength: 1
       Radius: 15.1187172
       Compression: 0.5
       OuterCutoff: 30
@@ -314,7 +338,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.83758044, -0.728026748, -0.479283005]
+      Strength: 1
       Radius: 16.3794365
       Compression: 0.5
       OuterCutoff: 30
@@ -335,7 +361,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.969878256, 1.0662328, 2.12537003]
+      Strength: 1
       Radius: 16.0267944
       Compression: 0.5
       OuterCutoff: 30
@@ -356,7 +384,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.21655935, 1.11109507, 2.49718714]
+      Strength: 1
       Radius: 17.9952393
       Compression: 0.5
       OuterCutoff: 30
@@ -377,7 +407,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.303109825, 0.153347865, 1.24135053]
+      Strength: 1
       Radius: 16.1255226
       Compression: 0.5
       OuterCutoff: 30
@@ -398,7 +430,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.691122174, 1.12887216, 2.63329983]
+      Strength: 1
       Radius: 15.8449049
       Compression: 0.5
       OuterCutoff: 30
@@ -419,7 +453,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.29499191, 0.512016594, 1.66586292]
+      Strength: 1
       Radius: 19.7479172
       Compression: 0.5
       OuterCutoff: 30
@@ -440,7 +476,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.140751362, 0.316393018, 0.343495935]
+      Strength: 1
       Radius: 19.8330631
       Compression: 0.5
       OuterCutoff: 30
@@ -461,7 +499,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.382702112, 0.70512253, 2.07226777]
+      Strength: 1
       Radius: 15.8894615
       Compression: 0.5
       OuterCutoff: 30
@@ -482,7 +522,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.811181962, 1.08004248, 1.01307213]
+      Strength: 1
       Radius: 16.3978996
       Compression: 0.5
       OuterCutoff: 30
@@ -503,7 +545,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.246040225, 0.438238174, 1.73971784]
+      Strength: 1
       Radius: 16.8390446
       Compression: 0.5
       OuterCutoff: 30
@@ -524,7 +568,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.209356979, 0.315553725, 1.54328024]
+      Strength: 1
       Radius: 19.7466965
       Compression: 0.5
       OuterCutoff: 30
@@ -545,7 +591,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.69396043, 0.187452301, 0.905748546]
+      Strength: 1
       Radius: 16.5843678
       Compression: 0.5
       OuterCutoff: 30
@@ -566,7 +614,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.13455606, 1.09797204, 0.325998694]
+      Strength: 1
       Radius: 15.979949
       Compression: 0.5
       OuterCutoff: 30
@@ -587,7 +637,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.054933317, 1.47540975, 1.00300086]
+      Strength: 1
       Radius: 19.9731445
       Compression: 0.5
       OuterCutoff: 30
@@ -608,7 +660,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.25351727, 1.35760832, -0.0197760258]
+      Strength: 1
       Radius: 18.288065
       Compression: 0.5
       OuterCutoff: 30
@@ -629,7 +683,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.628131986, 1.10781419, -0.300241113]
+      Strength: 1
       Radius: 19.7053432
       Compression: 0.5
       OuterCutoff: 30
@@ -650,7 +706,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.41599774, 1.33655047, 1.77695024]
+      Strength: 1
       Radius: 18.0011902
       Compression: 0.5
       OuterCutoff: 30
@@ -671,7 +729,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.61247599, -0.597483814, -0.661275089]
+      Strength: 1
       Radius: 19.2631302
       Compression: 0.5
       OuterCutoff: 30
@@ -692,7 +752,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.909024298, -0.465567559, -0.61915952]
+      Strength: 1
       Radius: 18.7611008
       Compression: 0.5
       OuterCutoff: 30
@@ -713,7 +775,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.39243746, -0.245147586, 0.789066195]
+      Strength: 1
       Radius: 16.4517651
       Compression: 0.5
       OuterCutoff: 30
@@ -734,7 +798,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.32038331, 0.821703255, 1.10859513]
+      Strength: 1
       Radius: 17.5206757
       Compression: 0.5
       OuterCutoff: 30
@@ -755,7 +821,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.356700331, 0.0898693576, -0.0335093327]
+      Strength: 1
       Radius: 19.9758911
       Compression: 0.5
       OuterCutoff: 30
@@ -776,7 +844,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.875453949, -0.514015675, 1.41723883]
+      Strength: 1
       Radius: 19.6575813
       Compression: 0.5
       OuterCutoff: 30
@@ -797,7 +867,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.821436226, 1.17266619, 0.0910062045]
+      Strength: 1
       Radius: 16.0098572
       Compression: 0.5
       OuterCutoff: 30
@@ -818,7 +890,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.26944792, 0.744567692, 0.887844503]
+      Strength: 1
       Radius: 19.2739639
       Compression: 0.5
       OuterCutoff: 30
@@ -839,7 +913,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.368541509, 0.187833771, 1.21917379]
+      Strength: 1
       Radius: 18.6895351
       Compression: 0.5
       OuterCutoff: 30
@@ -860,7 +936,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.39701533, 0.76181072, -0.0368663669]
+      Strength: 1
       Radius: 17.9230633
       Compression: 0.5
       OuterCutoff: 30
@@ -881,7 +959,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.24076056, 0.780121744, 1.80248415]
+      Strength: 1
       Radius: 18.4556103
       Compression: 0.5
       OuterCutoff: 30
@@ -902,7 +982,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.22940767, 1.52889347, 2.22577572]
+      Strength: 1
       Radius: 18.6384163
       Compression: 0.5
       OuterCutoff: 30
@@ -923,7 +1005,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.611651957, 0.673001766, 0.383373529]
+      Strength: 1
       Radius: 15.8696251
       Compression: 0.5
       OuterCutoff: 30
@@ -944,7 +1028,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.653828561, -0.362796456, 1.81438637]
+      Strength: 1
       Radius: 15.3967409
       Compression: 0.5
       OuterCutoff: 30
@@ -965,7 +1051,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.817957103, 0.370639652, 1.1503036]
+      Strength: 1
       Radius: 16.4937286
       Compression: 0.5
       OuterCutoff: 30
@@ -986,7 +1074,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.627765715, 1.09499657, 0.410128057]
+      Strength: 1
       Radius: 19.1334267
       Compression: 0.5
       OuterCutoff: 30
@@ -1007,7 +1097,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.254463345, 1.60999632, 0.333526582]
+      Strength: 1
       Radius: 15.3286839
       Compression: 0.5
       OuterCutoff: 30
@@ -1028,7 +1120,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.75127411, -0.569330513, 2.52038121]
+      Strength: 1
       Radius: 18.2692947
       Compression: 0.5
       OuterCutoff: 30
@@ -1049,7 +1143,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.83996093, -0.0242698956, 0.090294078]
+      Strength: 1
       Radius: 17.7558212
       Compression: 0.5
       OuterCutoff: 30
@@ -1070,7 +1166,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.58671832, 0.492027044, 0.597104728]
+      Strength: 1
       Radius: 17.5463123
       Compression: 0.5
       OuterCutoff: 30
@@ -1091,7 +1189,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0117801446, 0.237960458, 1.35426891]
+      Strength: 1
       Radius: 18.5393829
       Compression: 0.5
       OuterCutoff: 30
@@ -1112,7 +1212,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.993804753, 1.11834323, 0.971668541]
+      Strength: 1
       Radius: 16.9005394
       Compression: 0.5
       OuterCutoff: 30
@@ -1133,7 +1235,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.353160203, 0.827120304, 2.5190587]
+      Strength: 1
       Radius: 16.8712425
       Compression: 0.5
       OuterCutoff: 30
@@ -1154,7 +1258,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.659688115, -0.680417895, 1.37329221]
+      Strength: 1
       Radius: 15.2795496
       Compression: 0.5
       OuterCutoff: 30
@@ -1175,7 +1281,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.44328129, 0.74220258, 2.21438241]
+      Strength: 1
       Radius: 19.2698441
       Compression: 0.5
       OuterCutoff: 30
@@ -1196,7 +1304,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.131900996, -0.206083894, 1.39048433]
+      Strength: 1
       Radius: 15.8445997
       Compression: 0.5
       OuterCutoff: 30
@@ -1217,7 +1327,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.60478532, 0.902500927, 0.558549702]
+      Strength: 1
       Radius: 19.0343933
       Compression: 0.5
       OuterCutoff: 30
@@ -1238,7 +1350,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.26035345, -0.387974232, 2.3353374]
+      Strength: 1
       Radius: 17.012085
       Compression: 0.5
       OuterCutoff: 30
@@ -1259,7 +1373,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.14670253, 0.319521159, -0.446119577]
+      Strength: 1
       Radius: 16.5114288
       Compression: 0.5
       OuterCutoff: 30
@@ -1280,7 +1396,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.269417405, 1.27009654, -0.297901332]
+      Strength: 1
       Radius: 16.4212475
       Compression: 0.5
       OuterCutoff: 30
@@ -1301,7 +1419,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.722251058, 0.788056612, 1.812657]
+      Strength: 1
       Radius: 19.2832718
       Compression: 0.5
       OuterCutoff: 30
@@ -1322,7 +1442,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.96966457, 0.606013715, 0.165166155]
+      Strength: 1
       Radius: 15.269021
       Compression: 0.5
       OuterCutoff: 30
@@ -1343,7 +1465,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.78307438, -0.103007637, -0.351105273]
+      Strength: 1
       Radius: 16.1638241
       Compression: 0.5
       OuterCutoff: 30
@@ -1364,7 +1488,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.117435224, -0.632274926, -0.399629712]
+      Strength: 1
       Radius: 16.6820278
       Compression: 0.5
       OuterCutoff: 30
@@ -1385,7 +1511,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.06845307, 1.34295952, 2.48721766]
+      Strength: 1
       Radius: 19.2104855
       Compression: 0.5
       OuterCutoff: 30
@@ -1406,7 +1534,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.90960419, 0.56397444, -0.652221203]
+      Strength: 1
       Radius: 16.9934692
       Compression: 0.5
       OuterCutoff: 30
@@ -1427,7 +1557,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.870998263, 1.6132009, 1.61337113]
+      Strength: 1
       Radius: 19.4511242
       Compression: 0.5
       OuterCutoff: 30
@@ -1448,7 +1580,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.284859776, 0.691694379, 1.95385611]
+      Strength: 1
       Radius: 16.1116371
       Compression: 0.5
       OuterCutoff: 30
@@ -1469,7 +1603,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.71019626, 0.899830639, -0.392508715]
+      Strength: 1
       Radius: 15.3242588
       Compression: 0.5
       OuterCutoff: 30
@@ -1490,7 +1626,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.37125766, 0.575342536, 2.00899267]
+      Strength: 1
       Radius: 15.7138281
       Compression: 0.5
       OuterCutoff: 30
@@ -1511,7 +1649,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.2890408, 1.42169726, -0.563107133]
+      Strength: 1
       Radius: 18.5328217
       Compression: 0.5
       OuterCutoff: 30
@@ -1532,7 +1672,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.29035309, -0.0625705793, -0.470737785]
+      Strength: 1
       Radius: 19.9089012
       Compression: 0.5
       OuterCutoff: 30
@@ -1553,7 +1695,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.437269211, 0.986350656, 0.558447957]
+      Strength: 1
       Radius: 15.7795954
       Compression: 0.5
       OuterCutoff: 30
@@ -1574,7 +1718,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.883449793, 1.50661492, -0.311939865]
+      Strength: 1
       Radius: 15.4005556
       Compression: 0.5
       OuterCutoff: 30
@@ -1595,7 +1741,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.421277493, 1.42596984, 1.91957343]
+      Strength: 1
       Radius: 17.2830887
       Compression: 0.5
       OuterCutoff: 30
@@ -1616,7 +1764,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.98522902, 0.0278405119, 0.682353079]
+      Strength: 1
       Radius: 15.1928768
       Compression: 0.5
       OuterCutoff: 30
@@ -1637,7 +1787,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.77074492, 0.800798118, -0.154973015]
+      Strength: 1
       Radius: 19.695425
       Compression: 0.5
       OuterCutoff: 30
@@ -1658,7 +1810,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.910916448, 1.52286601, 1.52252769]
+      Strength: 1
       Radius: 19.6064644
       Compression: 0.5
       OuterCutoff: 30
@@ -1679,7 +1833,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.88604391, 0.305101156, 1.23178816]
+      Strength: 1
       Radius: 17.7028713
       Compression: 0.5
       OuterCutoff: 30
@@ -1700,7 +1856,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0732444227, 0.125652343, 0.656514108]
+      Strength: 1
       Radius: 18.9762573
       Compression: 0.5
       OuterCutoff: 30
@@ -1721,7 +1879,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.395336777, -0.572687507, 1.30248916]
+      Strength: 1
       Radius: 15.7794428
       Compression: 0.5
       OuterCutoff: 30
@@ -1742,7 +1902,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.36893821, 0.353244126, 1.65782642]
+      Strength: 1
       Radius: 16.9826355
       Compression: 0.5
       OuterCutoff: 30
@@ -1763,7 +1925,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.783410132, 1.4400084, 2.49820447]
+      Strength: 1
       Radius: 19.9372845
       Compression: 0.5
       OuterCutoff: 30
@@ -1784,7 +1948,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.41703546, 0.818346202, 0.806868672]
+      Strength: 1
       Radius: 15.2481155
       Compression: 0.5
       OuterCutoff: 30
@@ -1805,7 +1971,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.45689261, 1.02549064, 2.31773829]
+      Strength: 1
       Radius: 19.4802704
       Compression: 0.5
       OuterCutoff: 30
@@ -1826,7 +1994,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.14114809, 0.220259666, 0.362010539]
+      Strength: 1
       Radius: 16.7677841
       Compression: 0.5
       OuterCutoff: 30
@@ -1847,7 +2017,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.400341809, -0.40170759, 1.79810989]
+      Strength: 1
       Radius: 16.362957
       Compression: 0.5
       OuterCutoff: 30
@@ -1868,7 +2040,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.81487477, -0.476554215, 1.05884981]
+      Strength: 1
       Radius: 16.0153503
       Compression: 0.5
       OuterCutoff: 30
@@ -1889,7 +2063,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.15912351, -0.523934186, 1.62547684]
+      Strength: 1
       Radius: 15.3788872
       Compression: 0.5
       OuterCutoff: 30
@@ -1910,7 +2086,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.789696932, -0.393314987, 1.65762293]
+      Strength: 1
       Radius: 15.3392134
       Compression: 0.5
       OuterCutoff: 30
@@ -1931,7 +2109,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30979335, 0.789277315, 1.64673793]
+      Strength: 1
       Radius: 17.7199631
       Compression: 0.5
       OuterCutoff: 30
@@ -1952,7 +2132,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.93993962, 0.410084814, 2.58192682]
+      Strength: 1
       Radius: 18.6393318
       Compression: 0.5
       OuterCutoff: 30
@@ -1973,7 +2155,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0999175981, 0.221556738, 0.573707223]
+      Strength: 1
       Radius: 19.0488911
       Compression: 0.5
       OuterCutoff: 30
@@ -1994,7 +2178,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.643818498, -0.218825385, 1.94826102]
+      Strength: 1
       Radius: 17.4233227
       Compression: 0.5
       OuterCutoff: 30
@@ -2015,7 +2201,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.802148521, 1.14634383, 1.35315001]
+      Strength: 1
       Radius: 16.7490158
       Compression: 0.5
       OuterCutoff: 30
@@ -2036,7 +2224,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.12570572, -0.616328955, 2.6576128]
+      Strength: 1
       Radius: 19.3177586
       Compression: 0.5
       OuterCutoff: 30
@@ -2057,7 +2247,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.782372534, 0.78141886, -0.577654302]
+      Strength: 1
       Radius: 15.0930815
       Compression: 0.5
       OuterCutoff: 30
@@ -2078,7 +2270,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.45457315, 0.254745662, 2.45588541]
+      Strength: 1
       Radius: 18.0579548
       Compression: 0.5
       OuterCutoff: 30
@@ -2099,7 +2293,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.58635211, -0.552469015, 1.31673133]
+      Strength: 1
       Radius: 17.3110142
       Compression: 0.5
       OuterCutoff: 30
@@ -2120,7 +2316,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.68715477, 0.93187499, 2.05354977]
+      Strength: 1
       Radius: 15.0511189
       Compression: 0.5
       OuterCutoff: 30
@@ -2141,7 +2339,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.73973811, 0.17936492, 1.90339875]
+      Strength: 1
       Radius: 15.5842772
       Compression: 0.5
       OuterCutoff: 30
@@ -2162,7 +2362,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.80401015, 0.588923275, -0.0566016622]
+      Strength: 1
       Radius: 18.9004173
       Compression: 0.5
       OuterCutoff: 30
@@ -2183,7 +2385,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.69762266, 1.63349569, 1.99139369]
+      Strength: 1
       Radius: 19.4517345
       Compression: 0.5
       OuterCutoff: 30
@@ -2204,7 +2408,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.46440017, -0.123378716, 0.216640666]
+      Strength: 1
       Radius: 18.9405499
       Compression: 0.5
       OuterCutoff: 30
@@ -2225,7 +2431,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.71068454, 1.26635802, -0.395051926]
+      Strength: 1
       Radius: 15.623188
       Compression: 0.5
       OuterCutoff: 30
@@ -2246,7 +2454,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.45554984, -0.270325363, 1.87349057]
+      Strength: 1
       Radius: 19.9751282
       Compression: 0.5
       OuterCutoff: 30
@@ -2267,7 +2477,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.549943566, -0.569711983, -0.0862046033]
+      Strength: 1
       Radius: 18.3831291
       Compression: 0.5
       OuterCutoff: 30
@@ -2288,7 +2500,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.2764672, -0.168698743, 1.93167913]
+      Strength: 1
       Radius: 16.158329
       Compression: 0.5
       OuterCutoff: 30
@@ -2309,7 +2523,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.303659171, 1.17304766, -0.590370357]
+      Strength: 1
       Radius: 15.2348404
       Compression: 0.5
       OuterCutoff: 30
@@ -2330,7 +2546,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.833033264, 0.286408603, 0.477472186]
+      Strength: 1
       Radius: 15.453352
       Compression: 0.5
       OuterCutoff: 30
@@ -2351,7 +2569,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.07095551, 1.44061875, 1.52507102]
+      Strength: 1
       Radius: 17.8501244
       Compression: 0.5
       OuterCutoff: 30
@@ -2372,7 +2592,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.973174214, 1.40834534, 0.756004453]
+      Strength: 1
       Radius: 15.4371777
       Compression: 0.5
       OuterCutoff: 30
@@ -2393,7 +2615,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.586016417, 1.37637711, 2.214077]
+      Strength: 1
       Radius: 19.3218784
       Compression: 0.5
       OuterCutoff: 30
@@ -2414,7 +2638,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.81664479, 1.42978454, 1.88539279]
+      Strength: 1
       Radius: 19.5626698
       Compression: 0.5
       OuterCutoff: 30
@@ -2435,7 +2661,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.855433822, 1.30763423, 0.513382375]
+      Strength: 1
       Radius: 15.8491774
       Compression: 0.5
       OuterCutoff: 30
@@ -2456,7 +2684,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.771324813, -0.525460124, -0.454257816]
+      Strength: 1
       Radius: 18.4194469
       Compression: 0.5
       OuterCutoff: 30
@@ -2477,7 +2707,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0371105075, 0.11535228, -0.505122006]
+      Strength: 1
       Radius: 19.8921165
       Compression: 0.5
       OuterCutoff: 30
@@ -2498,7 +2730,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.042115543, 0.329287082, 1.45823538]
+      Strength: 1
       Radius: 16.2129574
       Compression: 0.5
       OuterCutoff: 30
@@ -2519,7 +2753,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.276863933, 1.31511128, -0.590573847]
+      Strength: 1
       Radius: 18.1713314
       Compression: 0.5
       OuterCutoff: 30
@@ -2540,7 +2776,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.5643177, 0.00174716127, 0.04929756]
+      Strength: 1
       Radius: 16.712698
       Compression: 0.5
       OuterCutoff: 30
@@ -2561,7 +2799,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.301767021, 1.13955355, 2.61478519]
+      Strength: 1
       Radius: 17.2820206
       Compression: 0.5
       OuterCutoff: 30
@@ -2582,7 +2822,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.89220858, 0.803010643, 1.47217226]
+      Strength: 1
       Radius: 18.4408092
       Compression: 0.5
       OuterCutoff: 30
@@ -2603,7 +2845,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.492873937, 1.03090775, 1.16078174]
+      Strength: 1
       Radius: 17.7333908
       Compression: 0.5
       OuterCutoff: 30
@@ -2624,7 +2868,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.891506672, 0.808427691, 1.88386691]
+      Strength: 1
       Radius: 18.9938049
       Compression: 0.5
       OuterCutoff: 30
@@ -2645,7 +2891,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.18259227, 1.5245446, 1.43158257]
+      Strength: 1
       Radius: 19.5919685
       Compression: 0.5
       OuterCutoff: 30
@@ -2666,7 +2914,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.365855902, 1.60099339, 2.29779959]
+      Strength: 1
       Radius: 16.2598038
       Compression: 0.5
       OuterCutoff: 30
@@ -2687,7 +2937,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.28269291, -0.646618664, 1.41693366]
+      Strength: 1
       Radius: 15.1725826
       Compression: 0.5
       OuterCutoff: 30
@@ -2708,7 +2960,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.255500972, 1.74008155, -0.462090909]
+      Strength: 1
       Radius: 18.0045471
       Compression: 0.5
       OuterCutoff: 30
@@ -2729,7 +2983,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30716884, 0.0398953296, 0.441460341]
+      Strength: 1
       Radius: 17.0526752
       Compression: 0.5
       OuterCutoff: 30
@@ -2750,7 +3006,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.01528978, 0.493858099, -0.111840166]
+      Strength: 1
       Radius: 19.0136414
       Compression: 0.5
       OuterCutoff: 30
@@ -2771,7 +3029,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.6546526, -0.428563863, 0.586321592]
+      Strength: 1
       Radius: 18.6664944
       Compression: 0.5
       OuterCutoff: 30
@@ -2792,7 +3052,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.47434914, 1.08492541, 1.04826999]
+      Strength: 1
       Radius: 19.7854538
       Compression: 0.5
       OuterCutoff: 30
@@ -2813,7 +3075,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.909573674, 1.30305636, 2.34886718]
+      Strength: 1
       Radius: 15.5433817
       Compression: 0.5
       OuterCutoff: 30
@@ -2834,7 +3098,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.135502189, 1.59031188, 0.722230673]
+      Strength: 1
       Radius: 15.8243046
       Compression: 0.5
       OuterCutoff: 30
@@ -2855,7 +3121,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.16019166, 0.795686305, -0.272164047]
+      Strength: 1
       Radius: 18.4514904
       Compression: 0.5
       OuterCutoff: 30
@@ -2876,7 +3144,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.756370723, 1.27215648, 0.328338474]
+      Strength: 1
       Radius: 19.9874878
       Compression: 0.5
       OuterCutoff: 30
@@ -2897,7 +3167,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.16196167, -0.296952784, 0.627521574]
+      Strength: 1
       Radius: 15.9781179
       Compression: 0.5
       OuterCutoff: 30
@@ -2918,7 +3190,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.396313369, -0.447943091, 0.346649528]
+      Strength: 1
       Radius: 15.2311773
       Compression: 0.5
       OuterCutoff: 30
@@ -2939,7 +3213,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.852748215, 0.371555179, -0.660766363]
+      Strength: 1
       Radius: 19.0076904
       Compression: 0.5
       OuterCutoff: 30
@@ -2960,7 +3236,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.185491502, 0.648510635, 0.128340468]
+      Strength: 1
       Radius: 19.6101265
       Compression: 0.5
       OuterCutoff: 30
@@ -2981,7 +3259,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.49443042, 0.830095887, 0.969633996]
+      Strength: 1
       Radius: 18.7803268
       Compression: 0.5
       OuterCutoff: 30
@@ -3002,7 +3282,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.102481157, 0.632107019, -0.00126143289]
+      Strength: 1
       Radius: 17.6108589
       Compression: 0.5
       OuterCutoff: 30
@@ -3023,7 +3305,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.82842493, 0.633404016, 1.77247441]
+      Strength: 1
       Radius: 19.3777275
       Compression: 0.5
       OuterCutoff: 30
@@ -3044,7 +3328,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30393386, -0.618541598, 0.939624071]
+      Strength: 1
       Radius: 15.0042725
       Compression: 0.5
       OuterCutoff: 30
@@ -3065,7 +3351,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.34122741, -0.606181562, -0.150802135]
+      Strength: 1
       Radius: 15.1634264
       Compression: 0.5
       OuterCutoff: 30
@@ -3086,7 +3374,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.27109587, 1.70429862, 0.787540317]
+      Strength: 1
       Radius: 16.4764862
       Compression: 0.5
       OuterCutoff: 30
@@ -3107,7 +3397,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.286019474, -0.391941667, -0.330047488]
+      Strength: 1
       Radius: 19.5899849
       Compression: 0.5
       OuterCutoff: 30
@@ -3128,7 +3420,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.479995131, 1.28550839, -0.51122576]
+      Strength: 1
       Radius: 19.4894257
       Compression: 0.5
       OuterCutoff: 30
@@ -3149,7 +3443,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.74968719, 1.36539054, 0.0979237184]
+      Strength: 1
       Radius: 19.4384594
       Compression: 0.5
       OuterCutoff: 30
@@ -3170,7 +3466,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.711813688, -0.290620208, -0.0882392079]
+      Strength: 1
       Radius: 17.246315
       Compression: 0.5
       OuterCutoff: 30
@@ -3191,7 +3489,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.04519796, 1.52919865, 1.15447462]
+      Strength: 1
       Radius: 18.6532173
       Compression: 0.5
       OuterCutoff: 30
@@ -3212,7 +3512,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.748802125, -0.383320183, 2.13401675]
+      Strength: 1
       Radius: 16.4218578
       Compression: 0.5
       OuterCutoff: 30
@@ -3233,7 +3535,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.2900784, -0.672788203, 1.72201705]
+      Strength: 1
       Radius: 19.0635395
       Compression: 0.5
       OuterCutoff: 30
@@ -3254,7 +3558,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.29966128, 0.187681183, 1.72964668]
+      Strength: 1
       Radius: 19.5771656
       Compression: 0.5
       OuterCutoff: 30
@@ -3275,7 +3581,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.457228303, -0.731078565, 0.829554141]
+      Strength: 1
       Radius: 17.09235
       Compression: 0.5
       OuterCutoff: 30
@@ -3296,7 +3604,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.81304359, 1.13619649, 0.142887622]
+      Strength: 1
       Radius: 16.0673847
       Compression: 0.5
       OuterCutoff: 30
@@ -3317,7 +3627,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.70403147, 1.26597655, 1.18865526]
+      Strength: 1
       Radius: 16.6580715
       Compression: 0.5
       OuterCutoff: 30
@@ -3338,7 +3650,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.62559891, -0.180677265, 1.48956776]
+      Strength: 1
       Radius: 16.8552208
       Compression: 0.5
       OuterCutoff: 30
@@ -3359,7 +3673,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.649861157, -0.450537145, 0.659565926]
+      Strength: 1
       Radius: 19.4950714
       Compression: 0.5
       OuterCutoff: 30
@@ -3380,7 +3696,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.891140461, 1.48487055, 2.16443372]
+      Strength: 1
       Radius: 16.110569
       Compression: 0.5
       OuterCutoff: 30
@@ -3401,7 +3719,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.72826314, -0.708800077, 0.745526493]
+      Strength: 1
       Radius: 15.6981106
       Compression: 0.5
       OuterCutoff: 30
@@ -3422,7 +3742,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.21445358, 1.64707637, 1.20482993]
+      Strength: 1
       Radius: 18.9411602
       Compression: 0.5
       OuterCutoff: 30
@@ -3443,7 +3765,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0401623584, 0.541314363, -0.214077175]
+      Strength: 1
       Radius: 15.0349436
       Compression: 0.5
       OuterCutoff: 30
@@ -3464,7 +3788,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.101016268, 1.1697669, 0.874212742]
+      Strength: 1
       Radius: 18.15485
       Compression: 0.5
       OuterCutoff: 30
@@ -3485,7 +3811,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.531876564, 1.01595366, 1.00147498]
+      Strength: 1
       Radius: 19.1117592
       Compression: 0.5
       OuterCutoff: 30
@@ -3506,7 +3834,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.49632251, 0.400166303, 2.14744496]
+      Strength: 1
       Radius: 16.7580185
       Compression: 0.5
       OuterCutoff: 30
@@ -3527,7 +3857,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.055238504, 0.209044158, 0.679606497]
+      Strength: 1
       Radius: 16.4441357
       Compression: 0.5
       OuterCutoff: 30
@@ -3548,7 +3880,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.06625569, 0.207441911, 2.43848991]
+      Strength: 1
       Radius: 15.0503559
       Compression: 0.5
       OuterCutoff: 30
@@ -3569,7 +3903,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.2046876, 0.0823923275, 1.66545606]
+      Strength: 1
       Radius: 17.4927521
       Compression: 0.5
       OuterCutoff: 30
@@ -3590,7 +3926,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.71904659, 1.59336388, 0.1101311]
+      Strength: 1
       Radius: 19.8205509
       Compression: 0.5
       OuterCutoff: 30
@@ -3611,7 +3949,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.997161806, 0.0132679204, 0.690084517]
+      Strength: 1
       Radius: 15.4002504
       Compression: 0.5
       OuterCutoff: 30
@@ -3632,7 +3972,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.432447284, 0.721068442, 2.44296598]
+      Strength: 1
       Radius: 16.3965263
       Compression: 0.5
       OuterCutoff: 30
@@ -3653,7 +3995,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.73320723, 1.06783497, 0.338002682]
+      Strength: 1
       Radius: 16.1554298
       Compression: 0.5
       OuterCutoff: 30
@@ -3674,7 +4018,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.99047828, -0.678052664, 1.24775946]
+      Strength: 1
       Radius: 15.2961817
       Compression: 0.5
       OuterCutoff: 30
@@ -3695,7 +4041,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.989776313, -0.171292812, -0.279590219]
+      Strength: 1
       Radius: 19.799036
       Compression: 0.5
       OuterCutoff: 30
@@ -3716,7 +4064,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.981109023, 0.538872957, 0.265775472]
+      Strength: 1
       Radius: 17.0613728
       Compression: 0.5
       OuterCutoff: 30
@@ -3737,7 +4087,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.90264595, 0.254135221, 0.919176698]
+      Strength: 1
       Radius: 17.7417831
       Compression: 0.5
       OuterCutoff: 30
@@ -3758,7 +4110,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.63612783, 1.42520678, 1.30950868]
+      Strength: 1
       Radius: 19.6958828
       Compression: 0.5
       OuterCutoff: 30
@@ -3779,7 +4133,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.945768595, 1.18723881, -0.241238669]
+      Strength: 1
       Radius: 15.8795433
       Compression: 0.5
       OuterCutoff: 30
@@ -3800,7 +4156,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.028931547, -0.409718663, 2.20766807]
+      Strength: 1
       Radius: 16.0638752
       Compression: 0.5
       OuterCutoff: 30
@@ -3821,7 +4179,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.56285286, -0.00313580059, 1.52832615]
+      Strength: 1
       Radius: 19.6075325
       Compression: 0.5
       OuterCutoff: 30
@@ -3842,7 +4202,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0617694631, -0.560709, -0.589963496]
+      Strength: 1
       Radius: 16.7810593
       Compression: 0.5
       OuterCutoff: 30
@@ -3863,7 +4225,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.48979151, -0.29474017, 0.326405615]
+      Strength: 1
       Radius: 15.6736965
       Compression: 0.5
       OuterCutoff: 30
@@ -3884,7 +4248,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.79973757, -0.352954239, 2.02242088]
+      Strength: 1
       Radius: 15.6590471
       Compression: 0.5
       OuterCutoff: 30
@@ -3905,7 +4271,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.693807781, 0.676740289, 0.164047122]
+      Strength: 1
       Radius: 17.699667
       Compression: 0.5
       OuterCutoff: 30
@@ -3926,7 +4294,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.306466877, -0.487006783, 2.48426771]
+      Strength: 1
       Radius: 17.7898502
       Compression: 0.5
       OuterCutoff: 30
@@ -3947,7 +4317,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.776574016, 1.30603206, 2.24103522]
+      Strength: 1
       Radius: 17.7439194
       Compression: 0.5
       OuterCutoff: 30
@@ -3968,7 +4340,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.45609915, 1.70536673, 2.49820447]
+      Strength: 1
       Radius: 17.9740295
       Compression: 0.5
       OuterCutoff: 30
@@ -3989,7 +4363,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.71065402, 0.468375176, 1.33504224]
+      Strength: 1
       Radius: 16.1496315
       Compression: 0.5
       OuterCutoff: 30
@@ -4010,7 +4386,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.475051105, 1.70643485, 1.57044184]
+      Strength: 1
       Radius: 17.5678272
       Compression: 0.5
       OuterCutoff: 30
@@ -4031,7 +4409,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.14157534, 0.593729973, 0.421521604]
+      Strength: 1
       Radius: 16.6826382
       Compression: 0.5
       OuterCutoff: 30
@@ -4052,7 +4432,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.47935426, 1.55704677, 0.0642516166]
+      Strength: 1
       Radius: 19.0350037
       Compression: 0.5
       OuterCutoff: 30
@@ -4073,7 +4455,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.44352555, -0.588938653, 1.88956368]
+      Strength: 1
       Radius: 19.2953281
       Compression: 0.5
       OuterCutoff: 30
@@ -4094,7 +4478,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.2370373, 1.34547722, -0.597389638]
+      Strength: 1
       Radius: 17.7028713
       Compression: 0.5
       OuterCutoff: 30
@@ -4115,7 +4501,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.5198828, 0.991843998, 1.46678066]
+      Strength: 1
       Radius: 19.3400383
       Compression: 0.5
       OuterCutoff: 30
@@ -4136,7 +4524,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0842921212, 0.345919669, -0.595253348]
+      Strength: 1
       Radius: 17.5315094
       Compression: 0.5
       OuterCutoff: 30
@@ -4157,7 +4547,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.23105562, 0.516136646, 2.60685039]
+      Strength: 1
       Radius: 15.3550825
       Compression: 0.5
       OuterCutoff: 30
@@ -4178,7 +4570,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.57905817, -0.145275787, 0.458245605]
+      Strength: 1
       Radius: 15.2548294
       Compression: 0.5
       OuterCutoff: 30
@@ -4199,7 +4593,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.57371747, 0.002281219, 0.0671000257]
+      Strength: 1
       Radius: 18.248085
       Compression: 0.5
       OuterCutoff: 30
@@ -4220,7 +4616,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.356517226, 0.656445503, 0.0584531315]
+      Strength: 1
       Radius: 18.1614132
       Compression: 0.5
       OuterCutoff: 30
@@ -4241,7 +4639,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.565019667, -0.606486738, 0.446038187]
+      Strength: 1
       Radius: 18.4714813
       Compression: 0.5
       OuterCutoff: 30
@@ -4262,7 +4662,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.99932861, 1.23850977, -0.395967484]
+      Strength: 1
       Radius: 18.1749935
       Compression: 0.5
       OuterCutoff: 30
@@ -4283,7 +4685,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.463026822, 1.69720304, -0.0191656239]
+      Strength: 1
       Radius: 15.2114935
       Compression: 0.5
       OuterCutoff: 30
@@ -4304,7 +4708,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.80010378, -0.0688269064, 1.9831537]
+      Strength: 1
       Radius: 16.8971825
       Compression: 0.5
       OuterCutoff: 30
@@ -4325,7 +4731,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.722495198, 0.134960428, 1.34857237]
+      Strength: 1
       Radius: 18.3405571
       Compression: 0.5
       OuterCutoff: 30
@@ -4346,7 +4754,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.33024085, 1.63380086, 0.489883065]
+      Strength: 1
       Radius: 16.0083313
       Compression: 0.5
       OuterCutoff: 30
@@ -4367,7 +4777,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.19922483, -0.200056478, 0.303313285]
+      Strength: 1
       Radius: 15.5336161
       Compression: 0.5
       OuterCutoff: 30
@@ -4388,7 +4800,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.982695997, -0.735580087, 2.06382418]
+      Strength: 1
       Radius: 18.0231628
       Compression: 0.5
       OuterCutoff: 30
@@ -4409,7 +4823,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.82445753, 1.43459117, 1.82303321]
+      Strength: 1
       Radius: 19.1505165
       Compression: 0.5
       OuterCutoff: 30
@@ -4430,7 +4846,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.37809384, 0.606547773, -0.166264862]
+      Strength: 1
       Radius: 16.973175
       Compression: 0.5
       OuterCutoff: 30
@@ -4451,7 +4869,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.517777026, 0.96857357, -0.575212836]
+      Strength: 1
       Radius: 15.8450575
       Compression: 0.5
       OuterCutoff: 30
@@ -4472,7 +4892,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.966460168, -0.630977869, 1.87766147]
+      Strength: 1
       Radius: 15.2807703
       Compression: 0.5
       OuterCutoff: 30
@@ -4493,7 +4915,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.75731683, 0.684751451, 2.54184604]
+      Strength: 1
       Radius: 17.04352
       Compression: 0.5
       OuterCutoff: 30
@@ -4514,7 +4938,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.56624043, 1.61297202, 2.07786298]
+      Strength: 1
       Radius: 15.0111389
       Compression: 0.5
       OuterCutoff: 30
@@ -4535,7 +4961,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.20792258, 1.63624239, 0.739829659]
+      Strength: 1
       Radius: 16.004364
       Compression: 0.5
       OuterCutoff: 30
@@ -4556,7 +4984,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.210516676, -0.737868965, 2.02801585]
+      Strength: 1
       Radius: 16.9721069
       Compression: 0.5
       OuterCutoff: 30
@@ -4577,7 +5007,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.395336777, 0.0288323332, 2.17837048]
+      Strength: 1
       Radius: 17.8234196
       Compression: 0.5
       OuterCutoff: 30
@@ -4598,7 +5030,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.76973784, 0.296937466, 0.56160152]
+      Strength: 1
       Radius: 17.9021568
       Compression: 0.5
       OuterCutoff: 30
@@ -4619,7 +5053,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.837183774, 0.522850811, 2.50349426]
+      Strength: 1
       Radius: 18.0414753
       Compression: 0.5
       OuterCutoff: 30
@@ -4640,7 +5076,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.634540856, -0.531640112, 0.0264086816]
+      Strength: 1
       Radius: 17.3590813
       Compression: 0.5
       OuterCutoff: 30
@@ -4661,7 +5099,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.561418474, -0.392933488, 1.3817358]
+      Strength: 1
       Radius: 19.1248817
       Compression: 0.5
       OuterCutoff: 30
@@ -4682,7 +5122,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.529190958, 0.547494471, -0.308887988]
+      Strength: 1
       Radius: 15.0367746
       Compression: 0.5
       OuterCutoff: 30
@@ -4703,7 +5145,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.80797756, 0.173566356, 2.56402254]
+      Strength: 1
       Radius: 17.6085701
       Compression: 0.5
       OuterCutoff: 30
@@ -4724,7 +5168,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.52946568, 0.286027074, 0.368724614]
+      Strength: 1
       Radius: 19.2080441
       Compression: 0.5
       OuterCutoff: 30
@@ -4745,7 +5191,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.16345714, -0.52149272, 1.78305399]
+      Strength: 1
       Radius: 18.7653732
       Compression: 0.5
       OuterCutoff: 30
@@ -4766,7 +5214,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.830591738, -0.514015675, 0.916735291]
+      Strength: 1
       Radius: 15.9418011
       Compression: 0.5
       OuterCutoff: 30
@@ -4787,7 +5237,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.683065295, -0.364322394, 0.367707342]
+      Strength: 1
       Radius: 15.9114351
       Compression: 0.5
       OuterCutoff: 30
@@ -4808,7 +5260,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.00381482, -0.586420834, 0.450921088]
+      Strength: 1
       Radius: 19.8184147
       Compression: 0.5
       OuterCutoff: 30
@@ -4829,7 +5283,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.944181621, 0.454794407, -0.0691142678]
+      Strength: 1
       Radius: 18.4962006
       Compression: 0.5
       OuterCutoff: 30
@@ -4850,7 +5306,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.63927126, 1.30610836, 0.331797242]
+      Strength: 1
       Radius: 18.1495094
       Compression: 0.5
       OuterCutoff: 30
@@ -4871,7 +5329,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.71892452, 1.63242757, 0.298430264]
+      Strength: 1
       Radius: 17.5872059
       Compression: 0.5
       OuterCutoff: 30
@@ -4892,7 +5352,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.65196693, -0.516151965, 0.9708547]
+      Strength: 1
       Radius: 15.3834648
       Compression: 0.5
       OuterCutoff: 30
@@ -4913,7 +5375,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.281441689, 0.328829318, 1.05030477]
+      Strength: 1
       Radius: 19.8748741
       Compression: 0.5
       OuterCutoff: 30
@@ -4934,7 +5398,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.37531662, 1.13833284, 0.705547273]
+      Strength: 1
       Radius: 15.5085907
       Compression: 0.5
       OuterCutoff: 30
@@ -4955,7 +5421,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.54298532, 1.34295952, 2.08071113]
+      Strength: 1
       Radius: 17.4974823
       Compression: 0.5
       OuterCutoff: 30
@@ -4976,7 +5444,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.133487955, -0.198301688, 1.12792349]
+      Strength: 1
       Radius: 16.0231323
       Compression: 0.5
       OuterCutoff: 30
@@ -4997,7 +5467,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.47758412, 0.733733654, 2.52261925]
+      Strength: 1
       Radius: 16.4719086
       Compression: 0.5
       OuterCutoff: 30
@@ -5018,7 +5490,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.517960131, 1.36081266, 2.42811346]
+      Strength: 1
       Radius: 15.5272074
       Compression: 0.5
       OuterCutoff: 30
@@ -5039,7 +5513,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.91338849, 0.148541197, 2.30919313]
+      Strength: 1
       Radius: 16.9078655
       Compression: 0.5
       OuterCutoff: 30
@@ -5060,7 +5536,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.34928429, 0.333178222, 0.600360036]
+      Strength: 1
       Radius: 16.3354893
       Compression: 0.5
       OuterCutoff: 30
@@ -5081,7 +5559,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.97335732, 1.11582541, 1.98040712]
+      Strength: 1
       Radius: 19.1389198
       Compression: 0.5
       OuterCutoff: 30
@@ -5102,7 +5582,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.52580345, 1.52813053, -0.486200541]
+      Strength: 1
       Radius: 16.8424015
       Compression: 0.5
       OuterCutoff: 30
@@ -5123,7 +5605,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.497634828, 1.45404673, -0.499526948]
+      Strength: 1
       Radius: 17.019104
       Compression: 0.5
       OuterCutoff: 30
@@ -5144,7 +5628,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.903408945, -0.257889092, 1.9455142]
+      Strength: 1
       Radius: 18.8088627
       Compression: 0.5
       OuterCutoff: 30
@@ -5165,7 +5651,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.92638934, 0.0566804446, -0.0851873532]
+      Strength: 1
       Radius: 18.5470142
       Compression: 0.5
       OuterCutoff: 30
@@ -5186,7 +5674,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.261665702, -0.659894168, 1.81072426]
+      Strength: 1
       Radius: 15.4118471
       Compression: 0.5
       OuterCutoff: 30
@@ -5207,7 +5697,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.609210491, -0.557046771, 0.0629291385]
+      Strength: 1
       Radius: 15.3222752
       Compression: 0.5
       OuterCutoff: 30
@@ -5228,7 +5720,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.537430942, 0.521935105, 2.06880903]
+      Strength: 1
       Radius: 19.9397259
       Compression: 0.5
       OuterCutoff: 30
@@ -5249,7 +5743,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.58949554, 0.427327782, 1.68987083]
+      Strength: 1
       Radius: 16.7232285
       Compression: 0.5
       OuterCutoff: 30
@@ -5270,7 +5766,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.1087985, 1.32304621, -0.442253888]
+      Strength: 1
       Radius: 15.5182047
       Compression: 0.5
       OuterCutoff: 30
@@ -5291,7 +5789,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.83776355, 0.378269285, 0.913073003]
+      Strength: 1
       Radius: 17.7442245
       Compression: 0.5
       OuterCutoff: 30
@@ -5312,7 +5812,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.224860385, 0.518501878, -0.258227289]
+      Strength: 1
       Radius: 16.3989677
       Compression: 0.5
       OuterCutoff: 30
@@ -5333,7 +5835,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.927701652, 1.11086619, 2.19373131]
+      Strength: 1
       Radius: 16.7983036
       Compression: 0.5
       OuterCutoff: 30
@@ -5354,7 +5858,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.96517837, 0.644009173, 1.44012785]
+      Strength: 1
       Radius: 19.1833248
       Compression: 0.5
       OuterCutoff: 30
@@ -5375,7 +5881,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.511917472, -0.195555031, -0.531266212]
+      Strength: 1
       Radius: 17.0514545
       Compression: 0.5
       OuterCutoff: 30
@@ -5396,7 +5904,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.61326945, 1.39194167, 1.14684498]
+      Strength: 1
       Radius: 16.091341
       Compression: 0.5
       OuterCutoff: 30
@@ -5417,7 +5927,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.91113007, -0.724288166, 1.35620189]
+      Strength: 1
       Radius: 17.6862392
       Compression: 0.5
       OuterCutoff: 30
@@ -5438,7 +5950,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.305185109, 0.731139541, 2.28569388]
+      Strength: 1
       Radius: 15.0827055
       Compression: 0.5
       OuterCutoff: 30
@@ -5459,7 +5973,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.93163848, 0.263901144, 0.0815454572]
+      Strength: 1
       Radius: 15.4853973
       Compression: 0.5
       OuterCutoff: 30
@@ -5480,7 +5996,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.501541197, 0.813539505, 0.428032219]
+      Strength: 1
       Radius: 16.4497814
       Compression: 0.5
       OuterCutoff: 30
@@ -5501,7 +6019,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.920682371, 0.936452806, 0.427218407]
+      Strength: 1
       Radius: 17.9137535
       Compression: 0.5
       OuterCutoff: 30
@@ -5522,7 +6042,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.494766086, -0.378284603, 1.5490787]
+      Strength: 1
       Radius: 15.5578785
       Compression: 0.5
       OuterCutoff: 30
@@ -5543,7 +6065,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30686367, 0.384373009, 0.96912539]
+      Strength: 1
       Radius: 17.0925026
       Compression: 0.5
       OuterCutoff: 30
@@ -5564,7 +6088,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.04007077, 1.44489133, 0.562110186]
+      Strength: 1
       Radius: 19.8113956
       Compression: 0.5
       OuterCutoff: 30
@@ -5585,7 +6111,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.70513022, 1.28352451, 0.580421329]
+      Strength: 1
       Radius: 15.3196812
       Compression: 0.5
       OuterCutoff: 30
@@ -5606,7 +6134,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.547868311, 1.20928836, 2.06321383]
+      Strength: 1
       Radius: 17.8160954
       Compression: 0.5
       OuterCutoff: 30
@@ -5627,7 +6157,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.341929376, -0.0514313616, 0.71266824]
+      Strength: 1
       Radius: 17.7210312
       Compression: 0.5
       OuterCutoff: 30
@@ -5648,7 +6180,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.34049499, 0.996040285, 1.52680027]
+      Strength: 1
       Radius: 18.21665
       Compression: 0.5
       OuterCutoff: 30
@@ -5669,7 +6203,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.325937688, 0.0190664101, 0.402294934]
+      Strength: 1
       Radius: 16.8427067
       Compression: 0.5
       OuterCutoff: 30
@@ -5690,7 +6226,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.51207006, 0.81208992, 0.202703908]
+      Strength: 1
       Radius: 17.9140587
       Compression: 0.5
       OuterCutoff: 30
@@ -5711,7 +6249,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.40110481, -0.696058631, 1.71377707]
+      Strength: 1
       Radius: 18.1534767
       Compression: 0.5
       OuterCutoff: 30
@@ -5732,7 +6272,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.18387401, 1.41032898, 1.07980585]
+      Strength: 1
       Radius: 17.4758148
       Compression: 0.5
       OuterCutoff: 30
@@ -5753,7 +6295,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.52855003, 0.681470692, 0.498631716]
+      Strength: 1
       Radius: 15.113224
       Compression: 0.5
       OuterCutoff: 30
@@ -5774,7 +6318,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.67046118, 1.23507655, 0.274117231]
+      Strength: 1
       Radius: 18.6190376
       Compression: 0.5
       OuterCutoff: 30
@@ -5795,7 +6341,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.193426311, 0.223464161, -0.327402562]
+      Strength: 1
       Radius: 18.3410149
       Compression: 0.5
       OuterCutoff: 30
@@ -5816,7 +6364,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.51316869, 1.47060311, 1.79505801]
+      Strength: 1
       Radius: 17.8475304
       Compression: 0.5
       OuterCutoff: 30
@@ -5837,7 +6387,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.975798845, 1.6936934, 1.77817118]
+      Strength: 1
       Radius: 16.0745564
       Compression: 0.5
       OuterCutoff: 30
@@ -5858,7 +6410,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.747337282, 1.74626148, 0.942065656]
+      Strength: 1
       Radius: 19.7399826
       Compression: 0.5
       OuterCutoff: 30
@@ -5879,7 +6433,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.915860474, 1.57474756, -0.181524098]
+      Strength: 1
       Radius: 18.2116146
       Compression: 0.5
       OuterCutoff: 30
@@ -5900,7 +6456,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.399182111, 0.876865447, -0.333404541]
+      Strength: 1
       Radius: 16.1717587
       Compression: 0.5
       OuterCutoff: 30
@@ -5921,7 +6479,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.78356278, 0.619136572, 2.31102419]
+      Strength: 1
       Radius: 19.3443108
       Compression: 0.5
       OuterCutoff: 30
@@ -5942,7 +6502,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.30555132, 1.14054537, -0.160262883]
+      Strength: 1
       Radius: 17.0236816
       Compression: 0.5
       OuterCutoff: 30
@@ -5963,7 +6525,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.789513826, -0.590693474, 2.28681302]
+      Strength: 1
       Radius: 18.0181274
       Compression: 0.5
       OuterCutoff: 30
@@ -5984,7 +6548,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.1661123, 0.0893353, 1.26261175]
+      Strength: 1
       Radius: 16.8016605
       Compression: 0.5
       OuterCutoff: 30
@@ -6005,7 +6571,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.79335916, -0.638836384, 2.65690064]
+      Strength: 1
       Radius: 15.5409403
       Compression: 0.5
       OuterCutoff: 30
@@ -6026,7 +6594,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.522660017, -0.187543899, 0.843389213]
+      Strength: 1
       Radius: 18.2087154
       Compression: 0.5
       OuterCutoff: 30
@@ -6047,7 +6617,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.92883086, -0.169843182, 0.705648959]
+      Strength: 1
       Radius: 18.6968594
       Compression: 0.5
       OuterCutoff: 30
@@ -6068,7 +6640,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.3649708, 1.4855572, 1.40482795]
+      Strength: 1
       Radius: 16.1781673
       Compression: 0.5
       OuterCutoff: 30
@@ -6089,7 +6663,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.02182078, -0.712233424, 1.22649825]
+      Strength: 1
       Radius: 17.2922459
       Compression: 0.5
       OuterCutoff: 30
@@ -6110,7 +6686,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.533341467, -0.491126806, 0.152755275]
+      Strength: 1
       Radius: 17.331461
       Compression: 0.5
       OuterCutoff: 30
@@ -6131,7 +6709,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.47984254, 1.74542224, -0.27786085]
+      Strength: 1
       Radius: 15.2041693
       Compression: 0.5
       OuterCutoff: 30
@@ -6152,7 +6732,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.28217414, 1.12719345, 1.68875194]
+      Strength: 1
       Radius: 18.3913689
       Compression: 0.5
       OuterCutoff: 30
@@ -6173,7 +6755,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.72264779, 1.51851726, -0.429639608]
+      Strength: 1
       Radius: 18.1424904
       Compression: 0.5
       OuterCutoff: 30
@@ -6194,7 +6778,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.52589494, 0.684751451, 2.32872486]
+      Strength: 1
       Radius: 15.8774071
       Compression: 0.5
       OuterCutoff: 30
@@ -6215,7 +6801,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.96594131, 0.371326298, 2.1954608]
+      Strength: 1
       Radius: 18.3005772
       Compression: 0.5
       OuterCutoff: 30
@@ -6236,7 +6824,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.67070532, 1.68537712, 1.82303321]
+      Strength: 1
       Radius: 16.5706348
       Compression: 0.5
       OuterCutoff: 30
@@ -6257,7 +6847,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.499526978, 1.35623491, 2.49260926]
+      Strength: 1
       Radius: 16.0795918
       Compression: 0.5
       OuterCutoff: 30
@@ -6278,7 +6870,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.779992044, 1.13329732, 2.42913103]
+      Strength: 1
       Radius: 16.8736839
       Compression: 0.5
       OuterCutoff: 30
@@ -6299,7 +6893,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.777428508, 1.09011364, 1.78753006]
+      Strength: 1
       Radius: 17.7509384
       Compression: 0.5
       OuterCutoff: 30
@@ -6320,7 +6916,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.39133883, 0.818346202, 0.766787648]
+      Strength: 1
       Radius: 17.4506359
       Compression: 0.5
       OuterCutoff: 30
@@ -6341,7 +6939,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.907925665, -0.400563121, -0.449374884]
+      Strength: 1
       Radius: 15.9013643
       Compression: 0.5
       OuterCutoff: 30
@@ -6362,7 +6962,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.83361304, 0.812242508, 2.05863619]
+      Strength: 1
       Radius: 15.5113373
       Compression: 0.5
       OuterCutoff: 30
@@ -6383,7 +6985,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.743980229, -0.476020157, 1.68041027]
+      Strength: 1
       Radius: 17.4089775
       Compression: 0.5
       OuterCutoff: 30
@@ -6404,7 +7008,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.651936412, 0.551843405, -0.35608995]
+      Strength: 1
       Radius: 18.9526043
       Compression: 0.5
       OuterCutoff: 30
@@ -6425,7 +7031,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.98174989, -0.281617224, -0.494237065]
+      Strength: 1
       Radius: 17.1359901
       Compression: 0.5
       OuterCutoff: 30
@@ -6446,7 +7054,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.965971887, 1.53835428, 2.1431725]
+      Strength: 1
       Radius: 17.3990593
       Compression: 0.5
       OuterCutoff: 30
@@ -6467,7 +7077,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.725791216, -0.0650120601, 1.81540358]
+      Strength: 1
       Radius: 15.1561022
       Compression: 0.5
       OuterCutoff: 30
@@ -6488,7 +7100,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.531449318, -0.543847501, 0.080935061]
+      Strength: 1
       Radius: 18.1284523
       Compression: 0.5
       OuterCutoff: 30
@@ -6509,7 +7123,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.12387466, 1.12971139, 0.94989872]
+      Strength: 1
       Radius: 16.7395554
       Compression: 0.5
       OuterCutoff: 30
@@ -6530,7 +7146,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.1847285, 1.47220528, 0.242276236]
+      Strength: 1
       Radius: 18.033083
       Compression: 0.5
       OuterCutoff: 30
@@ -6551,7 +7169,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.162541583, 0.308534533, 2.04998922]
+      Strength: 1
       Radius: 18.1620235
       Compression: 0.5
       OuterCutoff: 30
@@ -6572,7 +7192,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.476760149, 0.668195069, -0.0524308272]
+      Strength: 1
       Radius: 19.3099766
       Compression: 0.5
       OuterCutoff: 30
@@ -6593,7 +7215,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.797326565, 0.0543152578, 0.675028682]
+      Strength: 1
       Radius: 18.2879124
       Compression: 0.5
       OuterCutoff: 30
@@ -6614,7 +7238,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.90453815, 0.564279616, 1.87888217]
+      Strength: 1
       Radius: 19.5851021
       Compression: 0.5
       OuterCutoff: 30
@@ -6635,7 +7261,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.516129017, 1.23118544, 0.295480222]
+      Strength: 1
       Radius: 16.435133
       Compression: 0.5
       OuterCutoff: 30
@@ -6656,7 +7284,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.459669799, 0.0553834476, 0.144617006]
+      Strength: 1
       Radius: 19.8059025
       Compression: 0.5
       OuterCutoff: 30
@@ -6677,7 +7307,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.454725802, 0.693144083, -0.322010964]
+      Strength: 1
       Radius: 16.8797874
       Compression: 0.5
       OuterCutoff: 30
@@ -6698,7 +7330,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.50407422, -0.614574194, 0.364146858]
+      Strength: 1
       Radius: 18.5964546
       Compression: 0.5
       OuterCutoff: 30
@@ -6719,7 +7353,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.54625082, -0.57779938, -0.301970482]
+      Strength: 1
       Radius: 15.1362648
       Compression: 0.5
       OuterCutoff: 30
@@ -6740,7 +7376,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.48142946, 0.0680486187, 1.08641815]
+      Strength: 1
       Radius: 17.9924927
       Compression: 0.5
       OuterCutoff: 30
@@ -6761,7 +7399,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.143559068, 0.703215182, 1.69933152]
+      Strength: 1
       Radius: 16.4737396
       Compression: 0.5
       OuterCutoff: 30
@@ -6782,7 +7422,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.95022434, 0.0131153325, 1.26515508]
+      Strength: 1
       Radius: 15.6747646
       Compression: 0.5
       OuterCutoff: 30
@@ -6803,7 +7445,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.35465562, 0.527352273, 0.590797603]
+      Strength: 1
       Radius: 18.616291
       Compression: 0.5
       OuterCutoff: 30
@@ -6824,7 +7468,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.112735376, 1.07660913, 2.5232296]
+      Strength: 1
       Radius: 16.1397133
       Compression: 0.5
       OuterCutoff: 30
@@ -6845,7 +7491,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.22446358, 1.2115773, 0.855596602]
+      Strength: 1
       Radius: 18.8735619
       Compression: 0.5
       OuterCutoff: 30
@@ -6866,7 +7514,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.675618768, 1.3940779, 2.66015601]
+      Strength: 1
       Radius: 15.7864618
       Compression: 0.5
       OuterCutoff: 30
@@ -6887,7 +7537,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.136967078, -0.465414971, 1.28132975]
+      Strength: 1
       Radius: 16.6547127
       Compression: 0.5
       OuterCutoff: 30
@@ -6908,7 +7560,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.75621819, 0.741744816, 2.01519823]
+      Strength: 1
       Radius: 17.8183842
       Compression: 0.5
       OuterCutoff: 30
@@ -6929,7 +7583,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.640766621, 0.348513752, -0.0696228892]
+      Strength: 1
       Radius: 16.0838642
       Compression: 0.5
       OuterCutoff: 30
@@ -6950,7 +7606,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.89751887, 0.357974499, 0.660176396]
+      Strength: 1
       Radius: 15.2385025
       Compression: 0.5
       OuterCutoff: 30
@@ -6971,7 +7629,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.579363406, 0.921727598, 0.0698467046]
+      Strength: 1
       Radius: 15.8623009
       Compression: 0.5
       OuterCutoff: 30
@@ -6992,7 +7652,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.318613231, 0.713209987, 2.37257004]
+      Strength: 1
       Radius: 17.2301407
       Compression: 0.5
       OuterCutoff: 30
@@ -7013,7 +7675,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.17596972, 0.536126256, 2.5515101]
+      Strength: 1
       Radius: 15.2536087
       Compression: 0.5
       OuterCutoff: 30
@@ -7034,7 +7698,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.565996289, 0.701307714, 1.34450316]
+      Strength: 1
       Radius: 18.9431438
       Compression: 0.5
       OuterCutoff: 30
@@ -7055,7 +7721,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.836085081, -0.605647504, 2.55985188]
+      Strength: 1
       Radius: 16.7192612
       Compression: 0.5
       OuterCutoff: 30
@@ -7076,7 +7744,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.981536329, 1.20463419, 0.0385143347]
+      Strength: 1
       Radius: 15.3056431
       Compression: 0.5
       OuterCutoff: 30
@@ -7097,7 +7767,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.13711965, 1.01641142, 0.817448437]
+      Strength: 1
       Radius: 17.9255047
       Compression: 0.5
       OuterCutoff: 30
@@ -7118,7 +7790,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.12857449, 1.51454985, 1.92008209]
+      Strength: 1
       Radius: 19.0604877
       Compression: 0.5
       OuterCutoff: 30
@@ -7139,7 +7813,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.02786338, 0.824984074, -0.00960315205]
+      Strength: 1
       Radius: 19.2165909
       Compression: 0.5
       OuterCutoff: 30
@@ -7160,7 +7836,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.75676751, 0.241317466, 1.39577425]
+      Strength: 1
       Radius: 19.9139366
       Compression: 0.5
       OuterCutoff: 30
@@ -7181,7 +7859,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.90136421, 0.851992846, 1.60258806]
+      Strength: 1
       Radius: 17.8112125
       Compression: 0.5
       OuterCutoff: 30
@@ -7202,7 +7882,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.298043758, -0.325334996, 2.25324249]
+      Strength: 1
       Radius: 18.6104927
       Compression: 0.5
       OuterCutoff: 30
@@ -7223,7 +7905,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.19638658, 1.74984753, 2.65486598]
+      Strength: 1
       Radius: 17.5696583
       Compression: 0.5
       OuterCutoff: 30
@@ -7244,7 +7928,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.513992727, 0.627758086, 2.30888796]
+      Strength: 1
       Radius: 15.0267038
       Compression: 0.5
       OuterCutoff: 30
@@ -7265,7 +7951,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.763206899, 1.38621938, -0.230557159]
+      Strength: 1
       Radius: 18.8116093
       Compression: 0.5
       OuterCutoff: 30
@@ -7286,7 +7974,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0125125889, 0.174558252, -0.416313142]
+      Strength: 1
       Radius: 16.150547
       Compression: 0.5
       OuterCutoff: 30
@@ -7307,7 +7997,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.65398109, -0.463126063, 0.798018277]
+      Strength: 1
       Radius: 16.9737854
       Compression: 0.5
       OuterCutoff: 30
@@ -7328,7 +8020,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.16953027, 1.4317683, 1.21459603]
+      Strength: 1
       Radius: 16.181982
       Compression: 0.5
       OuterCutoff: 30
@@ -7349,7 +8043,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.52085936, 0.894566238, 1.51805174]
+      Strength: 1
       Radius: 17.4980927
       Compression: 0.5
       OuterCutoff: 30
@@ -7370,7 +8066,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.77404094, 1.71093643, 0.90330714]
+      Strength: 1
       Radius: 15.1107826
       Compression: 0.5
       OuterCutoff: 30
@@ -7391,7 +8089,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.6646626, 1.58069861, 0.390596211]
+      Strength: 1
       Radius: 17.8675194
       Compression: 0.5
       OuterCutoff: 30
@@ -7412,7 +8112,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.72191536, -0.468466818, 1.07319355]
+      Strength: 1
       Radius: 17.0896034
       Compression: 0.5
       OuterCutoff: 30
@@ -7433,7 +8135,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.236762598, 0.413365602, -0.566057265]
+      Strength: 1
       Radius: 16.7772446
       Compression: 0.5
       OuterCutoff: 30
@@ -7454,7 +8158,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.55333114, 1.20303202, 2.47419643]
+      Strength: 1
       Radius: 18.8813438
       Compression: 0.5
       OuterCutoff: 30
@@ -7475,7 +8181,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.39536726, 0.635082603, -0.490574867]
+      Strength: 1
       Radius: 15.6765957
       Compression: 0.5
       OuterCutoff: 30
@@ -7496,7 +8204,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.82293165, 0.524452984, 0.492324561]
+      Strength: 1
       Radius: 19.7231979
       Compression: 0.5
       OuterCutoff: 30
@@ -7517,7 +8227,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.613299966, 0.979407609, 2.46575308]
+      Strength: 1
       Radius: 19.9545269
       Compression: 0.5
       OuterCutoff: 30
@@ -7538,7 +8250,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.44920194, -0.335940182, 0.970142663]
+      Strength: 1
       Radius: 15.2447586
       Compression: 0.5
       OuterCutoff: 30
@@ -7559,7 +8273,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.07358015, -0.356463879, -0.615192056]
+      Strength: 1
       Radius: 16.5042572
       Compression: 0.5
       OuterCutoff: 30
@@ -7580,7 +8296,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.571550667, -0.458700895, -0.662597477]
+      Strength: 1
       Radius: 17.7428513
       Compression: 0.5
       OuterCutoff: 30
@@ -7601,7 +8319,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.417493224, 1.26513731, 2.39189839]
+      Strength: 1
       Radius: 16.9180889
       Compression: 0.5
       OuterCutoff: 30
@@ -7622,7 +8342,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.28843045, 0.596705556, 2.38376021]
+      Strength: 1
       Radius: 16.2492752
       Compression: 0.5
       OuterCutoff: 30
@@ -7643,7 +8365,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.290231019, 0.675672174, 2.5123446]
+      Strength: 1
       Radius: 16.7366562
       Compression: 0.5
       OuterCutoff: 30
@@ -7664,7 +8388,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.217596978, 1.26605284, 2.47287393]
+      Strength: 1
       Radius: 15.5908384
       Compression: 0.5
       OuterCutoff: 30
@@ -7685,7 +8411,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.395397812, 0.843752801, 0.00942001678]
+      Strength: 1
       Radius: 16.6606655
       Compression: 0.5
       OuterCutoff: 30
@@ -7706,7 +8434,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.355296493, 0.835284054, -0.153447092]
+      Strength: 1
       Radius: 17.1141701
       Compression: 0.5
       OuterCutoff: 30
@@ -7727,7 +8457,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.38401437, 1.32914984, 1.89017403]
+      Strength: 1
       Radius: 17.0349751
       Compression: 0.5
       OuterCutoff: 30
@@ -7748,7 +8480,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.463270962, -0.294206113, 0.280424386]
+      Strength: 1
       Radius: 18.1061745
       Compression: 0.5
       OuterCutoff: 30
@@ -7769,7 +8503,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.111392558, 0.568552196, 2.60339141]
+      Strength: 1
       Radius: 17.8562279
       Compression: 0.5
       OuterCutoff: 30
@@ -7790,7 +8526,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.437147141, 0.00571459578, -0.158228323]
+      Strength: 1
       Radius: 15.262001
       Compression: 0.5
       OuterCutoff: 30
@@ -7811,7 +8549,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.84521008, 0.707487643, 0.446851969]
+      Strength: 1
       Radius: 18.6797695
       Compression: 0.5
       OuterCutoff: 30
@@ -7832,7 +8572,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.04977572, -0.491050512, -0.397595137]
+      Strength: 1
       Radius: 17.9976807
       Compression: 0.5
       OuterCutoff: 30
@@ -7853,7 +8595,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.151371807, 0.300828546, 2.59596539]
+      Strength: 1
       Radius: 16.7148342
       Compression: 0.5
       OuterCutoff: 30
@@ -7874,7 +8618,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.373851746, 1.02594841, 1.28682315]
+      Strength: 1
       Radius: 18.072298
       Compression: 0.5
       OuterCutoff: 30
@@ -7895,7 +8641,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.67717516, 0.83207953, 1.38509274]
+      Strength: 1
       Radius: 17.7373581
       Compression: 0.5
       OuterCutoff: 30
@@ -7916,7 +8664,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.31687367, -0.622051179, 0.418062836]
+      Strength: 1
       Radius: 16.0260315
       Compression: 0.5
       OuterCutoff: 30
@@ -7937,7 +8687,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.12601089, 0.470892966, 2.26941729]
+      Strength: 1
       Radius: 18.8293095
       Compression: 0.5
       OuterCutoff: 30
@@ -7958,7 +8710,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.29911196, 0.317613721, 0.300464869]
+      Strength: 1
       Radius: 15.4492321
       Compression: 0.5
       OuterCutoff: 30
@@ -7979,7 +8733,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.651692271, 0.598002553, 1.84022534]
+      Strength: 1
       Radius: 15.0181589
       Compression: 0.5
       OuterCutoff: 30
@@ -8000,7 +8756,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.42207098, -0.626171172, 1.90339875]
+      Strength: 1
       Radius: 16.2317276
       Compression: 0.5
       OuterCutoff: 30
@@ -8021,7 +8779,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.912930667, 0.20645009, 1.12527847]
+      Strength: 1
       Radius: 19.235817
       Compression: 0.5
       OuterCutoff: 30
@@ -8042,7 +8802,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.759788811, 0.152508631, 1.79933059]
+      Strength: 1
       Radius: 15.7976017
       Compression: 0.5
       OuterCutoff: 30
@@ -8063,7 +8825,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.39683223, 0.63348031, 0.581947267]
+      Strength: 1
       Radius: 17.2946873
       Compression: 0.5
       OuterCutoff: 30
@@ -8084,7 +8848,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.908108771, 0.158612296, -0.149479657]
+      Strength: 1
       Radius: 16.0563984
       Compression: 0.5
       OuterCutoff: 30
@@ -8105,7 +8871,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.574480414, 1.01282549, 0.777164042]
+      Strength: 1
       Radius: 17.4056206
       Compression: 0.5
       OuterCutoff: 30
@@ -8126,7 +8894,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.902737498, -0.696287513, 0.735557079]
+      Strength: 1
       Radius: 16.5005951
       Compression: 0.5
       OuterCutoff: 30
@@ -8147,7 +8917,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.25382245, 1.17190325, 2.15466762]
+      Strength: 1
       Radius: 17.7463608
       Compression: 0.5
       OuterCutoff: 30
@@ -8168,7 +8940,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30472732, 0.974066913, 2.42831707]
+      Strength: 1
       Radius: 18.7009792
       Compression: 0.5
       OuterCutoff: 30
@@ -8189,7 +8963,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.388561666, 1.23889124, 0.604225695]
+      Strength: 1
       Radius: 16.3888969
       Compression: 0.5
       OuterCutoff: 30
@@ -8210,7 +8986,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.914578676, -0.57528162, 0.789879978]
+      Strength: 1
       Radius: 17.4932098
       Compression: 0.5
       OuterCutoff: 30
@@ -8231,7 +9009,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.841517389, 1.29580832, 1.51825523]
+      Strength: 1
       Radius: 16.1046181
       Compression: 0.5
       OuterCutoff: 30
@@ -8252,7 +9032,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.454176456, -0.598323107, -0.406852424]
+      Strength: 1
       Radius: 17.5632496
       Compression: 0.5
       OuterCutoff: 30
@@ -8273,7 +9055,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.430677205, 0.314027846, 2.39576387]
+      Strength: 1
       Radius: 17.8243351
       Compression: 0.5
       OuterCutoff: 30
@@ -8294,7 +9078,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.90359205, 0.828264713, -0.00207528472]
+      Strength: 1
       Radius: 19.0261536
       Compression: 0.5
       OuterCutoff: 30
@@ -8315,7 +9101,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.26508376, 1.66248822, 1.58773553]
+      Strength: 1
       Radius: 16.4615307
       Compression: 0.5
       OuterCutoff: 30
@@ -8336,7 +9124,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.24607074, -0.29725796, -0.199631736]
+      Strength: 1
       Radius: 15.1001005
       Compression: 0.5
       OuterCutoff: 30
@@ -8357,7 +9147,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.14371169, 0.489890754, 0.549902856]
+      Strength: 1
       Radius: 17.040163
       Compression: 0.5
       OuterCutoff: 30
@@ -8378,7 +9170,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.41001618, 0.0855204538, 1.12212491]
+      Strength: 1
       Radius: 17.2109127
       Compression: 0.5
       OuterCutoff: 30
@@ -8399,7 +9193,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.906704903, 1.57032228, 1.06403804]
+      Strength: 1
       Radius: 18.2135983
       Compression: 0.5
       OuterCutoff: 30
@@ -8420,7 +9216,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.450025946, 0.283280402, 2.65740943]
+      Strength: 1
       Radius: 15.9561453
       Compression: 0.5
       OuterCutoff: 30
@@ -8441,7 +9239,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.333811462, 0.0710241571, -0.612547159]
+      Strength: 1
       Radius: 19.9597168
       Compression: 0.5
       OuterCutoff: 30
@@ -8462,7 +9262,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.73296309, 0.619747102, -0.417330444]
+      Strength: 1
       Radius: 18.4440136
       Compression: 0.5
       OuterCutoff: 30
@@ -8483,7 +9285,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.73589277, -0.0248039532, 1.621611]
+      Strength: 1
       Radius: 18.1102943
       Compression: 0.5
       OuterCutoff: 30
@@ -8504,7 +9308,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.333933532, -0.417348295, 1.16830957]
+      Strength: 1
       Radius: 16.7046108
       Compression: 0.5
       OuterCutoff: 30
@@ -8525,7 +9331,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0298471022, 0.869693637, 0.810734332]
+      Strength: 1
       Radius: 16.0324402
       Compression: 0.5
       OuterCutoff: 30
@@ -8546,7 +9354,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.26139104, 1.21378982, 0.0932442099]
+      Strength: 1
       Radius: 16.3003941
       Compression: 0.5
       OuterCutoff: 30
@@ -8567,7 +9377,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0768456087, 1.31694233, 1.84653258]
+      Strength: 1
       Radius: 18.8737144
       Compression: 0.5
       OuterCutoff: 30
@@ -8588,7 +9400,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.754173398, 0.931951284, 2.21397519]
+      Strength: 1
       Radius: 17.0429096
       Compression: 0.5
       OuterCutoff: 30
@@ -8609,7 +9423,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.64305556, 1.36798465, 0.537085056]
+      Strength: 1
       Radius: 18.9110985
       Compression: 0.5
       OuterCutoff: 30
@@ -8630,7 +9446,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.996124148, 1.10506761, 1.4795984]
+      Strength: 1
       Radius: 16.9917908
       Compression: 0.5
       OuterCutoff: 30
@@ -8651,7 +9469,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.77050078, 0.763870656, 0.322336495]
+      Strength: 1
       Radius: 17.359539
       Compression: 0.5
       OuterCutoff: 30
@@ -8672,7 +9492,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.40647602, 0.678037286, 2.24581623]
+      Strength: 1
       Radius: 19.7877426
       Compression: 0.5
       OuterCutoff: 30
@@ -8693,7 +9515,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.864955604, 0.823229134, -0.530961037]
+      Strength: 1
       Radius: 19.0882607
       Compression: 0.5
       OuterCutoff: 30
@@ -8714,7 +9538,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.45115507, 1.58954895, 0.828028142]
+      Strength: 1
       Radius: 16.9837036
       Compression: 0.5
       OuterCutoff: 30
@@ -8735,7 +9561,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.6679281, -0.263306111, 1.92496514]
+      Strength: 1
       Radius: 17.7278976
       Compression: 0.5
       OuterCutoff: 30
@@ -8756,7 +9584,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.924344599, 0.122371547, 0.174830407]
+      Strength: 1
       Radius: 19.510788
       Compression: 0.5
       OuterCutoff: 30
@@ -8777,7 +9607,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.742027044, 0.799424708, 1.76342046]
+      Strength: 1
       Radius: 15.2182074
       Compression: 0.5
       OuterCutoff: 30
@@ -8798,7 +9630,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.120914333, 0.305711508, -0.224555179]
+      Strength: 1
       Radius: 18.8633385
       Compression: 0.5
       OuterCutoff: 30
@@ -8819,7 +9653,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.394360185, 1.31938386, -0.276843578]
+      Strength: 1
       Radius: 17.5926991
       Compression: 0.5
       OuterCutoff: 30
@@ -8840,7 +9676,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.512710989, 0.569238842, 1.10025322]
+      Strength: 1
       Radius: 17.1636105
       Compression: 0.5
       OuterCutoff: 30
@@ -8861,7 +9699,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.362315744, -0.640057147, -0.504409909]
+      Strength: 1
       Radius: 18.3367424
       Compression: 0.5
       OuterCutoff: 30
@@ -8882,7 +9722,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.7021088, 0.621883333, 0.75478375]
+      Strength: 1
       Radius: 19.0542316
       Compression: 0.5
       OuterCutoff: 30
@@ -8903,7 +9745,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.319223613, 1.4169668, -0.118859403]
+      Strength: 1
       Radius: 17.6180305
       Compression: 0.5
       OuterCutoff: 30
@@ -8924,7 +9768,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.8039186, -0.4686957, -0.476841509]
+      Strength: 1
       Radius: 15.5305643
       Compression: 0.5
       OuterCutoff: 30
@@ -8945,7 +9791,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.59398174, -0.593821585, 2.14825869]
+      Strength: 1
       Radius: 15.7007046
       Compression: 0.5
       OuterCutoff: 30
@@ -8966,7 +9814,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.2561419, -0.202879474, -0.661275089]
+      Strength: 1
       Radius: 18.4699554
       Compression: 0.5
       OuterCutoff: 30
@@ -8987,7 +9837,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.671285152, 0.27061525, 1.95690787]
+      Strength: 1
       Radius: 17.530899
       Compression: 0.5
       OuterCutoff: 30
@@ -9008,7 +9860,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.6241951, -0.110026903, 2.35914183]
+      Strength: 1
       Radius: 17.8562279
       Compression: 0.5
       OuterCutoff: 30
@@ -9029,7 +9883,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.31101418, 1.39537489, 0.819483042]
+      Strength: 1
       Radius: 18.4662933
       Compression: 0.5
       OuterCutoff: 30
@@ -9050,7 +9906,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.50108337, 0.839251339, 0.498936892]
+      Strength: 1
       Radius: 19.7007656
       Compression: 0.5
       OuterCutoff: 30
@@ -9071,7 +9929,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.735740244, 0.187986359, 1.99454737]
+      Strength: 1
       Radius: 19.018219
       Compression: 0.5
       OuterCutoff: 30
@@ -9092,7 +9952,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.35752439, 0.0556123294, 0.394156694]
+      Strength: 1
       Radius: 19.4894257
       Compression: 0.5
       OuterCutoff: 30
@@ -9113,7 +9975,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.54600668, -0.576807499, 2.0479548]
+      Strength: 1
       Radius: 19.9227886
       Compression: 0.5
       OuterCutoff: 30
@@ -9134,7 +9998,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.41981262, 1.7300868, 1.58783722]
+      Strength: 1
       Radius: 16.8279057
       Compression: 0.5
       OuterCutoff: 30
@@ -9155,7 +10021,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.0705893, 1.59862828, 0.805240989]
+      Strength: 1
       Radius: 18.4783478
       Compression: 0.5
       OuterCutoff: 30
@@ -9176,7 +10044,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.59514141, -0.573221564, 1.83147681]
+      Strength: 1
       Radius: 19.8910484
       Compression: 0.5
       OuterCutoff: 30
@@ -9197,7 +10067,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.00503552, 0.9050951, 1.14847255]
+      Strength: 1
       Radius: 18.5021515
       Compression: 0.5
       OuterCutoff: 30
@@ -9218,7 +10090,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.372142702, -0.558343828, -0.140324131]
+      Strength: 1
       Radius: 16.4574108
       Compression: 0.5
       OuterCutoff: 30
@@ -9239,7 +10113,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.68034911, 0.794007659, 1.49933374]
+      Strength: 1
       Radius: 15.0935392
       Compression: 0.5
       OuterCutoff: 30
@@ -9260,7 +10136,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.75701165, -0.306795001, -0.0941394195]
+      Strength: 1
       Radius: 19.8438988
       Compression: 0.5
       OuterCutoff: 30
@@ -9281,7 +10159,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.384044915, 1.33998382, -0.0440890566]
+      Strength: 1
       Radius: 17.2830887
       Compression: 0.5
       OuterCutoff: 30
@@ -9302,7 +10182,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.898037672, -0.0858409777, 0.675537288]
+      Strength: 1
       Radius: 16.0698261
       Compression: 0.5
       OuterCutoff: 30
@@ -9323,7 +10205,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.08413959, 1.46221054, 1.99892151]
+      Strength: 1
       Radius: 17.1944332
       Compression: 0.5
       OuterCutoff: 30
@@ -9344,7 +10228,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.37400436, 1.28131199, 1.54775631]
+      Strength: 1
       Radius: 16.2137203
       Compression: 0.5
       OuterCutoff: 30
@@ -9365,7 +10251,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.923307002, -0.607936442, 2.20614219]
+      Strength: 1
       Radius: 19.2080441
       Compression: 0.5
       OuterCutoff: 30
@@ -9386,7 +10274,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.400280774, 1.41681421, 0.869431674]
+      Strength: 1
       Radius: 18.2770767
       Compression: 0.5
       OuterCutoff: 30
@@ -9407,7 +10297,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.215887934, 0.874729216, -0.0734886006]
+      Strength: 1
       Radius: 17.3839531
       Compression: 0.5
       OuterCutoff: 30
@@ -9428,7 +10320,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.717429101, 0.486838907, 2.40664887]
+      Strength: 1
       Radius: 19.1016884
       Compression: 0.5
       OuterCutoff: 30
@@ -9449,7 +10343,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.637409568, 1.27398765, 1.44775748]
+      Strength: 1
       Radius: 19.7303696
       Compression: 0.5
       OuterCutoff: 30
@@ -9470,7 +10366,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.89303261, -0.034722466, 0.0914131105]
+      Strength: 1
       Radius: 17.0813618
       Compression: 0.5
       OuterCutoff: 30
@@ -9491,7 +10389,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0939359739, 0.337069273, 2.26656914]
+      Strength: 1
       Radius: 19.3893242
       Compression: 0.5
       OuterCutoff: 30
@@ -9512,7 +10412,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.464095, 1.59466088, 1.88183224]
+      Strength: 1
       Radius: 18.7330246
       Compression: 0.5
       OuterCutoff: 30
@@ -9533,7 +10435,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.65910828, -0.334185332, 1.38519442]
+      Strength: 1
       Radius: 16.1140785
       Compression: 0.5
       OuterCutoff: 30
@@ -9554,7 +10458,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.00457777642, 1.71673489, 1.27064836]
+      Strength: 1
       Radius: 19.7309799
       Compression: 0.5
       OuterCutoff: 30
@@ -9575,7 +10481,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.19772947, 0.760742486, 0.527420878]
+      Strength: 1
       Radius: 17.112339
       Compression: 0.5
       OuterCutoff: 30
@@ -9596,7 +10504,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0831934586, -0.47083202, 0.138818517]
+      Strength: 1
       Radius: 16.926939
       Compression: 0.5
       OuterCutoff: 30
@@ -9617,7 +10527,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.13339639, 1.15580463, 0.209519699]
+      Strength: 1
       Radius: 15.1016264
       Compression: 0.5
       OuterCutoff: 30
@@ -9638,7 +10550,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.42167425, 1.01358843, -0.320586771]
+      Strength: 1
       Radius: 15.2629166
       Compression: 0.5
       OuterCutoff: 30
@@ -9659,7 +10573,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.48899806, 0.466772944, 0.467909813]
+      Strength: 1
       Radius: 18.8448753
       Compression: 0.5
       OuterCutoff: 30
@@ -9680,7 +10596,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.63463235, -0.165189102, 0.756818295]
+      Strength: 1
       Radius: 15.4886017
       Compression: 0.5
       OuterCutoff: 30
@@ -9701,7 +10619,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.10007024, -0.0660039559, 2.15171766]
+      Strength: 1
       Radius: 18.1691952
       Compression: 0.5
       OuterCutoff: 30
@@ -9722,7 +10642,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.96203494, 1.4990617, 1.74266791]
+      Strength: 1
       Radius: 18.3326206
       Compression: 0.5
       OuterCutoff: 30
@@ -9743,7 +10665,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.01522875, 1.08065283, 0.449090034]
+      Strength: 1
       Radius: 17.1187477
       Compression: 0.5
       OuterCutoff: 30
@@ -9764,7 +10688,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.663594484, 1.53202152, 0.987029612]
+      Strength: 1
       Radius: 16.3705864
       Compression: 0.5
       OuterCutoff: 30
@@ -9785,7 +10711,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.80224001, 1.72741628, 1.15020192]
+      Strength: 1
       Radius: 16.0890522
       Compression: 0.5
       OuterCutoff: 30
@@ -9806,7 +10734,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.464064449, 1.47563863, -0.260261863]
+      Strength: 1
       Radius: 19.4163322
       Compression: 0.5
       OuterCutoff: 30
@@ -9827,7 +10757,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.03234962, 1.12635422, 0.809615374]
+      Strength: 1
       Radius: 17.1608639
       Compression: 0.5
       OuterCutoff: 30
@@ -9848,7 +10780,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.881557643, -0.35394612, -0.0658589602]
+      Strength: 1
       Radius: 15.9442425
       Compression: 0.5
       OuterCutoff: 30
@@ -9869,7 +10803,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.85766172, 0.706724703, -0.135237664]
+      Strength: 1
       Radius: 17.0178833
       Compression: 0.5
       OuterCutoff: 30
@@ -9890,7 +10826,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.680318594, 0.928899527, 0.210943952]
+      Strength: 1
       Radius: 19.9876404
       Compression: 0.5
       OuterCutoff: 30
@@ -9911,7 +10849,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.584612548, 0.68124181, 1.65782642]
+      Strength: 1
       Radius: 19.4184685
       Compression: 0.5
       OuterCutoff: 30
@@ -9932,7 +10872,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.318918437, 0.456320375, -0.0257779639]
+      Strength: 1
       Radius: 18.226265
       Compression: 0.5
       OuterCutoff: 30
@@ -9953,7 +10895,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.73149812, 0.852679491, 2.26351714]
+      Strength: 1
       Radius: 19.8281803
       Compression: 0.5
       OuterCutoff: 30
@@ -9974,7 +10918,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.36185801, 1.38805056, 2.21356845]
+      Strength: 1
       Radius: 18.7565231
       Compression: 0.5
       OuterCutoff: 30
@@ -9995,7 +10941,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.478896439, 1.69865263, 1.47837758]
+      Strength: 1
       Radius: 19.1265602
       Compression: 0.5
       OuterCutoff: 30
@@ -10016,7 +10964,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.63866079, 1.2610172, 1.71937203]
+      Strength: 1
       Radius: 19.4053459
       Compression: 0.5
       OuterCutoff: 30
@@ -10037,7 +10987,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.94683671, -0.486472726, -0.319467753]
+      Strength: 1
       Radius: 16.9031334
       Compression: 0.5
       OuterCutoff: 30
@@ -10058,7 +11010,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.72203743, 1.0448699, -0.0923083201]
+      Strength: 1
       Radius: 17.5672169
       Compression: 0.5
       OuterCutoff: 30
@@ -10079,7 +11033,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.59105194, -0.140163913, 0.614500344]
+      Strength: 1
       Radius: 18.3855705
       Compression: 0.5
       OuterCutoff: 30
@@ -10100,7 +11056,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.296639919, 0.206297502, 1.17715991]
+      Strength: 1
       Radius: 18.5096283
       Compression: 0.5
       OuterCutoff: 30
@@ -10121,7 +11079,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.471022666, -0.359592021, 1.90634882]
+      Strength: 1
       Radius: 18.1133461
       Compression: 0.5
       OuterCutoff: 30
@@ -10142,7 +11102,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.46659744, 1.3042773, 2.28457475]
+      Strength: 1
       Radius: 18.0484943
       Compression: 0.5
       OuterCutoff: 30
@@ -10163,7 +11125,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.44187748, 0.0628604814, 2.02343822]
+      Strength: 1
       Radius: 18.7160873
       Compression: 0.5
       OuterCutoff: 30
@@ -10184,7 +11148,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.238288522, 0.475394458, -0.582638979]
+      Strength: 1
       Radius: 16.5622425
       Compression: 0.5
       OuterCutoff: 30
@@ -10205,7 +11171,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.715842187, 0.932790697, -0.127608076]
+      Strength: 1
       Radius: 15.1933346
       Compression: 0.5
       OuterCutoff: 30
@@ -10226,7 +11194,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.57756281, -0.313814253, 1.1813308]
+      Strength: 1
       Radius: 17.6082649
       Compression: 0.5
       OuterCutoff: 30
@@ -10247,7 +11217,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.98028505, 1.40910828, 0.0319019929]
+      Strength: 1
       Radius: 19.5620594
       Compression: 0.5
       OuterCutoff: 30
@@ -10268,7 +11240,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.81694996, -0.615108252, 0.0560116246]
+      Strength: 1
       Radius: 19.065218
       Compression: 0.5
       OuterCutoff: 30
@@ -10289,7 +11263,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.58748132, 1.38003933, 1.49445069]
+      Strength: 1
       Radius: 18.2378616
       Compression: 0.5
       OuterCutoff: 30
@@ -10310,7 +11286,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.03848386, 0.253219694, 0.397310287]
+      Strength: 1
       Radius: 15.8690147
       Compression: 0.5
       OuterCutoff: 30
@@ -10331,7 +11309,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.510452569, 1.29580832, -0.510310173]
+      Strength: 1
       Radius: 15.7097082
       Compression: 0.5
       OuterCutoff: 30
@@ -10352,7 +11332,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.62260807, 1.68522453, 1.53910947]
+      Strength: 1
       Radius: 19.1584511
       Compression: 0.5
       OuterCutoff: 30
@@ -10373,7 +11355,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.025879696, -0.56711787, 0.568010449]
+      Strength: 1
       Radius: 18.5352631
       Compression: 0.5
       OuterCutoff: 30
@@ -10394,7 +11378,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.68883324, 1.48326826, 0.389477134]
+      Strength: 1
       Radius: 15.1362648
       Compression: 0.5
       OuterCutoff: 30
@@ -10415,7 +11401,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.701620519, -0.525460124, -0.617430151]
+      Strength: 1
       Radius: 19.0911598
       Compression: 0.5
       OuterCutoff: 30
@@ -10436,7 +11424,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.908841193, 0.112071566, -0.46422717]
+      Strength: 1
       Radius: 16.295969
       Compression: 0.5
       OuterCutoff: 30
@@ -10457,7 +11447,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.4691, 0.789124727, 0.280831307]
+      Strength: 1
       Radius: 19.4584503
       Compression: 0.5
       OuterCutoff: 30
@@ -10478,7 +11470,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.394482255, 0.261078209, 1.35884678]
+      Strength: 1
       Radius: 15.9930725
       Compression: 0.5
       OuterCutoff: 30
@@ -10499,7 +11493,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.616840124, 1.68537712, -0.0327972546]
+      Strength: 1
       Radius: 17.9406109
       Compression: 0.5
       OuterCutoff: 30
@@ -10520,7 +11516,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.304086417, -0.0139699141, -0.24378185]
+      Strength: 1
       Radius: 17.7829819
       Compression: 0.5
       OuterCutoff: 30
@@ -10541,7 +11539,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.680929005, 0.0273826737, 1.23626411]
+      Strength: 1
       Radius: 19.6304207
       Compression: 0.5
       OuterCutoff: 30
@@ -10562,7 +11562,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.722434163, -0.590006769, 2.54286313]
+      Strength: 1
       Radius: 16.6161079
       Compression: 0.5
       OuterCutoff: 30
@@ -10583,7 +11585,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.69951475, 1.22454751, 0.823755562]
+      Strength: 1
       Radius: 18.7755966
       Compression: 0.5
       OuterCutoff: 30
@@ -10604,7 +11608,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.49626148, 0.906010628, -0.163213015]
+      Strength: 1
       Radius: 18.019043
       Compression: 0.5
       OuterCutoff: 30
@@ -10625,7 +11631,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.380077511, 1.07477808, 2.21794271]
+      Strength: 1
       Radius: 15.0846891
       Compression: 0.5
       OuterCutoff: 30
@@ -10646,7 +11654,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30686367, -0.0649357662, 0.523351729]
+      Strength: 1
       Radius: 16.9057274
       Compression: 0.5
       OuterCutoff: 30
@@ -10667,7 +11677,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.65343177, 0.557107806, 2.22343612]
+      Strength: 1
       Radius: 19.1651669
       Compression: 0.5
       OuterCutoff: 30
@@ -10688,7 +11700,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.57695246, -0.164655015, 0.607888043]
+      Strength: 1
       Radius: 17.7889347
       Compression: 0.5
       OuterCutoff: 30
@@ -10709,7 +11723,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.106875822, 1.74122596, 0.257535517]
+      Strength: 1
       Radius: 19.6383553
       Compression: 0.5
       OuterCutoff: 30
@@ -10730,7 +11746,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.09353924, 0.399937421, 1.03148496]
+      Strength: 1
       Radius: 16.0248108
       Compression: 0.5
       OuterCutoff: 30
@@ -10751,7 +11769,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.15598011, 1.33258319, 0.537593663]
+      Strength: 1
       Radius: 16.761528
       Compression: 0.5
       OuterCutoff: 30
@@ -10772,7 +11792,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.733726025, 1.12597275, 2.05538082]
+      Strength: 1
       Radius: 18.446455
       Compression: 0.5
       OuterCutoff: 30
@@ -10793,7 +11815,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.765953541, 1.30595577, 1.5692209]
+      Strength: 1
       Radius: 15.1953182
       Compression: 0.5
       OuterCutoff: 30
@@ -10814,7 +11838,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.651692271, -0.389957935, 0.393953264]
+      Strength: 1
       Radius: 19.4390697
       Compression: 0.5
       OuterCutoff: 30
@@ -10835,7 +11861,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.34000671, -0.0874432251, 0.0867335945]
+      Strength: 1
       Radius: 17.5588245
       Compression: 0.5
       OuterCutoff: 30
@@ -10856,7 +11884,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.977568924, 0.277329326, 0.955392063]
+      Strength: 1
       Radius: 18.3356743
       Compression: 0.5
       OuterCutoff: 30
@@ -10877,7 +11907,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.28208256, 1.3900342, -0.0891547352]
+      Strength: 1
       Radius: 16.2033443
       Compression: 0.5
       OuterCutoff: 30
@@ -10898,7 +11930,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.73876154, 0.0228812564, 1.10106719]
+      Strength: 1
       Radius: 19.0520954
       Compression: 0.5
       OuterCutoff: 30
@@ -10919,7 +11953,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.98297071, -0.727950454, 2.15670228]
+      Strength: 1
       Radius: 18.8476219
       Compression: 0.5
       OuterCutoff: 30
@@ -10940,7 +11976,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.592486322, -0.521340132, 2.16127992]
+      Strength: 1
       Radius: 16.2900181
       Compression: 0.5
       OuterCutoff: 30
@@ -10961,7 +11999,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.80748928, 1.59931493, 0.604836166]
+      Strength: 1
       Radius: 19.9763489
       Compression: 0.5
       OuterCutoff: 30
@@ -10982,7 +12022,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.307199329, 0.557489276, 0.974110126]
+      Strength: 1
       Radius: 17.5330353
       Compression: 0.5
       OuterCutoff: 30
@@ -11003,7 +12045,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.3408612, -0.61953342, 0.245633259]
+      Strength: 1
       Radius: 19.8384037
       Compression: 0.5
       OuterCutoff: 30
@@ -11024,7 +12068,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.99597156, 1.72955275, 0.521927476]
+      Strength: 1
       Radius: 19.5577869
       Compression: 0.5
       OuterCutoff: 30
@@ -11045,7 +12091,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.91628772, 0.172193065, 0.110538051]
+      Strength: 1
       Radius: 17.1073036
       Compression: 0.5
       OuterCutoff: 30
@@ -11066,7 +12114,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.13998842, 1.22584474, 0.413179934]
+      Strength: 1
       Radius: 15.4232922
       Compression: 0.5
       OuterCutoff: 30
@@ -11087,7 +12137,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.56401253, -0.575586796, 2.27104497]
+      Strength: 1
       Radius: 15.4171877
       Compression: 0.5
       OuterCutoff: 30
@@ -11108,7 +12160,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.6963408, 1.58649719, 2.07837152]
+      Strength: 1
       Radius: 15.9924622
       Compression: 0.5
       OuterCutoff: 30
@@ -11129,7 +12183,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.22586751, 1.11719871, -0.619668126]
+      Strength: 1
       Radius: 18.686636
       Compression: 0.5
       OuterCutoff: 30
@@ -11150,7 +12206,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.30234683, 0.756851494, 0.535965979]
+      Strength: 1
       Radius: 17.1236305
       Compression: 0.5
       OuterCutoff: 30
@@ -11171,7 +12229,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.632160425, 1.48059797, 2.13137197]
+      Strength: 1
       Radius: 16.006958
       Compression: 0.5
       OuterCutoff: 30
@@ -11192,7 +12252,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0361339152, -0.667294919, 1.51510155]
+      Strength: 1
       Radius: 17.857296
       Compression: 0.5
       OuterCutoff: 30
@@ -11213,7 +12275,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.880642116, 0.573130012, 0.893642843]
+      Strength: 1
       Radius: 19.5464954
       Compression: 0.5
       OuterCutoff: 30
@@ -11234,7 +12298,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.597735524, -0.364474982, 0.0217291713]
+      Strength: 1
       Radius: 19.3496513
       Compression: 0.5
       OuterCutoff: 30
@@ -11255,7 +12321,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.747032046, 1.49806964, 1.35304821]
+      Strength: 1
       Radius: 18.9988403
       Compression: 0.5
       OuterCutoff: 30
@@ -11276,7 +12344,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.40757465, 1.61793125, 1.18224633]
+      Strength: 1
       Radius: 17.0824299
       Compression: 0.5
       OuterCutoff: 30
@@ -11297,7 +12367,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.33726001, 1.37836087, 0.931689322]
+      Strength: 1
       Radius: 19.2483292
       Compression: 0.5
       OuterCutoff: 30
@@ -11318,7 +12390,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.215033412, -0.270401657, 0.138513342]
+      Strength: 1
       Radius: 18.1534767
       Compression: 0.5
       OuterCutoff: 30
@@ -11339,7 +12413,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.118961148, -0.300386131, -0.115705825]
+      Strength: 1
       Radius: 19.7259445
       Compression: 0.5
       OuterCutoff: 30
@@ -11360,7 +12436,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.627765715, 0.363162637, 1.99861634]
+      Strength: 1
       Radius: 19.3221836
       Compression: 0.5
       OuterCutoff: 30
@@ -11381,7 +12459,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.887539268, 1.08172095, 0.323048562]
+      Strength: 1
       Radius: 15.0343332
       Compression: 0.5
       OuterCutoff: 30
@@ -11402,7 +12482,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.75463116, 0.423741877, 2.43299651]
+      Strength: 1
       Radius: 18.101902
       Compression: 0.5
       OuterCutoff: 30
@@ -11423,7 +12505,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0861232355, 1.26147497, 0.0986358002]
+      Strength: 1
       Radius: 17.4475842
       Compression: 0.5
       OuterCutoff: 30
@@ -11444,7 +12528,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.162968844, 0.481498122, 1.54755282]
+      Strength: 1
       Radius: 16.6548653
       Compression: 0.5
       OuterCutoff: 30
@@ -11465,7 +12551,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.357493818, -0.119335063, 1.88742733]
+      Strength: 1
       Radius: 18.4604931
       Compression: 0.5
       OuterCutoff: 30
@@ -11486,7 +12574,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.82085633, -0.0640965328, 1.89597261]
+      Strength: 1
       Radius: 19.7087002
       Compression: 0.5
       OuterCutoff: 30
@@ -11507,7 +12597,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.502578795, -0.619762301, -0.26311025]
+      Strength: 1
       Radius: 19.3101292
       Compression: 0.5
       OuterCutoff: 30
@@ -11528,7 +12620,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.88641012, 0.706877291, -0.318145305]
+      Strength: 1
       Radius: 16.2686539
       Compression: 0.5
       OuterCutoff: 30
@@ -11549,7 +12643,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.419873655, 1.22012234, 1.14165676]
+      Strength: 1
       Radius: 19.9288921
       Compression: 0.5
       OuterCutoff: 30
@@ -11570,7 +12666,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.368541509, 1.73496974, 0.0817489102]
+      Strength: 1
       Radius: 18.7098293
       Compression: 0.5
       OuterCutoff: 30
@@ -11591,7 +12689,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.33402514, 1.58794677, 1.18478954]
+      Strength: 1
       Radius: 17.7559738
       Compression: 0.5
       OuterCutoff: 30
@@ -11612,7 +12712,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0597552434, 0.581522644, 0.278389782]
+      Strength: 1
       Radius: 19.9772644
       Compression: 0.5
       OuterCutoff: 30
@@ -11633,7 +12735,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.95675528, 1.53713346, 1.83045959]
+      Strength: 1
       Radius: 17.8402061
       Compression: 0.5
       OuterCutoff: 30
@@ -11654,7 +12758,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.99108863, -0.26658687, 0.995473027]
+      Strength: 1
       Radius: 18.2808914
       Compression: 0.5
       OuterCutoff: 30
@@ -11675,7 +12781,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.39756465, 1.42207873, -0.520584702]
+      Strength: 1
       Radius: 19.3494987
       Compression: 0.5
       OuterCutoff: 30
@@ -11696,7 +12804,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.22470784, 0.396885604, -0.54072696]
+      Strength: 1
       Radius: 16.9098492
       Compression: 0.5
       OuterCutoff: 30
@@ -11717,7 +12827,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.91125214, -0.61487937, -0.490981758]
+      Strength: 1
       Radius: 16.5842152
       Compression: 0.5
       OuterCutoff: 30
@@ -11738,7 +12850,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.336497098, -0.323580176, 0.891710103]
+      Strength: 1
       Radius: 17.7861862
       Compression: 0.5
       OuterCutoff: 30
@@ -11759,7 +12873,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.183843508, 1.31289864, -0.222724065]
+      Strength: 1
       Radius: 15.4858551
       Compression: 0.5
       OuterCutoff: 30
@@ -11780,7 +12896,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.69157994, -0.364017218, 2.25629449]
+      Strength: 1
       Radius: 19.2190323
       Compression: 0.5
       OuterCutoff: 30
@@ -11801,7 +12919,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0642109439, 0.423207819, 1.41021967]
+      Strength: 1
       Radius: 15.086215
       Compression: 0.5
       OuterCutoff: 30
@@ -11822,7 +12942,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.841517389, 0.398640364, 1.466272]
+      Strength: 1
       Radius: 19.1541786
       Compression: 0.5
       OuterCutoff: 30
@@ -11843,7 +12965,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.6989044, 1.29504538, 0.00962351728]
+      Strength: 1
       Radius: 17.9554119
       Compression: 0.5
       OuterCutoff: 30
@@ -11864,7 +12988,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.313547164, 0.713057399, 1.36525571]
+      Strength: 1
       Radius: 18.1484413
       Compression: 0.5
       OuterCutoff: 30
@@ -11885,7 +13011,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.17508471, 1.00283062, 2.48843861]
+      Strength: 1
       Radius: 15.1290932
       Compression: 0.5
       OuterCutoff: 30
@@ -11906,7 +13034,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.96783352, -0.128643185, 0.918362916]
+      Strength: 1
       Radius: 19.4761505
       Compression: 0.5
       OuterCutoff: 30
@@ -11927,7 +13057,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.261909842, -0.596034169, -0.544084013]
+      Strength: 1
       Radius: 19.8281803
       Compression: 0.5
       OuterCutoff: 30
@@ -11948,7 +13080,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.23398542, 1.0582217, -0.0299488492]
+      Strength: 1
       Radius: 15.3076267
       Compression: 0.5
       OuterCutoff: 30
@@ -11969,7 +13103,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.92278814, -0.661725283, 2.53828526]
+      Strength: 1
       Radius: 16.169775
       Compression: 0.5
       OuterCutoff: 30
@@ -11990,7 +13126,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.130924404, -0.28871277, 2.36371946]
+      Strength: 1
       Radius: 15.9160128
       Compression: 0.5
       OuterCutoff: 30
@@ -12011,7 +13149,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.19931638, 0.86626029, 2.29902029]
+      Strength: 1
       Radius: 19.6311836
       Compression: 0.5
       OuterCutoff: 30
@@ -12032,7 +13172,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.292672515, 0.343783379, 2.28040409]
+      Strength: 1
       Radius: 16.494339
       Compression: 0.5
       OuterCutoff: 30
@@ -12053,7 +13195,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.08499408, -0.505089045, 0.950407326]
+      Strength: 1
       Radius: 15.868557
       Compression: 0.5
       OuterCutoff: 30
@@ -12074,7 +13218,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.507522821, 0.573740363, 0.742474616]
+      Strength: 1
       Radius: 16.5314178
       Compression: 0.5
       OuterCutoff: 30
@@ -12095,7 +13241,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.369273961, -0.556665301, 0.221320227]
+      Strength: 1
       Radius: 19.2851028
       Compression: 0.5
       OuterCutoff: 30
@@ -12116,7 +13264,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.78118229, 0.899296582, 0.430982351]
+      Strength: 1
       Radius: 17.9093285
       Compression: 0.5
       OuterCutoff: 30
@@ -12137,7 +13287,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.393688768, -0.321977943, 0.666076541]
+      Strength: 1
       Radius: 18.0491047
       Compression: 0.5
       OuterCutoff: 30
@@ -12158,7 +13310,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.909146369, -0.39957127, 1.0376904]
+      Strength: 1
       Radius: 18.0945778
       Compression: 0.5
       OuterCutoff: 30
@@ -12179,7 +13333,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.45664847, 0.538110018, -0.224656895]
+      Strength: 1
       Radius: 18.768425
       Compression: 0.5
       OuterCutoff: 30
@@ -12200,7 +13356,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.23191011, 0.611049294, 1.38712716]
+      Strength: 1
       Radius: 17.1083717
       Compression: 0.5
       OuterCutoff: 30
@@ -12221,7 +13379,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.503677487, 0.0587404557, 1.22680342]
+      Strength: 1
       Radius: 17.3110142
       Compression: 0.5
       OuterCutoff: 30
@@ -12242,7 +13402,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.90987885, -0.153897271, 2.27969193]
+      Strength: 1
       Radius: 19.5097198
       Compression: 0.5
       OuterCutoff: 30
@@ -12263,7 +13425,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.974517047, -0.577265263, 1.92018378]
+      Strength: 1
       Radius: 17.9802856
       Compression: 0.5
       OuterCutoff: 30
@@ -12284,7 +13448,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.93124181, 1.35478532, 2.50268054]
+      Strength: 1
       Radius: 18.5337372
       Compression: 0.5
       OuterCutoff: 30
@@ -12305,7 +13471,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.511490226, 1.62014377, 2.48141932]
+      Strength: 1
       Radius: 17.0088806
       Compression: 0.5
       OuterCutoff: 30
@@ -12326,7 +13494,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.41569257, 0.353549302, 0.151432842]
+      Strength: 1
       Radius: 16.9202251
       Compression: 0.5
       OuterCutoff: 30
@@ -12347,7 +13517,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.91058075, 1.69956827, -0.543982267]
+      Strength: 1
       Radius: 18.768425
       Compression: 0.5
       OuterCutoff: 30
@@ -12368,7 +13540,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.84179199, -0.243011311, -0.624449372]
+      Strength: 1
       Radius: 15.969573
       Compression: 0.5
       OuterCutoff: 30
@@ -12389,7 +13563,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.463393062, 1.25819421, 2.18050671]
+      Strength: 1
       Radius: 19.8214664
       Compression: 0.5
       OuterCutoff: 30
@@ -12410,7 +13586,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.861964762, -0.699797094, -0.659443974]
+      Strength: 1
       Radius: 19.098484
       Compression: 0.5
       OuterCutoff: 30
@@ -12431,7 +13609,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.95538199, -0.649289012, -0.247545779]
+      Strength: 1
       Radius: 17.5916309
       Compression: 0.5
       OuterCutoff: 30
@@ -12452,7 +13632,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.622516572, 0.832460999, 1.31551039]
+      Strength: 1
       Radius: 16.7650375
       Compression: 0.5
       OuterCutoff: 30
@@ -12473,7 +13655,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.28836942, -0.377750546, 2.3527329]
+      Strength: 1
       Radius: 17.6256599
       Compression: 0.5
       OuterCutoff: 30
@@ -12494,7 +13678,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.22830892, 1.38827944, 1.78244364]
+      Strength: 1
       Radius: 19.2126217
       Compression: 0.5
       OuterCutoff: 30
@@ -12515,7 +13701,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.25009918, -0.51004833, 1.83035779]
+      Strength: 1
       Radius: 16.7874699
       Compression: 0.5
       OuterCutoff: 30
@@ -12536,7 +13724,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.43461406, 1.29420614, 1.39913118]
+      Strength: 1
       Radius: 15.1686144
       Compression: 0.5
       OuterCutoff: 30
@@ -12557,7 +13747,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.59508038, -0.571237922, 1.02619505]
+      Strength: 1
       Radius: 19.8977623
       Compression: 0.5
       OuterCutoff: 30
@@ -12578,7 +13770,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0567644276, -0.600917161, 1.94093657]
+      Strength: 1
       Radius: 16.5643787
       Compression: 0.5
       OuterCutoff: 30
@@ -12599,7 +13793,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.59135711, 1.67271197, 1.86331785]
+      Strength: 1
       Radius: 19.9098167
       Compression: 0.5
       OuterCutoff: 30
@@ -12620,7 +13816,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.21921444, 0.583658874, -0.236253977]
+      Strength: 1
       Radius: 19.6174507
       Compression: 0.5
       OuterCutoff: 30
@@ -12641,7 +13839,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.76891387, 0.733047009, 0.858241498]
+      Strength: 1
       Radius: 17.3570976
       Compression: 0.5
       OuterCutoff: 30
@@ -12662,7 +13862,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [1.66136658, 1.08576465, 1.94073296]
+      Strength: 1
       Radius: 19.3917656
       Compression: 0.5
       OuterCutoff: 30
@@ -12683,7 +13885,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.0306405835, 0.875263274, -0.507665217]
+      Strength: 1
       Radius: 19.1090126
       Compression: 0.5
       OuterCutoff: 30
@@ -12704,7 +13908,9 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
+      Enabled: true
       Color: [0.13562426, 1.41727197, 0.446750253]
+      Strength: 1
       Radius: 16.3254185
       Compression: 0.5
       OuterCutoff: 30

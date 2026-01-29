@@ -48,8 +48,8 @@ RenderObjects:
     LightComponent:
       Type: Directional
       Enabled: true
-      Color: [0.906040251, 0.583226919, 0.480383724]
-      Strength: 1
+      Color: [0.395973146, 0.297216177, 0.265753776]
+      Strength: 13.3999996
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
