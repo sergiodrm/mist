@@ -940,6 +940,17 @@ namespace rendersystem
         ImGui::Text("Images:            %7d (%4.4f b/%4.4f b)", memstats.imageStats.allocationCounts,
             (double)memstats.imageStats.currentAllocated / 1024.f / 1024.f, (double)memstats.imageStats.maxAllocated / 1024.f / 1024.f);
 
+        ImGui::SeparatorText("Shader memory pool");
+        ImGui::Text("Memory pool count: %4d", m_shaderContext.memoryStream->GetPoolCount());
+        ImGui::Text("Contexts free: %4d", m_shaderContext.memoryStream->GetPoolFreeCount());
+        ImGui::Text("Contexts used: %4d", m_shaderContext.memoryStream->GetPoolUsedCount());
+        ImGui::SeparatorText("Shader memory frame context");
+        ImGui::Text("Buffers: %4d", m_shaderContext.memoryStream->GetBufferCount());
+        uint64_t deviceSize = m_shaderContext.memoryStream->GetDeviceMemorySize();
+        ImGui::Text("Device size: %6lld (%2.2f KB)", deviceSize, (float)deviceSize / 1024.f);
+        ImGui::Text("Temporal buffer size: %4d", m_shaderContext.memoryStream->GetTemporalBufferSize());
+        ImGui::Text("Property count: %4d", m_shaderContext.memoryStream->GetPropertyCount());
+#if 0 
         ImGui::SeparatorText("Command buffer");
         const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
         ImGui::Text("CB total:          %7d", queue->GetTotalCommandBuffers());
@@ -957,22 +968,6 @@ namespace rendersystem
         ImGui::Text("Sampler lf:                %.4f", m_samplerCache->GetLoadFactor());
         ImGui::Text("Shaders:                   %7d", m_shaderDb.m_programs.size());
 
-        ImGui::SeparatorText("Shader memory pool");
-        ImGui::Text("Memory pool count: %4d", m_shaderContext.memoryStream->GetPoolCount());
-        ImGui::Text("Contexts free: %4d", m_shaderContext.memoryStream->GetPoolFreeCount());
-        ImGui::Text("Contexts used: %4d", m_shaderContext.memoryStream->GetPoolUsedCount());
-        ImGui::SeparatorText("Shader memory frame context");
-        ImGui::Text("Buffers: %4d", m_shaderContext.memoryStream->GetBufferCount());
-        uint64_t deviceSize = m_shaderContext.memoryStream->GetDeviceMemorySize();
-        ImGui::Text("Device size: %6lld (%2.2f KB)", deviceSize, (float)deviceSize / 1024.f);
-        ImGui::Text("Temporal buffer size: %4d", m_shaderContext.memoryStream->GetTemporalBufferSize());
-        ImGui::Text("Property count: %4d", m_shaderContext.memoryStream->GetPropertyCount());
-#if 0 // TODO
-        ShaderMemoryContext* memoryCtx = GetMemoryContext();
-        ImGui::Text("Free buffers: %4d", memoryCtx->GetFreeBufferCount());
-        ImGui::Text("Used buffers: %4d", memoryCtx->GetUsedBufferCount());
-        for (auto& it : memoryCtx->m_properties)
-            ImGui::Text("Property: %s [%lld B; %lld; 0x%p]", it.first.CStr(), it.second.size, it.second.offset, it.second.buffer->m_buffer);
 #endif // 0
 
         ImGui::End();
