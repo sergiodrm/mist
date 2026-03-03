@@ -105,7 +105,7 @@ namespace Mist
 	{
 		uint32_t GVulkanLayerValidationErrors = 0;
 
-		VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+		static VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 			VkDebugUtilsMessageTypeFlagsEXT type,
 			const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
 			void* userData)
@@ -128,26 +128,16 @@ namespace Mist
 		}
 	}
 
-	CBoolVar CVar_ShowImGuiDemo("ShowImGuiDemo", false);
-
-	void ExecCommand_ReloadShaders(const char* cmd)
+	static void ExecCommand_ReloadShaders(const char* cmd)
 	{
 		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		eng->ReloadShaders();
 	}
 
-	void ExecCommand_DumpShadersInfo(const char* cmd)
+	static void ExecCommand_DumpShadersInfo(const char* cmd)
 	{
 		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		eng->DumpShadersInfo();
-	}
-
-	void ExecCommand_ActiveCpuProf(const char* cmd)
-	{
-		if (CVar_ShowCpuProf.Get() == 0)
-			CVar_ShowCpuProf.Set(3);
-		if (CVar_ShowCpuProf.Get() == 1)
-			CVar_ShowCpuProf.Set(2);
 	}
 
 	cMaterial* DefaultMaterial = nullptr;
@@ -167,7 +157,7 @@ namespace Mist
 	bool VulkanRenderEngine::Init(const Window& window)
 	{
 		CPU_PROFILE_SCOPE(Init);
-#ifdef _DEBUG
+#ifndef _DEBUG
 		logfinfo("Running app in %s mode.\n", "RELEASE");
 #else
 		logfinfo("Running app in %s mode.\n", "DEBUG");
@@ -199,7 +189,6 @@ namespace Mist
 		//////////////////////////////////////
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
-		AddConsoleCommand("s_setcpuprof", ExecCommand_ActiveCpuProf);
 
 		//////////////////////////////////////
 		// ImGui callbacks
