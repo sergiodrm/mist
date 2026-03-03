@@ -1284,7 +1284,11 @@ namespace Mist
 			char buff[256];
 			for (uint32_t i = 0; i < m_renderPasses.GetSize(); ++i)
 			{
-				sprintf_s(buff, "RenderPass_%d", i);
+				sprintf_s(buff, "RenderPass_%d ( ", i);
+				if (m_creationInfo[i].pass & RenderPass_Opaque) strcat_s(buff, "Opaque");
+				if (m_creationInfo[i].pass & RenderPass_Transparent) strcat_s(buff, "|Transparent");
+				if (m_creationInfo[i].pass & RenderPass_ShadowMap) strcat_s(buff, "|ShadowMap");
+				strcat_s(buff, " )");
 				ImGui::PushID(buff);
 				if (ImGui::TreeNode(buff))
 				{
