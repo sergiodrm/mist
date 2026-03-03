@@ -83,7 +83,7 @@ namespace Mist
 		rs->ClearColor();
 		rs->ClearDepthStencil();
 		rs->SetStencilEnable(true);
-		rs->SetStencilMask(0xff, 0xff, GBUFFER_GEOMETRY_STENCIL_MASK);
+		rs->SetStencilMask(0xff, 0xff, StencilMask_Geometry);
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 		rs->SetDepthEnable(true, true);
 		SceneRenderer::GetSceneRenderer()->DrawList({ .passId = m_renderListId, .rs = rs });

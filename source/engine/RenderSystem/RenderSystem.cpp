@@ -755,6 +755,8 @@ namespace rendersystem
 
     void RenderSystem::SetRenderTarget(render::RenderTargetHandle rt)
     {
+        if (rt == m_graphicsContext.graphicsState.rt)
+            return;
         m_graphicsContext.graphicsState.rt = rt;
         for (uint32_t i = 0; i < rt->m_description.colorAttachments.GetSize(); ++i)
             SetTextureAsRenderTargetAttachment(rt->m_description.colorAttachments[i].texture);

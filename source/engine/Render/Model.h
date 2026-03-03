@@ -21,6 +21,14 @@ namespace Mist
 	typedef uint8_t RenderPassType;
 	inline bool IsGeometryPass(RenderPassType type) { return type == RenderPass_ShadowMap; }
 
+	enum StencilMaskBit
+	{
+		StencilMask_None = 0x00,
+		StencilMask_Geometry = 0x01,
+		StencilMask_Sky = 0x02,
+	};
+	typedef uint8_t StencilMask;
+
 	class cModel : public cRenderResource<RenderResource_Model>
 	{
 	public:

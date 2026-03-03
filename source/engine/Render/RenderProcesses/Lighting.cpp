@@ -147,7 +147,7 @@ namespace Mist
 				rs->SetRenderTarget(m_lightingRt);
 				rs->SetDepthEnable(false, false);
 				rs->SetStencilEnable(true);
-				rs->SetStencilMask(0xff, 0x00, GBUFFER_GEOMETRY_STENCIL_MASK);
+				rs->SetStencilMask(0xff, 0x00, StencilMask_Geometry);
 				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
 
 				///////////////////////////////////////////////////////////commandList->ClearColor();
@@ -207,13 +207,16 @@ namespace Mist
 			{
 				rs->BeginMarker("Forward lighting");
 				rs->SetDefaultGraphicsState();
-				rs->SetRenderTarget(m_lightingRt);
+				rs->SetRenderTarget(m_skyboxRt);
 				rs->SetShader(m_forwardLightingShader);
 				rs->SetBlendEnable(true);
 				rs->SetBlendWriteMask(render::ColorMask_All);
 				rs->SetBlendFactor(m_colorSrc, m_colorDst, m_blendOp);
 				rs->SetBlendAlphaState(m_alphaSrc, m_alphaDst);
-				rs->SetDepthEnable(true, false);
+				rs->SetDepthEnable(true, true);
+				rs->SetStencilEnable(true);
+				rs->SetStencilMask(0xff, 0xff, StencilMask_Geometry);
+				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 
 				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
 				rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
@@ -259,8 +262,8 @@ namespace Mist
 				rs->SetShader(m_skyboxShader);
 				rs->SetRenderTarget(m_skyboxRt);
 				rs->SetStencilEnable(true);
-				rs->SetStencilMask(0xff, 0x00, 0x00);
-				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
+				rs->SetStencilMask(0xff, 0x00, StencilMask_Geometry);
+				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_NotEqual);
 				rs->SetDepthEnable(false, false);
 				rs->SetCullMode(render::RasterCullMode_Front);
 

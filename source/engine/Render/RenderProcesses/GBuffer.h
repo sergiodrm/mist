@@ -9,8 +9,6 @@ namespace rendersystem
     class ShaderProgram;
 }
 
-#define GBUFFER_GEOMETRY_STENCIL_MASK 0x0001
-
 namespace Mist
 {
 	class cModel;
