@@ -695,11 +695,13 @@ namespace rendersystem
     {
         PROF_ZONE_SCOPED("SetShaderProperty");
         check(id && *id && param && size);
-        m_shaderContext.memoryStream->Write(id, param, size);
         uint32_t setIndex = UINT32_MAX;
-        check_msgf(m_shaderContext.program->GetPropertyDescription(id, &setIndex), "Shader property \"%s\" not found in shader.", id);
-        check(setIndex != UINT32_MAX);
-        m_shaderContext.MarkSetAsDirty(setIndex);
+        if (m_shaderContext.program->GetPropertyDescription(id, &setIndex))
+        {
+            check(setIndex != UINT32_MAX);
+            m_shaderContext.MarkSetAsDirty(setIndex);
+            m_shaderContext.memoryStream->Write(id, param, size);
+        }
     }
 
     void RenderSystem::SetTextureLayout(const render::TextureHandle& texture, render::ImageLayout layout, render::TextureSubresourceRange range)
