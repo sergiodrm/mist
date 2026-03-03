@@ -8,8 +8,9 @@ layout (location = 1) in vec2 inUV;
 layout (location = 2) in vec3 inColor;
 layout (location = 3) in vec3 inWorldPos;
 layout (location = 4) in vec3 inTangent;
-layout (location = 5) in vec2 inMotion;
-layout (location = 6) in mat3 inTBN;
+layout (location = 5) in vec4 inCurrWSPos;
+layout (location = 6) in vec4 inPrevWSPos;
+layout (location = 7) in mat3 inTBN;
 
 layout (location = 0) out vec4 outGBufferNormal;
 layout (location = 1) out vec4 outGBufferAlbedo;
@@ -74,7 +75,9 @@ void main()
 	}
 
 	// Motion vectors
-	data.motionVectors = vec2(inMotion);
+	vec2 currPos = (inCurrWSPos.xy / inCurrWSPos.w) * 0.5 + 0.5;
+	vec2 prevPos = (inPrevWSPos.xy / inPrevWSPos.w) * 0.5 + 0.5;
+	data.motionVectors = (currPos - prevPos);
 
 	GBuffer_Write(data);
 }

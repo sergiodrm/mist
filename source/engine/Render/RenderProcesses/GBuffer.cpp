@@ -178,7 +178,7 @@ namespace Mist
 		case RT_EMISSIVE: return render::Format_R16G16B16A16_SFloat;
 		case RT_SPECULAR: return render::Format_R8G8B8A8_UNorm;
 		case RT_DEPTH_STENCIL: return render::Format_D24_UNorm_S8_UInt;
-		case RT_MOTION_VECTORS: return render::Format_R8G8_SNorm;
+		case RT_MOTION_VECTORS: return render::Format_R16G16_SFloat;
 		}
 		return render::Format_Undefined;
 	}

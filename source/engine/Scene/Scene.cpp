@@ -1404,6 +1404,7 @@ namespace Mist
 		rs->SetVertexBuffer(item.mesh->GetVertexBuffer());
 		rs->SetIndexBuffer(item.mesh->GetIndexBuffer());
 		rs->SetShaderProperty("u_model", &item.transform, sizeof(item.transform));
+		rs->SetShaderProperty("u_prevModel", &item.transform, sizeof(item.transform));
 	}
 
 	void SceneRenderer::BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material)

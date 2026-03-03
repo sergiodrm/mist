@@ -2,7 +2,6 @@
 
 #include "RenderProcess.h"
 #include "Render/Globals.h"
-#include "Bloom.h"
 #include <glm/glm.hpp>
 
 

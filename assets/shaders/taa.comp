@@ -1,0 +1,64 @@
+#version 460
+
+layout (set = 0, binding = 0, rgba32f) writeonly uniform image2D outTex;
+
+layout (set = 1, binding = 0) uniform sampler2D u_historyTex;
+layout (set = 1, binding = 1) uniform sampler2D u_currentTex;
+layout (set = 1, binding = 2) uniform sampler2D u_motionVectorsTex;
+
+layout (set = 1, binding = 3) uniform TAAParams
+{
+    ivec2 texSize;
+    vec2 alpha;
+} u_params;
+
+vec2 CameraReprojection(vec2 tc)
+{
+    return tc - texture(u_motionVectorsTex, tc).rg;
+}
+
+vec4 ComputeColor(vec2 tc, vec4 color)
+{
+#ifdef TAA_CLAMPING_COLOR
+    vec4 minColor = vec4(999999.f);
+    vec4 maxColor = vec4(-999999.f);
+
+    // 3x3 color clamping
+    vec2 sampleDiff = vec2(1.f)/vec2(u_params.texSize.x, u_params.texSize.y);
+    for (int x = -1; x < 2; ++x)
+    {
+        for (int y = -1; y < 2; ++y)
+        {
+            vec4 c = texture(u_currentTex, tc + sampleDiff * vec2(x, y));
+            minColor = min(minColor, c);
+            maxColor = max(maxColor, c);
+        }
+    }
+    return clamp(color, minColor, maxColor);
+#else
+    return color;
+#endif // TAA_CLAMPING_COLOR
+}
+
+layout (local_size_x = TAA_WGS_X, local_size_y = TAA_WGS_Y, local_size_z = 1) in;
+void main()
+{
+    ivec2 pixel  = ivec2(gl_GlobalInvocationID.xy);
+    if (pixel.x >= u_params.texSize.x || pixel.y >= u_params.texSize.y)
+        return;
+    // Compute current and previous tex coordinates
+    vec2 tc = (vec2(pixel)+vec2(0.5)) / vec2(u_params.texSize);
+    vec2 prevTc = CameraReprojection(tc);
+
+    // Compute color of last frame
+    vec4 h = texture(u_historyTex, prevTc);
+    h = ComputeColor(tc, h);
+    // Compute color of current frame
+    vec4 c = texture(u_currentTex, tc);
+
+    // Mix with spec alpha
+    vec4 r = mix(c, h, u_params.alpha.x);
+
+    //r = vec4(prevTc, 0,1);
+    imageStore(outTex, pixel, r);
+}
