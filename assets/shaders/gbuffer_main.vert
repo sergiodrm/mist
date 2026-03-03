@@ -3,14 +3,6 @@
 #include <shaders/includes/model.glsl>
 #include <shaders/includes/camera.glsl>
 
-#include <shaders/includes/vertex_mesh.glsl>
-
-// Vertex input
-//layout (location = 0) in vec3 inPosition;
-//layout (location = 1) in vec3 inNormal;
-//layout (location = 2) in vec3 inColor;
-//layout (location = 3) in vec3 inTangent;
-//layout (location = 4) in vec2 inUV;
 
 // Vertex output
 layout (location = 0) out vec3 outNormal;
@@ -37,13 +29,13 @@ layout (set = 1, binding = 0) uniform ModelBlock
 	Model data;
 } u_model;
 
+#include <shaders/includes/vertex_mesh.glsl>
 
 void main() 
 {
 	// Compute world space vertex position
 	vec3 worldPos = vec3(u_model.data.worldTransform * vec4(inPosition,1.f));
-	
-	gl_Position = u_camera.data.viewProjection * vec4(worldPos, 1.f);
+	gl_Position = Vertex_ComputeToClipSpace(vec4(worldPos, 1.f));
 
 	// Compute normals on view space.
 	//mat3 normalTransform = mat3(u_camera.data.view * u_model.data.worldTransform);

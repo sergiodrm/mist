@@ -39,17 +39,67 @@
 
 namespace Mist
 {
-	::render::Device* g_device = nullptr;
-	::rendersystem::RenderSystem* g_render = nullptr;
-
-	CameraData g_cameraData;
-	CameraData g_prevCameraData;
 
 	CBoolVar CVar_EnableValidationLayer("r_enableValidationLayer", true);
 	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
+	CFloatVar CVar_JitterScale("r_jitterScale", 1.f);
 
+	extern CBoolVar CVar_TAA;
 	extern CIntVar CVar_ShowCpuProf;
+
+	::render::Device* g_device = nullptr;
+	::rendersystem::RenderSystem* g_render = nullptr;
+
+	template <uint32_t N>
+	class JitterSequence
+	{
+	public:
+		static double HaltonSequence(int index, int base)
+		{
+			double f = 1.0;
+			double r = 0.0;
+			while (index > 0)
+			{
+				f /= base;
+				r = r + f * (index % base);
+				index /= base;
+			}
+			return r;
+		}
+
+		JitterSequence(uint32_t base)
+		{
+			for (uint32_t i = 0; i < N; ++i)
+				m_haltonSequence[i] = HaltonSequence(i, base);
+		}
+
+		double GetHalton(uint32_t index) const { return m_haltonSequence[index % N]; }
+		double operator[](uint32_t index) const { return GetHalton(index); }
+	private:
+		double m_haltonSequence[N];
+	};
+
+	static CameraData g_cameraData;
+	static CameraData g_previousCameraData;
+
+	const CameraData* GetCameraData() { return &g_cameraData; }
+	const CameraData* GetPrevCameraData() { return &g_previousCameraData; }
+
+	static void UpdateCameraData(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& jitteredProj)
+	{
+		g_previousCameraData = g_cameraData;
+		g_cameraData.Set(view, proj, jitteredProj);
+	}
+
+	static void JitterPerspectiveMatrix(glm::mat4& mat, float width, float height, uint32_t frame)
+	{
+		static JitterSequence<8> jitterSequence(2);
+		glm::vec2 texelSize = { 1.f/width, 1.f/height };
+		float h = jitterSequence[frame] * CVar_JitterScale.Get();
+		mat[2][0] = h * 0.5f * texelSize.x;
+		mat[2][1] = h * 0.5f * texelSize.y;
+	}
 
 	namespace Debug
 	{
@@ -112,15 +162,7 @@ namespace Mist
 		return DefaultMaterial;
 	}
 
-	const CameraData* GetCameraData()
-	{
-		return &g_cameraData;
-	}
-
-	const CameraData* GetPrevCameraData()
-	{
-		return &g_prevCameraData;
-	}
+	
 	
 	bool VulkanRenderEngine::Init(const Window& window)
 	{
@@ -249,8 +291,10 @@ namespace Mist
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)
 	{
-		g_prevCameraData = g_cameraData;
-		g_cameraData.Set(view, projection);
+		glm::mat4 jitteredProj = projection;
+		if (CVar_TAA.Get())
+			JitterPerspectiveMatrix(jitteredProj, (float)g_render->GetRenderResolution().width, (float)g_render->GetRenderResolution().height, g_render->GetFrameCounter());
+		UpdateCameraData(view, projection, jitteredProj);
 	}
 
 	Scene* VulkanRenderEngine::GetScene()

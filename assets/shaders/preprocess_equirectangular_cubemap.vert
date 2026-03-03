@@ -1,6 +1,5 @@
 #version 460
 
-#include <shaders/includes/vertex_mesh.glsl>
 #include <shaders/includes/camera.glsl>
 
 // output
@@ -13,10 +12,12 @@ layout (set = 0, binding = 0) uniform CameraBlock
     Camera data;
 } u_camera;
 
+#define _VIEW_PROJ_MATRIX u_camera.data.viewProjection
+#include <shaders/includes/vertex_mesh.glsl>
 
 // code
 void main() 
 {
     localPos = inPosition;
-    gl_Position = u_camera.data.viewProjection * vec4(localPos, 1.f);
+    gl_Position = Vertex_ComputeToClipSpace(vec4(localPos, 1.f));
 }

@@ -1,6 +1,5 @@
 #version 460
 
-#include <shaders/includes/vertex_mesh.glsl>
 #include <shaders/includes/camera.glsl>
 
 layout (location = 0) out vec4 outFragPos;
@@ -29,10 +28,12 @@ layout (std140, set = 1, binding = 0) uniform Object
     mat4 modelMatrix;
 } u_model;
 
+#include <shaders/includes/vertex_mesh.glsl>
+
 void main()
 {
     vec4 wsPos = u_model.modelMatrix * vec4(inPosition, 1.0f);
-    gl_Position = u_camera.data.viewProjection * wsPos;
+    gl_Position = Vertex_ComputeToClipSpace(wsPos);
 
     // Frag position in view space
     outFragPos = u_camera.data.view * wsPos;

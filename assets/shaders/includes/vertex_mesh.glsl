@@ -1,4 +1,7 @@
 
+#ifndef _VIEW_PROJ_MATRIX
+#define _VIEW_PROJ_MATRIX (u_camera.data.jitteredViewProjection)
+#endif
 
 // Vertex input
 layout (location = 0) in vec3 inPosition;
@@ -7,4 +10,9 @@ layout (location = 2) in vec3 inColor;
 layout (location = 3) in vec4 inTangent;
 layout (location = 4) in vec2 inUV0;
 layout (location = 5) in vec2 inUV1;
+
+vec4 Vertex_ComputeToClipSpace(vec4 worldPosition)
+{
+    return _VIEW_PROJ_MATRIX * worldPosition;
+}
 

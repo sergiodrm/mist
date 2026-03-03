@@ -667,6 +667,7 @@ namespace rendersystem
         void DestroyShader(ShaderProgram** shader);
         void ReloadAllShaders();
 
+        inline uint64_t GetFrameCounter() const { return m_frame; }
         inline uint64_t GetFrameIndex() const { return m_frame % m_device->GetSwapchain().images.size(); }
         render::BindingSetHandle GetBindingSet(const render::BindingSetDescription& desc);
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);

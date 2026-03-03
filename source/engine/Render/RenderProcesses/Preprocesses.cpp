@@ -221,9 +221,6 @@ namespace Mist
 			for (uint32_t i = 0; i < 6; ++i)
 			{
 				cd.Set(captureViews[i], captureProjection);
-				//cd.InvView = captureViews[i];
-				//cd.Projection = captureProjection;
-				//cd.ViewProjection = captureProjection * captureViews[i];
 
 				renderSystem->BeginMarkerFmt("Layer %d", i);
 
