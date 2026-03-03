@@ -791,6 +791,22 @@ namespace rendersystem
         GetCommandList()->CopyTexture(src, dst, infoArray, infoCount);
     }
 
+    void RenderSystem::CopyRenderTargets(const render::RenderTargetHandle& rtDst, const render::RenderTargetHandle& rtSrc)
+    {
+        check(rtSrc->m_description.colorAttachments.GetSize());
+        check(rtDst->m_description.colorAttachments.GetSize());
+		ClearState();
+		SetDefaultGraphicsState();
+		SetRenderTarget(rtDst);
+        SetDepthEnable(false, false);
+        SetStencilEnable(false);
+		SetShader(m_screenQuadCopy.shader);
+		SetTextureSlot("tex", rtSrc->m_description.colorAttachments[0].texture);
+		DrawFullscreenQuad();
+		SetDefaultGraphicsState();
+		ClearState();
+    }
+
     void RenderSystem::DrawFullscreenQuad()
     {
         SetVertexBuffer(m_screenQuadCopy.vb);

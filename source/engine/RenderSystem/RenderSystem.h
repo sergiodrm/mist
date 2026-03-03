@@ -778,6 +778,7 @@ namespace rendersystem
          * Transfer functions
          */
         void CopyTextureToTexture(const render::TextureHandle& src, const render::TextureHandle& dst, const render::CopyTextureInfo* infoArray, uint32_t infoCount);
+        void CopyRenderTargets(const render::RenderTargetHandle& rtDst, const render::RenderTargetHandle& rtSrc);
 
         // Utilities
         void DrawFullscreenQuad();
