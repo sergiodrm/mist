@@ -78,7 +78,7 @@
 
 namespace gltf_api
 {
-	void HandleError(cgltf_result result, const char* filepath)
+	static void HandleError(cgltf_result result, const char* filepath)
 	{
 		switch (result)
 		{
@@ -109,14 +109,14 @@ namespace gltf_api
 		}
 	}
 
-	float Length2(const glm::vec3& vec)
+	static float Length2(const glm::vec3& vec)
 	{
 		return vec.x * vec.x + vec.y * vec.y + vec.z * vec.z;
 	}
 
-	float Length(const glm::vec3& vec) { return sqrtf(Length2(vec)); }
+	static float Length(const glm::vec3& vec) { return sqrtf(Length2(vec)); }
 
-	uint32_t GetElementCountFromType(cgltf_type type)
+	static uint32_t GetElementCountFromType(cgltf_type type)
 	{
 		switch (type)
 		{
@@ -136,37 +136,37 @@ namespace gltf_api
 		return 0;
 	}
 
-	void ReadValue(void* dst, const cgltf_float* data, uint32_t count)
+	static void ReadValue(void* dst, const cgltf_float* data, uint32_t count)
 	{
 		memcpy_s(dst, sizeof(float) * count, data, sizeof(float) * count);
 	}
 
-	void ToMat4(glm::mat4* mat, const cgltf_float* cgltfMat4)
+	static void ToMat4(glm::mat4* mat, const cgltf_float* cgltfMat4)
 	{
 		ReadValue(mat, cgltfMat4, 16);
 	}
 
-	void ToVec2(glm::vec2& v, const cgltf_float* data)
+	static void ToVec2(glm::vec2& v, const cgltf_float* data)
 	{
 		ReadValue(&v, data, 2);
 	}
 
-	void ToVec3(glm::vec3& v, const cgltf_float* data)
+	static void ToVec3(glm::vec3& v, const cgltf_float* data)
 	{
 		ReadValue(&v, data, 3);
 	}
 
-	void ToVec4(glm::vec4& v, const cgltf_float* data)
+	static void ToVec4(glm::vec4& v, const cgltf_float* data)
 	{
 		ReadValue(&v, data, 4);
 	}
 
-	void ToQuat(glm::quat& q, const cgltf_float* data)
+	static void ToQuat(glm::quat& q, const cgltf_float* data)
 	{
 		q = glm::quat(data[3], data[0], data[1], data[2]);
 	}
 
-	void ReadNodeLocalTransform(const cgltf_node& node, glm::mat4& t)
+	static void ReadNodeLocalTransform(const cgltf_node& node, glm::mat4& t)
 	{
 		t = glm::mat4(1.f);
 		if (node.has_matrix)
@@ -197,7 +197,7 @@ namespace gltf_api
 	}
 
 	// Attributes are an continuous array of positions, normals, uvs...
-	void ReadAttributeArray(Mist::Vertex* vertices, const cgltf_attribute& attribute)
+	static void ReadAttributeArray(Mist::Vertex* vertices, const cgltf_attribute& attribute)
 	{
 		const cgltf_accessor* accessor = attribute.data;
 		check(accessor->count < UINT32_MAX);
@@ -271,12 +271,12 @@ namespace gltf_api
         }
 	}
 
-	void FreeData(cgltf_data* data)
+	static void FreeData(cgltf_data* data)
 	{
 		cgltf_free(data);
 	}
 
-	cgltf_data* ParseFile(const char* filepath)
+	static cgltf_data* ParseFile(const char* filepath)
 	{
 		cgltf_options options;
 		memset(&options, 0, sizeof(cgltf_options));
@@ -303,7 +303,7 @@ namespace gltf_api
 		return data;
 	}
 
-	void LoadVertices(const cgltf_primitive& primitive, Mist::Vertex* verticesOut, uint32_t vertexCount)
+	static void LoadVertices(const cgltf_primitive& primitive, Mist::Vertex* verticesOut, uint32_t vertexCount)
 	{
 		uint32_t attributeCount = (uint32_t)primitive.attributes_count;
 		check(primitive.attributes[0].data->count < UINT32_MAX);
@@ -317,7 +317,7 @@ namespace gltf_api
 		}
 	}
 
-	void LoadIndices(const cgltf_primitive& primitive, uint32_t* indicesOut, uint32_t offset)
+	static void LoadIndices(const cgltf_primitive& primitive, uint32_t* indicesOut, uint32_t offset)
 	{
 		check(primitive.indices && primitive.type == cgltf_primitive_type_triangles);
 		check(primitive.indices->count < UINT32_MAX);
@@ -326,7 +326,7 @@ namespace gltf_api
 			indicesOut[i] = (uint32_t)cgltf_accessor_read_index(primitive.indices, i) + offset;
 	}
 
-	render::Filter GetSamplerMagFilter(int filter)
+	static render::Filter GetSamplerMagFilter(int filter)
 	{
 		switch (filter)
 		{
@@ -338,7 +338,7 @@ namespace gltf_api
 		return render::Filter_Linear;
 	}
 
-	void GetSamplerMinFilterAndMipmapMode(int mode, render::Filter* minFilterOut, render::Filter* mipmapModeOut)
+	static void GetSamplerMinFilterAndMipmapMode(int mode, render::Filter* minFilterOut, render::Filter* mipmapModeOut)
 	{
 		switch (mode)
 		{
@@ -367,7 +367,7 @@ namespace gltf_api
 		}
 	}
 
-	render::SamplerAddressMode GetSamplerAddressMode(int mode)
+	static render::SamplerAddressMode GetSamplerAddressMode(int mode)
 	{
 		switch (mode)
 		{
@@ -378,7 +378,7 @@ namespace gltf_api
 		return render::SamplerAddressMode_Repeat;
 	}
 
-	render::SamplerHandle LoadSampler(render::Device* device, const cgltf_sampler* sampler)
+	static render::SamplerHandle LoadSampler(render::Device* device, const cgltf_sampler* sampler)
 	{
 		render::SamplerDescription desc;
 		GetSamplerMinFilterAndMipmapMode(sampler->min_filter, &desc.minFilter, &desc.mipmapMode);
@@ -391,7 +391,7 @@ namespace gltf_api
 		return device->CreateSampler(desc);
 	}
 
-	bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& texView, render::TextureHandle* texOut, render::SamplerHandle* samplerOut)
+	static bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& texView, render::TextureHandle* texOut, render::SamplerHandle* samplerOut)
 	{
 		if (!texView.texture)
 			return false;
@@ -407,9 +407,9 @@ namespace gltf_api
 	}
 
 	template <typename T>
-	inline Mist::index_t GetArrayElementOffset(const T* root, const T* item) { check(item >= root); return Mist::index_t(item - root); }
+	static inline Mist::index_t GetArrayElementOffset(const T* root, const T* item) { check(item >= root); return Mist::index_t(item - root); }
 
-	void LoadMaterial(Mist::cMaterial& material, render::Device* device, const cgltf_material& cgltfmtl, const char* rootAssetPath)
+	static void LoadMaterial(Mist::cMaterial& material, render::Device* device, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
 		material.m_flags = Mist::MATERIAL_FLAG_NONE;
 		// Emissive
@@ -484,7 +484,7 @@ namespace gltf_api
 
 namespace Mist
 {
-	void CalculateTangent(glm::vec4& t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2)
+	static void CalculateTangent(glm::vec4& t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2)
 	{
 		glm::vec3 e0 = p1 - p0;
 		glm::vec3 e1 = p2 - p0;
@@ -498,7 +498,7 @@ namespace Mist
 		t.w = 1.f;
 	}
 
-	void BuildTangents(Vertex* vertices, lindex_t vertexCount, lindex_t* indices, lindex_t indexCount)
+	static void BuildTangents(Vertex* vertices, lindex_t vertexCount, lindex_t* indices, lindex_t indexCount)
 	{
 		check(indexCount % 3 == 0);
 		check(vertices && vertexCount && indices);
@@ -515,7 +515,6 @@ namespace Mist
 			v2.Tangent = t;
 		}
 	}
-
 
 	void cModel::Destroy()
 	{
