@@ -27,8 +27,7 @@ namespace Mist
 	 * TAA CVars
 	 */
 	CBoolVar CVar_TAA("r_taa", true);
-	CFloatVar CVar_TAAAlpha("r_taaAlpha", 0.85f);
-	CFloatVar CVar_TAADebugScale("r_taaDebugScale", .5f);
+	CFloatVar CVar_TAAAlpha("r_taaAlpha", 0.9f);
 	extern CFloatVar CVar_JitterScale;
 
 	/**
@@ -68,7 +67,7 @@ namespace Mist
 		texDesc.isRenderTarget = true;
 		texDesc.isShaderResource = true;
 		texDesc.isStorageTexture = true;
-		texDesc.format = render::Format_R8G8B8A8_UNorm;
+		texDesc.format = render::Format_R16G16B16A16_UNorm;
 		
 		for (uint32_t i = 0; i < Mist::CountOf(m_rts); ++i)
 		{
@@ -119,7 +118,6 @@ namespace Mist
 		{
 			ImGuiUtils::ComboBox("TAA shader", (int*)&m_taaShaderIndex, options, Mist::CountOf(options));
 			ImGuiUtils::DragCFloatVar(CVar_TAAAlpha, 0.05f, 0.f, 1.f);
-			ImGuiUtils::DragCFloatVar(CVar_TAADebugScale, 0.05f, 0.f, 1.f);
 			ImGuiUtils::DragCFloatVar(CVar_JitterScale, 0.5f, 0.f, FLT_MAX);
 		}
 	}
@@ -128,37 +126,39 @@ namespace Mist
 	{
 		CPU_PROFILE_SCOPE(CpuTAA);
 		if (!CVar_TAA.Get())
-			return;
-		rs->BeginMarker("TAA");
-		VulkanRenderEngine& engine = *IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
-		const GBuffer* gbuffer = engine.GetRenderer()->GetRenderProcessAs<GBuffer>();
-		const render::RenderTargetHandle& motionVectors = gbuffer->GetRenderTarget();
-		rs->ClearState();
-		rs->SetShader(GetTAAShader());
-		rs->SetTextureSlot("u_historyTex", GetHistory()->m_description.colorAttachments[0].texture);
-		rs->SetTextureSlot("u_currentTex", rt->m_description.colorAttachments[0].texture);
-		rs->SetTextureSlot("u_motionVectorsTex", motionVectors->m_description.colorAttachments[GBuffer::RT_MOTION_VECTORS].texture);
-		rs->SetTextureSlot("outTex", GetOutput()->m_description.colorAttachments[0].texture);
-		struct  
 		{
-			glm::ivec2 res;
-			glm::vec2 alpha;
-		} params{ {rs->GetRenderResolution().width, rs->GetRenderResolution().height }, { CVar_TAAAlpha.Get(), 0.f } };
-		rs->SetShaderProperty("u_params", &params, sizeof(params));
+			rs->BeginMarker("TAA (bypass)");
+			rs->CopyRenderTargets(GetOutput(), rt);
+			rs->EndMarker();
+		}
+		else
+		{
+			rs->BeginMarker("TAA");
+			VulkanRenderEngine& engine = *IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+			const GBuffer* gbuffer = engine.GetRenderer()->GetRenderProcessAs<GBuffer>();
+			const render::RenderTargetHandle& motionVectors = gbuffer->GetRenderTarget();
+			rs->ClearState();
+			rs->SetShader(GetTAAShader());
+			rs->SetTextureSlot("u_historyTex", GetHistory()->m_description.colorAttachments[0].texture);
+			rs->SetTextureSlot("u_currentTex", rt->m_description.colorAttachments[0].texture);
+			rs->SetTextureSlot("u_motionVectorsTex", motionVectors->m_description.colorAttachments[GBuffer::RT_MOTION_VECTORS].texture);
+			rs->SetTextureSlot("outTex", GetOutput()->m_description.colorAttachments[0].texture);
+			struct  
+			{
+				glm::ivec2 res;
+				glm::vec2 alpha;
+			} params{ {rs->GetRenderResolution().width, rs->GetRenderResolution().height }, { CVar_TAAAlpha.Get(), 0.f } };
+			rs->SetShaderProperty("u_params", &params, sizeof(params));
 
-		WorkgroupSize wgs = CalculateImageWorkgroupSize(params.res.x, params.res.y, TAA_WGS_X, TAA_WGS_Y);
-		rs->Dispatch(wgs.x, wgs.y, wgs.z);
-		rs->ClearState();
+			WorkgroupSize wgs = CalculateImageWorkgroupSize(params.res.x, params.res.y, TAA_WGS_X, TAA_WGS_Y);
+			rs->Dispatch(wgs.x, wgs.y, wgs.z);
+			rs->ClearState();
 
-		rs->BeginMarker("Copy History");
-		rs->CopyRenderTargets(GetHistory(), GetOutput());
-		rs->EndMarker();
-		rs->EndMarker();
-
-		render::Extent2D s = rs->GetRenderResolution();
-		float scale = CVar_TAADebugScale.Get();
-		if (scale>0.f)
-			DebugRender::DrawScreenQuad({ (1.f-scale) * s.width, 0.f }, { scale * s.width, scale * s.height }, GetOutput()->m_description.colorAttachments[0].texture);
+			rs->BeginMarker("Copy History");
+			rs->CopyRenderTargets(GetHistory(), GetOutput());
+			rs->EndMarker();
+			rs->EndMarker();
+		}
 	}
 
 	/************************************************************************/
@@ -460,9 +460,9 @@ namespace Mist
 		render::RenderTargetHandle lightingRt = lighting->GetRenderTarget();
 
 		// BLOOM
-		{
-			m_bloomEffect.Draw(rs, lightingRt);
-		}
+		m_bloomEffect.Draw(rs, lightingRt);
+		// TAA
+		m_taa.Draw(rs, lightingRt);
 
 		// HDR
 		render::RenderTargetHandle rt = rs->GetLDRTarget();
@@ -478,18 +478,19 @@ namespace Mist
 
 			rs->SetShader(m_hdrShader);
 			rs->SetRenderTarget(rt);
+			rs->SetDefaultGraphicsState();
 			rs->ClearColor();
+			rs->ClearDepthStencil();
 			rs->SetDepthEnable(false, false);
+			rs->SetBlendEnable(false);
 			rs->SetShaderProperty("u_HdrParams", &params, sizeof(params));
-			rs->SetTextureSlot("u_hdrtex", lightingRt->m_description.colorAttachments[0].texture);
+			rs->SetTextureSlot("u_hdrtex", m_taa.GetOutput()->m_description.colorAttachments[0].texture);
 			rs->DrawFullscreenQuad();
 			rs->SetDefaultGraphicsState();
 			rs->EndMarker();
 		}
 		rs->ClearState();
 
-		// TAA
-		m_taa.Draw(rs, rt);
 	}
 
 	void PostProcess::ImGuiDraw()
@@ -497,6 +498,9 @@ namespace Mist
 		ImGui::Begin("Postpro");
 		m_bloomEffect.ImGuiDraw();
 		m_taa.ImGuiDraw();
+		ImGui::SeparatorText("HDR post pro");
+		ImGuiUtils::DragCFloatVar(CVar_Exposure, 0.01f);
+		ImGuiUtils::DragCFloatVar(CVar_GammaCorrection, 0.01f);
 		ImGui::End();
 	}
 

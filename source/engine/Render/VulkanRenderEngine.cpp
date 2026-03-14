@@ -43,7 +43,7 @@ namespace Mist
 	CBoolVar CVar_EnableValidationLayer("r_enableValidationLayer", true);
 	CBoolVar CVar_ExitValidationLayer("r_exitValidationLayer", true);
 	CBoolVar CVar_ShowImGui("ShowImGui", true);
-	CFloatVar CVar_JitterScale("r_jitterScale", 1.f);
+	CFloatVar CVar_JitterScale("r_jitterScale", 4.f);
 
 	extern CBoolVar CVar_TAA;
 	extern CIntVar CVar_ShowCpuProf;
