@@ -22,7 +22,7 @@ namespace Mist
 		m_indexBuffer = nullptr;
 		m_indexCount = 0;
 		m_primitiveArray.Delete();
-		m_renderFlags = 0;
+		m_renderPassMask = 0;
 		m_aabb.Invalidate();
 	}
 }

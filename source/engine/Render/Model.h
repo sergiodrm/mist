@@ -9,18 +9,6 @@ namespace Mist
 	class cMaterial;
 	struct sMaterialRenderData;
 
-	enum RenderPassTypeBit
-	{
-		RenderPass_None = 0x00,
-		RenderPass_Opaque = 0x01,
-		RenderPass_Transparent = 0x02,
-		RenderPass_ShadowMap = 0x04,
-
-		RenderPass_All = 0xff
-	};
-	typedef uint8_t RenderPassType;
-	inline bool IsGeometryPass(RenderPassType type) { return type == RenderPass_ShadowMap; }
-
 	enum StencilMaskBit
 	{
 		StencilMask_None = 0x00,
@@ -59,7 +47,7 @@ namespace Mist
 		uint32_t GetMeshCount() const { return m_meshes.GetSize(); }
 
 		inline const AABB_t& GetAABB() const { return m_aabb; }
-		inline uint8_t GetFlags() const { check(false); return 0; }
+		inline RenderPassType GetRenderPassMask() const { return m_renderPassMask; }
 		void DumpInfo() const;
 	private:
 		void InitNodes(index_t n);
@@ -87,5 +75,6 @@ namespace Mist
 		tFixedHeapArray<cMaterial> m_materials;
 		tFixedHeapArray<glm::mat4> m_transforms;
 		AABB_t m_aabb;
+		RenderPassType m_renderPassMask{RenderPass_None};
 	};
 }

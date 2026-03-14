@@ -351,12 +351,12 @@ namespace Mist
 								for (index_t j = 0; j < mesh.GetPrimitiveCount(); ++j)
 								{
 									const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[j];
-									aabb = primitive.AABB.ApplyTransform(transform);
+									aabb = primitive.aabb.ApplyTransform(transform);
 									DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(1, 1, 0));
 									textAABBFn(aabb);
 									ImGui::SeparatorText("Info");
-									ImGui::Text("Material:   %s", primitive.Material ? primitive.Material->GetName() : "none");
-									ImGui::Text("Triangles: %4d", primitive.Count / 3);
+									ImGui::Text("Material:   %s", primitive.material ? primitive.material->GetName() : "none");
+									ImGui::Text("Triangles: %4d", primitive.count / 3);
 								}
 								ImGui::TreePop();
 							}
@@ -1303,7 +1303,7 @@ namespace Mist
 								j,
 								m_renderPasses[i].items[j].mesh->GetName(),
 								m_renderPasses[i].items[j].primitive,
-								m_renderPasses[i].items[j].mesh->GetPrimitiveArray()[m_renderPasses[i].items[j].primitive].Material);
+								m_renderPasses[i].items[j].mesh->GetPrimitiveArray()[m_renderPasses[i].items[j].primitive].material);
 						}
 						ImGui::TreePop();
 					}
@@ -1364,7 +1364,7 @@ namespace Mist
 		for (uint32_t i = 0; i < m_creationInfo.GetSize(); ++i)
 		{
 			AABB_t aabb = mesh.GetAABB().ApplyTransform(modelTransform);
-			if ((mesh.GetRenderFlags() & m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_creationInfo[i].cameraData.ViewProjection))))
+			if ((mesh.GetRenderPassMask() & m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_creationInfo[i].cameraData.ViewProjection))))
 			{
 				if (!IsGeometryPass(m_creationInfo[i].pass))
 					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = i;
@@ -1385,10 +1385,10 @@ namespace Mist
 			const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[i];
 			for (uint32_t j = 0; j < primitiveRenderPasses.index; ++j)
 			{
-				check(primitive.Material);
+				check(primitive.material);
 				const RenderPassInfo& info = m_creationInfo[primitiveRenderPasses.indices[j]];
 				RenderPass& pass = m_renderPasses[primitiveRenderPasses.indices[j]];
-				if (primitive.RenderFlags & info.pass)
+				if (primitive.renderPassMask & info.pass)
 				{
 					// Render info
 					RenderItem& item = pass.items.emplace_back();
@@ -1397,7 +1397,7 @@ namespace Mist
 					item.transform = nodeTransform;
 
 					// Culling info
-					pass.cullingData.emplace_back(primitive.AABB.ApplyTransform(modelTransform));
+					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(modelTransform));
 				}
 			}
 		}
@@ -1451,14 +1451,14 @@ namespace Mist
 			lastMesh = item.mesh;
 			BindMesh(renderContext.rs, item);
 		}
-		if (lastMaterial != primitive.Material)
+		if (lastMaterial != primitive.material)
 		{
-			if (lastMaterial && lastMaterial->m_shaderProgram != primitive.Material->m_shaderProgram)
-				renderContext.rs->SetShader(primitive.Material->m_shaderProgram);
-			lastMaterial = primitive.Material;
-			BindMaterial(renderContext.rs, *primitive.Material);
+			if (lastMaterial && lastMaterial->m_shaderProgram != primitive.material->m_shaderProgram)
+				renderContext.rs->SetShader(primitive.material->m_shaderProgram);
+			lastMaterial = primitive.material;
+			BindMaterial(renderContext.rs, *primitive.material);
 		}
-		renderContext.rs->DrawIndexed(primitive.Count, 1, primitive.FirstIndex);
+		renderContext.rs->DrawIndexed(primitive.count, 1, primitive.firstIndex);
 	}
 
 	void SceneRenderer::DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item)

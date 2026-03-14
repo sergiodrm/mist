@@ -15,13 +15,25 @@ namespace Mist
 {
 	class cMaterial;
 
+	enum RenderPassTypeBit
+	{
+		RenderPass_None = 0x00,
+		RenderPass_Opaque = 0x01,
+		RenderPass_Transparent = 0x02,
+		RenderPass_ShadowMap = 0x04,
+
+		RenderPass_All = 0xff
+	};
+	typedef uint8_t RenderPassType;
+	inline bool IsGeometryPass(RenderPassType type) { return type == RenderPass_ShadowMap; }
+
 	struct PrimitiveMeshData
 	{
-		uint16_t RenderFlags;
-		uint32_t FirstIndex;
-		uint32_t Count;
-		cMaterial* Material;
-		AABB_t AABB;
+		RenderPassType renderPassMask;
+		uint32_t firstIndex;
+		uint32_t count;
+		cMaterial* material;
+		AABB_t aabb;
 	};
 
 	class cMesh : public cRenderResource<RenderResource_Mesh>
@@ -34,21 +46,22 @@ namespace Mist
 		inline const render::BufferHandle& GetVertexBuffer() const { return m_vertexBuffer; }
 		inline const render::BufferHandle& GetIndexBuffer() const { return m_indexBuffer; }
 		inline uint32_t GetIndexCount() const { return m_indexCount; }
+
 		inline const PrimitiveMeshData* GetPrimitiveArray() const { return m_primitiveArray.GetData(); }
 		inline PrimitiveMeshData* GetPrimitiveArray() { return m_primitiveArray.GetData(); }
 		inline uint32_t GetPrimitiveCount() const { return m_primitiveArray.GetSize(); }
-		inline const AABB_t& GetAABB() const { return m_aabb; }
-		inline uint32_t GetRenderFlags() const { return m_renderFlags; }
 
+		inline const AABB_t& GetAABB() const { return m_aabb; }
 		inline void SetAABB(const AABB_t& aabb) { m_aabb = aabb; }
-		inline void ActivateRenderFlags(uint32_t flags) { m_renderFlags |= flags; }
-		inline void DeactivateRenderFlags(uint32_t flags) { m_renderFlags &= ~flags; }
-		inline void SetRenderFlags(uint32_t flags) { m_renderFlags = flags; }
+
+		inline RenderPassType GetRenderPassMask() const { return m_renderPassMask; }
 	private:
 		render::BufferHandle m_vertexBuffer;
 		render::BufferHandle m_indexBuffer;
 		uint32_t m_indexCount;
-		uint32_t m_renderFlags;
+
+		// Cached from primitive data
+		RenderPassType m_renderPassMask{ RenderPass_None };
 		tFixedHeapArray<PrimitiveMeshData> m_primitiveArray;
 		AABB_t m_aabb;
 	};

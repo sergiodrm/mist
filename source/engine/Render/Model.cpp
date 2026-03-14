@@ -584,6 +584,7 @@ namespace Mist
 			InitNodes((index_t)data->nodes_count);
 			InitMeshes((index_t)data->meshes_count);
 			m_aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+			m_renderPassMask = RenderPass_None;
 
 			tDynArray<Vertex> tempVertices;
 			tDynArray<uint32_t> tempIndices;
@@ -611,7 +612,7 @@ namespace Mist
 					m_meshNodeIndex[meshIndex] = nodeIndex;
 
 					cMesh& mesh = m_meshes[meshIndex];
-					mesh.SetRenderFlags(0);
+					mesh.SetRenderPassMask(RenderPass_None);
 					mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
 					loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
 
@@ -644,39 +645,39 @@ namespace Mist
 						// Calculate AABB
 						// calculate min and max of vertices in mesh space. After load all vertices and nodes, aabb will be transformed to model space.
 						// only calculate primitives bounding boxes.
-						primitive.AABB = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+						primitive.aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
 						const Vertex* vertices = tempVertices.data() + vertexOffset;
 						for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
-							primitive.AABB = { math::ComposeMinVector(primitive.AABB.min, vertices[vertexIndex].Position), math::ComposeMaxVector(primitive.AABB.max, vertices[vertexIndex].Position) };
+							primitive.aabb = { math::ComposeMinVector(primitive.aabb.min, vertices[vertexIndex].Position), math::ComposeMaxVector(primitive.aabb.max, vertices[vertexIndex].Position) };
 
 						// Set primitive
-						primitive.RenderFlags = 0;
-						primitive.FirstIndex = indexOffset;
-						primitive.Count = indexCount;
+						primitive.renderPassMask = 0;
+						primitive.firstIndex = indexOffset;
+						primitive.count = indexCount;
 						if (cgltfprimitive.material)
 						{
 							index_t materialIndex = gltf_api::GetArrayElementOffset(data->materials, cgltfprimitive.material);
 							check(materialIndex < m_materials.GetSize());
 							cMaterial* material = &m_materials[materialIndex];
-							primitive.Material = material;
+							primitive.material = material;
 							if (!(material->m_flags & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
-								primitive.RenderFlags |= RenderPass_ShadowMap;
+								primitive.renderPassMask |= RenderPass_ShadowMap;
 							//if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
 							//	primitive.RenderFlags |= RenderFlags_Emissive;
 							if (material->m_flags & (MATERIAL_FLAG_OPAQUE | MATERIAL_FLAG_MASK))
-								primitive.RenderFlags |= RenderPass_Opaque;
+								primitive.renderPassMask |= RenderPass_Opaque;
 							if (material->m_flags & MATERIAL_FLAG_BLEND)
-								primitive.RenderFlags |= RenderPass_Transparent;
+								primitive.renderPassMask |= RenderPass_Transparent;
 						}
 						else
 						{
 							logfwarn("Primitive mesh without material: %s (Primitive %d)\n", mesh.GetName(), j);
 							check(!m_materials.IsEmpty());
-							primitive.Material = &m_materials[0];
+							primitive.material = &m_materials[0];
 						}
-						mesh.SetRenderFlags(mesh.GetRenderFlags() | primitive.RenderFlags);
+						mesh.SetRenderPassMask(mesh.GetRenderPassMask() | primitive.renderPassMask);
 
-						check(cgltfprimitive.indices->count == primitive.Count);
+						check(cgltfprimitive.indices->count == primitive.count);
 					}
 
 					loadmeshlogf("* mesh %d: %d vertices (%lld b), %d indices (%lld b), render mask %d\n",
@@ -686,6 +687,9 @@ namespace Mist
 
 					// Create mesh resources.
 					mesh.InitBuffers(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex), tempIndices.data(), tempIndices.size());
+
+					// Update model render pass from mesh render pass mask
+					m_renderPassMask |= mesh.GetRenderPassMask();
 
 					// Clear temp buffers without release memory
 					tempIndices.clear();
@@ -708,7 +712,7 @@ namespace Mist
 						AABB_t meshAABB = AABB_t::InvalidAABB();
 						for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.GetPrimitiveCount(); ++primitiveIndex)
 						{
-							AABB_t& aabb = mesh.GetPrimitiveArray()[primitiveIndex].AABB;
+							AABB_t& aabb = mesh.GetPrimitiveArray()[primitiveIndex].aabb;
 							aabb.min = modelTransforms[i] * glm::vec4(aabb.min, 1.f);
 							aabb.max = modelTransforms[i] * glm::vec4(aabb.max, 1.f);
 							meshAABB = { math::ComposeMinVector(aabb.min, meshAABB.min), math::ComposeMaxVector(aabb.max, meshAABB.max) };
