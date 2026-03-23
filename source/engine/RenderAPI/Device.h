@@ -193,6 +193,8 @@ namespace render
         float minLod = FLT_MAX;
         float maxLod = FLT_MAX;
         float maxAnisotropy = 1.f;
+        bool compareEnabled = false;
+        CompareOp compareOp = CompareOp_Always;
         Mist::String debugName;
 
         void SetAllLODs() { minLod = FLT_MAX; maxLod = FLT_MAX; }

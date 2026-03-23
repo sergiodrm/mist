@@ -1624,8 +1624,8 @@ namespace render
         samplerInfo.maxAnisotropy = description.maxAnisotropy;
         samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
-        samplerInfo.compareEnable = VK_FALSE;
-        samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+        samplerInfo.compareEnable = description.compareEnabled;
+        samplerInfo.compareOp = utils::ConvertCompareOp(description.compareOp);
         samplerInfo.flags = 0;
         samplerInfo.minLod = description.minLod == FLT_MAX ? 0.f : description.minLod;
         samplerInfo.maxLod = description.maxLod == FLT_MAX ? VK_LOD_CLAMP_NONE : description.maxLod;
