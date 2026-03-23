@@ -349,6 +349,18 @@ namespace Mist
 		{
 			Allocate(count);
 		}
+		tFixedHeapArray(DataType** data, IndexType* count)
+			: m_data(nullptr), m_count(0), m_index(0)
+		{
+			if (data && count)
+			{
+				m_data = *data;
+				m_count = *count;
+				m_index = m_count;
+				*data = nullptr;
+				*count = 0;
+			}
+		}
 		~tFixedHeapArray()
 		{
 			Delete();
@@ -440,6 +452,18 @@ namespace Mist
 
 		inline DataType& operator[](IndexType index) { check(m_data && index < m_index); return m_data[index]; }
 		inline const DataType& operator[](IndexType index) const { check(m_data && index < m_index); return m_data[index]; }
+
+		inline ThisType& operator=(ThisType&& rvl)
+		{
+			if (this == &rvl)
+				return *this;
+			Clear();
+			m_data = rvl.m_data;
+			m_count = rvl.m_count;
+			m_index = rvl.m_index;
+			rvl.Invalidate();
+			return *this;
+		}
 
 		[[nodiscard]] ThisType Move()
 		{
