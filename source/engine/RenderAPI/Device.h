@@ -323,6 +323,38 @@ namespace render
     class Device;
 
     /**
+     * Render resource ref
+     */
+
+    template <typename T>
+    using RenderResourceHandle = Mist::RefPtr<T>;
+
+	template <typename T>
+	class RenderResourceRef : public Mist::Ref<T>
+	{
+        friend RenderResourceHandle<T>;
+	public:
+        RenderResourceRef(Device* device)
+            : m_device(device) 
+        { 
+            check(m_device); 
+        }
+
+        inline Device* GetDevice() const { return m_device; }
+	protected:
+		void OnZeroRef()
+		{
+			check(m_device);
+            T* resource = static_cast<T*>(this);
+            resource->Invalidate();
+			m_device->AddToGarbageCollector(resource);
+		}
+	private:
+		Device* m_device{ nullptr };
+	};
+
+
+    /**
      * Vulkan context
      */
 
@@ -540,46 +572,44 @@ namespace render
      * Sync
      */
 
-    class Semaphore final : public Mist::Ref<Semaphore>
+    class Semaphore final : public RenderResourceRef<Semaphore>
     {
     public:
         Semaphore(Device* device);
         ~Semaphore();
 
+        inline void Invalidate() {}
+
         bool m_isTimeline;
         VkSemaphore m_semaphore;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<Semaphore> SemaphoreHandle;
+    typedef RenderResourceHandle<Semaphore> SemaphoreHandle;
 
 
     /**
      * Buffer
      */
 
-    class Buffer final : public Mist::Ref<Buffer>
+    class Buffer final : public RenderResourceRef<Buffer>
     {
     public:
 
         Buffer(Device* device) 
-            : m_device(device),
+            : RenderResourceRef(device),
             m_alloc(nullptr),
             m_buffer(VK_NULL_HANDLE),
             m_description{}
         {}
         ~Buffer();
 
+        inline void Invalidate() {}
         inline bool IsAllocated() const { return m_alloc != nullptr && m_buffer != VK_NULL_HANDLE; }
 
         Alloc m_alloc;
         VkBuffer m_buffer;
         BufferDescription m_description;
-
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<Buffer> BufferHandle;
+    typedef RenderResourceHandle<Buffer> BufferHandle;
 
     /**
      * Texture
@@ -599,12 +629,12 @@ namespace render
 
     };
 
-    class Texture final : public Mist::Ref<Texture>
+    class Texture final : public RenderResourceRef<Texture>
     {
     public:
 
         Texture(Device* device) 
-            : m_device(device),
+            : RenderResourceRef(device),
             m_description{},
             m_alloc(nullptr),
             m_image(VK_NULL_HANDLE),
@@ -612,6 +642,7 @@ namespace render
         { }
         ~Texture();
 
+        inline void Invalidate() {}
         inline bool IsAllocated() const { return m_image != VK_NULL_HANDLE && (!m_owner || m_alloc != nullptr); }
         size_t GetImageSize() const;
 
@@ -631,31 +662,28 @@ namespace render
         typedef Mist::tMap<TextureSubresourceRange, ImageLayout>::const_iterator LayoutConstIterator;
         typedef Mist::tMap<TextureSubresourceRange, ImageLayout>::iterator LayoutIterator;
         typedef Mist::tMap<TextureViewDescription, TextureView>::iterator ViewIterator;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<Texture> TextureHandle;
+    typedef RenderResourceHandle<Texture> TextureHandle;
 
     /**
      * Sampler
      */
 
-    class Sampler final : public Mist::Ref<Sampler>
+    class Sampler final : public RenderResourceRef<Sampler>
     {
     public:
 
         Sampler(Device* device)
-            : m_device(device),
+            : RenderResourceRef(device),
             m_sampler(VK_NULL_HANDLE)
         { }
         ~Sampler();
+        inline void Invalidate() {}
         inline bool IsAllocated() const { return m_sampler != VK_NULL_HANDLE; }
         VkSampler m_sampler;
         SamplerDescription m_description;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<Sampler> SamplerHandle;
+    typedef RenderResourceHandle<Sampler> SamplerHandle;
 
     /**
      * Shader
@@ -669,23 +697,22 @@ namespace render
         Mist::String debugName;
     };
 
-    class Shader final : public Mist::Ref<Shader>
+    class Shader final : public RenderResourceRef<Shader>
     {
     public:
         Shader(Device* device)
-            : m_device(device),
+            : RenderResourceRef(device),
             m_shader(VK_NULL_HANDLE),
             m_description{}
         {
         }
         ~Shader();
+        inline void Invalidate() {}
         inline bool IsAllocated() const { return m_shader != VK_NULL_HANDLE; }
         VkShaderModule m_shader;
         ShaderDescription m_description;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<Shader> ShaderHandle;
+    typedef RenderResourceHandle<Shader> ShaderHandle;
 
     /**
      * Input layout
@@ -735,6 +762,11 @@ namespace render
         {
             return texture && texture->IsAllocated() && texture->m_description.isRenderTarget;
         }
+
+        inline void Invalidate()
+        {
+            texture = nullptr;
+        }
     };
 
     struct RenderTargetDescription
@@ -743,6 +775,12 @@ namespace render
         Mist::tStaticArray<RenderTargetAttachment, MaxRenderAttachments> colorAttachments;
         RenderTargetAttachment depthStencilAttachment;
         Mist::String debugName;
+
+        inline void Invalidate()
+        {
+            depthStencilAttachment.Invalidate();
+            colorAttachments.Clear();
+        }
 
         RenderTargetDescription& AddColorAttachment(TextureHandle texture, TextureSubresourceRange range = TextureSubresourceRange{0,1,0,1});
         RenderTargetDescription& SetDepthStencilAttachment(TextureHandle texture, TextureSubresourceRange range = TextureSubresourceRange{ 0,1,0,1 });
@@ -761,12 +799,12 @@ namespace render
         inline Rect GetScissor() const { return Rect(0, static_cast<float>(extent.width), 0, static_cast<float>(extent.height)); }
 	};
 
-    class RenderTarget final : public Mist::Ref<RenderTarget>
+    class RenderTarget final : public RenderResourceRef<RenderTarget>
     {
     public:
 
         RenderTarget(Device* device)
-            : m_device(device),
+            : RenderResourceRef(device),
             m_renderPass(VK_NULL_HANDLE),
             m_framebuffer(VK_NULL_HANDLE)
         {
@@ -780,16 +818,17 @@ namespace render
         void ClearColor(CommandBuffer* cmd, float r = 0.f, float g = 0.f, float b = 0.f, float a = 1.f);
         void ClearDepthStencil(CommandBuffer* cmd, float depth = 1.f, uint32_t stencil = 0);
 
+        inline void Invalidate()
+        {
+            m_description.Invalidate();
+        }
+
         VkRenderPass m_renderPass;
         VkFramebuffer m_framebuffer;
         RenderTargetDescription m_description;
         RenderTargetInfo m_info;
-
-    private:
-
-        Device* m_device;
     };
-    typedef Mist::RefPtr<RenderTarget> RenderTargetHandle;
+    typedef RenderResourceHandle<RenderTarget> RenderTargetHandle;
 
     /**
      * Render states
@@ -1020,25 +1059,24 @@ namespace render
         inline bool operator!=(const BindingLayoutDescription& other) const { return !(*this == other); }
     };
 
-    class BindingLayout final : public Mist::Ref<BindingLayout>
+    class BindingLayout final : public RenderResourceRef<BindingLayout>
     {
     public:
         static constexpr uint32_t MaxLayouts = 8;
         BindingLayout(Device* device)
-            : m_device(device),
+            : RenderResourceRef(device),
             m_description{},
             m_layout(VK_NULL_HANDLE)
         {
         }
         ~BindingLayout();
+        inline void Invalidate() {}
         inline bool IsAllocated() const { return m_layout != VK_NULL_HANDLE; }
         VkDescriptorSetLayout m_layout;
         BindingLayoutDescription m_description;
         Mist::tStaticArray<VkDescriptorPoolSize, 8> m_poolSizes;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<BindingLayout> BindingLayoutHandle;
+    typedef RenderResourceHandle<BindingLayout> BindingLayoutHandle;
     typedef Mist::tStaticArray<BindingLayoutHandle, BindingLayout::MaxLayouts> BindingLayoutArray;
 
     void CreatePipelineLayout(Device* device, const BindingLayoutArray& bindingLayouts,
@@ -1105,6 +1143,13 @@ namespace render
         {
             return !(*this == other);
         }
+
+        inline void Invalidate()
+        {
+            buffer = nullptr;
+            textures.Clear();
+            samplers.Clear();
+        }
     };
 
     typedef Mist::tStaticArray<BindingSetItem, BindingSetItem::MaxBindingSets> BindingSetItemArray;
@@ -1116,45 +1161,43 @@ namespace render
         BindingSetItemDynArray bindingItems;
         Mist::String debugName;
 
-        BindingSetDescription()
-        {
-        }
+        BindingSetDescription() { }
 
-        const BindingSetItem* GetBindingItemData() const { return bindingItems.data(); }
-        uint32_t GetBindingItemCount() const { return (uint32_t)bindingItems.size(); }
-        BindingSetDescription& PushItem(const BindingSetItem& item) { bindingItems.emplace_back(item); return *this; }
+        inline const BindingSetItem* GetBindingItemData() const { return bindingItems.data(); }
+        inline uint32_t GetBindingItemCount() const { return (uint32_t)bindingItems.size(); }
+        inline BindingSetDescription& PushItem(const BindingSetItem& item) { bindingItems.emplace_back(item); return *this; }
 
-        BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
         {
             return PushItem(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, shaderStages, subresource, dimension));
         }
 
-        BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
             return PushItem(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, shaderStages, subresources, count, dimension));
         }
 
-        BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
         {
             return PushItem(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStages, subresource, dimension));
         }
 
-        BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
             return PushItem(BindingSetItem::CreateTextureUAVItem(slot, textures, shaderStages, subresources, count, dimension));
         }
 
-        BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
+        inline BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
             return PushItem(BindingSetItem::CreateConstantBufferItem(slot, buffer, shaderStages, bufferRange));
         }
 
-        BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
+        inline BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
             return PushItem(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, shaderStages, bufferRange));
         }
 
-        BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
+        inline BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
             return PushItem(BindingSetItem::CreateBufferUAVItem(slot, buffer, shaderStages, bufferRange));
         }
@@ -1168,20 +1211,34 @@ namespace render
         {
             return !(*this == other);
         }
+
+        inline void Invalidate()
+        {
+            bindingItems.clear();
+        }
     };
 
-    class BindingSet final : public Mist::Ref<BindingSet>
+    class BindingSet final : public RenderResourceRef<BindingSet>
     {
     public:
         static constexpr uint32_t MaxBindingSets = 8;
         BindingSet(Device* device)
-            : m_device(device),
+            : RenderResourceRef(device),
             m_description(),
             m_set(VK_NULL_HANDLE)
         {
         }
         
         ~BindingSet();
+
+        inline void Invalidate()
+        {
+            m_description.Invalidate();
+            m_layout = nullptr;
+            m_buffers.clear();
+            m_textures.clear();
+            m_samplers.clear();
+        }
 
         inline bool IsAllocated() const { return m_set != VK_NULL_HANDLE; }
 
@@ -1194,10 +1251,8 @@ namespace render
         Mist::tDynArray<BufferHandle> m_buffers;
         Mist::tDynArray<TextureHandle> m_textures;
         Mist::tDynArray<SamplerHandle> m_samplers;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<BindingSet> BindingSetHandle;
+    typedef RenderResourceHandle<BindingSet> BindingSetHandle;
     typedef Mist::tStaticArray<BindingSetHandle, BindingSet::MaxBindingSets> BindingSetArray;
     typedef Mist::tStaticArray<uint32_t, BindingSet::MaxBindingSets> BindingSetDynamicOffsetsArray;
 
@@ -1266,15 +1321,28 @@ namespace render
                 vertexInputLayout == desc.vertexInputLayout &&
                 utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
         }
+
+        inline void Invalidate()
+        {
+            vertexShader = nullptr;
+            fragmentShader = nullptr;
+            bindingLayouts.Clear();
+        }
     };
 
-	class GraphicsPipeline : public Mist::Ref<GraphicsPipeline>
+	class GraphicsPipeline : public RenderResourceRef<GraphicsPipeline>
 	{
 	public:
 		GraphicsPipeline(Device* device)
-		: m_device(device) 
+		: RenderResourceRef(device)
 		{}
 		~GraphicsPipeline();
+
+        inline void Invalidate()
+        {
+            m_rt = nullptr;
+            m_description.Invalidate();
+        }
 
         void UsePipeline(CommandBuffer* cmd);
 
@@ -1282,11 +1350,8 @@ namespace render
 		VkPipelineLayout m_pipelineLayout;
         RenderTargetHandle m_rt;
 		GraphicsPipelineDescription m_description;
-
-	private:
-		Device* m_device;
 	};
-    typedef Mist::RefPtr<GraphicsPipeline> GraphicsPipelineHandle;
+    typedef RenderResourceHandle<GraphicsPipeline> GraphicsPipelineHandle;
 
     struct ComputePipelineDescription
     {
@@ -1299,25 +1364,34 @@ namespace render
             return computeShader == desc.computeShader
                 && utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
         }
+
+        inline void Invalidate()
+        {
+            computeShader = nullptr;
+            bindingLayouts.Clear();
+        }
     };
 
-    class ComputePipeline : public Mist::Ref<ComputePipeline>
+    class ComputePipeline : public RenderResourceRef<ComputePipeline>
     {
     public:
         ComputePipeline(Device* device)
-            : m_device(device)
+            : RenderResourceRef(device)
         { }
         ~ComputePipeline();
+
+        inline void Invalidate()
+        {
+            m_description.Invalidate();
+        }
 
         void UsePipeline(CommandBuffer* cmd);
 
         VkPipeline m_pipeline;
         VkPipelineLayout m_pipelineLayout;
         ComputePipelineDescription m_description;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<ComputePipeline> ComputePipelineHandle;
+    typedef RenderResourceHandle<ComputePipeline> ComputePipelineHandle;
 
     /************************************************************************/
     /* Queries                                                              */
@@ -1329,22 +1403,22 @@ namespace render
         uint32_t count;
     };
 
-    class QueryPool : public Mist::Ref<QueryPool>
+    class QueryPool : public RenderResourceRef<QueryPool>
     {
     public:
         QueryPool(Device* device, const QueryPoolDescription& description)
-            : m_device(device), 
+            : RenderResourceRef(device),
             m_queryPool(VK_NULL_HANDLE), 
             m_description(description)
         { }
         ~QueryPool();
 
+        inline void Invalidate() {}
+
         VkQueryPool m_queryPool;
         QueryPoolDescription m_description;
-    private:
-        Device* m_device;
     };
-    typedef Mist::RefPtr<QueryPool> QueryPoolHandle;
+    typedef RenderResourceHandle<QueryPool> QueryPoolHandle;
 
     /************************************************************************/
     /* Command queues and buffers                                           */
@@ -1435,6 +1509,15 @@ namespace render
         }
 
         inline bool operator!=(const GraphicsState& other) const { return !(*this == other); }
+
+        inline void Invalidate()
+        {
+            pipeline = nullptr;
+            rt = nullptr;
+            bindings.Clear();
+            vertexBuffer = nullptr;
+            indexBuffer = nullptr;
+        }
     };
 
     struct ComputeState
@@ -1449,6 +1532,12 @@ namespace render
         }
 
         inline bool operator!=(const ComputeState& other) const { return !(*this == other); }
+
+        inline void Invalidate()
+        {
+            pipeline = nullptr;
+            bindings.Clear();
+        }
     };
 
     struct TextureBarrier
@@ -1456,6 +1545,13 @@ namespace render
         TextureHandle texture;
         ImageLayout newLayout;
         TextureSubresourceRange subresources = {0,1,0,1};
+
+        inline void Invalidate()
+        {
+            texture = nullptr;
+            newLayout = ImageLayout_Undefined;
+            subresources = { 0,1,0,1 };
+        }
     };
 
     class TransferMemory
@@ -1488,6 +1584,12 @@ namespace render
             uint64_t version = UINT64_MAX;
             uint64_t pointer = 0;
         };
+
+        inline void Invalidate()
+        {
+            m_pool.clear();
+            m_submittedChunkIndices.clear();
+        }
 
         TransferMemoryPool(Device* device, uint64_t defaultChunkSize);
  
@@ -1531,12 +1633,20 @@ namespace render
         TextureSubresourceLayer dstLayer;
     };
 
-    class CommandList final : public Mist::Ref<CommandList>
+    class CommandList final : public RenderResourceRef<CommandList>
     {
     public:
 
         CommandList(Device* device);
         ~CommandList();
+
+        inline void Invalidate()
+        {
+            m_graphicsState.Invalidate();
+            m_computeState.Invalidate();
+            m_transferMemoryPool.Invalidate();
+            check(m_requiredStates.empty());
+        }
 
         static uint64_t ExecuteCommandLists(CommandList* const* lists, uint32_t count);
         uint64_t ExecuteCommandList();
@@ -1588,7 +1698,6 @@ namespace render
         void ClearState();
         CommandBuffer* GetCommandBuffer() const { check(IsRecording()); return m_currentCommandBuffer; }
         inline bool IsInsideRenderPass() const { return m_graphicsState.rt != nullptr; }
-        inline Device* GetDevice() const { return m_device; }
     private:
         void BeginRenderPass(render::RenderTargetHandle rt);
         void EndRenderPass();
@@ -1599,7 +1708,6 @@ namespace render
         void BindSets(const BindingSetVector& setsToBind, const BindingSetVector& currentBinding);
 
     private:
-        Device* m_device;
         GraphicsState m_graphicsState;
         ComputeState m_computeState;
         CommandBuffer* m_currentCommandBuffer;
@@ -1610,7 +1718,30 @@ namespace render
 
         CommandStats m_stats;
     };
-    typedef Mist::RefPtr<CommandList> CommandListHandle;
+    typedef RenderResourceHandle<CommandList> CommandListHandle;
+
+    class GarbageCollector
+    {
+    public:
+        typedef void(*DestroyFn)(Device* device, void*);
+        struct Item
+        {
+            void* resource = nullptr;
+            DestroyFn destroyFn = nullptr;
+            uint64_t lastSubmissionId = 0;
+        };
+
+        GarbageCollector(Device* device);
+        ~GarbageCollector();
+        void Push(void* resource, DestroyFn destroyFn);
+        void Run(uint64_t lastFinishedSubmissionId);
+        void ForcePurge();
+        size_t GetItemCount() const { return m_items.size(); }
+
+    private:
+        Device* m_device;
+        Mist::tDynArray<Item> m_items;
+    };
 
     /**
      * Device
@@ -1713,6 +1844,25 @@ namespace render
         void SetDebugName(QueryPool* object, const char* debugName) const;
         void SetDebugName(const void* object, const char* debugName, uint32_t type) const;
 
+		void AddToGarbageCollector(Semaphore* object);
+        void AddToGarbageCollector(Buffer* object);
+        void AddToGarbageCollector(Texture* object);
+        void AddToGarbageCollector(Sampler* object);
+        void AddToGarbageCollector(Shader* object);
+        void AddToGarbageCollector(RenderTarget* object);
+        void AddToGarbageCollector(GraphicsPipeline* object);
+        void AddToGarbageCollector(BindingLayout* object);
+        void AddToGarbageCollector(BindingSet* object);
+        void AddToGarbageCollector(ComputePipeline* object);
+        void AddToGarbageCollector(QueryPool* object);
+        void AddToGarbageCollector(CommandList* object);
+
+        /// Takes the last finished submission id from CommandQueue to filter resources should be deleted
+        void RunGarbageCollector();
+        /// Waits to the device to finish all work, process command in flight and call GC with last finished submission id
+        /// This call must end with zero GC item count.
+        void PurgeGarbageCollector();
+
     private:
         void InitContext(const DeviceDescription& description);
         void InitMemoryContext();
@@ -1723,6 +1873,9 @@ namespace render
         void DestroyQueue();
         void DestroySwapchain();
 
+        /// Runs GC with specified submission id. Be careful, this id must be a finished submission id.
+        void RunGarbageCollector(uint64_t submissionId);
+
     private:
         VulkanContext* m_context;
         // Currently only use one queue with all functionalities. Add separates queues only if needed.
@@ -1732,6 +1885,8 @@ namespace render
         uint32_t m_swapchainIndex;
         Mist::tDynArray<Buffer*> m_bufferTracking;
         Mist::tDynArray<Texture*> m_textureTracking;
+
+        GarbageCollector m_garbageCollector;
     };
 
     namespace utils
@@ -1753,7 +1908,7 @@ namespace render
             void WriteBuffer(BufferHandle buffer, const void* data, uint64_t dataSize, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
             void Blit(const BlitDescription& desc);
             uint64_t Submit(bool waitForSubmission = true);
-            inline CommandListHandle GetCommandList() const { return m_cmd; }
+            inline const CommandListHandle& GetCommandList() const { return m_cmd; }
         private:
             void BeginRecording();
 

@@ -669,7 +669,9 @@ namespace Mist
 			{
 				c = m_ptr->ReleaseRef();
 				if (!c)
-					delete m_ptr;
+				{
+					m_ptr->OnZeroRef();
+				}
 			}
 			m_ptr = nullptr;
 			return c;

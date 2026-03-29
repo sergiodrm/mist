@@ -12,6 +12,8 @@
 
 #include "ShaderCompiler.h"
 
+#define DEVICE_GC
+
 
 namespace Mist
 {
@@ -22,6 +24,13 @@ namespace Mist
 namespace render
 {
     uint32_t GVulkanLayerValidationErrors = 0;
+
+    template <typename T>
+    static void RenderResourceDestructor(Device* device, void* p)
+    {
+        T* resource = static_cast<T*>(p);
+        delete resource;
+    }
 
 
     VkBool32 DebugVulkanCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
@@ -54,15 +63,12 @@ namespace render
     }
 
     Semaphore::Semaphore(Device* device)
-        : m_device(device), m_semaphore(VK_NULL_HANDLE), m_isTimeline(false)
-    {
-        check(m_device);
-    }
+        : RenderResourceRef(device), m_semaphore(VK_NULL_HANDLE), m_isTimeline(false)
+    { }
 
     Semaphore::~Semaphore()
     {
-        check(m_device);
-        m_device->DestroyRenderSemaphore(this);
+        GetDevice()->DestroyRenderSemaphore(this);
     }
 
     RenderTargetDescription& RenderTargetDescription::AddColorAttachment(TextureHandle texture, TextureSubresourceRange range)
@@ -87,14 +93,12 @@ namespace render
 
     Buffer::~Buffer()
     {
-        check(m_device);
-        m_device->DestroyBuffer(this);
+        GetDevice()->DestroyBuffer(this);
     }
 
     Texture::~Texture()
     {
-        check(m_device);
-        m_device->DestroyTexture(this);
+        GetDevice()->DestroyTexture(this);
     }
 
     size_t Texture::GetImageSize() const
@@ -163,7 +167,7 @@ namespace render
             viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
         else if (description.viewOnlyStencil && utils::IsStencilFormat(description.format))
             viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-        check_result(vkCreateImageView(m_device->GetContext().device, &viewInfo, m_device->GetContext().allocationCallbacks, &view.m_view));
+        check_result(vkCreateImageView(GetDevice()->GetContext().device, &viewInfo, GetDevice()->GetContext().allocationCallbacks, &view.m_view));
 
         m_views.insert({ description, view });
         return &m_views[description];
@@ -172,14 +176,12 @@ namespace render
 
     Sampler::~Sampler()
     {
-        check(m_device);
-        m_device->DestroySampler(this);
+        GetDevice()->DestroySampler(this);
     }
 
     Shader::~Shader()
     {
-        check(m_device);
-        m_device->DestroyShader(this);
+        GetDevice()->DestroyShader(this);
     }
 
     VertexInputLayout VertexInputLayout::BuildVertexInputLayout(const VertexInputAttribute* attributes, uint32_t count)
@@ -208,8 +210,7 @@ namespace render
 
     RenderTarget::~RenderTarget()
     {
-        check(m_device);
-        m_device->DestroyRenderTarget(this);
+        GetDevice()->DestroyRenderTarget(this);
     }
 
     RenderTargetInfo::RenderTargetInfo(const RenderTargetDescription& description)
@@ -321,14 +322,12 @@ namespace render
 
     BindingLayout::~BindingLayout()
     {
-        check(m_device);
-        m_device->DestroyBindingLayout(this);
+        GetDevice()->DestroyBindingLayout(this);
     }
 
     GraphicsPipeline::~GraphicsPipeline()
     {
-        check(m_device);
-        m_device->DestroyGraphicsPipeline(this);
+        GetDevice()->DestroyGraphicsPipeline(this);
     }
 
     void GraphicsPipeline::UsePipeline(CommandBuffer* cmd)
@@ -339,8 +338,7 @@ namespace render
 
     ComputePipeline::~ComputePipeline()
     {
-        check(m_device);
-        m_device->DestroyComputePipeline(this);
+        GetDevice()->DestroyComputePipeline(this);
     }
 
     void ComputePipeline::UsePipeline(CommandBuffer* cmd)
@@ -351,8 +349,7 @@ namespace render
 
 	QueryPool::~QueryPool()
 	{
-        check(m_device);
-        m_device->DestroyQueryPool(this);
+        GetDevice()->DestroyQueryPool(this);
 	}
 
     void CommandBuffer::Begin()
@@ -707,18 +704,16 @@ namespace render
     }
 
     CommandList::CommandList(Device* device)
-        : m_device(device),
+        : RenderResourceRef(device),
         m_currentCommandBuffer(nullptr),
-        m_transferMemoryPool(m_device, 1<<16),
+        m_transferMemoryPool(GetDevice(), 1<<16),
         m_dirtyBindings(true)
     {
-        check(m_device);
     }
 
     CommandList::~CommandList()
     {
-        check(!IsRecording());
-        m_device->DestroyCommandList(this);
+        GetDevice()->DestroyCommandList(this);
     }
 
     uint64_t CommandList::ExecuteCommandLists(CommandList* const* lists, uint32_t count)
@@ -734,7 +729,7 @@ namespace render
             buffers.Push(lists[i]->m_currentCommandBuffer);
         }
 
-        CommandQueue* queue = lists[0]->m_device->GetCommandQueue(type);
+        CommandQueue* queue = lists[0]->GetDevice()->GetCommandQueue(type);
         uint64_t submissionId = queue->SubmitCommandBuffers(buffers.GetData(), buffers.GetSize());
 
         for (uint32_t i = 0; i < count; ++i)
@@ -752,7 +747,7 @@ namespace render
     void CommandList::BeginRecording()
     {
         check(!IsRecording());
-        CommandQueue* queue = m_device->GetCommandQueue(Queue_Graphics | Queue_Compute | Queue_Transfer);
+        CommandQueue* queue = GetDevice()->GetCommandQueue(Queue_Graphics | Queue_Compute | Queue_Transfer);
         m_currentCommandBuffer = queue->CreateCommandBuffer();
         m_currentCommandBuffer->Begin();
     }
@@ -767,8 +762,8 @@ namespace render
 
     void CommandList::BeginMarker(const char* name, Color color)
     {
-		check(m_device && IsRecording());
-        const VulkanContext& context = m_device->GetContext();
+		check(GetDevice() && IsRecording());
+        const VulkanContext& context = GetDevice()->GetContext();
         check(context.pfn_vkCmdBeginDebugUtilsLabelEXT);
         VkDebugUtilsLabelEXT label{ .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pNext = nullptr };
         label.color[0] = color.r;
@@ -791,8 +786,8 @@ namespace render
 
     void CommandList::EndMarker()
     {
-		check(m_device && IsRecording());
-		const VulkanContext& context = m_device->GetContext();
+		check(GetDevice() && IsRecording());
+		const VulkanContext& context = GetDevice()->GetContext();
 		check(context.pfn_vkCmdEndDebugUtilsLabelEXT);
         context.pfn_vkCmdEndDebugUtilsLabelEXT(m_currentCommandBuffer->cmd);
     }
@@ -1085,7 +1080,7 @@ namespace render
         if (buffer->m_description.memoryUsage == MemoryUsage_CpuToGpu)
         {
             // dont need transfer command... (?)
-            m_device->WriteBuffer(buffer, data, size, srcOffset, dstOffset);
+            GetDevice()->WriteBuffer(buffer, data, size, srcOffset, dstOffset);
         }
         else
         {
@@ -1138,7 +1133,7 @@ namespace render
         const size_t textureSize = bytesBlock * size_t(mipWidth) * size_t(mipHeight) * size_t(mipDepth);
         check(textureSize >= dataSize);
 
-        uint64_t maxHeapSize = m_device->GetMaxPhysicalDeviceSizeInHeap(BufferUsage_TransferSrc, MemoryUsage_CpuToGpu);
+        uint64_t maxHeapSize = GetDevice()->GetMaxPhysicalDeviceSizeInHeap(BufferUsage_TransferSrc, MemoryUsage_CpuToGpu);
 
         uint32_t heightChunk = mipHeight;
         uint64_t transferBufferSize = dataSize;
@@ -1311,8 +1306,60 @@ namespace render
         m_requiredStates.clear();
     }
 
+
+	GarbageCollector::GarbageCollector(Device* device)
+        : m_device(device)
+	{
+        check(m_device);
+#ifdef DEVICE_GC
+        m_items.reserve(16);
+#endif // DEVICE_GC
+	}
+
+    GarbageCollector::~GarbageCollector()
+    {
+        check(GetItemCount() == 0);
+    }
+
+	void GarbageCollector::Push(void* resource, DestroyFn destroyFn)
+	{
+        check(resource && destroyFn);
+#ifdef DEVICE_GC
+        uint64_t id = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionId();
+        m_items.emplace_back(Item{ resource, destroyFn, id });
+#else
+        (*destroyFn)(m_device, resource);
+#endif // DEVICE_GC
+	}
+
+	void GarbageCollector::Run(uint64_t lastFinishedSubmissionId)
+	{
+#ifdef DEVICE_GC
+        for (uint32_t i = m_items.size() - 1; i < m_items.size(); --i)
+        {
+            if (m_items[i].lastSubmissionId <= lastFinishedSubmissionId)
+            {
+                (*m_items[i].destroyFn)(m_device, m_items[i].resource);
+                if (i != m_items.size() - 1)
+                    m_items[i] = m_items.back();
+                m_items.pop_back();
+            }
+        }
+#endif // DEVICE_GC
+	}
+
+    void GarbageCollector::ForcePurge()
+    {
+        uint32_t size = m_items.size();
+        for (uint32_t i = 0; i < size; ++i)
+            (*m_items[i].destroyFn)(m_device, m_items[i].resource);
+        // ensure destroing items does not create new enqueued destruction.
+        check(m_items.size() == size);
+        m_items.clear();
+    }
+
     Device::Device(const DeviceDescription& description)
-        : m_context(nullptr), m_swapchainIndex(UINT32_MAX), m_queue(nullptr)
+        : m_context(nullptr), m_swapchainIndex(UINT32_MAX), m_queue(nullptr), m_garbageCollector(this)
     {
         InitContext(description);
         InitMemoryContext();
@@ -1325,8 +1372,22 @@ namespace render
 
     Device::~Device()
     {
+        // Finish all pending work
+        WaitIdle();
+        // Purge to ensure all resources are deleted
+        PurgeGarbageCollector();
+
+        // Destroy device resources
         DestroySwapchain();
+        GetCommandQueue(Queue_Graphics)->ProcessInFlightCommands();
+        uint64_t id = GetCommandQueue(Queue_Graphics)->QueryTrackingId();
         DestroyQueue();
+
+        // Once command queue is deleted, destroy associated resources forcing GC.
+        m_garbageCollector.ForcePurge();
+        check(m_garbageCollector.GetItemCount() == 0);
+
+        // Destroy device context
         DestroyMemoryContext();
         DestroyContext();
     }
@@ -2435,6 +2496,81 @@ namespace render
         check_result(m_context->pfn_vkSetDebugUtilsObjectNameEXT(m_context->device, &info));
     }
 
+    void Device::AddToGarbageCollector(Semaphore* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<Semaphore>);
+    }
+
+    void Device::AddToGarbageCollector(Buffer* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<Buffer>);
+    }
+
+    void Device::AddToGarbageCollector(Texture* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<Texture>);
+    }
+
+    void Device::AddToGarbageCollector(Sampler* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<Sampler>);
+    }
+
+    void Device::AddToGarbageCollector(Shader* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<Shader>);
+    }
+
+    void Device::AddToGarbageCollector(RenderTarget* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<RenderTarget>);
+    }
+
+    void Device::AddToGarbageCollector(GraphicsPipeline* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<GraphicsPipeline>);
+    }
+
+    void Device::AddToGarbageCollector(BindingLayout* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<BindingLayout>);
+    }
+
+    void Device::AddToGarbageCollector(BindingSet* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<BindingSet>);
+    }
+
+    void Device::AddToGarbageCollector(ComputePipeline* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<ComputePipeline>);
+    }
+
+    void Device::AddToGarbageCollector(QueryPool* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<QueryPool>);
+    }
+
+    void Device::AddToGarbageCollector(CommandList* object)
+    {
+        m_garbageCollector.Push(object, &RenderResourceDestructor<CommandList>);
+    }
+
+    void Device::RunGarbageCollector()
+    {
+        uint64_t id = GetCommandQueue(Queue_Graphics)->QueryTrackingId();
+        RunGarbageCollector(id);
+    }
+
+    void Device::PurgeGarbageCollector()
+    {
+        WaitIdle();
+        GetCommandQueue(Queue_Graphics)->ProcessInFlightCommands();
+        uint64_t id = GetCommandQueue(Queue_Graphics)->QueryTrackingId();
+        RunGarbageCollector(id);
+        check(m_garbageCollector.GetItemCount() == 0);
+    }
+
     void Device::InitContext(const DeviceDescription& description)
     {
         // Get Vulkan version
@@ -2782,6 +2918,11 @@ namespace render
             vkDestroySwapchainKHR(m_context->device, m_swapchain.swapchain, m_context->allocationCallbacks);
         m_swapchain.swapchain = VK_NULL_HANDLE;
     }
+
+    void Device::RunGarbageCollector(uint64_t submissionId)
+    {
+        m_garbageCollector.Run(submissionId);
+    }
     
     void CreatePipelineLayout(Device* device, const BindingLayoutArray& bindingLayouts, VkPipelineLayout& pipelineLayout)
     {
@@ -2970,8 +3111,7 @@ namespace render
 
     BindingSet::~BindingSet()
     {
-        check(m_device);
-        m_device->DestroyBindingSet(this);
+        GetDevice()->DestroyBindingSet(this);
     }
 
     namespace utils

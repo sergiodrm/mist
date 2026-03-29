@@ -937,7 +937,7 @@ namespace rendersystem
     {
         //ImGui::SetNextWindowPos(ImVec2(500, 500));
         ImGui::SetNextWindowBgAlpha(0.f);
-        ImGui::Begin("Render system", nullptr, ImGuiWindowFlags_NoDecoration);
+        ImGui::Begin("Render system", nullptr);
         ImGui::SeparatorText("Draw stats");
         ImGui::Text("Gpu time:          %2.3f us", m_gpuTime);
         ImGui::Text("Tris:              %7d", m_cmdStats.tris);
@@ -961,15 +961,19 @@ namespace rendersystem
             (double)memstats.imageStats.currentAllocated / 1024.f / 1024.f, (double)memstats.imageStats.maxAllocated / 1024.f / 1024.f);
 
         ImGui::SeparatorText("Shader memory pool");
-        ImGui::Text("Memory pool count: %4d", m_shaderContext.memoryStream->GetPoolCount());
-        ImGui::Text("Contexts free: %4d", m_shaderContext.memoryStream->GetPoolFreeCount());
-        ImGui::Text("Contexts used: %4d", m_shaderContext.memoryStream->GetPoolUsedCount());
+        ImGui::Text("Memory pool count:         %4d", m_shaderContext.memoryStream->GetPoolCount());
+        ImGui::Text("Contexts free:             %4d", m_shaderContext.memoryStream->GetPoolFreeCount());
+        ImGui::Text("Contexts used:             %4d", m_shaderContext.memoryStream->GetPoolUsedCount());
         ImGui::SeparatorText("Shader memory frame context");
-        ImGui::Text("Buffers: %4d", m_shaderContext.memoryStream->GetBufferCount());
+        ImGui::Text("Buffers:                   %4d", m_shaderContext.memoryStream->GetBufferCount());
         uint64_t deviceSize = m_shaderContext.memoryStream->GetDeviceMemorySize();
-        ImGui::Text("Device size: %6lld (%2.2f KB)", deviceSize, (float)deviceSize / 1024.f);
-        ImGui::Text("Temporal buffer size: %4d", m_shaderContext.memoryStream->GetTemporalBufferSize());
-        ImGui::Text("Property count: %4d", m_shaderContext.memoryStream->GetPropertyCount());
+        ImGui::Text("Device size:               %6lld (%2.2f KB)", deviceSize, (float)deviceSize / 1024.f);
+        ImGui::Text("Temporal buffer size:      %4d", m_shaderContext.memoryStream->GetTemporalBufferSize());
+        ImGui::Text("Property count:            %4d", m_shaderContext.memoryStream->GetPropertyCount());
+        ImGui::Text("Shaders:                   %7d", m_shaderDb.m_programs.size());
+        ImGui::SeparatorText("Descriptor pool");
+        ImGui::Text("Binding cache:             %7d", m_bindingCache->GetCacheSize());
+        ImGui::Text("Binding layout cache:      %7d", m_bindingCache->GetLayoutCacheSize());
 #if 0 
         ImGui::SeparatorText("Command buffer");
         const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
@@ -982,11 +986,8 @@ namespace rendersystem
         ImGui::Text("Graphics Pso lf:           %.4f", m_graphicsPsoMap.load_factor());
         ImGui::Text("Compute Pso cache:         %7d", m_computePsoMap.size());
         ImGui::Text("Compute Pso lf:            %.4f", m_computePsoMap.load_factor());
-        ImGui::Text("Binding cache:             %7d", m_bindingCache->GetCacheSize());
-        ImGui::Text("Binding lf:                %.4f", m_bindingCache->GetLoadFactor());
         ImGui::Text("Sampler cache:             %7d", m_samplerCache->GetCacheSize());
         ImGui::Text("Sampler lf:                %.4f", m_samplerCache->GetLoadFactor());
-        ImGui::Text("Shaders:                   %7d", m_shaderDb.m_programs.size());
 
 #endif // 0
 
@@ -1153,7 +1154,7 @@ namespace rendersystem
 
     void RenderSystem::BeginFrame()
     {
-        CPU_PROFILE_SCOPE(RenderSystem_BeginFrame);
+        CPU_PROFILE_SCOPE(BeginFrame);
         check(m_swapchainIndex == UINT32_MAX);
         m_frame++;
 
@@ -1166,21 +1167,26 @@ namespace rendersystem
 
         if (CVar_ForceFrameSync.Get())
         {
-            CPU_PROFILE_SCOPE(RenderSystem_WaitIdleForceSync);
+            CPU_PROFILE_SCOPE(WaitIdleForceSync);
             m_device->WaitIdle();
         }
 
         const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 
 		{
-            CPU_PROFILE_SCOPE(RenderSystem_WaitFrameInFlight);
+            CPU_PROFILE_SCOPE(WaitFrameInFlight);
 			// wait for last frame before acquire swapchain image
 			if (GetPresentSubmissionId())
 				check(m_device->WaitForSubmissionId(GetPresentSubmissionId()));
 		}
 
         {
-            CPU_PROFILE_SCOPE(RenderSystem_AcquireSwapchain);
+            CPU_PROFILE_SCOPE(DeviceGC);
+            m_device->RunGarbageCollector();
+        }
+
+        {
+            CPU_PROFILE_SCOPE(AcquireSwapchain);
             m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
         }
 
@@ -1211,7 +1217,7 @@ namespace rendersystem
 
     void RenderSystem::EndFrame()
     {
-        CPU_PROFILE_SCOPE(RenderSystem_EndFrame);
+        CPU_PROFILE_SCOPE(EndFrame);
         ui::EndFrame(GetCommandList());
 
         BeginMarker("CopyToPresent");
