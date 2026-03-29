@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Types.h"
+#include "Utils/Angles.h"
 #include "Application/CmdParser.h"
 
 namespace Mist
@@ -30,6 +31,8 @@ namespace Mist
 		{
 			GetDirectoryFromFilepath(filepath, N, dir, size);
 		}
+
+		void GetFileNameFromFilepath(const char* filepath, size_t filepathSize, char* outName, size_t outNameBufferSize);
 	}
 
 	class cAssetPath
@@ -166,3 +169,131 @@ namespace std
 		}
 	};
 }
+
+
+
+#define FSYS_LOAD_YAML
+
+#ifdef FSYS_LOAD_YAML
+
+#include <yaml-cpp/yaml.h>
+
+inline YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec3& v)
+{
+	e << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << YAML::EndSeq;
+	return e;
+}
+
+inline YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec4& v)
+{
+	e << YAML::Flow << YAML::BeginSeq << v.x << v.y << v.z << v.w << YAML::EndSeq;
+	return e;
+}
+
+inline YAML::Emitter& operator<<(YAML::Emitter& e, const Mist::tAngles& a)
+{
+	e << YAML::Flow << YAML::BeginSeq << a.m_pitch << a.m_yaw << a.m_roll << YAML::EndSeq;
+	return e;
+}
+
+
+namespace YAML
+{
+	template<>
+	struct convert<glm::vec2>
+	{
+		static Node encode(const glm::vec2& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec2& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 2)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::vec3>
+	{
+		static Node encode(const glm::vec3& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec3& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 3)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::vec4>
+	{
+		static Node encode(const glm::vec4& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.push_back(rhs.z);
+			return node;
+		}
+
+		static bool decode(const Node& node, glm::vec4& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 4)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			rhs.z = node[3].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<Mist::tAngles>
+	{
+		static Node encode(const Mist::tAngles& rhs)
+		{
+			Node node;
+			node.push_back(rhs.m_pitch);
+			node.push_back(rhs.m_yaw);
+			node.push_back(rhs.m_roll);
+			return node;
+		}
+
+		static bool decode(const Node& node, Mist::tAngles& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 3)
+				return false;
+
+			rhs.m_pitch = node[0].as<float>();
+			rhs.m_yaw = node[1].as<float>();
+			rhs.m_roll = node[2].as<float>();
+			return true;
+		}
+	};
+}
+
+#endif

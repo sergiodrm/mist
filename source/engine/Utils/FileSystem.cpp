@@ -169,6 +169,26 @@ namespace Mist
 		}
 	}
 
+	void FileSystem::GetFileNameFromFilepath(const char* filepath, size_t filepathSize, char* outName, size_t outNameBufferSize)
+	{
+		check(outName && filepath);
+		*outName = 0;
+		if (!*filepath)
+			return;
+
+		const char* lastDot = strrchr(filepath, '.');
+		if (!lastDot) lastDot = &filepath[filepathSize - 1];
+		const char* lastSlash = strrchr(filepath, '/');
+		if (!lastSlash) lastSlash = strrchr(filepath, '\\');
+		if (!lastSlash) lastSlash = filepath;
+		++lastSlash;
+		check(lastDot >= lastSlash);
+		size_t len = lastDot - lastSlash;
+		check(outNameBufferSize >= len + 1);
+		strncpy_s(outName, outNameBufferSize, lastSlash, len);
+
+	}
+
 
 	cFile::~cFile()
 	{
