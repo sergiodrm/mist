@@ -676,7 +676,9 @@ namespace rendersystem
             render::Filter mipmapMode, 
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
-            render::SamplerAddressMode addressModeW);
+            render::SamplerAddressMode addressModeW,
+            bool compareEnabled,
+            render::CompareOp compareOp);
 
 
         void ClearState();
@@ -755,13 +757,15 @@ namespace rendersystem
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW,
+            bool compareEnabled = false, render::CompareOp compareOp = render::CompareOp_Always,
             uint32_t samplerIndex = 0);
         void SetSampler(render::Filter minFilter, render::Filter magFilter,
             render::Filter mipmapMode,
             render::SamplerAddressMode addressModeU,
             render::SamplerAddressMode addressModeV,
             render::SamplerAddressMode addressModeW,
-            uint32_t set, uint32_t binding = 0, uint32_t samplerIndex = 0);
+            bool compareEnabled = false, render::CompareOp compareOp = render::CompareOp_Always,
+            uint32_t set = 0, uint32_t binding = 0, uint32_t samplerIndex = 0);
         void SetShaderProperty(const char* id, const void* param, uint64_t size);
         void SetTextureLayout(const render::TextureHandle& texture, render::ImageLayout layout, render::TextureSubresourceRange range = {0,1,0,1});
         void SetTextureAsResourceBinding(render::TextureHandle texture);

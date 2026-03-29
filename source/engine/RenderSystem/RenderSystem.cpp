@@ -418,7 +418,14 @@ namespace rendersystem
         return m_samplerCache->GetSampler(desc);
     }
 
-    render::SamplerHandle RenderSystem::GetSampler(render::Filter minFilter, render::Filter magFilter, render::Filter mipmapMode, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW)
+    render::SamplerHandle RenderSystem::GetSampler(render::Filter minFilter, 
+        render::Filter magFilter, 
+        render::Filter mipmapMode, 
+        render::SamplerAddressMode addressModeU, 
+        render::SamplerAddressMode addressModeV, 
+        render::SamplerAddressMode addressModeW,
+        bool compareEnabled,
+        render::CompareOp compareOp)
     {
         render::SamplerDescription desc;
         desc.minFilter = minFilter;
@@ -427,6 +434,8 @@ namespace rendersystem
         desc.addressModeU = addressModeU;
         desc.addressModeV = addressModeV;
         desc.addressModeW = addressModeW;
+        desc.compareEnabled = compareEnabled;
+        desc.compareOp = compareOp;
         return GetSampler(desc);
     }
 
@@ -665,14 +674,31 @@ namespace rendersystem
         SetSampler(id, &sampler, 1);
     }
 
-    void RenderSystem::SetSampler(const char* id, render::Filter minFilter, render::Filter magFilter, render::Filter mipmapMode, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW, uint32_t samplerIndex)
+    void RenderSystem::SetSampler(const char* id, 
+        render::Filter minFilter, 
+        render::Filter magFilter, 
+        render::Filter mipmapMode, 
+        render::SamplerAddressMode addressModeU, 
+        render::SamplerAddressMode addressModeV, 
+        render::SamplerAddressMode addressModeW, 
+        bool compareEnabled, 
+        render::CompareOp compareOp,
+        uint32_t samplerIndex)
     {
-        SetSampler(id, GetSampler(minFilter, magFilter, mipmapMode, addressModeU, addressModeV, addressModeW));
+        SetSampler(id, GetSampler(minFilter, magFilter, mipmapMode, addressModeU, addressModeV, addressModeW, compareEnabled, compareOp));
     }
 
-    void RenderSystem::SetSampler(render::Filter minFilter, render::Filter magFilter, render::Filter mipmapMode, render::SamplerAddressMode addressModeU, render::SamplerAddressMode addressModeV, render::SamplerAddressMode addressModeW, uint32_t set, uint32_t binding, uint32_t samplerIndex)
+    void RenderSystem::SetSampler(render::Filter minFilter, 
+        render::Filter magFilter, 
+        render::Filter mipmapMode, 
+        render::SamplerAddressMode addressModeU, 
+        render::SamplerAddressMode addressModeV, 
+        render::SamplerAddressMode addressModeW, 
+        bool compareEnabled, 
+        render::CompareOp compareOp,
+        uint32_t set, uint32_t binding, uint32_t samplerIndex)
     {
-        SetSampler(GetSampler(minFilter, magFilter, mipmapMode, addressModeU, addressModeV, addressModeW), set, binding, samplerIndex);
+        SetSampler(GetSampler(minFilter, magFilter, mipmapMode, addressModeU, addressModeV, addressModeW, compareEnabled, compareOp), set, binding, samplerIndex);
     }
 
 	void RenderSystem::SetSampler(const char* id, const render::SamplerHandle* sampler, uint32_t count)
@@ -1101,7 +1127,9 @@ namespace rendersystem
 								render::Filter_Linear,
 								render::SamplerAddressMode_Repeat,
 								render::SamplerAddressMode_Repeat,
-								render::SamplerAddressMode_Repeat);
+								render::SamplerAddressMode_Repeat, 
+                                false, 
+                                render::CompareOp_Always);
 						subresources.Push(render::TextureSubresourceRange::AllSubresources());
 					}
 					if (property.type == render::ResourceType_TextureSRV)
