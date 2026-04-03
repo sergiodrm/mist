@@ -122,9 +122,8 @@ namespace Mist
 		{
 			// Shadow map lights matrix projection
 			const ShadowMapProcess* shadowMapping = (const ShadowMapProcess*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
-			tArray<glm::mat4, globals::MaxShadowMapAttachments> shadowMapMatrices;
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-				shadowMapMatrices[i] = shadowMapping->GetPipeline().GetLightVP(i);
+				m_shadowMapParams.lightViewProjectionArray[i] = shadowMapping->GetPipeline().GetLightVP(i);
 			// Shadow map textures
 			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
@@ -169,7 +168,23 @@ namespace Mist
 
 				// ShadowMapping textures
 				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
-				rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+				render::SamplerHandle shadowMapSampler = rs->GetSampler(render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					render::SamplerAddressMode_ClampToEdge,
+					true, render::CompareOp_LessOrEqual);
+				render::SamplerHandle samplers[] = { shadowMapSampler, shadowMapSampler, shadowMapSampler };
+				rs->SetSampler("u_ShadowMap", samplers, Mist::CountOf(samplers));
+				rs->SetShaderProperty("u_ShadowMapInfo", &m_shadowMapParams, sizeof(ShadowMapParams));
+				rs->SetTextureSlot("u_blueNoise", rs->GetBlueNoiseTexture());
+				rs->SetSampler("u_blueNoise", 
+					render::Filter_Nearest,
+					render::Filter_Nearest,
+					render::Filter_Nearest,
+					render::SamplerAddressMode_Repeat,
+					render::SamplerAddressMode_Repeat,
+					render::SamplerAddressMode_Repeat);
+
 
 				
 
@@ -219,7 +234,7 @@ namespace Mist
 				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 
 				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
-				rs->SetShaderProperty("u_ShadowMapInfo", shadowMapMatrices.data(), sizeof(glm::mat4) * (uint32_t)shadowMapMatrices.size());
+				rs->SetShaderProperty("u_ShadowMapInfo", m_shadowMapParams.lightViewProjectionArray.data(), sizeof(glm::mat4) * (uint32_t)m_shadowMapParams.lightViewProjectionArray.size());
 				// SSAO textures
 				rs->SetTextureSlot("u_ssao", ssao->GetRenderTarget()->m_description.colorAttachments[0].texture);
 				rs->SetSampler("u_ssao", render::Filter_Nearest, render::Filter_Nearest, render::Filter_Linear,
@@ -292,7 +307,9 @@ namespace Mist
 
 	void Lighting::ImGuiDraw()
 	{
-		ImGui::Begin("Blend");
+		ImGui::Begin("Lighting");
+
+		ImGui::SeparatorText("Blend");
 		static const char* blendFactorStr[] = { 
 			"BlendFactor_Zero",
 			"BlendFactor_One",
@@ -329,6 +346,11 @@ namespace Mist
 		COMBO_BOX("Blend Op", blendOp, blendOpStr);
 
 #undef COMBO_BOX
+
+		ImGui::SeparatorText("Shadows");
+		ImGui::DragFloat("Noise scale", &m_shadowMapParams.noiseScale, 0.0001f, 0.f, 10.f, "%.5f");
+		ImGui::DragFloat("Noise factor", &m_shadowMapParams.noiseFactor, 0.25f, 0.f, 100.f);
+		ImGui::DragFloat("Noise kernel", &m_shadowMapParams.noisePCFKernelSize, 1.f, 0.f, 21.f);
 		ImGui::End();
 	}
 

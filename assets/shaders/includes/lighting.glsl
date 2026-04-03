@@ -9,20 +9,20 @@ struct LightData
 {
     vec3 Color;
     float Compression;
-    // 16 bytes
+    
 
     vec3 Pos; // w: pointlight-radius; directional-project shadows (-1.f not project. >=0.f shadow map index)
     float Radius;
-    //16 bytes
+    
 
     vec3 Dir;
     float _padding;
-    //16 bytes
+    
 
     vec2 CosCutoff; // x: inner, y: outer
     int ShadowMapIndex;
     float Strength;
-    //16 bytes
+    
 };
 
 /*
@@ -30,7 +30,6 @@ struct LightData
 */
 //#define LIGHTING_NO_SHADOWS
 #ifndef LIGHTING_NO_SHADOWS
-#define LIGHTING_SHADOWS_PCF
 
 #ifndef LIGHTING_SHADOWS_TEXTURE_ARRAY
 #error Macro LIGHTING_SHADOWS_TEXTURE_ARRAY must be define to calculate shadow value
@@ -39,6 +38,7 @@ struct LightData
 #ifndef MAX_SHADOW_MAPS
 #error Must define num of shadow maps
 #endif // !MAX_SHADOW_MAPS
+#endif // !LIGHTING_NO_SHADOWS
 
 #ifndef IRRADIANCE_MAP
 #error Must define irradiance map sampler.
@@ -51,7 +51,6 @@ struct LightData
 #ifndef BRDF_MAP
 #error Must define brdf map sampler.
 #endif
-#endif // !LIGHTING_NO_SHADOWS
 
 struct ShadowInfo
 {
@@ -172,6 +171,21 @@ vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float
 
 #ifndef LIGHTING_NO_SHADOWS
 
+#define LIGHTING_SHADOWS_PCF
+//#define LIGHTING_SHADOWS_DEBUG
+
+#ifndef LIGHTING_SHADOWS_NOISE_SCALE
+#define LIGHTING_SHADOWS_NOISE_SCALE 0.0025
+#endif
+
+#ifndef LIGHTING_SHADOWS_NOISE_FACTOR
+#define LIGHTING_SHADOWS_NOISE_FACTOR 3
+#endif
+
+#ifndef LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE 
+#define LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE 9
+#endif
+
 float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
 {
     // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
@@ -183,49 +197,77 @@ float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
     shadowCoord = shadowCoord / shadowCoord.w;
 
     const float bias = 0.005f;
-
-    // Shadow calculation
-#if defined(LIGHTING_SHADOWS_PCF)
-    // PCF
     float shadow = 0.0;
-    vec2 texelSize = 1.0 / textureSize(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], 0);
+
+#if defined(LIGHTING_SHADOWS_PCF)
+    // TO-DO: pass texture size in uniform buffer
+    vec2 texelSize = 1.0 / vec2(textureSize(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], 0));
+    vec2 noiseTexelSize = 1.f / vec2(textureSize(u_blueNoise, 0));
     float currentDepth = shadowCoord.z;
-    for(int x = -1; x <= 1; ++x)
+
+    const int kernelSize = LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE;
+    const int halfKernelSize = kernelSize/2;
+
+    for (float x = -halfKernelSize; x <= halfKernelSize; ++x)
     {
-        for(int y = -1; y <= 1; ++y)
+        for (float y = -halfKernelSize; y <= halfKernelSize; ++y)
         {
-            float pcfDepth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], shadowCoord.xy + vec2(x, y) * texelSize).r; 
-            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+            // Get noise for this sample
+            vec2 noiseTc = shadowCoord.xy/(noiseTexelSize.xy*LIGHTING_SHADOWS_NOISE_SCALE);
+            vec2 noise = texture(u_blueNoise, noiseTc).xy;
+            // transform from [0,1] to [-0.5, 0.5]
+            noise = noise - 0.5f; 
+
+            // Offset of pixel tc to be filtered
+            vec2 offset = vec2(x*texelSize.x, y*texelSize.y);
+            offset+=(noise*texelSize*LIGHTING_SHADOWS_NOISE_FACTOR);
+            float d = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], shadowCoord.xy+offset).r;
+            shadow += (d<(shadowCoord.z-bias) ? 0.f : 1.f);
         }
     }
-    shadow /= 9.0;
-    return shadow;
+    shadow /= (kernelSize*kernelSize);
 #else
-    float shadow = 0.3f;
     float z = shadowCoord.z;
 	if ( z > -1.0 && z < 1.0 ) 
 	{
-		float dist = texture( u_ShadowMap[0], shadowCoord.xy ).r;
-		if ( shadowCoord.w > 0.0 && z - bias > dist ) 
-		{
-			shadow = 1.f;
-		}
+		shadow = texture( u_ShadowMap[shadowIndex], shadowCoord.xy ).r;
+		if ( shadowCoord.w > 0.0 && z - bias > shadow ) 
+			shadow = 0.f;
+        else
+            shadow = 1.f;
 	}
-	return shadow;
 #endif // defined(LIGHTING_SHADOWS_PCF)
+	return shadow;
 }
 
-float ComputeLightShadow(ShadowInfo info, vec3 fragPos, LightData light)
+#endif // !LIGHTING_NO_SHADOWS
+
+vec3 ComputeLightShadow(ShadowInfo info, vec3 fragPos, LightData light, vec3 irradiance)
 {
+#if !defined(LIGHTING_NO_SHADOWS)
     float shadow = 0.f;
     if (light.ShadowMapIndex >= 0)
     {
         shadow = ComputeShadow(info, fragPos, light.ShadowMapIndex);
     }
-    return shadow;
-}
+#if defined(LIGHTING_SHADOWS_DEBUG)
+    // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
+#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    vec4 shadowCoord = info.ShadowCoordArray[light.ShadowMapIndex];
+#else
+    vec4 shadowCoord = info.LightViewMatrices[light.ShadowMapIndex] * vec4(fragPos, 1.f);
+#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    shadowCoord = shadowCoord / shadowCoord.w;
+    vec2 noise = texture(u_blueNoise, shadowCoord.xy).xy;
+    //return noise.xxy;
+    return shadow.xxx;
+#endif
+    return shadow*irradiance;
 
-#endif // !LIGHTING_NO_SHADOWS
+#else
+    return irradiance;
+#endif
+}
 
 /**
  * Lighting functions
@@ -322,11 +364,7 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     vec3 radiance = light.Color.rgb * light.Strength;
     // Calculate pbr contribution
     vec3 lighting = CalculateBRDF(fragNormal, lightDir, radiance, albedo, metallic, roughness, V, H);
-#ifndef LIGHTING_NO_SHADOWS
-    // Calculate shadow contribution
-    float shadow = ComputeLightShadow(shadowInfo, fragPos, light);
-    lighting *= (1.f-shadow);
-#endif // !LIGHTING_NO_SHADOWS
+    lighting = ComputeLightShadow(shadowInfo, fragPos, light, lighting);
     return lighting;
 }
 
@@ -345,11 +383,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albed
         vec3 V = normalize(-fragPos);
         vec3 H = normalize(V + L);
         lighting = CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
-#ifndef LIGHTING_NO_SHADOWS
-        // Calculate shadow inside lighting cone
-        float shadow = ComputeLightShadow(shadowInfo, fragPos, light);
-        lighting *= (1.f-shadow);
-#endif // !LIGHTING_NO_SHADOWS
+        lighting = ComputeLightShadow(shadowInfo, fragPos, light, lighting);
     }
     return lighting * intensity;
 }

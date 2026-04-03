@@ -8,6 +8,7 @@
 #include "ModelLoader.h"
 #include <imgui.h>
 #include "Utils/TimeUtils.h"
+#include "Render/Noise.h"
 
 Mist::CIntVar CVar_ForceFrameSync("r_forceframesync", 0);
 Mist::CIntVar CVar_GpuProfiling("r_gpuProfiling", 0);
@@ -315,6 +316,7 @@ namespace rendersystem
             }, this, true);
 
         InitScreenQuad();
+        InvalidateBlueNoise();
     }
 
     void RenderSystem::Destroy()
@@ -343,6 +345,7 @@ namespace rendersystem
         m_ldrRt = nullptr;
         m_depthTexture = nullptr;
         m_ldrTexture = nullptr;
+        m_blueNoiseTexture = nullptr;
         for (uint32_t i = 0; i < (uint32_t)m_presentRts.size(); ++i)
             m_presentRts[i] = nullptr;
         delete m_device;
@@ -887,6 +890,12 @@ namespace rendersystem
         logerror("===========================\n");
     }
 
+    void RenderSystem::InvalidateBlueNoise()
+    {
+        m_blueNoiseTexture = nullptr;
+        InitBlueNoise(64, 64);
+    }
+
     render::RenderTargetBlendState& RenderSystem::GetPsoBlendStateAttachment(uint32_t attachment)
     {
         check(attachment < m_graphicsContext.pso.renderState.blendState.renderTargetBlendStates.GetCapacity());
@@ -945,6 +954,27 @@ namespace rendersystem
         m_screenQuadCopy.vb = nullptr;
         m_screenQuadCopy.ib = nullptr;
         m_screenQuadCopy.sampler = nullptr;
+    }
+
+    void RenderSystem::InitBlueNoise(uint32_t width, uint32_t height)
+    {
+        if (!m_blueNoiseTexture)
+        {
+            Mist::BlueNoise2D noise;
+            float radius = 0.5f / (float)width;
+            noise.Generate(radius, 32, width, height, 4);
+
+			render::TextureDescription desc;
+			desc.extent = { width, height, 1 };
+			desc.debugName = "blue_noise";
+            // TODO: test with less expensive format
+			desc.format = render::Format_R32G32B32A32_SFloat;
+			desc.memoryUsage = render::MemoryUsage_Gpu;
+			desc.isShaderResource = true;
+			m_blueNoiseTexture = m_device->CreateTexture(desc);
+			render::utils::UploadContext ctx(m_device);
+			ctx.WriteTexture(m_blueNoiseTexture, 0, 0, noise.GetNoise(), width * height * 4 * sizeof(float));
+        }
     }
 
     void RenderSystem::CopyToPresentRt(render::TextureHandle texture)

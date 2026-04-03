@@ -6,7 +6,12 @@ layout(location = 0) out vec4 outColor;
 layout(set = 0, binding = 1) uniform ShadowMapInfo
 {
     mat4 LightViewMat[MAX_SHADOW_MAPS];
+    vec4 noiseParams;
 } u_ShadowMapInfo;
+
+#define LIGHTING_SHADOWS_NOISE_SCALE u_ShadowMapInfo.noiseParams.x
+#define LIGHTING_SHADOWS_NOISE_FACTOR u_ShadowMapInfo.noiseParams.y
+#define LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE int(u_ShadowMapInfo.noiseParams.z)
 
 #include <shaders/includes/camera.glsl>
 layout(set = 0, binding = 2) uniform CameraInfo
@@ -30,6 +35,8 @@ layout(set = 1, binding = 7) uniform sampler2D u_GBufferDepth;
 layout(set = 2, binding = 0) uniform samplerCube u_irradianceMap;
 layout(set = 2, binding = 1) uniform samplerCube u_prefilterMap;
 layout(set = 2, binding = 2) uniform sampler2D u_brdfMap;
+
+layout(set = 2, binding = 3) uniform sampler2D u_blueNoise;
 
 //#define LIGHTING_NO_SHADOWS
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat

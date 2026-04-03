@@ -655,8 +655,9 @@ namespace rendersystem
         void BeginGpuProfFmt(const char* fmt, ...);
         void EndGpuProf();
 
-        inline render::RenderTargetHandle GetLDRTarget() const { return m_ldrRt; }
-        inline render::TextureHandle GetLDRTexture() const { return m_ldrTexture; }
+        inline const render::RenderTargetHandle& GetLDRTarget() const { return m_ldrRt; }
+        inline const render::TextureHandle& GetLDRTexture() const { return m_ldrTexture; }
+        inline const render::TextureHandle& GetBlueNoiseTexture() const { return m_blueNoiseTexture; }
 
         inline const render::Extent2D& GetRenderResolution() const { return m_renderResolution; }
         inline const render::Extent2D& GetBackbufferResolution() const { return m_backbufferResolution; }
@@ -797,6 +798,7 @@ namespace rendersystem
         inline bool AllowsGraphicsCommand() const { return AllowsCommand(ShaderProgram_Graphics); }
         inline bool AllowsComputeCommand() const { return AllowsCommand(ShaderProgram_Compute); }
 
+        void InvalidateBlueNoise();
     private:
 
         render::RenderTargetBlendState& GetPsoBlendStateAttachment(uint32_t attachment);
@@ -804,6 +806,8 @@ namespace rendersystem
 
         void InitScreenQuad();
         void DestroyScreenQuad();
+
+        void InitBlueNoise(uint32_t width, uint32_t height);
 
         void CopyToPresentRt(render::TextureHandle texture);
         const render::RenderTargetHandle& GetPresentRt() const { check(m_swapchainIndex < (uint32_t)m_presentRts.size()); return m_presentRts[m_swapchainIndex]; }
@@ -865,6 +869,7 @@ namespace rendersystem
         render::TextureHandle m_depthTexture;
         render::RenderTargetHandle m_ldrRt;
         render::TextureHandle m_defaultTexture;
+        render::TextureHandle m_blueNoiseTexture;
         // Present render targets
         Mist::tDynArray<render::RenderTargetHandle> m_presentRts;
 

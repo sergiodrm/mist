@@ -11,6 +11,14 @@ namespace Mist
 
 	class Lighting : public RenderProcess
 	{
+		struct ShadowMapParams
+		{
+			tArray<glm::mat4, globals::MaxShadowMapAttachments> lightViewProjectionArray;
+			float noiseScale = 0.0025f;
+			float noiseFactor = 3.f;
+			float noisePCFKernelSize = 9.f;
+			float _padding = 0.f;
+		};
 	public:
 		Lighting(Renderer* renderer, IRenderEngine* engine);
 
@@ -39,6 +47,8 @@ namespace Mist
 		render::BlendFactor m_alphaSrc = render::BlendFactor_One;
 		render::BlendFactor m_alphaDst = render::BlendFactor_Zero;
 		render::BlendOp m_blendOp = render::BlendOp_Add;
+
+		ShadowMapParams m_shadowMapParams;
 	};
 
 }
