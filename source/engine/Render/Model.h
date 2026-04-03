@@ -14,6 +14,7 @@ namespace Mist
 		StencilMask_None = 0x00,
 		StencilMask_Geometry = 0x01,
 		StencilMask_Sky = 0x02,
+		StencilMask_All = 0xff
 	};
 	typedef uint8_t StencilMask;
 
