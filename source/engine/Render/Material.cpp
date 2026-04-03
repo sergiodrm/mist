@@ -8,9 +8,153 @@
 #include "Core/Logger.h"
 
 #include "RenderSystem/RenderSystem.h"
+#include "RenderSystem/TextureLoader.h"
+#include "Utils/TimeUtils.h"
 
 namespace Mist
 {
+    namespace mtl_serializer
+    {
+
+        static void SerializeTexture(YAML::Emitter& emitter, const char* name, const render::TextureHandle& texture, const render::SamplerHandle& sampler)
+        {
+            emitter << YAML::Key << name << YAML::BeginMap;
+			emitter << YAML::Key << "Tex" << YAML::Value
+				<< (texture ? texture->m_description.debugName.c_str() : "");
+			emitter << YAML::Key << "Sampler" << YAML::Value
+				<< (sampler && sampler->m_description.debugName.c_str() ? sampler->m_description.debugName.c_str() : "");
+            emitter << YAML::EndMap;
+        }
+
+        static void UnserializeTexture(YAML::Node texNode, uint32_t textureId, cMaterial& mtl)
+        {
+            render::Device* device = g_device;
+            check(device && texNode);
+            YAML::Node t = texNode["Tex"];
+            check(t);
+            std::string str = t.as<std::string>();
+            if (!str.empty())
+                check(rendersystem::textureloader::LoadTextureFromFile(&mtl.m_textures[textureId], device, str.c_str()));
+            YAML::Node s = texNode["Sampler"];
+            check(s);
+            str = s.as<std::string>();
+            if (!str.empty())
+                logfwarn("Load sampler from mtl file pending: %s\n", str.c_str());
+        }
+
+        static void Serialize(YAML::Emitter& emitter, const cMaterial* mtls, uint32_t count)
+        {
+            emitter << YAML::BeginSeq;
+            for (uint32_t i = 0; i < count; ++i)
+            {
+                const cMaterial& mtl = mtls[i];
+                emitter << YAML::BeginMap;
+                emitter << YAML::Key << "Name" << YAML::Value << mtl.GetName();
+
+                // Textures
+                emitter << YAML::Key << "Textures" << YAML::BeginMap;
+                SerializeTexture(emitter, "Albedo", mtl.m_textures[MATERIAL_TEXTURE_ALBEDO], mtl.m_samplers[MATERIAL_TEXTURE_ALBEDO]);
+                SerializeTexture(emitter, "Normal", mtl.m_textures[MATERIAL_TEXTURE_NORMAL], mtl.m_samplers[MATERIAL_TEXTURE_NORMAL]);
+                SerializeTexture(emitter, "Specular", mtl.m_textures[MATERIAL_TEXTURE_SPECULAR], mtl.m_samplers[MATERIAL_TEXTURE_SPECULAR]);
+                SerializeTexture(emitter, "MetallicRoughness", mtl.m_textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], mtl.m_samplers[MATERIAL_TEXTURE_METALLIC_ROUGHNESS]);
+                SerializeTexture(emitter, "Emissive", mtl.m_textures[MATERIAL_TEXTURE_EMISSIVE], mtl.m_samplers[MATERIAL_TEXTURE_EMISSIVE]);
+                SerializeTexture(emitter, "Occlusion", mtl.m_textures[MATERIAL_TEXTURE_OCCLUSION], mtl.m_samplers[MATERIAL_TEXTURE_OCCLUSION]);
+                emitter << YAML::EndMap;
+
+                // Properties
+                emitter << YAML::Key << "Properties" << YAML::BeginMap;
+                emitter << YAML::Key << "Albedo" << YAML::Value << mtl.m_albedo;
+                emitter << YAML::Key << "Roughness" << YAML::Value << mtl.m_roughnessFactor;
+                emitter << YAML::Key << "Metallic" << YAML::Value << mtl.m_metallicFactor;
+                emitter << YAML::Key << "EmissiveColor" << YAML::Value << mtl.m_emissiveFactor;
+                emitter << YAML::Key << "EmissiveStrength" << YAML::Value << mtl.m_emissiveStrength;
+                emitter << YAML::Key << "Specular" << YAML::Value << mtl.m_specularFactor;
+                emitter << YAML::Key << "AlphaCutoff" << YAML::Value << mtl.m_alphaCutoff;
+                emitter << YAML::Key << "Flags" << YAML::Value << mtl.m_flags;
+                emitter << YAML::EndMap;
+
+                emitter << YAML::EndMap;
+            }
+            emitter << YAML::EndSeq;
+        }
+
+        static void Unserialize(YAML::Node n, cMaterial*& outMtls, uint32_t& outCount)
+        {
+            check(n.IsSequence());
+            outCount = n.size();
+            outMtls = (cMaterial*)_malloc(sizeof(cMaterial)*outCount);
+            for (uint32_t i = 0; i < outCount; ++i)
+            {
+                YAML::Node it = n[i];
+                check(it);
+                cMaterial& mtl = outMtls[i];
+                new(&mtl)cMaterial();
+
+                mtl.SetName(it["Name"].as<std::string>().c_str());
+                
+                // textures
+                YAML::Node texNode = it["Textures"];
+                check(texNode);
+                UnserializeTexture(texNode["Albedo"], MATERIAL_TEXTURE_ALBEDO, mtl);
+                UnserializeTexture(texNode["Normal"], MATERIAL_TEXTURE_NORMAL, mtl);
+                UnserializeTexture(texNode["Specular"], MATERIAL_TEXTURE_SPECULAR, mtl);
+                UnserializeTexture(texNode["MetallicRoughness"], MATERIAL_TEXTURE_METALLIC_ROUGHNESS, mtl);
+                UnserializeTexture(texNode["Emissive"], MATERIAL_TEXTURE_EMISSIVE, mtl);
+                UnserializeTexture(texNode["Occlusion"], MATERIAL_TEXTURE_OCCLUSION, mtl);
+
+                // properties
+                YAML::Node properties = it["Properties"];
+                check(properties);
+                mtl.m_albedo = properties["Albedo"].as<glm::vec4>();
+                mtl.m_roughnessFactor = properties["Roughness"].as<float>();
+                mtl.m_metallicFactor = properties["Metallic"].as<float>();
+                mtl.m_emissiveFactor = properties["EmissiveColor"].as<glm::vec3>();
+                mtl.m_emissiveStrength = properties["EmissiveStrength"].as<float>();
+                mtl.m_specularFactor = properties["Specular"].as<float>();
+                mtl.m_alphaCutoff = properties["AlphaCutoff"].as<float>();
+                mtl.m_flags = properties["Flags"].as<float>();
+
+                mtl.SetupShader(g_render);
+            }
+        }
+
+        static bool Serialize(const char* filepath, const cMaterial* mtls, uint32_t count)
+        {
+            YAML::Emitter e;
+            Serialize(e, mtls, count);
+            check(e.good());
+            cFile f;
+            cFile::eResult result = f.OpenBinary(filepath, cFile::FileMode_Write);
+            if (result != cFile::Result_Ok)
+                return false;
+            f.Write(e.c_str(), e.size());
+            f.Close();
+            logfok("%d materials saved to: %s [%lld b]\n", count, cAssetPath(filepath), e.size());
+            return true;
+        }
+
+        static bool Unserialize(const char* filepath, cMaterial*& outMtls, uint32_t& outCount)
+        {
+            char* buffer = nullptr;
+            size_t size = 0;
+            cFile f;
+            check(f.OpenBinary(filepath, cFile::FileMode_Read) == cFile::Result_Ok);
+            size = f.GetContentSize()+1;
+            buffer = (char*)_malloc(size);
+            f.Read(buffer, size, 1, size);
+            buffer[size - 1] = 0;
+            f.Close();
+            check(buffer && size);
+
+            YAML::Node root = YAML::Load(buffer);
+            check(root);
+            Unserialize(root, outMtls, outCount);
+            _free(buffer);
+            return true;
+        }
+    }
+
+
     const char* GetMaterialTextureStr(eMaterialTexture type)
     {
         switch (type)
@@ -66,6 +210,22 @@ namespace Mist
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 #undef DECLARE_MACRO_ENUM
+    }
+
+    bool cMaterial::SerializeMaterials(const char* filepath, const cMaterial* mtls, uint32_t count)
+    {
+        if (!mtls || !count) 
+            return false;
+        PROFILE_SCOPE_LOGF(SerializeMaterials, "SerializeMaterials (%s|%d)", filepath, count);
+        return mtl_serializer::Serialize(filepath, mtls, count);
+    }
+
+    bool cMaterial::UnserializeMaterials(const char* filepath, cMaterial*& mtls, uint32_t& count)
+    {
+        if (!filepath || !*filepath || !FileSystem::FileExists(filepath))
+            return false;
+        PROFILE_SCOPE_LOGF(UnserializeMaterials, "UnserializeMaterials (%s)", filepath);
+        return mtl_serializer::Unserialize(filepath, mtls, count);
     }
 
     cMaterial::cMaterial()

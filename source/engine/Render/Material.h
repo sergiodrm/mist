@@ -66,8 +66,11 @@ namespace Mist
 	public:
 
 		static void ConfigureShaderDescription(rendersystem::ShaderBuildDescription& shaderDesc);
+		static bool SerializeMaterials(const char* filepath, const cMaterial* mtls, uint32_t count);
+		static bool UnserializeMaterials(const char* filepath, cMaterial*& mtls, uint32_t& count);
 
 		cMaterial();
+
 		void Invalidate();
 		void SetupShader(rendersystem::RenderSystem* renderSystem);
 
