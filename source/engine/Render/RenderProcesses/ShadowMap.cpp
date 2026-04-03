@@ -24,6 +24,9 @@ namespace Mist
 {
 	bool GUseCameraForShadowMapping = false;
 
+	CIntVar CVar_ShadowMapResolutionWidth("r_shadowMapResolutionWidth", 1024);
+	CIntVar CVar_ShadowMapResolutionHeight("r_shadowMapResolutionHeight", 1024);
+
 	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip)
 	{
 		return glm::perspective(2.f * glm::radians(cutOff), 1.f, nearClip, farClip);
@@ -245,7 +248,7 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
 		{
 			render::TextureDescription texDesc;
-			texDesc.extent = { .width = rs->GetRenderResolution().width, .height = rs->GetRenderResolution().height, .depth = 1 };
+			texDesc.extent = { .width = (uint32_t)CVar_ShadowMapResolutionWidth.Get(), .height = (uint32_t)CVar_ShadowMapResolutionHeight.Get(), .depth = 1};
 			texDesc.format = render::Format_D32_SFloat;
 			texDesc.isRenderTarget = true;
 			render::TextureHandle depthTex = rs->GetDevice()->CreateTexture(texDesc);
@@ -284,6 +287,8 @@ namespace Mist
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
 		{
 			rs->SetRenderTarget(m_shadowMapTargetArray[i]);
+			rs->SetViewport(m_shadowMapTargetArray[i]->m_info.GetViewport());
+			rs->SetScissor(m_shadowMapTargetArray[i]->m_info.GetScissor());
 			rs->ClearDepthStencil();
 			rs->SetDepthEnable();
 			if (i < m_lightCount)
