@@ -140,7 +140,15 @@ namespace Mist
 			rs->ClearState();
 			rs->SetShader(GetTAAShader());
 			rs->SetTextureSlot("u_historyTex", GetHistory()->m_description.colorAttachments[0].texture);
+			rs->SetSampler("u_historyTex", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+				render::SamplerAddressMode_ClampToEdge,
+				render::SamplerAddressMode_ClampToEdge,
+				render::SamplerAddressMode_ClampToEdge);
 			rs->SetTextureSlot("u_currentTex", rt->m_description.colorAttachments[0].texture);
+			rs->SetSampler("u_currentTex", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+				render::SamplerAddressMode_ClampToEdge,
+				render::SamplerAddressMode_ClampToEdge,
+				render::SamplerAddressMode_ClampToEdge);
 			rs->SetTextureSlot("u_motionVectorsTex", motionVectors->m_description.colorAttachments[GBuffer::RT_MOTION_VECTORS].texture);
 			rs->SetTextureSlot("outTex", GetOutput()->m_description.colorAttachments[0].texture);
 			struct  
