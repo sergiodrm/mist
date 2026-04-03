@@ -147,7 +147,7 @@ namespace Mist
 				rs->SetRenderTarget(m_lightingRt);
 				rs->SetDepthEnable(false, false);
 				rs->SetStencilEnable(true);
-				rs->SetStencilMask(0xff, 0x00, StencilMask_Geometry);
+				rs->SetStencilMask(StencilMask_All, StencilMask_None, StencilMask_Geometry);
 				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Keep, render::CompareOp_Equal);
 
 				///////////////////////////////////////////////////////////commandList->ClearColor();
