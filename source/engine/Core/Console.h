@@ -2,6 +2,7 @@
 
 #include "Logger.h"
 #include "Types.h"
+#include "Mutex.h"
 
 #define CONSOLE_LOG_MSG_SIZE LOG_MSG_MAX_SIZE
 #define CONSOLE_LOG_COUNT 1024
@@ -69,6 +70,7 @@ namespace Mist
 		static int ConsoleInputCallback(ImGuiInputTextCallbackData* data);
 		void ResetHistoryMode();
 	private:
+		Mutex m_mutex;
 		tCircularBuffer<tLogEntry, CONSOLE_LOG_COUNT> m_logs;
 		int32_t m_filters = FilterAll;
 		uint32_t m_counters[(uint32_t)LogLevel::Count];

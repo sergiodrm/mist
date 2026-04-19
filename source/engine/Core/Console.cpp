@@ -8,6 +8,7 @@
 #include <string.h>
 #include <imgui/imgui.h>
 #include "Core/SystemMemory.h"
+#include "Core/Thread.h"
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
 #include "Utils/TimeUtils.h"
@@ -71,12 +72,15 @@ namespace Mist
 	void Console::Log(LogLevel level, const char* msg)
 	{
 		check((uint32_t)level < (uint32_t)LogLevel::Count);
-		++m_counters[(uint32_t)level];
 		tLogEntry entry;
 		sprintf_s(entry.Msg, "[%lld] %s", tApplication::GetFrame(), msg);
 		entry.Level = level;
+
+		m_mutex.Lock();
+		++m_counters[(uint32_t)level];
 		m_logs.Push(entry);
 		m_newEntry = true;
+		m_mutex.Unlock();
 	}
 
 	void Console::LogFmt(LogLevel level, const char* fmt, ...)
@@ -91,6 +95,7 @@ namespace Mist
 
 	void Console::Draw()
 	{
+		check(ThisThread::IsMainThread());
 		if (!CVar_ShowConsole.Get())
 			return;
 
@@ -111,6 +116,8 @@ namespace Mist
 		}
 		ImGui::Begin("Console", nullptr, flags);
 		// ImGui::Checkbox("AutoMove", &m_autoMove);
+
+		m_mutex.Lock();
 		bool goend = m_newEntry;
 		ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.55f, 1.f), 
 			"Error: %4d | Warn: %4d | Info: %4d | Ok: %4d | Debug: %4d",
@@ -121,9 +128,12 @@ namespace Mist
 			m_counters[(uint32_t)LogLevel::Debug]
 			);
 		m_newEntry = false;
+		m_mutex.Unlock();
+
 		float footerHeight = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
         if (ImGui::BeginPopupContextItem("filters_popup"))
         {
+			m_mutex.Lock();
             ImGuiUtils::CheckboxBitField("Info", &m_filters, FilterInfo);
             ImGuiUtils::CheckboxBitField("Debug", &m_filters, FilterDebug);
             ImGuiUtils::CheckboxBitField("Ok", &m_filters, FilterOk);
@@ -131,12 +141,14 @@ namespace Mist
             ImGuiUtils::CheckboxBitField("Error", &m_filters, FilterError);
 			if (ImGui::Button("Go end"))
 				goend = true;
+			m_mutex.Unlock();
             ImGui::EndPopup();
         }
 		if (ImGui::BeginChild("Scrollable", ImVec2(0.f, -footerHeight), false))
 		{
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1));
 
+			m_mutex.Lock();
 			for (uint32_t i = 0; i < m_logs.GetCount(); ++i)
 			{
 				const tLogEntry& entry = m_logs.GetFromOldest(i);
@@ -145,6 +157,7 @@ namespace Mist
 			}
 			if (goend)
 				ImGui::SetScrollHereY(1.f);
+			m_mutex.Unlock();
 			ImGui::PopStyleVar();
 			ImGui::EndChild();
 			ImGui::OpenPopupOnItemClick("filters_popup", ImGuiPopupFlags_MouseButtonRight);

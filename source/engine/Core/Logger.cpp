@@ -9,6 +9,7 @@
 #include <string.h>
 #include <imgui/imgui.h>
 #include "Core/SystemMemory.h"
+#include "Core/Mutex.h"
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
 
@@ -134,10 +135,9 @@ namespace Mist
 
 		void Flush()
 		{
+			GuardMutex guardMutex(m_mutex);
 			for (uint32_t i = 0; i < m_index; ++i)
-			{
 				Print(m_entryArray[i]);
-			}
 			m_index = 0;
 		}
 	private:
@@ -173,7 +173,8 @@ namespace Mist
 		static constexpr size_t MaxBufferSize = 128;
 		LogEntry m_entryArray[MaxBufferSize];
 		std::string m_filepath;
-		uint32_t m_index = 0;
+		std::atomic<uint32_t> m_index = 0;
+		Mutex m_mutex;
 		FILE* m_file;
 	};
 
