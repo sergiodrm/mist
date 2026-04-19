@@ -16,6 +16,7 @@
 #include "Core/Console.h"
 #include "Core/Debug.h"
 #include "Render/Globals.h"
+#include "Resources/ResourceLoader.h"
 #include "Scene/Scene.h"
 #include "Utils/GenericUtils.h"
 #include "RenderProcesses/RenderProcess.h"
@@ -184,6 +185,7 @@ namespace Mist
 		m_renderer.Init(m_renderSystem, this);
 		m_gpuParticleSystem.Init(g_render);
 		DebugRender::Init();
+		resources::InitLoadThread();
 		//////////////////////////////////////
 		// Console commands
 		//////////////////////////////////////
@@ -255,6 +257,7 @@ namespace Mist
 
 		FlushPendingConsoleCommands();
 		Draw();
+		resources::SlotMainThread();
 		return true;
 	}
 
@@ -262,6 +265,7 @@ namespace Mist
 	{
 		loginfo("Shutdown render engine.\n");
 		g_device->WaitIdle();
+		resources::TerminateLoadThread();
 		if (m_scene)
 		{
 			m_scene->Destroy();
