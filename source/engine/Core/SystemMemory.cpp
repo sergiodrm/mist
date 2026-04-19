@@ -4,11 +4,17 @@
 #include "Core/Types.h"
 #include "Core/Debug.h"
 #include "Core/Console.h"
+#include "Core/Thread.h"
+#include "Core/Mutex.h"
 #include "Application/Application.h"
 
 //#define MEM_TRACE_ON
+//#define MEM_TRACE_MAP
+
 //#define MEM_BLOCK_HEADER
 //#define MEM_BLOCK_HEADER_INTENSIVE_CHECK
+#define MEM_BLOCK_HEADER_MASK 0x0f
+
 #define MEM_CHUNK_INITIALIZATION
 #define MEM_CHUNK_INITIALIZATION_VALUE 0xab
 
@@ -20,7 +26,6 @@
 #define MEM_TRACE_ON
 #endif
 
-#define MEM_BLOCK_HEADER_MASK 0x0f
 
 namespace Mist
 {
@@ -41,11 +46,17 @@ namespace Mist
 
 			struct MemoryTracking
 			{
+#if !defined(MEM_TRACE_MAP)
 				static constexpr size_t memTraceCapacity = 1 << 16;
 				AllocTraceInfo* traceData = nullptr;
 				unsigned int index = 0;
 				unsigned int* freeIndicesArray = nullptr;
 				unsigned int freeIndicesIndex = 0;
+#else
+				using MemoryMap = std::unordered_map<size_t, AllocTraceInfo, std::hash<size_t>, std::equal_to<size_t>, tStdUnregisteredAllocator<std::pair<const size_t, AllocTraceInfo>>>;
+				MemoryMap traceData;
+#endif // !defined(MEM_TRACA_MAP)
+				Mutex mutex;
 			};
 #else
 			struct MemoryTracking {};
@@ -53,9 +64,11 @@ namespace Mist
 
 			void InitMemoryTracking(MemoryTracking& memoryTracking)
 			{
-#ifdef MEM_TRACE_ON
+#if defined(MEM_TRACE_ON) && !defined(MEM_TRACE_MAP)
 				if (!memoryTracking.traceData)
 				{
+					check(ThisThread::IsMainThread());
+					memoryTracking.mutex.Lock();
 					check(!memoryTracking.freeIndicesArray);
 					memoryTracking.traceData = (AllocTraceInfo*)malloc(MemoryTracking::memTraceCapacity * sizeof(AllocTraceInfo));
 					check(memoryTracking.traceData);
@@ -65,30 +78,39 @@ namespace Mist
 					memset(memoryTracking.freeIndicesArray, UINT32_MAX, MemoryTracking::memTraceCapacity * sizeof(uint32_t));
 					memoryTracking.index = 0;
 					memoryTracking.freeIndicesIndex = 0;
+					memoryTracking.mutex.Unlock();
 				}
 #endif // MEM_TRACE_ON
 			}
 
 			void DestroyMemoryTracking(MemoryTracking& memoryTracking)
 			{
-#ifdef MEM_TRACE_ON
-				free(memoryTracking.traceData);
-				free(memoryTracking.freeIndicesArray);
-				memoryTracking.index = 0;
-				memoryTracking.freeIndicesIndex = 0;
-				memoryTracking.traceData = nullptr;
-				memoryTracking.freeIndicesArray = nullptr;
+#if defined(MEM_TRACE_ON) && !defined(MEM_TRACE_MAP)
+				if (memoryTracking.traceData)
+				{
+					check(ThisThread::IsMainThread());
+					memoryTracking.mutex.Lock();
+					free(memoryTracking.traceData);
+					free(memoryTracking.freeIndicesArray);
+					memoryTracking.index = 0;
+					memoryTracking.freeIndicesIndex = 0;
+					memoryTracking.traceData = nullptr;
+					memoryTracking.freeIndicesArray = nullptr;
+					memoryTracking.mutex.Unlock();
+				}
 #endif // MEM_TRACE_ON
 			}
 
 			void AddTrace(MemoryTracking& memoryTracking, const void* p, size_t size, const char* file, uint32_t line, size_t frame)
 			{
-		#ifdef MEM_TRACE_ON
+#if defined(MEM_TRACE_ON)
+#if !defined(MEM_TRACE_MAP)
 				// Memory tracking could not be initialized. Dynamic initializators before main function.
 				if (!memoryTracking.traceData)
 					return;
 
 				AllocTraceInfo* trace = nullptr;
+				memoryTracking.mutex.Lock();
 				// Search for available trace info. Reserve new one if there is no one.
 				if (memoryTracking.freeIndicesIndex)
 				{
@@ -108,10 +130,11 @@ namespace Mist
 					if (memoryTracking.index > memoryTracking.memTraceCapacity * 3 / 4 && memoryTracking.index < memoryTracking.memTraceCapacity)
 						logfwarn("MemTraceIndex close to overflow: %d/%d\n", memoryTracking.index, memoryTracking.memTraceCapacity);
 				}
+				memoryTracking.mutex.Unlock();
 				// there is no more room for tracking memory.
-				if (!trace) 
+				if (!trace)
 					return;
-				
+
 				// fill new track info
 				check(!trace->data);
 				trace->data = p;
@@ -119,13 +142,29 @@ namespace Mist
 				trace->line = line;
 				trace->frame = frame;
 				strcpy_s(trace->file, file);
-		#endif // MEM_TRACE_ON
+
+#else
+				AllocTraceInfo info;
+				info.data = p;
+				info.size = size;
+				info.line = line;
+				info.frame = frame;
+				memoryTracking.mutex.Lock();
+				check(!memoryTracking.traceData.contains((size_t)p));
+				memoryTracking.traceData[(size_t)p] = info;
+				check(memoryTracking.traceData.contains((size_t)p));
+				memoryTracking.mutex.Unlock();
+#endif // !defined(MEM_TRACE_MAP)
+
+#endif // MEM_TRACE_ON
 			}
 
 			// Returns the size of the memory chunk tracked. 0 if there is no tracking info.
 			size_t RemoveTrace(MemoryTracking& memoryTracking, const void* p)
 			{
-	#ifdef MEM_TRACE_ON
+#if defined(MEM_TRACE_ON)
+#if !defined(MEM_TRACE_MAP)
+				GuardMutex guardMutex(memoryTracking.mutex);
 				for (uint32_t i = 0; i < memoryTracking.index; ++i)
 				{
 					if (memoryTracking.traceData[i].data == p)
@@ -137,13 +176,26 @@ namespace Mist
 						return memoryTracking.traceData[i].size;
 					}
 				}
-	#endif // MEM_TRACE_ON
+#else
+				GuardMutex guardMutex(memoryTracking.mutex);
+				MemoryTracking::MemoryMap::iterator it = memoryTracking.traceData.find((size_t)p);
+				if (it != memoryTracking.traceData.end())
+				{
+					size_t size = it->second.size;
+					memoryTracking.traceData.erase((size_t)p);
+					check(!memoryTracking.traceData.contains((size_t)p));
+					return size;
+				}
+#endif // !defined(MEM_TRACE_MAP)
+#endif // MEM_TRACE_ON
 				return 0;
 			}
 			
-			void DumpMemoryTrace(const MemoryTracking& memoryTracking)
+			void DumpMemoryTrace(MemoryTracking& memoryTracking)
 			{
-#ifdef MEM_TRACE_ON
+#if defined(MEM_TRACE_ON)
+#if !defined(MEM_TRACE_MAP)
+				GuardMutex guardMutex(memoryTracking.mutex);
 				for (uint32_t i = 0; i < memoryTracking.index; ++i)
 				{
 					if (memoryTracking.traceData[i].data)
@@ -155,37 +207,61 @@ namespace Mist
 							memoryTracking.traceData[i].file, 
 							memoryTracking.traceData[i].line);
 				}
+#else
+				GuardMutex guardMutex(memoryTracking.mutex);
+				for (MemoryTracking::MemoryMap::iterator it = memoryTracking.traceData.begin();
+					it != memoryTracking.traceData.end();
+					++it)
+				{
+					if (it->second.data)
+						logfinfo("[frame: %5ld] 0x%p | %9lld bytes | %64s (%5d)\n",
+							it->second.frame,
+							it->second.data,
+							it->second.size,
+							it->second.file,
+							it->second.line);
+				}
+#endif // !defined(MEM_TRACE_MAP)
 #endif // MEM_TRACE_ON
 			}
 		}
 
 		namespace stats
 		{
-			void NewMalloc(MemoryStats& stats, size_t size)
+			struct MemoryStatsInternal
 			{
-				stats.allocatedBytes += size;
-				stats.maxAllocatedBytes = __max(stats.allocatedBytes, stats.maxAllocatedBytes);
-				++stats.frameAllocCount;
-				++stats.allocatedCount;
+				MemoryStats memStats;
+				Mutex mutex;
+			};
+
+			void NewMalloc(MemoryStatsInternal& stats, size_t size)
+			{
+				GuardMutex guardMutex(stats.mutex);
+				stats.memStats.allocatedBytes += size;
+				stats.memStats.maxAllocatedBytes = __max(stats.memStats.allocatedBytes, stats.memStats.maxAllocatedBytes);
+				++stats.memStats.frameAllocCount;
+				++stats.memStats.allocatedCount;
 			}
 
-			void FreeMemoryStats(MemoryStats& stats, size_t size)
+			void FreeMemoryStats(MemoryStatsInternal& stats, size_t size)
 			{
-				++stats.frameFreeCount;
-				//check(stats.allocatedBytes >= size && stats.allocatedCount);
-				if (!(stats.allocatedBytes >= size && stats.allocatedCount))
+				GuardMutex guardMutex(stats.mutex);
+				++stats.memStats.frameFreeCount;
+				//check(stats.memStats.allocatedBytes >= size && stats.memStats.allocatedCount);
+				if (!(stats.memStats.allocatedBytes >= size && stats.memStats.allocatedCount))
 					return;
-				--stats.allocatedCount;
-				stats.allocatedBytes -= size;
+				--stats.memStats.allocatedCount;
+				stats.memStats.allocatedBytes -= size;
 			}
 
-			void DumpMemoryStats(const MemoryStats& memStats)
+			void DumpMemoryStats(MemoryStatsInternal& memStats)
 			{
+				GuardMutex guardMutex(memStats.mutex);
 				loginfo("****************** Host memory stats ******************\n");
-				logfinfo("Current bytes allocated:		%8lld bytes (%8lld calls)\n", memStats.allocatedBytes, memStats.allocatedCount);
-				logfinfo("    Max bytes allocated:		%8lld bytes\n", memStats.maxAllocatedBytes);
-				logfinfo(" Alloc count this frame:		%8lld\n", memStats.frameAllocCount);
-				logfinfo("  Free count this frame:		%8lld\n", memStats.frameFreeCount);
+				logfinfo("Current bytes allocated:		%8lld bytes (%8lld calls)\n", memStats.memStats.allocatedBytes, memStats.memStats.allocatedCount);
+				logfinfo("    Max bytes allocated:		%8lld bytes\n", memStats.memStats.maxAllocatedBytes);
+				logfinfo(" Alloc count this frame:		%8lld\n", memStats.memStats.frameAllocCount);
+				logfinfo("  Free count this frame:		%8lld\n", memStats.memStats.frameFreeCount);
 				loginfo("*******************************************************\n");
 			}
 		}
@@ -271,21 +347,32 @@ namespace Mist
 
 		struct SystemMemoryInfo
 		{
-			stats::MemoryStats stats;
+			stats::MemoryStatsInternal stats;
 			tracking::MemoryTracking trace;
 		};
-		SystemMemoryInfo g_memory;
+		static SystemMemoryInfo g_memory;
+		static SystemMemoryInfo& GetSystemMemoryInfo() { return g_memory; }
 
 	
 		void IntegrityCheck() 
 		{ 
 #ifdef MEM_BLOCK_HEADER
-			const tracking::MemoryTracking& mt = g_memory.trace;
+			const tracking::MemoryTracking& mt = GetSystemMemoryInfo().trace;
+#if !defined(MEM_TRACE_MAP)
 			for (uint32_t i = 0; i < mt.index; ++i)
 			{
 				if (mt.traceData[i].data)
 					control::IntegrityCheck(mt.traceData[i].data);
 			}
+#else
+			for (tracking::MemoryTracking::MemoryMap::const_iterator it = mt.traceData.begin();
+				it != mt.traceData.end();
+				++it)
+			{
+				if (it->second.data)
+					control::IntegrityCheck(it->second.data);
+			}
+#endif
 #endif
 		}
 
@@ -313,7 +400,7 @@ namespace Mist
 			size_t mallocSize  = size + control::GetControlSizeRequired();
 			void* block = malloc(mallocSize);
 			check(block);
-			AddMemTrace(g_memory, block, mallocSize, file, line, GetFrame());
+			AddMemTrace(GetSystemMemoryInfo(), block, mallocSize, file, line, GetFrame());
 			void* ret = control::InitBlockHeader(block, size);
 			return ret;
 		}
@@ -332,7 +419,7 @@ namespace Mist
 
 			// Release control and tracking
 			void* block = control::ReleaseBlockHeader(p);
-			RemoveMemTrace(g_memory, block);
+			RemoveMemTrace(GetSystemMemoryInfo(), block);
 
 			// realloc memory
 			size_t mallocSize = size + control::GetControlSizeRequired();
@@ -340,7 +427,7 @@ namespace Mist
 			check(reallocatedBlock);
 			// reinitialize control and tracking
 			void* newDataPtr = control::InitBlockHeader(reallocatedBlock, size);
-			AddMemTrace(g_memory, reallocatedBlock, mallocSize, file, line, GetFrame());
+			AddMemTrace(GetSystemMemoryInfo(), reallocatedBlock, mallocSize, file, line, GetFrame());
 
 			return newDataPtr;
 		}
@@ -355,19 +442,21 @@ namespace Mist
 
 			// Release control and tracking
 			void* block = control::ReleaseBlockHeader(p);
-			RemoveMemTrace(g_memory, block);
+			RemoveMemTrace(GetSystemMemoryInfo(), block);
 			::free(block);
 		}
 
 		void DumpMemoryStats()
 		{
-			stats::DumpMemoryStats(g_memory.stats);
+			stats::DumpMemoryStats(GetSystemMemoryInfo().stats);
 		}
 		
 		void Slot()
 		{
-			g_memory.stats.frameAllocCount = 0;
-			g_memory.stats.frameFreeCount = 0;
+			check(ThisThread::IsMainThread());
+			GuardMutex guardMutex(g_memory.stats.mutex);
+			g_memory.stats.memStats.frameAllocCount = 0;
+			g_memory.stats.memStats.frameFreeCount = 0;
 		}
 		
 		void ExecCommand_DumpMemoryTrace(const char* command)
@@ -394,9 +483,9 @@ namespace Mist
 			tracking::DestroyMemoryTracking(g_memory.trace);
 		}
 
-		const stats::MemoryStats& GetMemoryStats()
+		void GetMemoryStats(stats::MemoryStats& outStats)
 		{
-			return g_memory.stats;
+			outStats = g_memory.stats.memStats;
 		}
 
 	}

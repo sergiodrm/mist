@@ -34,7 +34,7 @@ namespace Mist
 
 		void InitSytemMemory();
 		void TerminateSystemMemory();
-		const stats::MemoryStats& GetMemoryStats();
+		void GetMemoryStats(stats::MemoryStats& outStats);
 		void IntegrityCheck();
 		void DumpMemoryStats();
 		void Slot();
