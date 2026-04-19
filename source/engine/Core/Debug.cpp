@@ -318,7 +318,7 @@ namespace Mist
 
 			typedef tStackTree<tCpuProfItem, 64> tCpuProfStackTree;
 			tCpuProfStackTree CpuProfStack[2];
-			std::unordered_map<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
+			tMap<sProfilerKey, sProfilerEntry, sProfilerKey::Hasher> EntryMap;
 
 			static void GetStats(TimesCircularBuffer& data, float& min, float& max, float& mean, float& last)
 			{
