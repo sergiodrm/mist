@@ -2,9 +2,11 @@
 #include "Application/Application.h"
 #include "Core/Logger.h"
 #include "Core/SystemMemory.h"
+#include "Thread.h"
 
 int main(int argc, char* argv[])
 {
+	Mist::ThisThread::SetMainThread();
 	Mist::tApplication* app;
 	int exitCode = 0;
 	{
