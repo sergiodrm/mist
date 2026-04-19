@@ -6,6 +6,7 @@
 #include <cstring>
 #include <string.h>
 #include <vector>
+#include <queue>
 #include <array>
 #include <unordered_map>
 #include <string>
@@ -36,6 +37,8 @@ namespace Mist
 	using tMap = std::unordered_map<Key_t, Value_t, Hasher_t, EqualTo, Mist::memory::tStdAllocator<std::pair<const Key_t, Value_t>>>;
 	//using tString = std::basic_string<char, std::char_traits<char>, Mist::tStdAllocator<char>>;
 	using String = coda::string_base<Mist::memory::CodaAllocator>;
+	template <typename T>
+	using Queue = std::queue<T, std::deque<T, ::Mist::memory::tStdAllocator<T>>>;
 #else
 	template <typename T>
 	using tDynArray = std::vector<T>;
