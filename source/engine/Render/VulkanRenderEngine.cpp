@@ -207,8 +207,9 @@ namespace Mist
 		rendersystem::ui::AddWindowCallback("System memory", [](void* data)
 			{
 				ImGui::Begin("System memory");
-				const memory::stats::MemoryStats& stats = memory::GetMemoryStats();
-				ImGui::Text("Allocated size		: %6lld bytes (%4.4f KB)", stats.allocatedBytes, (float)stats.allocatedBytes / 1024.f);
+				memory::stats::MemoryStats stats;
+				memory::GetMemoryStats(stats);
+				ImGui::Text("Allocated size		: %6lld bytes (%4.4f MB)", stats.allocatedBytes, (float)stats.allocatedBytes / 1024.f / 1024.f);
 				ImGui::Text("Max Allocated size	: %6lld bytes", stats.maxAllocatedBytes);
 				ImGui::Text("Frame alloc count	: %4lld", stats.frameAllocCount);
 				ImGui::Text("Frame free count	: %4lld", stats.frameFreeCount);
