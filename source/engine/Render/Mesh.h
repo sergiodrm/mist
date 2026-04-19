@@ -55,6 +55,7 @@ namespace Mist
 		inline void SetAABB(const AABB_t& aabb) { m_aabb = aabb; }
 
 		inline RenderPassType GetRenderPassMask() const { return m_renderPassMask; }
+		inline void SetRenderPassMask(RenderPassType mask) { m_renderPassMask = mask; }
 	private:
 		render::BufferHandle m_vertexBuffer;
 		render::BufferHandle m_indexBuffer;
