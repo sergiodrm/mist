@@ -3,6 +3,19 @@
 #include "Core/Mutex.h"
 #include "Core/Types.h"
 #include "Core/Logger.h"
+#include "Core/Debug.h"
+#include "Utils/TimeUtils.h"
+#include "RenderSystem/UI.h"
+#include "imgui.h"
+
+#define RESOURCE_LOADER_PROFILING
+#ifdef RESOURCE_LOADER_PROFILING
+#define RESOURCE_LOADER_PROFILEF(_name, _msg, ...) PROFILE_SCOPE_LOGF(_name, _msg, __VA_ARGS__)
+#else
+#define RESOURCE_LOADER_PROFILEF(...) DUMMY_MACRO
+#endif // RESOURCE_LOADER_PROFILING
+
+#define RESOURCE_LOADER_THREAD
 
 namespace Mist
 {
@@ -105,6 +118,7 @@ namespace Mist
 		void ResourceLoaderThread::ProcMainThread()
 		{
 			check(ThisThread::IsMainThread());
+			CPU_PROFILE_SCOPE(ResourceLoader_ProcMainThread);
 			GuardMutex guardMutex(m_mutex);
 			for (uint32_t i = m_mainThreadTasks.size() - 1; i < m_mainThreadTasks.size(); --i)
 			{
@@ -148,6 +162,7 @@ namespace Mist
 					// Copy requests to local buffer
 					loaderInstance.m_mutex.Lock();
 					loadRequests.resize(loaderInstance.m_loadThreadTasks.size());
+					RESOURCE_LOADER_PROFILEF(ProcLoadThread, "ResourceLoader_LoadThread (%d)", loadRequests.size());
 					memcpy_s(loadRequests.data(), loadRequests.size() * sizeof(IResourceLoader*), loaderInstance.m_loadThreadTasks.data(), loadRequests.size() * sizeof(IResourceLoader*));
 					loaderInstance.m_loadThreadTasks.resize(0);
 					loaderInstance.m_mutex.Unlock();
