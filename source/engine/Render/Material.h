@@ -15,6 +15,8 @@ namespace rendersystem
 
 namespace Mist
 {
+	class Texture;
+
 	enum eMaterialTexture
 	{
 		MATERIAL_TEXTURE_ALBEDO,
@@ -69,6 +71,8 @@ namespace Mist
 		static bool SerializeMaterials(const char* filepath, const cMaterial* mtls, uint32_t count);
 		static bool UnserializeMaterials(const char* filepath, cMaterial*& mtls, uint32_t& count);
 
+		static cMaterial* GetDefaultMaterial();
+
 		cMaterial();
 
 		void Invalidate();
@@ -77,10 +81,39 @@ namespace Mist
 		void BindTextures(rendersystem::RenderSystem* renderSystem) const;
 		sMaterialRenderData GetRenderData() const;
 
+		Texture* GetTexture(eMaterialTexture textureType) const { check(textureType < MATERIAL_TEXTURE_COUNT); return m_textures[textureType]; }
+		void SetTexture(eMaterialTexture textureType, Texture* texture);
+		const render::SamplerHandle& GetSampler(eMaterialTexture textureType) const { check(textureType < MATERIAL_TEXTURE_COUNT); return m_samplers[textureType]; }
+		void SetSampler(eMaterialTexture textureType, const render::SamplerHandle& texture);
+
+		rendersystem::ShaderProgram* GetShaderProgram() const { return m_shaderProgram; }
+
+		inline tMaterialFlags GetFlags() const { return m_flags; }
+		inline void SetFlags(tMaterialFlags flags) { m_flags = flags; }
+
+		inline void SetEmissiveColor(const glm::vec3& value) { m_emissiveFactor = value; }
+		inline void SetEmissiveStrength(float value) { m_emissiveStrength = value; }
+		inline void SetMetallic(float value) { m_metallicFactor = value; }
+		inline void SetRoughness(float value) { m_roughnessFactor = value; }
+		inline void SetSpecular(float value) { m_specularFactor = value; }
+		inline void SetAlphaCutoff(float value) { m_alphaCutoff = value; }
+		inline void SetAlbedo(const glm::vec4& value) { m_albedo = value; }
+
+		inline const glm::vec3& GetEmissiveColor() const { return m_emissiveFactor; }
+		inline float GetEmissiveStrength() const { return m_emissiveStrength; }
+		inline float GetMetallic() const { return m_metallicFactor; }
+		inline float GetRoughness() const { return m_roughnessFactor; }
+		inline float GetSpecular() const { return m_specularFactor; }
+		inline float GetAlphaCutoff() const { return m_alphaCutoff; }
+		inline const glm::vec4& GetAlbedo() const { return m_albedo; }
+
+		void ImGuiDraw();
+
+	private:
 		// Material flags
 		tMaterialFlags m_flags;
 		// Texture maps
-		render::TextureHandle m_textures[MATERIAL_TEXTURE_COUNT];
+		Texture* m_textures[MATERIAL_TEXTURE_COUNT];
 		render::SamplerHandle m_samplers[MATERIAL_TEXTURE_COUNT];
 		rendersystem::ShaderProgram* m_shaderProgram;
 

@@ -1,5 +1,6 @@
 
 #include "Material.h"
+#include "Texture.h"
 #include "Render/Mesh.h"
 #include "Core/Debug.h"
 #include "VulkanRenderEngine.h"
@@ -10,9 +11,12 @@
 #include "RenderSystem/RenderSystem.h"
 #include "RenderSystem/TextureLoader.h"
 #include "Utils/TimeUtils.h"
+#include "imgui.h"
 
 namespace Mist
 {
+    static cMaterial g_defaultMaterial;
+
     namespace mtl_serializer
     {
 
@@ -26,15 +30,17 @@ namespace Mist
             emitter << YAML::EndMap;
         }
 
-        static void UnserializeTexture(YAML::Node texNode, uint32_t textureId, cMaterial& mtl)
+        static void UnserializeTexture(YAML::Node texNode, Mist::eMaterialTexture textureId, cMaterial& mtl)
         {
             render::Device* device = g_device;
             check(device && texNode);
             YAML::Node t = texNode["Tex"];
             check(t);
             std::string str = t.as<std::string>();
+            Texture* texture = _new Texture();
             if (!str.empty())
-                check(rendersystem::textureloader::LoadTextureFromFile(&mtl.m_textures[textureId], device, str.c_str()));
+                texture->LoadFromFile(str.c_str());
+            mtl.SetTexture(textureId, texture);
             YAML::Node s = texNode["Sampler"];
             check(s);
             str = s.as<std::string>();
@@ -53,24 +59,24 @@ namespace Mist
 
                 // Textures
                 emitter << YAML::Key << "Textures" << YAML::BeginMap;
-                SerializeTexture(emitter, "Albedo", mtl.m_textures[MATERIAL_TEXTURE_ALBEDO], mtl.m_samplers[MATERIAL_TEXTURE_ALBEDO]);
-                SerializeTexture(emitter, "Normal", mtl.m_textures[MATERIAL_TEXTURE_NORMAL], mtl.m_samplers[MATERIAL_TEXTURE_NORMAL]);
-                SerializeTexture(emitter, "Specular", mtl.m_textures[MATERIAL_TEXTURE_SPECULAR], mtl.m_samplers[MATERIAL_TEXTURE_SPECULAR]);
-                SerializeTexture(emitter, "MetallicRoughness", mtl.m_textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], mtl.m_samplers[MATERIAL_TEXTURE_METALLIC_ROUGHNESS]);
-                SerializeTexture(emitter, "Emissive", mtl.m_textures[MATERIAL_TEXTURE_EMISSIVE], mtl.m_samplers[MATERIAL_TEXTURE_EMISSIVE]);
-                SerializeTexture(emitter, "Occlusion", mtl.m_textures[MATERIAL_TEXTURE_OCCLUSION], mtl.m_samplers[MATERIAL_TEXTURE_OCCLUSION]);
+                SerializeTexture(emitter, "Albedo", mtl.GetTexture(MATERIAL_TEXTURE_ALBEDO)->GetDeviceTexture(), mtl.GetSampler(MATERIAL_TEXTURE_ALBEDO));
+                SerializeTexture(emitter, "Normal", mtl.GetTexture(MATERIAL_TEXTURE_NORMAL)->GetDeviceTexture(), mtl.GetSampler(MATERIAL_TEXTURE_NORMAL));
+                SerializeTexture(emitter, "Specular", mtl.GetTexture(MATERIAL_TEXTURE_SPECULAR)->GetDeviceTexture(), mtl.GetSampler(MATERIAL_TEXTURE_SPECULAR));
+                SerializeTexture(emitter, "MetallicRoughness", mtl.GetTexture(MATERIAL_TEXTURE_METALLIC_ROUGHNESS)->GetDeviceTexture(), mtl.GetSampler(MATERIAL_TEXTURE_METALLIC_ROUGHNESS));
+                SerializeTexture(emitter, "Emissive", mtl.GetTexture(MATERIAL_TEXTURE_EMISSIVE)->GetDeviceTexture(), mtl.GetSampler(MATERIAL_TEXTURE_EMISSIVE));
+                SerializeTexture(emitter, "Occlusion", mtl.GetTexture(MATERIAL_TEXTURE_OCCLUSION)->GetDeviceTexture(), mtl.GetSampler(MATERIAL_TEXTURE_OCCLUSION));
                 emitter << YAML::EndMap;
 
                 // Properties
                 emitter << YAML::Key << "Properties" << YAML::BeginMap;
-                emitter << YAML::Key << "Albedo" << YAML::Value << mtl.m_albedo;
-                emitter << YAML::Key << "Roughness" << YAML::Value << mtl.m_roughnessFactor;
-                emitter << YAML::Key << "Metallic" << YAML::Value << mtl.m_metallicFactor;
-                emitter << YAML::Key << "EmissiveColor" << YAML::Value << mtl.m_emissiveFactor;
-                emitter << YAML::Key << "EmissiveStrength" << YAML::Value << mtl.m_emissiveStrength;
-                emitter << YAML::Key << "Specular" << YAML::Value << mtl.m_specularFactor;
-                emitter << YAML::Key << "AlphaCutoff" << YAML::Value << mtl.m_alphaCutoff;
-                emitter << YAML::Key << "Flags" << YAML::Value << mtl.m_flags;
+                emitter << YAML::Key << "Albedo" << YAML::Value << mtl.GetAlbedo();
+                emitter << YAML::Key << "Roughness" << YAML::Value << mtl.GetRoughness();
+                emitter << YAML::Key << "Metallic" << YAML::Value << mtl.GetMetallic();
+                emitter << YAML::Key << "EmissiveColor" << YAML::Value << mtl.GetEmissiveColor();
+                emitter << YAML::Key << "EmissiveStrength" << YAML::Value << mtl.GetEmissiveStrength();
+                emitter << YAML::Key << "Specular" << YAML::Value << mtl.GetSpecular();
+                emitter << YAML::Key << "AlphaCutoff" << YAML::Value << mtl.GetAlphaCutoff();
+                emitter << YAML::Key << "Flags" << YAML::Value << mtl.GetFlags();
                 emitter << YAML::EndMap;
 
                 emitter << YAML::EndMap;
@@ -105,14 +111,14 @@ namespace Mist
                 // properties
                 YAML::Node properties = it["Properties"];
                 check(properties);
-                mtl.m_albedo = properties["Albedo"].as<glm::vec4>();
-                mtl.m_roughnessFactor = properties["Roughness"].as<float>();
-                mtl.m_metallicFactor = properties["Metallic"].as<float>();
-                mtl.m_emissiveFactor = properties["EmissiveColor"].as<glm::vec3>();
-                mtl.m_emissiveStrength = properties["EmissiveStrength"].as<float>();
-                mtl.m_specularFactor = properties["Specular"].as<float>();
-                mtl.m_alphaCutoff = properties["AlphaCutoff"].as<float>();
-                mtl.m_flags = properties["Flags"].as<float>();
+                mtl.SetAlbedo(properties["Albedo"].as<glm::vec4>());
+                mtl.SetRoughness(properties["Roughness"].as<float>());
+                mtl.SetMetallic(properties["Metallic"].as<float>());
+                mtl.SetEmissiveColor(properties["EmissiveColor"].as<glm::vec3>());
+                mtl.SetEmissiveStrength(properties["EmissiveStrength"].as<float>());
+                mtl.SetSpecular(properties["Specular"].as<float>());
+                mtl.SetAlphaCutoff(properties["AlphaCutoff"].as<float>());
+                mtl.SetFlags(properties["Flags"].as<float>());
 
                 mtl.SetupShader(g_render);
             }
@@ -228,11 +234,19 @@ namespace Mist
         return mtl_serializer::Unserialize(filepath, mtls, count);
     }
 
+    cMaterial* cMaterial::GetDefaultMaterial()
+    {
+		g_defaultMaterial.SetName("DefaultMaterial");
+		g_defaultMaterial.m_albedo = glm::vec4(1.f, 0.f, 1.f, 1.f);
+        return &g_defaultMaterial;
+    }
+
     cMaterial::cMaterial()
         : m_shaderProgram(nullptr), m_flags(MATERIAL_FLAG_NONE), 
         m_emissiveFactor{0.f}, m_emissiveStrength(0.f), m_specularFactor(0.f),
         m_metallicFactor(0.f), m_roughnessFactor(0.f), m_albedo(1.f)
     {
+        memset(m_textures, 0x0000, sizeof(m_textures));
         Invalidate();
     }
 
@@ -240,8 +254,12 @@ namespace Mist
     {
         for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
         {
-            m_textures[i] = nullptr;
             m_samplers[i] = nullptr;
+            if (m_textures[i])
+            {
+                delete m_textures[i];
+                m_textures[i] = nullptr;
+            }
         }
     }
 
@@ -280,7 +298,10 @@ namespace Mist
 
     void cMaterial::BindTextures(rendersystem::RenderSystem* renderSystem) const
     {
-        g_render->SetTextureSlot("u_Textures", m_textures, MATERIAL_TEXTURE_COUNT);
+        render::TextureHandle textures[MATERIAL_TEXTURE_COUNT];
+        for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
+            textures[i] = m_textures[i] ? m_textures[i]->GetDeviceTexture() : nullptr;
+        g_render->SetTextureSlot("u_Textures", textures, MATERIAL_TEXTURE_COUNT);
         g_render->SetSampler("u_Textures", m_samplers, MATERIAL_TEXTURE_COUNT);
     }
 
@@ -295,5 +316,34 @@ namespace Mist
         data.alphaCutoff = m_alphaCutoff;
         data.flags = m_flags;
         return data;
+    }
+
+    void cMaterial::SetTexture(eMaterialTexture textureType, Texture* texture)
+    {
+        check(textureType < MATERIAL_TEXTURE_COUNT);
+        if (m_textures[textureType])
+            delete m_textures[textureType];
+        m_textures[textureType] = texture;
+    }
+
+    void cMaterial::SetSampler(eMaterialTexture textureType, const render::SamplerHandle& texture)
+    {
+        check(textureType < MATERIAL_TEXTURE_COUNT);
+        m_samplers[textureType] = texture;
+    }
+
+    void cMaterial::ImGuiDraw()
+    {
+        for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
+        {
+            const char* texName = (m_textures[j] && m_textures[j]->GetDeviceTexture()) ? m_textures[j]->GetDeviceTexture()->m_description.debugName.c_str() : "None";
+			ImGui::Text("%s: %s", GetMaterialTextureStr((eMaterialTexture)j), texName);
+        }
+		ImGui::ColorEdit3("Albedo", &m_albedo[0]);
+		ImGui::DragFloat("Metallic", &m_metallicFactor, 0.05f, 0.f, 1.f);
+		ImGui::DragFloat("Roughness", &m_roughnessFactor, 0.05f, 0.f, 1.f);
+		ImGui::ColorEdit3("Emissive", &m_emissiveFactor[0]);
+		ImGui::DragFloat("Emissive strength", &m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
+
     }
 }
