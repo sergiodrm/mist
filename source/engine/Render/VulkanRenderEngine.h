@@ -88,7 +88,6 @@ namespace Mist
 		rendersystem::RenderSystem* m_renderSystem;
 	};
 
-	extern cMaterial* GetDefaultMaterial();
 	const CameraData* GetCameraData();
 	const CameraData* GetPrevCameraData();
 

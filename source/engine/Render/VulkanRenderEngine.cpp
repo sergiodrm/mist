@@ -140,20 +140,6 @@ namespace Mist
 		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
 		eng->DumpShadersInfo();
 	}
-
-	cMaterial* DefaultMaterial = nullptr;
-	cMaterial* GetDefaultMaterial()
-	{
-		if (!DefaultMaterial)
-		{
-			DefaultMaterial = _new cMaterial();
-			DefaultMaterial->SetName("DefaultMaterial");
-			DefaultMaterial->m_albedo = glm::vec4(1.f, 0.f, 1.f,1.f);
-		}
-		return DefaultMaterial;
-	}
-
-	
 	
 	bool VulkanRenderEngine::Init(const Window& window)
 	{
