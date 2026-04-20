@@ -23,6 +23,7 @@
 #include "RenderSystem/TextureLoader.h"
 #include "RenderSystem/RenderSystem.h"
 #include "DebugRender.h"
+#include "Texture.h"
 
 #define GLTF_LOAD_GEOMETRY_POSITION 0x01
 #define GLTF_LOAD_GEOMETRY_NORMAL 0x02
@@ -146,9 +147,23 @@ namespace gltf_api
 		ReadValue(mat, cgltfMat4, 16);
 	}
 
+	static glm::mat4 ToMat4(const cgltf_float* cgltfMat4)
+	{
+		glm::mat4 m;
+		ToMat4(&m, cgltfMat4);
+		return m;
+	}
+
 	static void ToVec2(glm::vec2& v, const cgltf_float* data)
 	{
 		ReadValue(&v, data, 2);
+	}
+
+	static glm::vec2 ToVec2(const cgltf_float* data)
+	{
+		glm::vec2 v;
+		ToVec2(v, data);
+		return v;
 	}
 
 	static void ToVec3(glm::vec3& v, const cgltf_float* data)
@@ -156,9 +171,23 @@ namespace gltf_api
 		ReadValue(&v, data, 3);
 	}
 
+	static glm::vec3 ToVec3(const cgltf_float* data)
+	{
+		glm::vec3 v;
+		ToVec3(v, data);
+		return v;
+	}
+
 	static void ToVec4(glm::vec4& v, const cgltf_float* data)
 	{
 		ReadValue(&v, data, 4);
+	}
+
+	static glm::vec4 ToVec4(const cgltf_float* data)
+	{
+		glm::vec4 v;
+		ToVec4(v, data);
+		return v;
 	}
 
 	static void ToQuat(glm::quat& q, const cgltf_float* data)
@@ -406,78 +435,111 @@ namespace gltf_api
 		return true;
 	}
 
+	static bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::Texture** texOut, render::SamplerHandle* samplerOut)
+	{
+		check(texOut && !*texOut);
+		if (!texView.texture)
+			return false;
+		check(texView.texcoord == 0);
+
+		// Get full texture path
+		char texturePath[512];
+		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
+
+		if (texView.has_transform)
+			logfwarn("Texture view with transform: %s (Not supported yet)\n", texturePath);
+
+		// Create and load texture
+		(*texOut) = _new Mist::Texture();
+		(*texOut)->LoadFromFile(texturePath);
+
+		// Load sampler
+		if (texView.texture->sampler)
+			*samplerOut = LoadSampler(device, texView.texture->sampler);
+
+		loadmeshlogf("Load texture: %s\n", texView.texture->image->uri);
+		return true;
+	}
+
+	static bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& gltftextureView, Mist::eMaterialTexture textureType, Mist::cMaterial& material)
+	{
+		Mist::Texture* texture = nullptr;
+		render::SamplerHandle sampler = nullptr;
+		const bool ret = LoadTexture(device, rootAssetPath, gltftextureView, &texture, &sampler);
+		material.SetTexture(textureType, texture);
+		material.SetSampler(textureType, sampler);
+		return ret;
+	}
+
 	template <typename T>
 	static inline Mist::index_t GetArrayElementOffset(const T* root, const T* item) { check(item >= root); return Mist::index_t(item - root); }
 
 	static void LoadMaterial(Mist::cMaterial& material, render::Device* device, const cgltf_material& cgltfmtl, const char* rootAssetPath)
 	{
-		material.m_flags = Mist::MATERIAL_FLAG_NONE;
+		Mist::tMaterialFlags flags = Mist::MATERIAL_FLAG_NONE;
 		// Emissive
 		if (cgltfmtl.has_emissive_strength)
 		{
-			material.m_flags |= Mist::MATERIAL_FLAG_EMISSIVE;
-			ToVec3(material.m_emissiveFactor, cgltfmtl.emissive_factor);
-			material.m_emissiveStrength = cgltfmtl.emissive_strength.emissive_strength;
-			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_EMISSIVE;
-			if (LoadTexture(device, rootAssetPath, cgltfmtl.emissive_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
-				material.m_flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
-			else
-				logfwarn("Emissive material without texture: %s\n", material.GetName());
+			flags |= Mist::MATERIAL_FLAG_EMISSIVE;
+
+			material.SetEmissiveColor(ToVec3(cgltfmtl.emissive_factor));
+			material.SetEmissiveStrength(cgltfmtl.emissive_strength.emissive_strength);
+
+			if (LoadTexture(device, rootAssetPath, cgltfmtl.emissive_texture, Mist::MATERIAL_TEXTURE_EMISSIVE, material))
+				flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
 		}
 
 		// Metallic roughness
 		if (cgltfmtl.has_pbr_metallic_roughness)
 		{
-			material.m_metallicFactor = cgltfmtl.pbr_metallic_roughness.metallic_factor;
-			material.m_roughnessFactor = cgltfmtl.pbr_metallic_roughness.roughness_factor;
-			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS;
-			if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
-				material.m_flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
-			else
-				logfwarn("Metallic roughness material without texture: %s\n", material.GetName());
+			material.SetMetallic(cgltfmtl.pbr_metallic_roughness.metallic_factor);
+			material.SetRoughness(cgltfmtl.pbr_metallic_roughness.roughness_factor);
+
+			if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS, material))
+				flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
 		}
 
 		// Specular
 		if (cgltfmtl.has_specular)
 		{
-			Mist::eMaterialTexture matTexId = Mist::MATERIAL_TEXTURE_SPECULAR;
-			if (LoadTexture(device, rootAssetPath, cgltfmtl.specular.specular_texture, &material.m_textures[matTexId], &material.m_samplers[matTexId]))
+			material.SetSpecular(cgltfmtl.specular.specular_factor);
+
+			if (LoadTexture(device, rootAssetPath, cgltfmtl.specular.specular_texture, Mist::MATERIAL_TEXTURE_SPECULAR, material))
 			{
-				// must not have specular and metalic roughness map at the same time.
-				check(!(material.m_flags & Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP));
-				material.m_flags |= Mist::MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP;
+				check(!(flags & Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP));
+				flags |= Mist::MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP;
 			}
-			else
-				logfwarn("Specular material without texture: %s\n", material.GetName());
-			material.m_specularFactor = cgltfmtl.specular.specular_factor;
 		}
+
 		if (cgltfmtl.has_pbr_specular_glossiness)
 			check(false && "has pbr specular glossiness");
 
 		// Unlit
 		if (cgltfmtl.unlit)
-			material.m_flags |= Mist::MATERIAL_FLAG_UNLIT;
+			flags |= Mist::MATERIAL_FLAG_UNLIT;
 
 		// Normal
-		if (LoadTexture(device, rootAssetPath, cgltfmtl.normal_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_NORMAL], &material.m_samplers[Mist::MATERIAL_TEXTURE_NORMAL]))
-			material.m_flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
+		if (LoadTexture(device, rootAssetPath, cgltfmtl.normal_texture, Mist::MATERIAL_TEXTURE_NORMAL, material))
+			flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
 
 		// Albedo
-		ToVec4(material.m_albedo, cgltfmtl.pbr_metallic_roughness.base_color_factor);
-		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, &material.m_textures[Mist::MATERIAL_TEXTURE_ALBEDO], &material.m_samplers[Mist::MATERIAL_TEXTURE_ALBEDO]))
-			material.m_flags |= Mist::MATERIAL_FLAG_HAS_ALBEDO_MAP;
+		material.SetAlbedo(ToVec4(cgltfmtl.pbr_metallic_roughness.base_color_factor));
+		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::MATERIAL_TEXTURE_ALBEDO, material))
+			flags |= Mist::MATERIAL_FLAG_HAS_ALBEDO_MAP;
 
 		// Alpha cutoff
-		material.m_alphaCutoff = cgltfmtl.alpha_cutoff;
-		check_accessor(material.m_alphaCutoff >= 0.f);
+		check_accessor(cgltfmtl.alpha_cutoff >= 0.f);
+		material.SetAlphaCutoff(cgltfmtl.alpha_cutoff);
 
 		// Alpha mode
 		switch (cgltfmtl.alpha_mode)
 		{
-		case cgltf_alpha_mode_opaque: material.m_flags |= Mist::MATERIAL_FLAG_OPAQUE; material.m_alphaCutoff = 1.f; break;
-		case cgltf_alpha_mode_mask: material.m_flags |= Mist::MATERIAL_FLAG_MASK; break;
-		case cgltf_alpha_mode_blend: material.m_flags |= Mist::MATERIAL_FLAG_BLEND; break;
+		case cgltf_alpha_mode_opaque: flags |= Mist::MATERIAL_FLAG_OPAQUE; material.SetAlphaCutoff(1.f); break;
+		case cgltf_alpha_mode_mask: flags |= Mist::MATERIAL_FLAG_MASK; break;
+		case cgltf_alpha_mode_blend: flags |= Mist::MATERIAL_FLAG_BLEND; break;
 		}
+
+		material.SetFlags(flags);
 	}
 
 }
@@ -574,7 +636,7 @@ namespace Mist
 			{
 				logfwarn("Model without materials: %s\n", assetPath);
 				InitMaterials(1);
-				m_materials[0] = *GetDefaultMaterial();
+				m_materials[0] = *cMaterial::GetDefaultMaterial();
 			}
 		}
 
@@ -659,13 +721,13 @@ namespace Mist
 							check(materialIndex < m_materials.GetSize());
 							cMaterial* material = &m_materials[materialIndex];
 							primitive.material = material;
-							if (!(material->m_flags & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
+							if (!(material->GetFlags() & MATERIAL_FLAG_NO_PROJECT_SHADOWS))
 								primitive.renderPassMask |= RenderPass_ShadowMap;
 							//if (material->m_flags & MATERIAL_FLAG_EMISSIVE)
 							//	primitive.RenderFlags |= RenderFlags_Emissive;
-							if (material->m_flags & (MATERIAL_FLAG_OPAQUE | MATERIAL_FLAG_MASK))
+							if (material->GetFlags() & (MATERIAL_FLAG_OPAQUE | MATERIAL_FLAG_MASK))
 								primitive.renderPassMask |= RenderPass_Opaque;
-							if (material->m_flags & MATERIAL_FLAG_BLEND)
+							if (material->GetFlags() & MATERIAL_FLAG_BLEND)
 								primitive.renderPassMask |= RenderPass_Transparent;
 						}
 						else
