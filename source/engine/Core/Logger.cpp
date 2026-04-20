@@ -12,6 +12,7 @@
 #include "Core/Mutex.h"
 #include "Application/CmdParser.h"
 #include "Application/Application.h"
+#include "Thread.h"
 
 
 
