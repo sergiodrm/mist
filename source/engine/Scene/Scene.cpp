@@ -276,15 +276,7 @@ namespace Mist
 				cMaterial& material = *const_cast<cMaterial*>(&model->GetMaterial(i));
 				if (ImGui::TreeNode(&material, "Material %d: %s", i, material.GetName()))
 				{
-					for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
-						ImGui::Text("%s: %s",
-							GetMaterialTextureStr((eMaterialTexture)j), material.m_textures[j] ? material.m_textures[j]->m_description.debugName.c_str() : "none");
-					ImGui::ColorEdit3("Albedo", &material.m_albedo[0]);
-					ImGui::DragFloat("Metallic", &material.m_metallicFactor, 0.05f, 0.f, 1.f);
-					ImGui::DragFloat("Roughness", &material.m_roughnessFactor, 0.05f, 0.f, 1.f);
-					ImGui::ColorEdit3("Emissive", &material.m_emissiveFactor[0]);
-					ImGui::DragFloat("Emissive strength", &material.m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
-
+					material.ImGuiDraw();
 					//ImGui::Button("Reload");
 					ImGui::TreePop();
 				}
@@ -1350,8 +1342,8 @@ namespace Mist
 		}
 		if (lastMaterial != primitive.material)
 		{
-			if (lastMaterial && lastMaterial->m_shaderProgram != primitive.material->m_shaderProgram)
-				renderContext.rs->SetShader(primitive.material->m_shaderProgram);
+			if (lastMaterial && lastMaterial->GetShaderProgram() != primitive.material->GetShaderProgram())
+				renderContext.rs->SetShader(primitive.material->GetShaderProgram());
 			lastMaterial = primitive.material;
 			BindMaterial(renderContext.rs, *primitive.material);
 		}
