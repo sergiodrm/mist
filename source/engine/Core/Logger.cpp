@@ -188,8 +188,13 @@ namespace Mist
 #endif // !_DEBUG
 		uint64_t frame = tApplication::GetFrame();
 		float appTime = tApplication::GetAppTime();
-        if (level == LogLevel::Error && CVar_LogToConsole.Get() > 0 || CVar_LogToConsole.Get() == 2)
-			printf("%s[%6lld][%4.2f][%7s]%s %s%s", ANSI_COLOR_CYAN, frame, appTime, LogLevelToStr(level), LogLevelFormat(level), msg, ANSI_RESET_ALL);
+		if (level == LogLevel::Error && CVar_LogToConsole.Get() > 0 || CVar_LogToConsole.Get() == 2)
+		{
+			const char* msgFormat = Mist::ThisThread::IsMainThread() ? ANSI_RESET_ALL : ANSI_STYLE_ITALIC;
+			printf("%s%s[%5d][%6lld][%4.2f]%s%s %s%s", 
+				ANSI_COLOR_CYAN, ANSI_STYLE_ITALIC, Mist::ThisThread::GetId(), frame, appTime, msgFormat,
+				LogLevelFormat(level), msg, ANSI_RESET_ALL);
+		}
 #ifdef UNICODE
 		wchar_t str[LOG_MSG_MAX_SIZE];
 		MultiByteToWideChar(CP_ACP, 0, msg, -1, str, 4096);
