@@ -15,8 +15,8 @@ namespace Mist
 		{
 			tArray<glm::mat4, globals::MaxShadowMapAttachments> lightViewProjectionArray;
 			float noiseScale = 0.0025f;
-			float noiseFactor = 3.f;
-			float noisePCFKernelSize = 9.f;
+			float noiseFactor = 1.25f;
+			float noisePCFKernelSize = 5.f;
 			float _padding = 0.f;
 		};
 	public:
