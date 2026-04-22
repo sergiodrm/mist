@@ -186,16 +186,17 @@ namespace Mist
     {
         switch (type)
         {
-        case MATERIAL_TEXTURE_ALBEDO: return render::Format_R8G8B8A8_SRGB;
-        //case MATERIAL_TEXTURE_ALBEDO: return render::Format_R8G8B8A8_UNorm;
-        case MATERIAL_TEXTURE_NORMAL: return render::Format_R8G8B8A8_UNorm;
-        case MATERIAL_TEXTURE_SPECULAR: return render::Format_R8G8B8A8_UNorm;
-        case MATERIAL_TEXTURE_OCCLUSION: return render::Format_R8G8B8A8_UNorm;
-        case MATERIAL_TEXTURE_METALLIC_ROUGHNESS: return render::Format_R8G8B8A8_UNorm;
-        case MATERIAL_TEXTURE_EMISSIVE: return render::Format_R8G8B8A8_SRGB;
-        //case MATERIAL_TEXTURE_EMISSIVE: return render::Format_R8G8B8A8_UNorm;
+        case MATERIAL_TEXTURE_ALBEDO:
+        case MATERIAL_TEXTURE_EMISSIVE: 
+            return render::Format_R8G8B8A8_SRGB;
+        case MATERIAL_TEXTURE_NORMAL:
+        case MATERIAL_TEXTURE_SPECULAR:
+        case MATERIAL_TEXTURE_OCCLUSION:
+        case MATERIAL_TEXTURE_METALLIC_ROUGHNESS: 
+            return render::Format_R8G8B8A8_UNorm;
+        default:
+            unreachable_code();
         }
-        unreachable_code();
         return render::Format_Undefined;
     }
 
