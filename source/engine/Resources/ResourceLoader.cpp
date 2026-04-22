@@ -41,6 +41,8 @@ namespace Mist
 			void PushLoaderIntoMainThread(IResourceLoader* loader);
 			void MarkLoaderAsFinished(IResourceLoader* loader);
 			void FlushFinishedTasks();
+			
+			void ProcessTask(IResourceLoader* loader);
 
 		private:
 			Thread* m_thread;
@@ -49,6 +51,9 @@ namespace Mist
 			tDynArray<IResourceLoader*> m_mainThreadTasks;
 			tDynArray<IResourceLoader*> m_finishedTasks;
 			LoadThreadData m_loadThreadData;
+			
+			tDynArray<IResourceLoader*> m_localMainThreadTasks;
+			tDynArray<IResourceLoader*> m_localLoadThreadTasks;
 		};
 
 		static ResourceLoaderThread* g_loaderThread = nullptr;
@@ -96,11 +101,17 @@ namespace Mist
 		{
 			m_loadThreadData.finished = true;
 			m_thread->Join();
-			check(m_loadThreadTasks.empty());
-			check(m_mainThreadTasks.empty());
-			check(m_finishedTasks.empty());
 			delete m_thread;
 			m_thread = nullptr;
+			
+			m_finishedTasks.insert(m_finishedTasks.end(), m_mainThreadTasks.begin(), m_mainThreadTasks.end());
+			m_finishedTasks.insert(m_finishedTasks.end(), m_loadThreadTasks.begin(), m_loadThreadTasks.end());
+			m_finishedTasks.insert(m_finishedTasks.end(), m_localMainThreadTasks.begin(), m_localMainThreadTasks.end());
+			m_finishedTasks.insert(m_finishedTasks.end(), m_localLoadThreadTasks.begin(), m_localLoadThreadTasks.end());
+			FlushFinishedTasks();
+			check(m_finishedTasks.empty());
+			m_loadThreadTasks.clear();
+			m_mainThreadTasks.clear();
 		}
 
 		void ResourceLoaderThread::PushLoader(IResourceLoader* loader)
@@ -110,7 +121,7 @@ namespace Mist
 			{
 			case IResourceLoader::ProcType::MainThread: PushLoaderIntoMainThread(loader); break;
 			case IResourceLoader::ProcType::LoadThread: PushLoaderIntoLoadThread(loader); break;
-			default:
+			case IResourceLoader::ProcType::Finished:
 				unreachable_code();
 			}
 		}
@@ -119,22 +130,32 @@ namespace Mist
 		{
 			check(ThisThread::IsMainThread());
 			CPU_PROFILE_SCOPE(ResourceLoader_ProcMainThread);
-			GuardMutex guardMutex(m_mutex);
-			for (uint32_t i = m_mainThreadTasks.size() - 1; i < m_mainThreadTasks.size(); --i)
+			
+			m_mutex.Lock();
+			std::swap(m_localMainThreadTasks, m_mainThreadTasks);
+			m_mutex.Unlock();
+			
+			// Process local buffer
+			while (!m_localMainThreadTasks.empty())
 			{
-				IResourceLoader::ProcType procType = m_mainThreadTasks[i]->ProcessMainThread();
+				IResourceLoader* loader = m_localMainThreadTasks.back();
+				m_localMainThreadTasks.pop_back();
+
+				IResourceLoader::ProcType procType = loader->ProcessMainThread();
+				m_mutex.Lock();
 				switch (procType)
 				{
 				case IResourceLoader::ProcType::LoadThread:
-					PushLoaderIntoLoadThread(m_mainThreadTasks[i]);
-					// not break, pop from main thread requests
+					PushLoaderIntoLoadThread(loader);
+					break;
+				case IResourceLoader::ProcType::MainThread:
+					PushLoaderIntoMainThread(loader);
+					break;
 				case IResourceLoader::ProcType::Finished:
-					MarkLoaderAsFinished(m_mainThreadTasks[i]);
-					if (i != m_mainThreadTasks.size() - 1)
-						m_mainThreadTasks[i] = m_mainThreadTasks.back();
-					m_mainThreadTasks.pop_back();
+					MarkLoaderAsFinished(loader);
 					break;
 				}
+				m_mutex.Unlock();
 			}
 
 			// TODO: delete finished tasks in load thread to not to block main thread?
@@ -143,8 +164,6 @@ namespace Mist
 
 		void ResourceLoaderThread::ProcLoadThread(LoadThreadData* loadThreadData)
 		{
-			tDynArray<IResourceLoader*> loadRequests;
-
 			while (!loadThreadData->finished)
 			{
 				ResourceLoaderThread& loaderInstance = *loadThreadData->loader;
@@ -161,37 +180,31 @@ namespace Mist
 				{
 					// Copy requests to local buffer
 					loaderInstance.m_mutex.Lock();
-					loadRequests.resize(loaderInstance.m_loadThreadTasks.size());
-					RESOURCE_LOADER_PROFILEF(ProcLoadThread, "ResourceLoader_LoadThread (%d)", loadRequests.size());
-					memcpy_s(loadRequests.data(), loadRequests.size() * sizeof(IResourceLoader*), loaderInstance.m_loadThreadTasks.data(), loadRequests.size() * sizeof(IResourceLoader*));
-					loaderInstance.m_loadThreadTasks.resize(0);
+					RESOURCE_LOADER_PROFILEF(ProcLoadThread, "ResourceLoader_LoadThread (%d)", loaderInstance.m_loadThreadTasks.size());
+					std::swap(loaderInstance.m_localLoadThreadTasks, loaderInstance.m_loadThreadTasks);
 					loaderInstance.m_mutex.Unlock();
 
 					// Process local buffer
-					while (!loadRequests.empty())
+					while (!loaderInstance.m_localLoadThreadTasks.empty() && !loadThreadData->finished)
 					{
-						IResourceLoader* loader = loadRequests.back();
-						loadRequests.pop_back();
+						IResourceLoader* loader = loaderInstance.m_localLoadThreadTasks.back();
+						loaderInstance.m_localLoadThreadTasks.pop_back();
 
 						IResourceLoader::ProcType procType = loader->ProcessLoadThread();
+						loaderInstance.m_mutex.Lock();
 						switch (procType)
 						{
 						case IResourceLoader::ProcType::LoadThread:
-							loaderInstance.m_mutex.Lock();
 							loaderInstance.PushLoaderIntoLoadThread(loader);
-							loaderInstance.m_mutex.Unlock();
 							break;
 						case IResourceLoader::ProcType::MainThread:
-							loaderInstance.m_mutex.Lock();
 							loaderInstance.PushLoaderIntoMainThread(loader);
-							loaderInstance.m_mutex.Unlock();
 							break;
 						case IResourceLoader::ProcType::Finished:
-							loaderInstance.m_mutex.Lock();
 							loaderInstance.MarkLoaderAsFinished(loader);
-							loaderInstance.m_mutex.Unlock();
 							break;
 						}
+						loaderInstance.m_mutex.Unlock();
 					}
 				}
 			}

@@ -33,6 +33,7 @@ namespace Mist
                 cAssetPath filepath;
                 bool flipVertical = false;
                 bool calculateMipLevels = true;
+                render::Format format = render::Format_Undefined;
             };
 
             TextureLoader(Texture* owner, const LoadParams& params);
@@ -50,7 +51,7 @@ namespace Mist
 
         static Texture GetUnknownTexture();
 
-        bool LoadFromFile(const cAssetPath& filepath);
+        bool LoadFromFile(const TextureLoader::LoadParams& loadParams);
 
         const render::TextureHandle& GetDeviceTexture() const { return m_deviceTexture; }
 

@@ -435,7 +435,7 @@ namespace gltf_api
 		return true;
 	}
 
-	static bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::Texture** texOut, render::SamplerHandle* samplerOut)
+	static bool LoadTexture(render::Device* device, const char* rootAssetPath, const cgltf_texture_view& texView, Mist::Texture** texOut, render::SamplerHandle* samplerOut, render::Format format)
 	{
 		check(texOut && !*texOut);
 		if (!texView.texture)
@@ -450,8 +450,13 @@ namespace gltf_api
 			logfwarn("Texture view with transform: %s (Not supported yet)\n", texturePath);
 
 		// Create and load texture
+		Mist::Texture::TextureLoader::LoadParams loadParams;
+		loadParams.format = format;
+		loadParams.calculateMipLevels = true;
+		loadParams.flipVertical = false;
+		loadParams.filepath = texturePath;
 		(*texOut) = _new Mist::Texture();
-		(*texOut)->LoadFromFile(texturePath);
+		(*texOut)->LoadFromFile(loadParams);
 
 		// Load sampler
 		if (texView.texture->sampler)
@@ -465,7 +470,7 @@ namespace gltf_api
 	{
 		Mist::Texture* texture = nullptr;
 		render::SamplerHandle sampler = nullptr;
-		const bool ret = LoadTexture(device, rootAssetPath, gltftextureView, &texture, &sampler);
+		const bool ret = LoadTexture(device, rootAssetPath, gltftextureView, &texture, &sampler, Mist::GetMaterialTextureFormat(textureType));
 		material.SetTexture(textureType, texture);
 		material.SetSampler(textureType, sampler);
 		return ret;

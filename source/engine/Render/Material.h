@@ -28,6 +28,7 @@ namespace Mist
 		MATERIAL_TEXTURE_COUNT,
 	};
 	const char* GetMaterialTextureStr(eMaterialTexture type);
+	render::Format GetMaterialTextureFormat(eMaterialTexture type);
 
 	enum eMaterialFlags
 	{

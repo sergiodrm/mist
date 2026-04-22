@@ -20,13 +20,9 @@ namespace Mist
 		return t;
     }
 
-    bool Texture::LoadFromFile(const cAssetPath& filepath)
+    bool Texture::LoadFromFile(const TextureLoader::LoadParams& loadParams)
     {
-		TextureLoader::LoadParams params;
-		params.filepath = filepath;
-		params.flipVertical = false;
-		params.calculateMipLevels = true;
-		TextureLoader* loader = _new TextureLoader(this, params);
+		TextureLoader* loader = _new TextureLoader(this, loadParams);
 		resources::PushLoader(loader);
 		return true;
     }
@@ -57,9 +53,10 @@ namespace Mist
 	{
 		check(m_textureData.u8data);
 		check(m_textureData.width && m_textureData.height && m_textureData.depth);
+		check(m_params.format != render::Format_Undefined);
 		render::TextureDescription desc;
 		desc.extent = { m_textureData.width, m_textureData.height, m_textureData.depth };
-		desc.format = render::Format_R8G8B8A8_UNorm;
+		desc.format = m_params.format;
 		desc.debugName = m_params.filepath;
 		desc.mipLevels = m_params.calculateMipLevels ? rendersystem::CalculateMipLevels(m_textureData.width, m_textureData.height) : 1;
 

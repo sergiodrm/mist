@@ -39,7 +39,13 @@ namespace Mist
             std::string str = t.as<std::string>();
             Texture* texture = _new Texture();
             if (!str.empty())
-                texture->LoadFromFile(str.c_str());
+            {
+                Mist::Texture::TextureLoader::LoadParams loadParams;
+                loadParams.filepath = str.c_str();
+                loadParams.calculateMipLevels = true;
+                loadParams.format = GetMaterialTextureFormat(textureId);
+                texture->LoadFromFile(loadParams);
+            }
             mtl.SetTexture(textureId, texture);
             YAML::Node s = texNode["Sampler"];
             check(s);
@@ -174,6 +180,23 @@ namespace Mist
         }
         check(false);
         return nullptr;
+    }
+
+    render::Format GetMaterialTextureFormat(eMaterialTexture type)
+    {
+        switch (type)
+        {
+        case MATERIAL_TEXTURE_ALBEDO: return render::Format_R8G8B8A8_SRGB;
+        //case MATERIAL_TEXTURE_ALBEDO: return render::Format_R8G8B8A8_UNorm;
+        case MATERIAL_TEXTURE_NORMAL: return render::Format_R8G8B8A8_UNorm;
+        case MATERIAL_TEXTURE_SPECULAR: return render::Format_R8G8B8A8_UNorm;
+        case MATERIAL_TEXTURE_OCCLUSION: return render::Format_R8G8B8A8_UNorm;
+        case MATERIAL_TEXTURE_METALLIC_ROUGHNESS: return render::Format_R8G8B8A8_UNorm;
+        case MATERIAL_TEXTURE_EMISSIVE: return render::Format_R8G8B8A8_SRGB;
+        //case MATERIAL_TEXTURE_EMISSIVE: return render::Format_R8G8B8A8_UNorm;
+        }
+        unreachable_code();
+        return render::Format_Undefined;
     }
 
     const char* MaterialFlagToStr(tMaterialFlags flag)
