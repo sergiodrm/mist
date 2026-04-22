@@ -551,6 +551,12 @@ namespace gltf_api
 
 namespace Mist
 {
+	static const char* g_validModelExtensions[] =
+	{
+		".gltf",
+		".glb", 
+	};
+	
 	static void CalculateTangent(glm::vec4& t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec2& uv0, const glm::vec2& uv1, const glm::vec2& uv2)
 	{
 		glm::vec3 e0 = p1 - p0;
@@ -582,6 +588,18 @@ namespace Mist
 			v2.Tangent = t;
 		}
 	}
+	
+	static bool ValidateModelExtension(const char* filepath)
+	{
+		char extension[8];
+		Mist::FileSystem::GetFileExtension(filepath, extension, Mist::CountOf(extension));
+		for (uint32_t i =0; i < Mist::CountOf(g_validModelExtensions); ++i)
+		{
+			if (!strcmp(g_validModelExtensions[i], extension))
+				return true;
+		}
+		return false;
+	}
 
 	void cModel::Destroy()
 	{
@@ -601,6 +619,13 @@ namespace Mist
 		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		check(m_materials.IsEmpty() && m_meshes.IsEmpty());
 		cAssetPath assetPath(filepath);
+		
+		if (!ValidateModelExtension(assetPath))
+		{
+			logferror("Model file extension not recognized: %s.\n", assetPath.c_str());
+			return false;
+		}
+		
 		cgltf_data* data = gltf_api::ParseFile(assetPath);
 		char rootAssetPath[512];
 		FileSystem::GetDirectoryFromFilepath(assetPath, rootAssetPath, 512);
