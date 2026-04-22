@@ -1,0 +1,676 @@
+Environment:
+  Ambient: [0.651006699, 0.651006699, 0.651006699]
+  Skybox:
+    Front: textures/yokohama/posz.jpg
+    Back: textures/yokohama/negz.jpg
+    Top: textures/yokohama/posy.jpg
+    Bottom: textures/yokohama/negy.jpg
+    Left: textures/yokohama/posx.jpg
+    Right: textures/yokohama/negx.jpg
+RenderObjects:
+  - RenderObject: 0
+    Name: Root
+    Parent: 65535
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - RenderObject: 1
+    Name: DefaultMainCamera
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Main: true
+      Position: [78.7592392, 15.6062737, 71.8198395]
+      Rotation: [-0.328704327, 1.4708271, 0]
+  - RenderObject: 2
+    Name: RenderObject_2
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//barrel.glb
+  - RenderObject: 3
+    Name: RenderObject_3
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//boat-row-large.glb
+  - RenderObject: 4
+    Name: RenderObject_4
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//boat-row-small.glb
+  - RenderObject: 5
+    Name: RenderObject_5
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//bottle-large.glb
+  - RenderObject: 6
+    Name: RenderObject_6
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//bottle.glb
+  - RenderObject: 7
+    Name: RenderObject_7
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//cannon-ball.glb
+  - RenderObject: 8
+    Name: RenderObject_8
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//cannon-mobile.glb
+  - RenderObject: 9
+    Name: RenderObject_9
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//cannon.glb
+  - RenderObject: 10
+    Name: RenderObject_10
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//castle-door.glb
+  - RenderObject: 11
+    Name: RenderObject_11
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//castle-gate.glb
+  - RenderObject: 12
+    Name: RenderObject_12
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//castle-wall.glb
+  - RenderObject: 13
+    Name: RenderObject_13
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//castle-window.glb
+  - RenderObject: 14
+    Name: RenderObject_14
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//chest.glb
+  - RenderObject: 15
+    Name: RenderObject_15
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//crate-bottles.glb
+  - RenderObject: 16
+    Name: RenderObject_16
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//crate.glb
+  - RenderObject: 17
+    Name: RenderObject_17
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 10]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-high-pennant.glb
+  - RenderObject: 18
+    Name: RenderObject_18
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-high.glb
+  - RenderObject: 19
+    Name: RenderObject_19
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-pennant.glb
+  - RenderObject: 20
+    Name: RenderObject_20
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-pirate-high-pennant.glb
+  - RenderObject: 21
+    Name: RenderObject_21
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-pirate-high.glb
+  - RenderObject: 22
+    Name: RenderObject_22
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-pirate-pennant.glb
+  - RenderObject: 23
+    Name: RenderObject_23
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag-pirate.glb
+  - RenderObject: 24
+    Name: RenderObject_24
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//flag.glb
+  - RenderObject: 25
+    Name: RenderObject_25
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 20]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//grass-patch.glb
+  - RenderObject: 26
+    Name: RenderObject_26
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//grass-plant.glb
+  - RenderObject: 27
+    Name: RenderObject_27
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//grass.glb
+  - RenderObject: 28
+    Name: RenderObject_28
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//hole.glb
+  - RenderObject: 29
+    Name: RenderObject_29
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//mast-ropes.glb
+  - RenderObject: 30
+    Name: RenderObject_30
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//mast.glb
+  - RenderObject: 31
+    Name: RenderObject_31
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//palm-bend.glb
+  - RenderObject: 32
+    Name: RenderObject_32
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//palm-detailed-bend.glb
+  - RenderObject: 33
+    Name: RenderObject_33
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 30]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//palm-detailed-straight.glb
+  - RenderObject: 34
+    Name: RenderObject_34
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//palm-straight.glb
+  - RenderObject: 35
+    Name: RenderObject_35
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//patch-grass-foliage.glb
+  - RenderObject: 36
+    Name: RenderObject_36
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//patch-grass.glb
+  - RenderObject: 37
+    Name: RenderObject_37
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//patch-sand-foliage.glb
+  - RenderObject: 38
+    Name: RenderObject_38
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//patch-sand.glb
+  - RenderObject: 39
+    Name: RenderObject_39
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//platform-planks.glb
+  - RenderObject: 40
+    Name: RenderObject_40
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//platform.glb
+  - RenderObject: 41
+    Name: RenderObject_41
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 40]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//rocks-a.glb
+  - RenderObject: 42
+    Name: RenderObject_42
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//rocks-b.glb
+  - RenderObject: 43
+    Name: RenderObject_43
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//rocks-c.glb
+  - RenderObject: 44
+    Name: RenderObject_44
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//rocks-sand-a.glb
+  - RenderObject: 45
+    Name: RenderObject_45
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//rocks-sand-b.glb
+  - RenderObject: 46
+    Name: RenderObject_46
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//rocks-sand-c.glb
+  - RenderObject: 47
+    Name: RenderObject_47
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-ghost.glb
+  - RenderObject: 48
+    Name: RenderObject_48
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-large.glb
+  - RenderObject: 49
+    Name: RenderObject_49
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 50]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-medium.glb
+  - RenderObject: 50
+    Name: RenderObject_50
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-pirate-large.glb
+  - RenderObject: 51
+    Name: RenderObject_51
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-pirate-medium.glb
+  - RenderObject: 52
+    Name: RenderObject_52
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-pirate-small.glb
+  - RenderObject: 53
+    Name: RenderObject_53
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-small.glb
+  - RenderObject: 54
+    Name: RenderObject_54
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//ship-wreck.glb
+  - RenderObject: 55
+    Name: RenderObject_55
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-fence-sides.glb
+  - RenderObject: 56
+    Name: RenderObject_56
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-fence.glb
+  - RenderObject: 57
+    Name: RenderObject_57
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 60]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-platform-dock-small.glb
+  - RenderObject: 58
+    Name: RenderObject_58
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-platform-dock.glb
+  - RenderObject: 59
+    Name: RenderObject_59
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-platform-small.glb
+  - RenderObject: 60
+    Name: RenderObject_60
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-platform.glb
+  - RenderObject: 61
+    Name: RenderObject_61
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure-roof.glb
+  - RenderObject: 62
+    Name: RenderObject_62
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//structure.glb
+  - RenderObject: 63
+    Name: RenderObject_63
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tool-paddle.glb
+  - RenderObject: 64
+    Name: RenderObject_64
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tool-shovel.glb
+  - RenderObject: 65
+    Name: RenderObject_65
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 70]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-base-door.glb
+  - RenderObject: 66
+    Name: RenderObject_66
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-base.glb
+  - RenderObject: 67
+    Name: RenderObject_67
+    Parent: 0
+    TransformComponent:
+      Position: [10, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-complete-large.glb
+  - RenderObject: 68
+    Name: RenderObject_68
+    Parent: 0
+    TransformComponent:
+      Position: [20, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-complete-small.glb
+  - RenderObject: 69
+    Name: RenderObject_69
+    Parent: 0
+    TransformComponent:
+      Position: [30, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-middle-windows.glb
+  - RenderObject: 70
+    Name: RenderObject_70
+    Parent: 0
+    TransformComponent:
+      Position: [40, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-middle.glb
+  - RenderObject: 71
+    Name: RenderObject_71
+    Parent: 0
+    TransformComponent:
+      Position: [50, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-roof.glb
+  - RenderObject: 72
+    Name: RenderObject_72
+    Parent: 0
+    TransformComponent:
+      Position: [60, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-top.glb
+  - RenderObject: 73
+    Name: RenderObject_73
+    Parent: 0
+    TransformComponent:
+      Position: [70, 0, 80]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshAssetPath: ../../../assets//models/kenney_pirate-kit/models/glb format//tower-watch.glb
