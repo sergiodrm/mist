@@ -189,6 +189,15 @@ namespace Mist
 
 	}
 
+	bool FileSystem::GetFileExtension(const char* filepath, char* outBuffer, size_t bufferSize)
+	{
+		const char token = '.';
+		const char* lastDot = strrchr(filepath, token);
+		if (lastDot)
+			strcpy_s(outBuffer, bufferSize, lastDot);
+		return lastDot!=nullptr;
+	}
+
 
 	cFile::~cFile()
 	{

@@ -33,6 +33,7 @@ namespace Mist
 		}
 
 		void GetFileNameFromFilepath(const char* filepath, size_t filepathSize, char* outName, size_t outNameBufferSize);
+		bool GetFileExtension(const char* filepath, char* outBuffer, size_t bufferSize);
 	}
 
 	class cAssetPath
