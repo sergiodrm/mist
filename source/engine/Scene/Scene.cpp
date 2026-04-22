@@ -388,7 +388,7 @@ namespace Mist
 			if (meshNode)
 			{
 				MeshComponent m;
-				strcpy_s(m.MeshAssetPath, meshNode["MeshAssetPath"].as<std::string>().c_str());
+				m.MeshAssetPath.Set(meshNode["MeshAssetPath"].as<std::string>().c_str());
 				m.MeshIndex = LoadModel(m.MeshAssetPath);
 				SetMesh(rb, m);
 			}

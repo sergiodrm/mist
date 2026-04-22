@@ -79,10 +79,10 @@ namespace Mist
 
 	struct MeshComponent
 	{
-		char MeshAssetPath[256];
+		cAssetPath MeshAssetPath;
 		uint32_t MeshIndex;
 
-		MeshComponent() : MeshIndex(UINT32_MAX) { *MeshAssetPath = 0; }
+		MeshComponent() : MeshIndex(UINT32_MAX), MeshAssetPath() { }
 	};
 
 	struct CameraComponent
