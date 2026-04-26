@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 
 #include "RenderAPI/Device.h"
+#include "Utils/FileSystem.h"
 
 namespace rendersystem
 {
@@ -71,6 +72,7 @@ namespace Mist
 
 		void Invalidate();
 		void SetupShader(rendersystem::RenderSystem* renderSystem);
+		void SetupShader(rendersystem::RenderSystem* renderSystem, const char* vsFile, const char* fsFile);
 
 		void BindTextures(rendersystem::RenderSystem* renderSystem) const;
 		sMaterialRenderData GetRenderData() const;
