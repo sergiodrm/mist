@@ -52,10 +52,12 @@ namespace Mist
         static Texture GetUnknownTexture();
 
         bool LoadFromFile(const TextureLoader::LoadParams& loadParams);
+        inline const TextureLoader::LoadParams& GetLoadParams() const { return m_loadParams; }
 
         const render::TextureHandle& GetDeviceTexture() const { return m_deviceTexture; }
 
     private:
+        TextureLoader::LoadParams m_loadParams;
         render::TextureHandle m_deviceTexture{ nullptr };
     };
 }

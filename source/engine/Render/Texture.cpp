@@ -11,7 +11,7 @@
 namespace Mist
 {
 	Texture::Texture(const render::TextureHandle& deviceTexture)
-		: m_deviceTexture(deviceTexture)
+		: m_deviceTexture(deviceTexture), m_loadParams()
 	{ }
 
 	Texture Texture::GetUnknownTexture()
@@ -22,6 +22,8 @@ namespace Mist
 
     bool Texture::LoadFromFile(const TextureLoader::LoadParams& loadParams)
     {
+		check(!m_deviceTexture);
+		m_loadParams = loadParams;
 		TextureLoader* loader = _new TextureLoader(this, loadParams);
 		resources::PushLoader(loader);
 		return true;
