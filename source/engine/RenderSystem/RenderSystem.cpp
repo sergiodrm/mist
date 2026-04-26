@@ -1157,15 +1157,12 @@ namespace rendersystem
 
 					for (uint32_t k = 0; k < property.arrayCount; ++k)
 					{
-#if 0
-						check(tex[k]);
-#endif // 0
 						if (!tex[k])
 							tex[k] = m_defaultTexture;
 
 						if (!sampler[k])
-							sampler[k] = GetSampler(render::Filter_Linear, render::Filter_Linear,
-								render::Filter_Linear,
+							sampler[k] = GetSampler(render::Filter_Nearest, render::Filter_Nearest,
+								render::Filter_Nearest,
 								render::SamplerAddressMode_Repeat,
 								render::SamplerAddressMode_Repeat,
 								render::SamplerAddressMode_Repeat, 
