@@ -363,13 +363,33 @@ namespace Mist
 			data.flags |= (eMaterialTexture)(m_textures[i] ? (1 << i) : 0);
 		return data;
 	}
+
+	void cMaterial::SetTexture(eMaterialTexture textureType, Texture* texture)
+	{
+		check(textureType < MATERIAL_TEXTURE_COUNT);
+		if (m_textures[textureType])
+			delete m_textures[textureType];
+		m_textures[textureType] = texture;
+	}
+
+	void cMaterial::SetSampler(eMaterialTexture textureType, const render::SamplerHandle& texture)
+	{
+		check(textureType < MATERIAL_TEXTURE_COUNT);
+		m_samplers[textureType] = texture;
+	}
+
+	void cMaterial::ImGuiDraw()
+	{
+		for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
+		{
+			const char* texName = (m_textures[j] && m_textures[j]->GetDeviceTexture()) ? m_textures[j]->GetDeviceTexture()->m_description.debugName.c_str() : "None";
 			ImGui::Text("%s: %s", GetMaterialTextureStr((eMaterialTexture)j), texName);
-        }
+		}
 		ImGui::ColorEdit3("Albedo", &m_albedo[0]);
 		ImGui::DragFloat("Metallic", &m_metallicFactor, 0.05f, 0.f, 1.f);
 		ImGui::DragFloat("Roughness", &m_roughnessFactor, 0.05f, 0.f, 1.f);
 		ImGui::ColorEdit3("Emissive", &m_emissiveFactor[0]);
 		ImGui::DragFloat("Emissive strength", &m_emissiveStrength, 0.1f, 0.f, FLT_MAX);
 
-    }
+	}
 }
