@@ -733,12 +733,14 @@ namespace rendersystem
     {
         PROF_ZONE_SCOPED("SetShaderProperty");
         check(id && *id && param && size);
+        m_shaderContext.memoryStream->Write(id, param, size);
+
+        // If there is a shader bound, mark property as dirty
         uint32_t setIndex = UINT32_MAX;
-        if (m_shaderContext.program->GetPropertyDescription(id, &setIndex))
+        if (m_shaderContext.program && m_shaderContext.program->GetPropertyDescription(id, &setIndex))
         {
             check(setIndex != UINT32_MAX);
             m_shaderContext.MarkSetAsDirty(setIndex);
-            m_shaderContext.memoryStream->Write(id, param, size);
         }
     }
 
