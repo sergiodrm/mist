@@ -289,13 +289,22 @@ namespace rendersystem
         }
         {
             render::TextureDescription desc;
-            desc.extent = {2, 2, 1};
+            desc.extent = {8, 8, 1};
             desc.debugName = "default_texture";
             desc.isShaderResource = true;
             desc.format = render::Format_R8G8B8A8_UNorm;
             m_defaultTexture = m_device->CreateTexture(desc);
             render::utils::UploadContext upload(m_device);
-            uint32_t data[] = { 0xffffffff, 0x00000000, 0xffffffff, 0x00000000 };
+            uint32_t data[] = { 
+                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
+                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
+                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
+                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
+                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
+                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
+                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
+                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
+            };
             upload.WriteTexture(m_defaultTexture, 0, 0, data, sizeof(data));
         }
         {
