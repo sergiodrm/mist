@@ -417,7 +417,7 @@ namespace rendersystem
         bool ReloadCompute();
 
         render::Device* m_device;
-    public:
+    
         render::ShaderHandle m_vs;
         render::ShaderHandle m_fs;
         render::ShaderHandle m_cs;
@@ -586,7 +586,7 @@ namespace rendersystem
             ShaderStream* memoryStream; // owned
 			uint32_t dirtyPropertiesFlags;
 
-            void Invalidate()
+            inline void Invalidate()
             {
                 dirtyPropertiesFlags = UINT32_MAX;
                 program = nullptr;
@@ -627,6 +627,7 @@ namespace rendersystem
 
         // Data struct for keeping tracking of resources used in each frame.
         // Once the submission is completed, call Clear() method.
+        // TODO: this would not be necesary with GC
         struct FrameResourceTrack
         {
             Mist::tDynArray<render::BufferHandle> buffers;
