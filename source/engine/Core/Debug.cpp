@@ -498,23 +498,24 @@ namespace Mist
 					| ImGuiWindowFlags_NoDecoration
 					| ImGuiWindowFlags_AlwaysAutoResize
 					| ImGuiWindowFlags_NoResize
-					//| ImGuiWindowFlags_NoInputs
 					;
 				ImGuiViewport* viewport = ImGui::GetMainViewport();
-				ImGui::SetNextWindowPos(ImVec2{ viewport->Pos.x, viewport->Pos.y + 10.f});
-				ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.5f, viewport->Size.y * 0.15f });
-				ImGui::SetNextWindowBgAlpha(0.f);
-				ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
-				ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
-				ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
+				ImGui::SetNextWindowPos(ImVec2{ viewport->Pos.x, viewport->Pos.y + 15.f});
+				//ImGui::SetNextWindowSize(ImVec2{ viewport->Size.x * 0.5f, viewport->Size.y * 0.15f });
+				static bool wasHovered = false;
+				ImGui::SetNextWindowBgAlpha(!wasHovered ? 0.25f : 0.8f);
+				//ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.1f, 0.9f, 0.34f, 1.f));
+				//ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
+				//ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.1f, 0.9f, 0.34f, 0.f));
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 1.f, 0.1f, 1.f));
 				ImGui::Begin("fps", nullptr, flags);
-				ImGui::Text(
+				wasHovered = ImGui::IsWindowHovered();
+
 #if defined(_DEBUG)
-                    "DEBUG"
+				ImGui::TextColored(ImVec4(0.7f, 0.2f, 0.1f, 1.f), "DEBUG");
 #else
-                    "RELEASE"
+				ImGui::Text("RELEASE");
 #endif
-				);
 				if (CVar_EnableValidationLayer.Get())
 					ImGui::TextColored(ImVec4(0.7f, 0.2f, 0.1f, 1.f), "Vulkan validation layers enabled");
 				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
@@ -585,8 +586,52 @@ namespace Mist
 					ImGui::Columns();
 				}
 
+				{
+					ImGui::SeparatorText("System memory");
+					memory::stats::MemoryStats stats;
+					memory::GetMemoryStats(stats);
+					ImGui::Text("Allocated size		: %6lld bytes (%4.4f MB)", stats.allocatedBytes, (float)stats.allocatedBytes / 1024.f / 1024.f);
+					ImGui::Text("Max Allocated size	: %6lld bytes", stats.maxAllocatedBytes);
+					ImGui::Text("Frame alloc count	: %4lld", stats.frameAllocCount);
+					ImGui::Text("Frame free count	: %4lld", stats.frameFreeCount);
+					ImGui::Text("Alloc count		: %4lld", stats.allocatedCount);
+				}
+
+				{
+					ImGui::SeparatorText("Render stats");
+					rendersystem::RenderSystem* rs = g_render;
+					rendersystem::RenderStats stats = rs->GetStats();
+					ImGui::Text("Gpu time:          %2.3f us", stats.lastGpuTime);
+					ImGui::Text("Tris:              %7d", stats.cmdStats.tris);
+					ImGui::Text("DrawCalls:         %7d", stats.cmdStats.drawCalls);
+					ImGui::Text("Pipelines:         %7d", stats.cmdStats.pipelines);
+					ImGui::Text("Render targets:    %7d", stats.cmdStats.rts);
+
+					ImGui::SeparatorText("Gpu memory");
+					ImGui::Text("Buffers:           %7d (%4.4f MB/%4.4f MB)", stats.bufferStats.allocationCounts,
+						(double)stats.bufferStats.currentAllocated / 1024.f / 1024.f, (double)stats.bufferStats.maxAllocated / 1024.f / 1024.f);
+					ImGui::Text("Images:            %7d (%4.4f b/%4.4f b)", stats.imageStats.allocationCounts,
+						(double)stats.imageStats.currentAllocated / 1024.f / 1024.f, (double)stats.imageStats.maxAllocated / 1024.f / 1024.f);
+
+					ImGui::SeparatorText("Shader memory pool");
+					ImGui::Text("Memory pool count:         %4d", stats.shaderMemoryStats.poolCount);
+					ImGui::Text("Contexts free:             %4d", stats.shaderMemoryStats.poolFree);
+					ImGui::Text("Contexts used:             %4d", stats.shaderMemoryStats.poolUsed);
+					ImGui::SeparatorText("Shader memory frame context");
+					ImGui::Text("Buffers:                   %4d", stats.shaderMemoryStats.bufferCount);
+					ImGui::Text("Device size:               %2.4f KB", (float)stats.shaderMemoryStats.deviceMemoryUsedSize / 1024.f);
+					ImGui::Text("Temporal buffer size:      %4d", stats.shaderMemoryStats.temporalBufferSize);
+					ImGui::Text("Property count:            %4d", stats.shaderMemoryStats.propertyCount);
+					ImGui::Text("Shaders:                   %7d", stats.shaderCount);
+					ImGui::SeparatorText("Descriptor pool");
+					ImGui::Text("Binding cache:             %7d", stats.bindingSetCacheSize);
+					ImGui::Text("Binding layout cache:      %7d", stats.bindingLayoutCacheSize);
+
+				}
+
 				ImGui::End();
-				ImGui::PopStyleColor(3);
+				//ImGui::PopStyleColor(3);
+				ImGui::PopStyleColor(1);
 			}
 		}
 

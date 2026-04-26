@@ -317,12 +317,6 @@ namespace rendersystem
         }
 
         ui::Init(m_device, m_ldrRt, window->GetWindowNative());
-        rendersystem::ui::AddWindowCallback("Render stats", [](void* data) 
-            {
-                check(data);
-                RenderSystem* rs = static_cast<RenderSystem*>(data);
-                rs->ImGuiDraw();
-            }, this, true);
 
         InitScreenQuad();
         InvalidateBlueNoise();
@@ -901,6 +895,20 @@ namespace rendersystem
         logerror("===========================\n");
     }
 
+    RenderStats RenderSystem::GetStats() const
+    {
+        RenderStats rs{};
+        rs.lastGpuTime = m_gpuTime;
+        rs.cmdStats = m_cmdStats;
+        rs.bindingSetCacheSize = m_bindingCache->GetCacheSize();
+        rs.bindingLayoutCacheSize = m_bindingCache->GetLayoutCacheSize();
+        rs.bufferStats = m_device->GetContext().memoryContext.bufferStats;
+        rs.imageStats = m_device->GetContext().memoryContext.imageStats;
+        rs.shaderMemoryStats = m_shaderContext.memoryStream->GetStats();
+        rs.shaderCount = m_shaderDb.m_programs.size();
+        return rs;
+    }
+
     void RenderSystem::InvalidateBlueNoise()
     {
         m_blueNoiseTexture = nullptr;
@@ -998,67 +1006,6 @@ namespace rendersystem
         DrawFullscreenQuad();
         SetDefaultGraphicsState();
         ClearState();
-    }
-
-    void RenderSystem::ImGuiDraw()
-    {
-        //ImGui::SetNextWindowPos(ImVec2(500, 500));
-        ImGui::SetNextWindowBgAlpha(0.f);
-        ImGui::Begin("Render system", nullptr);
-        ImGui::SeparatorText("Draw stats");
-        ImGui::Text("Gpu time:          %2.3f us", m_gpuTime);
-        ImGui::Text("Tris:              %7d", m_cmdStats.tris);
-        ImGui::Text("DrawCalls:         %7d", m_cmdStats.drawCalls);
-        ImGui::Text("Pipelines:         %7d", m_cmdStats.pipelines);
-        ImGui::Text("Render targets:    %7d", m_cmdStats.rts);
-        ImGui::Text("Swapchains (%d):   %1d %1d %1d %1d %1d %1d",
-            m_frameSyncronization.count,
-            m_swapchainHistoric.Get(0),
-            m_swapchainHistoric.Get(1),
-            m_swapchainHistoric.Get(2),
-            m_swapchainHistoric.Get(3),
-            m_swapchainHistoric.Get(4),
-            m_swapchainHistoric.Get(5));
-
-        ImGui::SeparatorText("Gpu memory");
-        const render::MemoryContext& memstats = m_device->GetContext().memoryContext;
-        ImGui::Text("Buffers:           %7d (%4.4f MB/%4.4f MB)", memstats.bufferStats.allocationCounts,
-            (double)memstats.bufferStats.currentAllocated / 1024.f / 1024.f , (double)memstats.bufferStats.maxAllocated / 1024.f / 1024.f);
-        ImGui::Text("Images:            %7d (%4.4f b/%4.4f b)", memstats.imageStats.allocationCounts,
-            (double)memstats.imageStats.currentAllocated / 1024.f / 1024.f, (double)memstats.imageStats.maxAllocated / 1024.f / 1024.f);
-
-        ImGui::SeparatorText("Shader memory pool");
-        ImGui::Text("Memory pool count:         %4d", m_shaderContext.memoryStream->GetPoolCount());
-        ImGui::Text("Contexts free:             %4d", m_shaderContext.memoryStream->GetPoolFreeCount());
-        ImGui::Text("Contexts used:             %4d", m_shaderContext.memoryStream->GetPoolUsedCount());
-        ImGui::SeparatorText("Shader memory frame context");
-        ImGui::Text("Buffers:                   %4d", m_shaderContext.memoryStream->GetBufferCount());
-        uint64_t deviceSize = m_shaderContext.memoryStream->GetDeviceMemorySize();
-        ImGui::Text("Device size:               %6lld (%2.2f KB)", deviceSize, (float)deviceSize / 1024.f);
-        ImGui::Text("Temporal buffer size:      %4d", m_shaderContext.memoryStream->GetTemporalBufferSize());
-        ImGui::Text("Property count:            %4d", m_shaderContext.memoryStream->GetPropertyCount());
-        ImGui::Text("Shaders:                   %7d", m_shaderDb.m_programs.size());
-        ImGui::SeparatorText("Descriptor pool");
-        ImGui::Text("Binding cache:             %7d", m_bindingCache->GetCacheSize());
-        ImGui::Text("Binding layout cache:      %7d", m_bindingCache->GetLayoutCacheSize());
-#if 0 
-        ImGui::SeparatorText("Command buffer");
-        const render::CommandQueue* queue = m_device->GetCommandQueue(render::Queue_Graphics);
-        ImGui::Text("CB total:          %7d", queue->GetTotalCommandBuffers());
-        ImGui::Text("CB submitted:      %7d", queue->GetSubmittedCommandBuffersCount());
-        ImGui::Text("CB pool:           %7d", queue->GetPoolCommandBuffersCount());
-
-        ImGui::SeparatorText("Cache state");
-        ImGui::Text("Graphics Pso cache:        %7d", m_graphicsPsoMap.size());
-        ImGui::Text("Graphics Pso lf:           %.4f", m_graphicsPsoMap.load_factor());
-        ImGui::Text("Compute Pso cache:         %7d", m_computePsoMap.size());
-        ImGui::Text("Compute Pso lf:            %.4f", m_computePsoMap.load_factor());
-        ImGui::Text("Sampler cache:             %7d", m_samplerCache->GetCacheSize());
-        ImGui::Text("Sampler lf:                %.4f", m_samplerCache->GetLoadFactor());
-
-#endif // 0
-
-        ImGui::End();
     }
 
     void RenderSystem::FlushBeforeDraw()

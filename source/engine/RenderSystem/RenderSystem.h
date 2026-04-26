@@ -430,6 +430,17 @@ namespace rendersystem
     {
     public:
 
+        struct Stats
+        {
+            uint32_t poolCount;
+            uint32_t poolUsed;
+            uint32_t poolFree;
+            uint32_t bufferCount;
+            uint32_t propertyCount;
+            uint64_t deviceMemoryUsedSize;
+            uint64_t temporalBufferSize;
+        };
+
         ShaderStream(render::Device* device);
         ~ShaderStream();
 
@@ -454,6 +465,19 @@ namespace rendersystem
         inline uint32_t GetPropertyCount() const { return m_useNewPool
                 ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetPropertyCount()
                 : const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetPropertyCount(); }
+
+        inline Stats GetStats() const
+        {
+            Stats stats{};
+            stats.poolCount = GetPoolCount();
+            stats.poolUsed = GetPoolUsedCount();
+            stats.poolFree = GetPoolFreeCount();
+            stats.bufferCount = GetBufferCount();
+            stats.propertyCount = GetPropertyCount();
+            stats.deviceMemoryUsedSize = GetDeviceMemorySize();
+            stats.temporalBufferSize = GetTemporalBufferSize();
+            return stats;
+        }
 
     private:
         render::Device* m_device;
@@ -536,6 +560,18 @@ namespace rendersystem
         }
 
         ShaderMap m_programs;
+    };
+
+    struct RenderStats
+    {
+        double lastGpuTime;
+        render::CommandStats cmdStats;
+        render::MemoryStats bufferStats;
+        render::MemoryStats imageStats;
+        ShaderStream::Stats shaderMemoryStats;
+        uint32_t shaderCount;
+        uint32_t bindingSetCacheSize;
+        uint32_t bindingLayoutCacheSize;
     };
 
     class RenderSystem
@@ -794,6 +830,7 @@ namespace rendersystem
         void DumpState();
 
         double GetGpuTimeUs() const { return m_gpuTime; }
+        RenderStats GetStats() const;
 
         inline bool AllowsCommand(ShaderProgramType type) const { return m_shaderContext.program && m_shaderContext.program->m_description->type == type; }
         inline bool AllowsGraphicsCommand() const { return AllowsCommand(ShaderProgram_Graphics); }
@@ -813,7 +850,6 @@ namespace rendersystem
         void CopyToPresentRt(render::TextureHandle texture);
         const render::RenderTargetHandle& GetPresentRt() const { check(m_swapchainIndex < (uint32_t)m_presentRts.size()); return m_presentRts[m_swapchainIndex]; }
 
-        void ImGuiDraw();
         void FlushBeforeDraw();
         void FlushBeforeDispatch();
         void FlushMemoryContext();

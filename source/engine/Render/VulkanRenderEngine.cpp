@@ -190,18 +190,6 @@ namespace Mist
 				GPUParticleSystem* ps = static_cast<GPUParticleSystem*>(data);
 				ps->ImGuiDraw();
 			}, &m_gpuParticleSystem);
-		rendersystem::ui::AddWindowCallback("System memory", [](void* data)
-			{
-				ImGui::Begin("System memory");
-				memory::stats::MemoryStats stats;
-				memory::GetMemoryStats(stats);
-				ImGui::Text("Allocated size		: %6lld bytes (%4.4f MB)", stats.allocatedBytes, (float)stats.allocatedBytes / 1024.f / 1024.f);
-				ImGui::Text("Max Allocated size	: %6lld bytes", stats.maxAllocatedBytes);
-				ImGui::Text("Frame alloc count	: %4lld", stats.frameAllocCount);
-				ImGui::Text("Frame free count	: %4lld", stats.frameFreeCount);
-				ImGui::Text("Alloc count		: %4lld", stats.allocatedCount);
-				ImGui::End();
-			}, nullptr, true);
 #if 0
 		rendersystem::ui::AddWindowCallback("Game of life demo", [](void* data)
 			{
