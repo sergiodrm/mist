@@ -49,6 +49,7 @@ namespace Mist
 	}
 
 	tScopeProfiler::tScopeProfiler()
+		: m_start(0)
 	{}
 
 	tScopeProfiler::tScopeProfiler(const char* msg)
@@ -59,9 +60,12 @@ namespace Mist
 
 	tScopeProfiler::~tScopeProfiler()
 	{
-		float ms = GetMiliseconds(GetTimePoint() - m_start);
-		if (CVar_LogProfileScopes.Get())
-			logfinfo("%s [time lapsed: %f ms]\n", m_msg, ms);
+		if (m_start != 0)
+		{
+			float ms = GetMiliseconds(GetTimePoint() - m_start);
+			if (CVar_LogProfileScopes.Get())
+				logfinfo("%s [time lapsed: %f ms]\n", m_msg, ms);
+		}
 	}
 
 	FixTickTimer::FixTickTimer(float fixStepMs)

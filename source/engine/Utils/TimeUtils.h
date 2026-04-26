@@ -4,6 +4,10 @@
 
 #define PROFILE_SCOPE_LOG(id, msg) Mist::tScopeProfiler __scopeprof_##id(msg)
 #define PROFILE_SCOPE_LOGF(id, fmt, ...) Mist::tScopeProfiler __scopeprof_##id##; __scopeprof_##id##.m_msg.Fmt(fmt, __VA_ARGS__); __scopeprof_##id##.m_start = Mist::GetTimePoint()
+#define PROFILE_SCOPE_LOGF_IF(id, condition, fmt, ...) \
+	Mist::tScopeProfiler __scopeprof_##id##; \
+	__scopeprof_##id##.m_msg.Fmt(fmt, __VA_ARGS__); \
+	if ((condition)) __scopeprof_##id##.m_start = Mist::GetTimePoint()
 
 namespace Mist
 {
