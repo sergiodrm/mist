@@ -34,7 +34,7 @@ void main()
 	// Albedo and emissive
 	data.albedo = u_material.data.Albedo.rgb;
 	data.opacity = u_material.data.Albedo.a;
-	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_ALBEDO_MAP))
+	if (MATERIAL_HAS_ALBEDO_MAP(u_material.data.Flags.x))
 	{
 		vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inUV);
 		data.albedo *= albedo.rgb;
@@ -49,7 +49,7 @@ void main()
 #endif
 
 	// Normals
-	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_NORMAL_MAP))
+	if (MATERIAL_HAS_NORMAL_MAP(u_material.data.Flags.x))
 		data.normal = inTBN * normalize(texture(u_Textures[MATERIAL_TEXTURE_NORMAL], inUV).xyz * 2.0 - vec3(1.0));
 	else
 		data.normal = normalize(inNormal);
@@ -57,7 +57,7 @@ void main()
 	// Metallic and Roughness
 	data.roughness = u_material.data.MetallicRoughness.g;
 	data.metallic = u_material.data.MetallicRoughness.r;
-	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP))
+	if (MATERIAL_HAS_METALLIC_ROUGHNESS_MAP(u_material.data.Flags.x))
 	{
 		vec3 mr = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inUV).rgb;
 		data.roughness *= mr.g;
@@ -66,7 +66,7 @@ void main()
 
 	// Specular
 	data.specular = u_material.data.MetallicRoughness.b;
-	if (bool(u_material.data.Flags.x & MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP))
+	if (MATERIAL_HAS_SPECULAR_MAP(u_material.data.Flags.x))
 	{
 		vec4 specular = texture(u_Textures[MATERIAL_TEXTURE_SPECULAR], inUV);
 		data.specular *= specular.a;

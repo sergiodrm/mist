@@ -485,13 +485,10 @@ namespace gltf_api
 		// Emissive
 		if (cgltfmtl.has_emissive_strength)
 		{
-			flags |= Mist::MATERIAL_FLAG_EMISSIVE;
-
 			material.SetEmissiveColor(ToVec3(cgltfmtl.emissive_factor));
 			material.SetEmissiveStrength(cgltfmtl.emissive_strength.emissive_strength);
 
-			if (LoadTexture(device, rootAssetPath, cgltfmtl.emissive_texture, Mist::MATERIAL_TEXTURE_EMISSIVE, material))
-				flags |= Mist::MATERIAL_FLAG_HAS_EMISSIVE_MAP;
+			LoadTexture(device, rootAssetPath, cgltfmtl.emissive_texture, Mist::MATERIAL_TEXTURE_EMISSIVE, material);
 		}
 
 		// Metallic roughness
@@ -500,8 +497,7 @@ namespace gltf_api
 			material.SetMetallic(cgltfmtl.pbr_metallic_roughness.metallic_factor);
 			material.SetRoughness(cgltfmtl.pbr_metallic_roughness.roughness_factor);
 
-			if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS, material))
-				flags |= Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP;
+			LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.metallic_roughness_texture, Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS, material);
 		}
 
 		// Specular
@@ -510,10 +506,7 @@ namespace gltf_api
 			material.SetSpecular(cgltfmtl.specular.specular_factor);
 
 			if (LoadTexture(device, rootAssetPath, cgltfmtl.specular.specular_texture, Mist::MATERIAL_TEXTURE_SPECULAR, material))
-			{
-				check(!(flags & Mist::MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP));
-				flags |= Mist::MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP;
-			}
+				check(!material.GetTexture(Mist::MATERIAL_TEXTURE_METALLIC_ROUGHNESS));
 		}
 
 		if (cgltfmtl.has_pbr_specular_glossiness)
@@ -524,13 +517,11 @@ namespace gltf_api
 			flags |= Mist::MATERIAL_FLAG_UNLIT;
 
 		// Normal
-		if (LoadTexture(device, rootAssetPath, cgltfmtl.normal_texture, Mist::MATERIAL_TEXTURE_NORMAL, material))
-			flags |= Mist::MATERIAL_FLAG_HAS_NORMAL_MAP;
+		LoadTexture(device, rootAssetPath, cgltfmtl.normal_texture, Mist::MATERIAL_TEXTURE_NORMAL, material);
 
 		// Albedo
 		material.SetAlbedo(ToVec4(cgltfmtl.pbr_metallic_roughness.base_color_factor));
-		if (LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::MATERIAL_TEXTURE_ALBEDO, material))
-			flags |= Mist::MATERIAL_FLAG_HAS_ALBEDO_MAP;
+		LoadTexture(device, rootAssetPath, cgltfmtl.pbr_metallic_roughness.base_color_texture, Mist::MATERIAL_TEXTURE_ALBEDO, material);
 
 		// Alpha cutoff
 		check_accessor(cgltfmtl.alpha_cutoff >= 0.f);

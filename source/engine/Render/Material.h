@@ -33,18 +33,12 @@ namespace Mist
 	enum eMaterialFlags
 	{
 		MATERIAL_FLAG_NONE = 0x0000,
-		MATERIAL_FLAG_HAS_ALBEDO_MAP = 0x0001,
-		MATERIAL_FLAG_HAS_NORMAL_MAP = 0x0002,
-		MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP = 0x0004,
-		MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP = 0x0008,
-		MATERIAL_FLAG_HAS_EMISSIVE_MAP = 0x0010,
-		MATERIAL_FLAG_EMISSIVE = 0x0020,
-		MATERIAL_FLAG_UNLIT = 0x0040,
-		MATERIAL_FLAG_NO_PROJECT_SHADOWS = 0x0080,
-		MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS = 0x0100,
-		MATERIAL_FLAG_OPAQUE = 0x0200,
-		MATERIAL_FLAG_MASK = 0x0400,
-		MATERIAL_FLAG_BLEND = 0x0800,
+		MATERIAL_FLAG_UNLIT = 0x0001,
+		MATERIAL_FLAG_NO_PROJECT_SHADOWS = 0x0002,
+		MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS = 0x0004,
+		MATERIAL_FLAG_OPAQUE = 0x0008,
+		MATERIAL_FLAG_MASK = 0x0010,
+		MATERIAL_FLAG_BLEND = 0x0020,
 	};
 	typedef uint32_t tMaterialFlags;
 	const char* MaterialFlagToStr(tMaterialFlags flag);
@@ -60,15 +54,14 @@ namespace Mist
 		float specular;
 		float alphaCutoff;
 		
-		tMaterialFlags flags;
+		uint32_t flags;
 		uint32_t _padding[3];
 	};
 
 	class cMaterial : public cRenderResource<RenderResource_Material>
 	{
 	public:
-
-		static void ConfigureShaderDescription(rendersystem::ShaderBuildDescription& shaderDesc);
+		static void ConfigureShaderDescription(tMaterialFlags flags, rendersystem::ShaderBuildDescription& shaderDesc);
 		static bool SerializeMaterials(const char* filepath, const cMaterial* mtls, uint32_t count);
 		static bool UnserializeMaterials(const char* filepath, cMaterial*& mtls, uint32_t& count);
 

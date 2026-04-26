@@ -219,20 +219,19 @@ namespace Mist
         return nullptr;
     }
 
-    void cMaterial::ConfigureShaderDescription(rendersystem::ShaderBuildDescription& shaderDesc)
-    {
-#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
+	void cMaterial::ConfigureShaderDescription(tMaterialFlags flags, rendersystem::ShaderBuildDescription& shaderDesc)
+	{
+#define DECLARE_MACRO_ENUM(_flag) if (flags & _flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag)
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
-		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_ALBEDO_MAP);
-		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_NORMAL_MAP);
-		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_METALLIC_ROUGHNESS_MAP);
-		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_SPECULAR_GLOSSINESS_MAP);
-		DECLARE_MACRO_ENUM(MATERIAL_FLAG_HAS_EMISSIVE_MAP);
-		DECLARE_MACRO_ENUM(MATERIAL_FLAG_EMISSIVE);
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_OPAQUE);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_MASK);
+		DECLARE_MACRO_ENUM(MATERIAL_FLAG_BLEND);
+#undef DECLARE_MACRO_ENUM
 
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
@@ -329,18 +328,6 @@ namespace Mist
         g_render->SetSampler("u_Textures", m_samplers, MATERIAL_TEXTURE_COUNT);
     }
 
-    sMaterialRenderData cMaterial::GetRenderData() const
-    {
-        sMaterialRenderData data = {};
-        data.emissive = glm::vec4(m_emissiveFactor.x, m_emissiveFactor.y, m_emissiveFactor.z, m_emissiveStrength);
-        data.albedo = m_albedo;
-        data.metallic = m_metallicFactor;
-        data.roughness = m_roughnessFactor;
-        data.specular = m_specularFactor;
-        data.alphaCutoff = m_alphaCutoff;
-        data.flags = m_flags;
-        return data;
-    }
 
     void cMaterial::SetTexture(eMaterialTexture textureType, Texture* texture)
     {
@@ -361,6 +348,21 @@ namespace Mist
         for (index_t j = 0; j < MATERIAL_TEXTURE_COUNT; ++j)
         {
             const char* texName = (m_textures[j] && m_textures[j]->GetDeviceTexture()) ? m_textures[j]->GetDeviceTexture()->m_description.debugName.c_str() : "None";
+	sMaterialRenderData cMaterial::GetRenderData() const
+	{
+		sMaterialRenderData data = {};
+		data.emissive = glm::vec4(m_emissiveFactor.x, m_emissiveFactor.y, m_emissiveFactor.z, m_emissiveStrength);
+		data.albedo = m_albedo;
+		data.metallic = m_metallicFactor;
+		data.roughness = m_roughnessFactor;
+		data.specular = m_specularFactor;
+		data.alphaCutoff = m_alphaCutoff;
+		data.flags = (m_flags << 16);
+		static_assert(MATERIAL_TEXTURE_COUNT < 16);
+		for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
+			data.flags |= (eMaterialTexture)(m_textures[i] ? (1 << i) : 0);
+		return data;
+	}
 			ImGui::Text("%s: %s", GetMaterialTextureStr((eMaterialTexture)j), texName);
         }
 		ImGui::ColorEdit3("Albedo", &m_albedo[0]);
