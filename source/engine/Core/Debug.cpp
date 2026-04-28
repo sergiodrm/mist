@@ -512,7 +512,7 @@ namespace Mist
 				wasHovered = ImGui::IsWindowHovered();
 
 #if defined(_DEBUG)
-				ImGui::TextColored(ImVec4(0.7f, 0.2f, 0.1f, 1.f), "DEBUG");
+				ImGui::TextColored(ImVec4(1.f, 0.2f, 0.1f, 1.f), "DEBUG");
 #else
 				ImGui::Text("RELEASE");
 #endif
