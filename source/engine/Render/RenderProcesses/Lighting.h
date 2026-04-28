@@ -35,7 +35,6 @@ namespace Mist
 		rendersystem::ShaderProgram* m_lightingShader;
 		rendersystem::ShaderProgram* m_lightingFogShader;
 		rendersystem::ShaderProgram* m_skyboxShader;
-		rendersystem::ShaderProgram* m_forwardLightingShader;
 		uint32_t m_forwardRenderListId;
 		cModel* m_skyModel;
 

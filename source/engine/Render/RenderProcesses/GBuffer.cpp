@@ -9,7 +9,8 @@
 
 #include "RenderSystem/RenderSystem.h"
 
-
+#define GBUFFER_RENDER_PASS (RenderPass_Opaque)
+//#define GBUFFER_RENDER_PASS (RenderPass_Opaque|RenderPass_Transparent)
 
 namespace Mist
 {
@@ -45,26 +46,21 @@ namespace Mist
 				rtDesc.AddColorAttachment(textures[i]);
 		}
 		m_renderTarget = device->CreateRenderTarget(rtDesc);
-		InitPipeline(rs);
 
-		m_renderListId = SceneRenderer::GetSceneRenderer()->CreateRenderList({ RenderPass_Opaque | RenderPass_Transparent, {} });
+		m_renderListId = SceneRenderer::GetSceneRenderer()->CreateRenderList({ GBUFFER_RENDER_PASS, {} });
 	}
 
 	void GBuffer::Destroy(rendersystem::RenderSystem* rs)
 	{
 		check(g_gbuffer == this);
-		//RenderTarget::Destroy(renderContext, m_renderTarget);
-
-		//check(m_renderTarget.GetRefCounter() == 1);
 		m_renderTarget = nullptr;
 		g_gbuffer = nullptr;
-		rs->DestroyShader(&m_gbufferShader);
 	}
 
 	void GBuffer::Update()
 	{
 		SceneRenderer* sr = SceneRenderer::GetSceneRenderer();
-		sr->SetRenderListInfo(m_renderListId, { RenderPass_Opaque | RenderPass_Transparent, *GetCameraData() });
+		sr->SetRenderListInfo(m_renderListId, { GBUFFER_RENDER_PASS, *GetCameraData() });
 	}
 
 	void GBuffer::Draw(rendersystem::RenderSystem* rs)
@@ -77,7 +73,6 @@ namespace Mist
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 		rs->SetRenderTarget(m_renderTarget);
-		rs->SetShader(m_gbufferShader);
 		rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 		rs->SetShaderProperty("u_prevCamera", GetPrevCameraData(), sizeof(CameraData));
 		rs->ClearColor();
@@ -158,15 +153,6 @@ namespace Mist
 			DebugRender::DrawScreenQuad(pos, size, m_renderTarget->m_description.colorAttachments[m_debugMode-1].texture);
 			break;
 		}
-	}
-
-	void GBuffer::InitPipeline(rendersystem::RenderSystem* rs)
-	{
-		rendersystem::ShaderBuildDescription shaderDesc;
-		shaderDesc.vsDesc.filePath = "shaders/gbuffer_main.vert";
-		shaderDesc.fsDesc.filePath = "shaders/gbuffer_main.frag";
-		cMaterial::ConfigureShaderDescription(shaderDesc);
-		m_gbufferShader = rs->CreateShader(shaderDesc);
 	}
 
 	render::Format GBuffer::GetGBufferFormat(EGBufferTarget target)

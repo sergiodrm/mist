@@ -69,14 +69,6 @@ namespace Mist
 		}
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.vsDesc.filePath = "shaders/forward_lighting.vert";
-			shaderDesc.fsDesc.filePath = "shaders/forward_lighting.frag";
-			shaderDesc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
-			cMaterial::ConfigureShaderDescription(shaderDesc);
-			m_forwardLightingShader = rs->CreateShader(shaderDesc);
-		}
-		{
-			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.vsDesc.filePath = "shaders/skybox.vert";
 			shaderDesc.fsDesc.filePath = "shaders/skybox.frag";
             m_skyboxShader = rs->CreateShader(shaderDesc);
@@ -94,7 +86,6 @@ namespace Mist
 		delete m_skyModel;
 		m_skyModel = nullptr;
 
-		rs->DestroyShader(&m_forwardLightingShader);
 		rs->DestroyShader(&m_lightingShader);
 		rs->DestroyShader(&m_lightingFogShader);
 		rs->DestroyShader(&m_skyboxShader);
@@ -223,7 +214,6 @@ namespace Mist
 				rs->BeginMarker("Forward lighting");
 				rs->SetDefaultGraphicsState();
 				rs->SetRenderTarget(m_skyboxRt);
-				rs->SetShader(m_forwardLightingShader);
 				rs->SetBlendEnable(true);
 				rs->SetBlendWriteMask(render::ColorMask_All);
 				rs->SetBlendFactor(m_colorSrc, m_colorDst, m_blendOp);

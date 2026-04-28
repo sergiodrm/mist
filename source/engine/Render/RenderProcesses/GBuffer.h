@@ -58,11 +58,9 @@ namespace Mist
 		static render::Format GetGBufferFormat(EGBufferTarget target);
 
 	private:
-		void InitPipeline(rendersystem::RenderSystem* rs);
 		virtual void DebugDraw() override;
 	public:
 		render::RenderTargetHandle m_renderTarget;
-		rendersystem::ShaderProgram* m_gbufferShader;
 		EDebugMode m_debugMode = DEBUG_NONE;
 
 		uint32_t m_renderListId;
