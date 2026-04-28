@@ -1,0 +1,19 @@
+- Name: initialShadingGroup
+  Vertex shader: ../../../assets//shaders/grid_prototype.vert
+  Fragment shader: ../../../assets//shaders/grid_prototype.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0, 0, 0, 1]
+    Roughness: 1
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
