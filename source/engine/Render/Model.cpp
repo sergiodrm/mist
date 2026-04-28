@@ -633,6 +633,11 @@ namespace Mist
 			return false;
 		}
 		SetName(assetPath);
+		
+		char nameFile[256];
+		*nameFile = 0;
+		FileSystem::GetFileNameFromFilepath(assetPath.c_str(), assetPath.GetSize(), nameFile, sizeof(nameFile));
+		check(*nameFile);
 
 		loadmeshlog("=== Begin loading model ===\n");
 		loadmeshlogf("Loading model from file: %s\n", assetPath);
@@ -645,13 +650,27 @@ namespace Mist
 			loadmesh_profile_logf_scope(LoadMaterials, "Load materials (%s)(%d)", assetPath, data->materials_count);
 			if (data->materials_count)
 			{
-				InitMaterials((index_t)data->materials_count);
-				for (uint32_t i = 0; i < data->materials_count; ++i)
+				char mtlFilepath[256];
+				sprintf_s(mtlFilepath, "%s/materials_%s.mtl", rootAssetPath, nameFile);
+				uint32_t materialsCount = UINT32_MAX;
+				cMaterial* materials = nullptr;
+				if (!cMaterial::UnserializeMaterials(mtlFilepath, materials, materialsCount))
 				{
-					m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");
-					gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
-					m_materials[i].SetupShader(g_render);
+					InitMaterials((index_t)data->materials_count);
+					for (uint32_t i = 0; i < data->materials_count; ++i)
+					{
+						m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");					
+						gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
+						m_materials[i].SetupShader(g_render);
+					}
+					
+					check(cMaterial::SerializeMaterials(mtlFilepath, m_materials.GetData(), m_materials.GetSize()));
 				}
+				else
+				{
+					check(materialsCount == data->materials_count);
+					m_materials = Mist::tFixedHeapArray<cMaterial>(&materials, &materialsCount);
+				}	
 			}
 			else
 			{
