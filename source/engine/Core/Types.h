@@ -339,7 +339,7 @@ namespace Mist
 		inline DataType& operator[](IndexType index) { check(index < Count); return Data[index]; }
 	};
 
-	template <typename DataType, typename IndexType = uint16_t>
+	template <typename DataType, typename IndexType = uint32_t>
 	class tFixedHeapArray
 	{
 		typedef tFixedHeapArray<DataType, IndexType> ThisType;
@@ -460,7 +460,7 @@ namespace Mist
 		{
 			if (this == &rvl)
 				return *this;
-			Clear();
+			Delete();
 			m_data = rvl.m_data;
 			m_count = rvl.m_count;
 			m_index = rvl.m_index;
