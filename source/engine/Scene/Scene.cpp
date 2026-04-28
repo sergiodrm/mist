@@ -102,7 +102,9 @@ namespace Mist
 		m_irradianceRequestInfo->minCubemapClamp = glm::vec3(0.f);
 		m_irradianceRequestInfo->maxCubemapClamp = glm::vec3(2.f);
 		//m_irradianceRequestInfo->hdrFilepath = "textures/flamingo_pan_4k.hdr";
-		m_irradianceRequestInfo->hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
+		//m_irradianceRequestInfo->hdrFilepath = "textures/rosendal_park_sunset_puresky_4k.hdr";
+		m_irradianceRequestInfo->hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
+		//m_irradianceRequestInfo->hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
 		//m_irradianceRequestInfo->hdrFilepath = "textures/climbing_gym_4k.hdr";
 		m_irradianceRequestInfo->userData = this;
 	}
