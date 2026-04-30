@@ -33,7 +33,7 @@ layout (std140, set = 1, binding = 0) uniform Object
 void main()
 {
     vec4 wsPos = u_model.modelMatrix * vec4(inPosition, 1.0f);
-    gl_Position = Vertex_ComputeToClipSpace(wsPos);
+    gl_Position = Vertex_ComputeWorldPosToClipSpace(wsPos);
 
     // Frag position in view space
     outFragPos = u_camera.data.view * wsPos;

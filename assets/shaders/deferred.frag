@@ -100,5 +100,4 @@ void main()
 #else
     outColor = lightingColor;
 #endif // DEFERRED_APPLY_FOG
-    return;
 }

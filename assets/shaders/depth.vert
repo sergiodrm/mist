@@ -16,5 +16,5 @@ layout (std140, set = 1, binding = 0) uniform Model
 
 void main()
 {
-    gl_Position = Vertex_ComputeToClipSpace(u_model.Mat * vec4(inPosition, 1.f));
+    gl_Position = Vertex_ComputeWorldPosToClipSpace(u_model.Mat * vec4(inPosition, 1.f));
 }

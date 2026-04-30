@@ -16,6 +16,6 @@ layout (set = 0, binding = 0) uniform CameraBlock
 void main() 
 {
 	outUV = inPosition;
-	gl_Position = Vertex_ComputeToClipSpace(vec4(inPosition.xyz, 1.0f));
+	gl_Position = Vertex_ComputeWorldPosToClipSpace(vec4(inPosition.xyz, 1.0f));
 	outView = u_camera.data.view;
 }
