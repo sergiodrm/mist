@@ -3,7 +3,7 @@
 
 void GBuffer_Write(GBuffer data)
 {
-	outGBufferNormal.rgb = data.normal;
+	outGBufferNormal.rgb = GBuffer_EncodeNormal(data.normal);
 	outGBufferNormal.a = data.roughness;
 
 	outGBufferAlbedo.rgb = data.albedo;

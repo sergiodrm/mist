@@ -1,4 +1,6 @@
 
+//#define GBUFFER_NORMAL_UNORM
+
 struct GBuffer
 {
 	vec3 normal;
@@ -37,3 +39,23 @@ vec3 GBuffer_ReprojectPosition(vec2 texCoords, float depth)
 	return projectedPosVS.xyz / projectedPosVS.w;
 }
 #endif
+
+// Transforms from [-1,1] to [0,1] if GBuffer Normal format is UNORM
+vec3 GBuffer_EncodeNormal(vec3 normal)
+{
+#if defined(GBUFFER_NORMAL_UNORM)
+	return normal * 0.5f + 0.5f;
+#else
+	return normal;
+#endif
+}
+
+// Transforms from [0,1] texture format UNORM to [-1,1] if needed
+vec3 GBuffer_DecodeNormal(vec3 normal)
+{
+#if defined(GBUFFER_NORMAL_UNORM)
+	return normal * 2.f - 1.f;
+#else
+	return normal;
+#endif
+}

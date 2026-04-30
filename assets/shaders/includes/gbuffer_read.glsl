@@ -11,7 +11,7 @@ GBuffer GBuffer_Read(vec2 uv)
     vec4 specular = texture(u_GBufferSpecular, uv);
     vec2 motionVectors = texture(u_GBufferMotionVectors, uv).rg;
 
-	data.normal = normalize(gbufferNormal.xyz);
+	data.normal = GBuffer_DecodeNormal(normalize(gbufferNormal.xyz));
     data.metallic = specular.b;
     data.roughness = specular.g;
     data.albedo = albedo.rgb;
