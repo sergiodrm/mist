@@ -1344,7 +1344,7 @@ namespace Mist
 		}
 		if (lastMaterial != primitive.material)
 		{
-			if (lastMaterial && lastMaterial->GetShaderProgram() != primitive.material->GetShaderProgram())
+			if ((!lastMaterial) || (lastMaterial && lastMaterial->GetShaderProgram() != primitive.material->GetShaderProgram()))
 				renderContext.rs->SetShader(primitive.material->GetShaderProgram());
 			lastMaterial = primitive.material;
 			BindMaterial(renderContext.rs, *primitive.material);
