@@ -136,6 +136,7 @@ namespace Mist
 		cubemapDesc.extent = { info.cubemapWidthHeight, info.cubemapWidthHeight, 1 };
 		cubemapDesc.format = render::Format_R16G16B16A16_SFloat;
 		cubemapDesc.layers = 6;
+		cubemapDesc.mipLevels = render::utils::ComputeMipLevels(cubemapDesc.extent.width, cubemapDesc.extent.height);
 		cubemapDesc.dimension = render::ImageDimension_Cube;
 		cubemapDesc.isShaderResource = true;
 		cubemapDesc.isRenderTarget = true;
@@ -157,7 +158,6 @@ namespace Mist
 		specularCubeDesc.format = render::Format_R16G16B16A16_SFloat;
 		specularCubeDesc.layers = 6;
 		specularCubeDesc.mipLevels = render::utils::ComputeMipLevels(specularCubeDesc.extent.width, specularCubeDesc.extent.height);
-		check(specularCubeDesc.mipLevels <= render::utils::ComputeMipLevels(specularCubeDesc.extent.width, specularCubeDesc.extent.height));
 		specularCubeDesc.dimension = render::ImageDimension_Cube;
 		specularCubeDesc.isShaderResource = true;
 		specularCubeDesc.isRenderTarget = true;
@@ -215,9 +215,6 @@ namespace Mist
 			rtDesc.AddColorAttachment(tex, { 0, 1, 0, 1 });
 			rt = device->CreateRenderTarget(rtDesc);
 
-			glm::vec4 clampColors[] = { glm::vec4(info.minCubemapClamp.x, info.minCubemapClamp.y, info.minCubemapClamp.z, 1.f), 
-				glm::vec4(info.maxCubemapClamp.x, info.maxCubemapClamp.y, info.maxCubemapClamp.z, 1.f), };
-
 			for (uint32_t i = 0; i < 6; ++i)
 			{
 				cd.Set(captureViews[i], captureProjection);
@@ -228,7 +225,6 @@ namespace Mist
 				renderSystem->ClearColor();
 				renderSystem->SetTextureSlot("u_map", hdrFileContent);
 				renderSystem->SetShaderProperty("u_camera", &cd, sizeof(cd));
-				renderSystem->SetShaderProperty("u_data", &clampColors, sizeof(glm::vec4) * Mist::CountOf(clampColors));
 				m_irradianceResources.DrawCube(renderSystem);
 				renderSystem->ClearState();
 
@@ -317,12 +313,20 @@ namespace Mist
 			rt = device->CreateRenderTarget(rtDesc);
 
 			uint32_t mipLevels = specularCubeDesc.mipLevels;
+			check(mipLevels > 1);
+			uint32_t cubemapResolution = cubemapDesc.extent.width;
+			check(cubemapResolution == cubemapDesc.extent.height);
+			uint32_t cubemapMaxMipLevels = cubemapDesc.mipLevels;
 			for (uint32_t mip = 0; mip < mipLevels; ++mip)
 			{
+
 				uint32_t mipWidth = specularCubeDesc.extent.width >> mip;
 				uint32_t mipHeight = specularCubeDesc.extent.height >> mip;
+
+				// 
 				float roughness = (float)mip / (float)(mipLevels - 1);
-				glm::vec4 r = { roughness, roughness, roughness, roughness };
+				glm::vec4 r = { roughness, (float)cubemapResolution, (float)cubemapMaxMipLevels, 0.f };
+
 				for (uint32_t i = 0; i < 6; ++i)
 				{
 					cd.Set(captureViews[i], captureProjection);
@@ -334,6 +338,10 @@ namespace Mist
 
 					m_irradianceResources.PrepareDraw(renderSystem, rt, { mipWidth, mipHeight }, m_irradianceResources.specularShader);
 					renderSystem->SetTextureSlot("u_cubemap", cubemap);
+					renderSystem->SetSampler("u_cubemap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
 					renderSystem->SetShaderProperty("u_camera", &cd, sizeof(cd));
 					renderSystem->SetShaderProperty("u_data", &r, sizeof(r));
 					m_irradianceResources.DrawCube(renderSystem);

@@ -99,8 +99,6 @@ namespace Mist
 		m_irradianceRequestInfo->cubemapWidthHeight = 1024;
 		m_irradianceRequestInfo->irradianceCubemapWidthHeight = 32;
 		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
-		m_irradianceRequestInfo->minCubemapClamp = glm::vec3(0.f);
-		m_irradianceRequestInfo->maxCubemapClamp = glm::vec3(2.f);
 		//m_irradianceRequestInfo->hdrFilepath = "textures/flamingo_pan_4k.hdr";
 		//m_irradianceRequestInfo->hdrFilepath = "textures/rosendal_park_sunset_puresky_4k.hdr";
 		m_irradianceRequestInfo->hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
@@ -1018,8 +1016,6 @@ namespace Mist
 			res = m_irradianceRequestInfo->specularCubemapWidthHeight;
 			if (ImGui::DragInt("Specular irradiance resolution", &res, 1.f, 0, 1024, "%5d"))
 				m_irradianceRequestInfo->specularCubemapWidthHeight = res;
-			ImGui::DragFloat3("Min cubemap color", &m_irradianceRequestInfo->minCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
-			ImGui::DragFloat3("Max cubemap color", &m_irradianceRequestInfo->maxCubemapClamp[0], 0.5f, 0.f, FLT_MAX);
 			ImGui::TreePop();
 		}
 		ImGui::End();

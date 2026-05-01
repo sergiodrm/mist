@@ -8,7 +8,8 @@ layout (location = 0) in vec3 localPos;
 layout (set = 1, binding = 0) uniform samplerCube u_cubemap;
 layout (set = 1, binding = 1) uniform DataBlock
 {
-    vec4 roughness;
+    // x: roughness; y: resolution; z: maxMipLevels; w: unused
+    vec4 data;
 } u_data;
 
 float RadicalInverse_VdC(uint bits)
@@ -69,7 +70,7 @@ void main()
 	N.y *= -1.f; // invert y direction, vulkan has 0 coordinate on top-left.
     vec3 R = N;
     vec3 V = R;
-    float roughness = u_data.roughness.x;
+    float roughness = max(u_data.data.x, 0.04f);
 
     const uint SAMPLE_COUNT = 1024u;
     float totalWeight = 0.0;   
@@ -89,11 +90,14 @@ void main()
             float HdotV = max(dot(H, V), 0.0);
             float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
 
-            float resolution = 512.0; // resolution of source cubemap (per face)
+            // resolution of source cubemap (per face)
+            float resolution = u_data.data.y;
             float saTexel  = 4.0 * M_PI / (6.0 * resolution * resolution);
             float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 0.0001);
 
-            float mipLevel = roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
+            //float mipLevel = roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
+            float mipLevel = 0.5f * log2(saSample / saTexel);
+            mipLevel = clamp(mipLevel, 0.f, float(u_data.data.z));
 
             prefilteredColor += textureLod(u_cubemap, L, mipLevel).rgb * NdotL;
             totalWeight      += NdotL;

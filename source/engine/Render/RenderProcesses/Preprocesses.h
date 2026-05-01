@@ -33,8 +33,6 @@ namespace Mist
 		uint32_t cubemapWidthHeight;
 		uint32_t irradianceCubemapWidthHeight;
 		uint32_t specularCubemapWidthHeight;
-		glm::vec3 minCubemapClamp;
-		glm::vec3 maxCubemapClamp;
 		cAssetPath hdrFilepath;
 		void* userData = nullptr;
 	};
