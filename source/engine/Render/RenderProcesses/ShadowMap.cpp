@@ -95,8 +95,7 @@ namespace Mist
 		};
 		glm::mat4 depthVP = GetLightVPMatrix(lightPos, lightRot, lightProj);
 
-		// Light Matrix with inverse(viewMatrix) because gbuffer calculates position buffer in view space.
-		glm::mat4 lightVP = depthBias * depthVP * glm::inverse(viewMatrix);
+		glm::mat4 lightVP = depthBias * depthVP;
 		SetDepthVP(lightIndex, depthVP);
 		SetLightVP(lightIndex, lightVP);
 	}

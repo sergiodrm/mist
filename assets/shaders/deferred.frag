@@ -51,7 +51,7 @@ layout(set = 2, binding = 3) uniform sampler2D u_blueNoise;
 #define GBUFFER_ALBEDO_TEX u_GBufferAlbedo
 #define GBUFFER_EMISSIVE_TEX u_GBufferEmissive
 #define GBUFFER_DEPTH_TEX u_GBufferDepth
-#define CAMERA_DATA_INV_PROJECTION CAMERA_DATA.invProjection
+#define CAMERA_DATA_INV_PROJECTION (CAMERA_DATA.invViewProjection)
 #include <shaders/includes/gbuffer_read.glsl>
 
 layout (std140, set = 0, binding = 0) uniform EnvBlock
@@ -60,14 +60,17 @@ layout (std140, set = 0, binding = 0) uniform EnvBlock
 } u_env;
 #include <shaders/includes/environment.glsl>
 
-vec4 main_PBR(vec3 FragViewPos, vec3 Normal, vec3 Albedo, float Metallic, float Roughness, float AO)
+vec4 main_PBR(vec3 worldPos, vec3 normal, vec3 albedo, float metallic, float roughness, float ao)
 {
     ShadowInfo shadowInfo;
     shadowInfo.LightViewMatrices[0] = u_ShadowMapInfo.LightViewMat[0];
     shadowInfo.LightViewMatrices[1] = u_ShadowMapInfo.LightViewMat[1];
     shadowInfo.LightViewMatrices[2] = u_ShadowMapInfo.LightViewMat[2];
+
+    vec3 viewWorldPos = CAMERA_DATA.invView[3].xyz;
+    vec3 viewDir = -normalize(worldPos - viewWorldPos);
     
-    vec3 color = DoEnvironmentLighting(FragViewPos, Normal, Albedo, Metallic, Roughness, AO, shadowInfo);
+    vec3 color = DoEnvironmentLighting(worldPos, viewDir, normal, albedo, metallic, roughness, ao, shadowInfo);
     return vec4(color, 1.f);
 }
 
@@ -89,10 +92,10 @@ void main()
 {
     GBuffer data = GBuffer_Read(inTexCoords);
     float depth = GBuffer_ReadDepth(inTexCoords);
-    vec3 posVS = GBuffer_ReprojectPosition(inTexCoords, depth);
+    vec3 posWS = GBuffer_ReprojectPosition(inTexCoords, depth);
     float ao = texture(u_ssao, inTexCoords).r;
     data.albedo += data.emissive;
-    vec4 lightingColor = main_PBR(posVS, data.normal, data.albedo, data.metallic, data.roughness, ao);
+    vec4 lightingColor = main_PBR(posWS, data.normal, data.albedo, data.metallic, data.roughness, ao);
     lightingColor.rgb += data.emissive;
 #if defined(DEFERRED_APPLY_FOG)
     vec4 c = vec4(0.1, 0.1, 0.1, 1.f);

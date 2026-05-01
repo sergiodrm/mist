@@ -43,9 +43,8 @@ void main()
 	vec3 worldPos = vec3(u_model.data.worldTransform * vec4(inPosition,1.f));
 	gl_Position = Vertex_ComputeWorldPosToClipSpace(vec4(worldPos, 1.f));
 
-	// Compute normals on view space.
-	//mat3 normalTransform = mat3(u_camera.data.view * u_model.data.worldTransform);
-	mat3 normalTransform = transpose(inverse(mat3(u_camera.data.view * u_model.data.worldTransform)));
+	// Compute normals on world space.
+	mat3 normalTransform = transpose(inverse(mat3(u_model.data.worldTransform)));
 
 	// motion vectors
 	outCurrWSPos = u_camera.data.viewProjection * u_model.data.worldTransform * vec4(inPosition,1.f);

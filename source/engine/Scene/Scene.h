@@ -304,7 +304,7 @@ namespace Mist
 		const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
 
 	protected:
-		void ProcessEnvironmentData(const glm::mat4& viewMatrix, EnvironmentData& environmentData);
+		void ProcessEnvironmentData(EnvironmentData& environmentData);
 		void RecalculateTransforms();
 		bool LoadSkybox(Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
 		bool LoadIrradianceCube(const PreprocessIrradianceInfo& info);

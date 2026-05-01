@@ -1042,8 +1042,7 @@ namespace Mist
 			// Update geometry
 			RecalculateTransforms();
 			check(!IsDirty());
-			const glm::mat4& viewMat = GetCameraData()->View;
-			ProcessEnvironmentData(viewMat, m_environmentData);
+			ProcessEnvironmentData(m_environmentData);
 		}
 	}
 
@@ -1053,7 +1052,7 @@ namespace Mist
 		return m_globalTransforms.GetData();
 	}
 
-	void Scene::ProcessEnvironmentData(const glm::mat4& viewSpace, EnvironmentData& environmentData)
+	void Scene::ProcessEnvironmentData(EnvironmentData& environmentData)
 	{
 		CPU_PROFILE_SCOPE(ProcessEnvData);
 		environmentData.Reset();
@@ -1070,8 +1069,8 @@ namespace Mist
 					continue;
 				const TransformComponent& transform = m_transformComponents[i];
 				const glm::mat4& mat = m_globalTransforms[i];
-				const glm::vec3 pos = math::GetPos(viewSpace * mat);
-				const glm::vec3 dir = -1.f*math::GetDir(viewSpace * mat);
+				const glm::vec3 pos = math::GetPos(mat);
+				const glm::vec3 dir = -1.f*math::GetDir(mat);
 
 				uint32_t shadowMapIndex = UINT32_MAX;
 				if (light.ProjectShadows && light.Type != ELightType::Point)

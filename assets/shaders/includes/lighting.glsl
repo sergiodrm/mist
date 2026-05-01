@@ -339,12 +339,12 @@ float ComputeSpotLightIntensity(LightData light, vec3 fragPos)
     return intensity;
 }
 
-vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness)
+vec3 ProcessPointLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness)
 {
     // Radiance calculation with attenuation
     vec3 lightPos = light.Pos.xyz;
     vec3 lightDir = lightPos - fragPos;
-    vec3 V = normalize(-fragPos);
+    vec3 V = normalize(viewDir);
     vec3 L = normalize(lightDir);
     vec3 H = normalize(V + L);
     float distance = length(lightDir);
@@ -356,9 +356,9 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albe
     return CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
 }
 
-vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
+vec3 ProcessDirectionalLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
 {
-    vec3 V = normalize(-fragPos);
+    vec3 V = normalize(viewDir);
     vec3 lightDir = normalize(vec3(-light.Dir));
     vec3 H = normalize(V + lightDir);
     vec3 radiance = light.Color.rgb * light.Strength;
@@ -368,7 +368,7 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 fragNormal, LightData light, vec
     return lighting;
 }
 
-vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
+vec3 ProcessSpotLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
 {
     vec3 lighting = vec3(0.f);
     float intensity = ComputeSpotLightIntensity(light, fragPos);
@@ -380,7 +380,7 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 fragNormal, LightData light, vec3 albed
         float attenuation = CalculateAttenuation(distance, radius, compression);
         vec3 radiance = light.Color.rgb * attenuation * light.Strength;
         vec3 L = normalize(light.Pos.xyz - fragPos);
-        vec3 V = normalize(-fragPos);
+        vec3 V = normalize(viewDir);
         vec3 H = normalize(V + L);
         lighting = CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
         lighting = ComputeLightShadow(shadowInfo, fragPos, light, lighting);
