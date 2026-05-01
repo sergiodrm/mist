@@ -52,7 +52,15 @@ vec3 Sky(in vec3 ro, in vec3 rd)
 void main()
 {
 #if !defined(SKYBOX_GBUFFER)
-    outFragColor = texture(u_cubemap, inTexCoords);
+    vec4 color = texture(u_cubemap, inTexCoords);
+#if 1
+    color = color / (color+vec4(1,1,1,1));
+    color = pow(color, vec4(1.f/2.2f));
+#else
+    color = (color * (2.51 * color + 0.03)) /
+        (color * (2.43 * color + 0.59) + 0.14);
+#endif
+    outFragColor = color;
 #else
     outAlbedo = texture(u_cubemap, inTexCoords);
     //outEmissive = 0.5f*texture(u_cubemap, inTexCoords);
