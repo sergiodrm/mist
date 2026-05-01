@@ -7,6 +7,7 @@ struct Camera
 	mat4 jitteredProjection;
 	mat4 invProjection;
 	mat4 viewProjection;
+	mat4 invViewProjection;
 	mat4 jitteredViewProjection;
 };
 

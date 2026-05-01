@@ -193,6 +193,7 @@ namespace Mist
 		glm::mat4 JitteredProjection;
 		glm::mat4 InvProjection;
 		glm::mat4 ViewProjection;
+		glm::mat4 InvViewProjection;
 		glm::mat4 JitteredViewProjection;
 
 		inline void Set(const glm::mat4& view, const glm::mat4& projection)
@@ -202,6 +203,7 @@ namespace Mist
 			Projection = projection;
 			InvProjection = glm::inverse(projection);
 			ViewProjection = projection * view;
+			InvViewProjection = glm::inverse(ViewProjection);
 		}
 
 		inline void Set(const glm::mat4& view, const glm::mat4& projection, const glm::mat4& jitteredProjection)
