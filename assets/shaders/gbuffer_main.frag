@@ -1,8 +1,5 @@
 #version 450
 
-#include <shaders/includes/material.glsl>
-
-
 layout (location = 0) in vec3 inNormal;
 layout (location = 1) in vec2 inUV;
 layout (location = 2) in vec3 inColor;
@@ -19,6 +16,8 @@ layout (location = 3) out vec4 outGBufferSpecular;
 layout (location = 4) out vec4 outGBufferMotionVectors;
 
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
+
+#include <shaders/includes/material.glsl>
 layout(set = 2, binding = 1) uniform MaterialBlock
 {
 	MaterialUniformBuffer data;
@@ -26,58 +25,23 @@ layout(set = 2, binding = 1) uniform MaterialBlock
 
 #include <shaders/includes/gbuffer_write.glsl>
 
-
 void main() 
 {
+	MaterialPBR pbrData = Material_ReadPBR(u_material.data, inUV, inNormal);
+
 	GBuffer data;
-
-	// Albedo and emissive
-	data.albedo = u_material.data.Albedo.rgb;
-	data.opacity = u_material.data.Albedo.a;
-	if (MATERIAL_HAS_ALBEDO_MAP(u_material.data.Flags.x))
-	{
-		vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], inUV);
-		data.albedo *= albedo.rgb;
-		data.opacity *= albedo.a;
-	}
-	data.emissive = u_material.data.Emissive.w * u_material.data.Emissive.rgb;
-
+	data.opacity = pbrData.opacity;
 #ifdef ALPHA_TEST
 	// Do alpha test
-	if (data.opacity < u_material.data.MetallicRoughness.a)
+	if (Material_DoAlphaTest(data.opacity, u_material.data.MetallicRoughness.a))
 		discard;
 #endif
-
-	// Normals
-	if (MATERIAL_HAS_NORMAL_MAP(u_material.data.Flags.x))
-		data.normal = inTBN * normalize(texture(u_Textures[MATERIAL_TEXTURE_NORMAL], inUV).xyz * 2.0 - vec3(1.0));
-	else
-		data.normal = normalize(inNormal);
-
-	// Metallic and Roughness
-	data.roughness = u_material.data.MetallicRoughness.g;
-	data.metallic = u_material.data.MetallicRoughness.r;
-	if (MATERIAL_HAS_METALLIC_ROUGHNESS_MAP(u_material.data.Flags.x))
-	{
-		vec3 mr = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], inUV).rgb;
-		data.roughness *= mr.g;
-		data.metallic *= mr.b;
-	}
-
-	// Specular
-	data.specular = u_material.data.MetallicRoughness.b;
-	if (MATERIAL_HAS_SPECULAR_MAP(u_material.data.Flags.x))
-	{
-		vec4 specular = texture(u_Textures[MATERIAL_TEXTURE_SPECULAR], inUV);
-		data.specular *= specular.a;
-		data.roughness *= specular.g;
-		data.metallic *= specular.b;
-	}
-
-	// Motion vectors
-	vec2 currPos = (inCurrWSPos.xy / inCurrWSPos.w) * 0.5 + 0.5;
-	vec2 prevPos = (inPrevWSPos.xy / inPrevWSPos.w) * 0.5 + 0.5;
-	data.motionVectors = (currPos - prevPos);
-
+	data.albedo = pbrData.albedo;
+	data.normal = pbrData.normal;
+	data.emissive = pbrData.emissive;
+	data.roughness = pbrData.roughness;
+	data.metallic = pbrData.metallic;
+	data.specular = pbrData.specular;
+	data.motionVectors = GBuffer_ComputeMotionVectors(inCurrWSPos, inPrevWSPos);
 	GBuffer_Write(data);
 }

@@ -60,3 +60,11 @@ vec3 GBuffer_DecodeNormal(vec3 normal)
 	return normal;
 #endif
 }
+
+vec2 GBuffer_ComputeMotionVectors(vec4 posWS_0, vec4 posWS_1)
+{
+	// Motion vectors
+	vec2 currPos = (posWS_0.xy / posWS_0.w) * 0.5 + 0.5;
+	vec2 prevPos = (posWS_1.xy / posWS_1.w) * 0.5 + 0.5;
+	return (currPos - prevPos);
+}

@@ -1,6 +1,5 @@
 #version 450
 
-#include <shaders/includes/material.glsl>
 
 
 layout (location = 0) in vec3 inNormal;
@@ -19,6 +18,8 @@ layout (location = 3) out vec4 outGBufferSpecular;
 layout (location = 4) out vec4 outGBufferMotionVectors;
 
 layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
+
+#include <shaders/includes/material.glsl>
 layout(set = 2, binding = 1) uniform MaterialBlock
 {
 	MaterialUniformBuffer data;
