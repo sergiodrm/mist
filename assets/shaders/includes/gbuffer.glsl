@@ -33,6 +33,7 @@ GBuffer GBuffer_Zero()
 }
 
 #ifdef CAMERA_DATA_INV_PROJECTION
+// Returns World Position
 vec3 GBuffer_ReprojectPosition(vec2 texCoords, float depth)
 {
 	vec4 projectedPosVS = CAMERA_DATA_INV_PROJECTION * vec4(texCoords.x * 2 - 1, (texCoords.y) * 2 - 1, depth, 1.f);
