@@ -1541,9 +1541,11 @@ namespace render
     TextureHandle Device::CreateTexture(const TextureDescription& description)
     {
         check(description.format != Format_Undefined);
-        check(description.extent.width != 0);
-        check(description.extent.height != 0);
-        check(description.extent.depth != 0);
+        check(description.extent.width > 0 && description.extent.width < GetContext().GetMaxImageDimension2D());
+        check(description.extent.height > 0 && description.extent.height < GetContext().GetMaxImageDimension2D());
+        check(description.extent.depth > 0 && description.extent.depth < GetContext().GetMaxImageDimension2D());
+        check(description.mipLevels > 0);
+        check(description.mipLevels <= utils::ComputeMipLevels(description.extent.width, description.extent.height));
         Texture* texture = _new Texture(this);
         texture->m_description = description;
 
