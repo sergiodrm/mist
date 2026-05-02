@@ -48,6 +48,7 @@ namespace Mist
 		{
 		public:
 			typedef T value_type;
+			typedef tStdAllocator<value_type> this_type;
 
 			tStdAllocator() = default;
 
@@ -77,6 +78,8 @@ namespace Mist
 			{
 				p->~U();
 			}
+
+			bool operator==(const this_type&) const { return true; }
 		};
 
 		class CodaAllocator
