@@ -168,7 +168,9 @@ namespace Mist
 			}
 		}
 		loginfo("\n");
-		logfinfo("Workspace: %s\n", CVar_Workspace.Get());
+
+		// Init workspace for file system after read cvars from cmd. CVar_Workspace could be modified.
+		FileSystem::InitWorkspace();
 
 		cCfgFile iniFile(GIniFile.Get());
 
