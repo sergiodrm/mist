@@ -39,6 +39,12 @@ do \
 	} \
 } while(0)
 
+#if defined(_DEBUG)
+#define checkdbg(expr) check(expr)
+#else
+#define checkdbg(expr) DUMMY_MACRO
+#endif
+
 
 #define unreachable_code() check(false && "Unreachable code")
 
