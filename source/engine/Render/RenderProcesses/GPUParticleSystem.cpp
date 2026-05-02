@@ -49,14 +49,12 @@ namespace Mist
 		// Create shader
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.csDesc.filePath = "shaders/particles.comp";
-			shaderDesc.type = rendersystem::ShaderProgram_Compute;
+			shaderDesc.SetCompute("shaders/particles.comp");
 			m_computeShader = renderSystem->CreateShader(shaderDesc);
 		}
 		{
             rendersystem::ShaderBuildDescription shaderDesc;
-            shaderDesc.vsDesc.filePath = "shaders/particles.vert";
-            shaderDesc.fsDesc.filePath = "shaders/particles.frag";
+			shaderDesc.SetGraphics("shaders/particles.vert", "shaders/particles.frag");
             m_graphicsShader = renderSystem->CreateShader(shaderDesc);
 		}
 
@@ -76,7 +74,7 @@ namespace Mist
 		// Fill particles
 		ResetParticles(device);
 
-		rendersystem::textureloader::LoadTextureFromFile(&m_circleGradientTexture, renderSystem->GetDevice(), cAssetPath("textures/circlegradient.jpg"));
+		rendersystem::textureloader::LoadTextureFromFile(&m_circleGradientTexture, renderSystem->GetDevice(), "textures/circlegradient.jpg");
 
 #if 0
 		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), &m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);

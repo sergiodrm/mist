@@ -13,18 +13,16 @@ namespace Mist
 	void PreprocessIrradianceResources::Init(rendersystem::RenderSystem* rs)
 	{
 		rendersystem::ShaderBuildDescription shaderDesc;
-		shaderDesc.vsDesc.filePath = "shaders/preprocess_equirectangular_cubemap.vert";
-		shaderDesc.fsDesc.filePath = "shaders/preprocess_equirectangular_cubemap.frag";
+		shaderDesc.SetGraphics("shaders/preprocess_equirectangular_cubemap.vert", "shaders/preprocess_equirectangular_cubemap.frag");
 		equirectangularShader = rs->CreateShader(shaderDesc);
 
-		shaderDesc.fsDesc.filePath = "shaders/preprocess_irradiance_cubemap.frag";
+		shaderDesc.SetGraphics("shaders/preprocess_equirectangular_cubemap.vert", "shaders/preprocess_irradiance_cubemap.frag");
 		irradianceShader = rs->CreateShader(shaderDesc);
 
-		shaderDesc.fsDesc.filePath = "shaders/preprocess_specular_cubemap.frag";
+		shaderDesc.SetGraphics("shaders/preprocess_equirectangular_cubemap.vert", "shaders/preprocess_specular_cubemap.frag");
 		specularShader = rs->CreateShader(shaderDesc);
 
-		shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-		shaderDesc.fsDesc.filePath = "shaders/preprocess_brdf.frag";
+		shaderDesc.SetGraphics("shaders/quad.vert", "shaders/preprocess_brdf.frag");
 		brdfShader = rs->CreateShader(shaderDesc);
 
 		render::TextureDescription texDesc;
@@ -109,7 +107,7 @@ namespace Mist
 			fn(result, info.userData);
 			// invalidate request
 			m_irradianceFnArray[i] = nullptr;
-			info.hdrFilepath = 0;
+			*info.hdrFilepath = 0;
 			info.cubemapWidthHeight = 0;
 			info.irradianceCubemapWidthHeight = 0;
 			info.userData = nullptr;

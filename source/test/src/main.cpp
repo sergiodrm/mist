@@ -13,7 +13,7 @@
 #include "glm/gtx/transform.hpp"
 #include "Application/Application.h"
 
-Mist::CStrVar CVar_LoadScene("g_LoadScene", "../assets/scenes/empty.yaml");
+Mist::CStrVar CVar_LoadScene("g_LoadScene", "scenes/empty.yaml");
 
 class tGameApplication : public Mist::tApplication
 {

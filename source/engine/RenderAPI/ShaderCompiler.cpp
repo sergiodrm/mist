@@ -115,17 +115,20 @@ namespace render
             {
                 shaderc_include_result* result = _new shaderc_include_result;
 
-                Mist::cAssetPath path(requestedSource);
                 char* content = nullptr;
                 size_t contentSize;
-                check(Mist::FileSystem::ReadFile(path.c_str(), &content, contentSize));
+                check(Mist::FileSystem::ReadFile(requestedSource, &content, contentSize));
                 check(content);
                 result->content = content;
                 result->content_length = contentSize;
                 result->user_data = nullptr;
-                result->source_name_length = path.GetSize() + 1;
+
+				char assetPath[Mist::MaxFilenameLength];
+				Mist::FileSystem::BuildFilepathInWorkspace(requestedSource, assetPath, sizeof(assetPath));
+
+                result->source_name_length = Mist::MaxFilenameLength;
                 char* sourceName = _new char[result->source_name_length];
-                strcpy_s(sourceName, result->source_name_length, path.c_str());
+                strcpy_s(sourceName, result->source_name_length, assetPath);
                 result->source_name = sourceName;
                 shaderlogf("Read include shader: %s (%d bytes) from %s\n", sourceName, result->source_name_length, requestingSource);
                 return result;
@@ -222,8 +225,10 @@ namespace render
             check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
             //PROFILE_SCOPE_LOG(SpvShader, "Read spv binary from file");
             // Binary file is created after last file modification, valid binary
+			char assetPath[Mist::MaxFilenameLength];
+			Mist::FileSystem::BuildFilepathInWorkspace(binaryFilepath, assetPath, sizeof(assetPath));
             FILE* f;
-            errno_t err = fopen_s(&f, binaryFilepath, "rb");
+            errno_t err = fopen_s(&f, assetPath, "rb");
             if (err || !f)
             {
                 logferror("Failed to open file: %s\n", binaryFilepath);
@@ -242,13 +247,18 @@ namespace render
 
         bool WriteCompiledBinaryToFile(const char* binaryFilepath, uint32_t* binaryData, size_t binaryCount)
         {
+            // TODO: use FileSystem api to write to a file
             profile_shader_scope_f(WriteCompiledBinaryToFile, "Write file with binary spv shader %s", binaryFilepath);
             check(binaryFilepath && *binaryFilepath && binaryData && binaryCount);
+
+			char assetPath[Mist::MaxFilenameLength];
+			Mist::FileSystem::BuildFilepathInWorkspace(binaryFilepath, assetPath, sizeof(assetPath));
+
             char dir[256];
-            Mist::FileSystem::GetDirectoryFromFilepath(binaryFilepath, dir, Mist::CountOf(dir));
+            Mist::FileSystem::GetDirectoryFromFilepath(assetPath, dir, Mist::CountOf(dir));
             Mist::FileSystem::Mkdir(dir);
             FILE* f;
-            errno_t err = fopen_s(&f, binaryFilepath, "wb");
+            errno_t err = fopen_s(&f, assetPath, "wb");
             check(!err && f && "Failed to write shader compiled file");
             size_t writtenCount = fwrite(binaryData, sizeof(uint32_t), binaryCount, f);
             check(writtenCount == binaryCount);
@@ -258,21 +268,18 @@ namespace render
             return true;
         }
 
-        bool ContainsNewerFileInIncludes_Recursive(const Mist::cAssetPath& rootPath, const char* filepath, const CompilationOptions* options)
+        bool ContainsNewerFileInIncludes_Recursive(const char* rootPath, const char* filepath, const CompilationOptions* options)
         {
-            // current dependency path
-            Mist::cAssetPath assetPath(filepath);
-
             // binary filepath from root. We need to compare include files with the final result.
             char binaryFilepath[1024];
             GenerateSpvFileName(binaryFilepath, rootPath, *options);
 
-            if (Mist::FileSystem::IsFileNewerThanOther(assetPath, binaryFilepath))
+            if (Mist::FileSystem::IsFileNewerThanOther(filepath, binaryFilepath))
                 return true;
 
             size_t contentSize;
             char* content;
-            check(Mist::FileSystem::ReadTextFile(assetPath, &content, contentSize));
+            check(Mist::FileSystem::ReadTextFile(filepath, &content, contentSize));
             char* it = content;
             bool containsNewerFile = false;
             while (it = strstr(it, "#include"))
@@ -312,10 +319,8 @@ namespace render
         bool ShouldRecompileShaderFile(const char* filepath, const CompilationOptions* compileOptions)
         {
             check(filepath && *filepath && compileOptions);
-            Mist::cAssetPath assetPath(filepath);
-            profile_shader_scope_f(ShouldRecompileShaderFile, "Build shader dependency (%s)", assetPath);
-
-            return ContainsNewerFileInIncludes_Recursive(assetPath, filepath, compileOptions);
+			profile_shader_scope_f(ShouldRecompileShaderFile, "Build shader dependency (%s)", filepath);
+            return ContainsNewerFileInIncludes_Recursive(filepath, filepath, compileOptions);
         }
 
         CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions)
@@ -323,8 +328,7 @@ namespace render
             profile_shader_scope_f(Compile, "Compile shader (%s)", filepath);
             char* source;
             size_t s;
-            Mist::cAssetPath path(filepath);
-            check(Mist::FileSystem::ReadFile(path, &source, s));
+            check(Mist::FileSystem::ReadFile(filepath, &source, s));
 
             shaderc::Compiler compiler;
             shaderc::CompileOptions options;
@@ -332,7 +336,6 @@ namespace render
 
             options.SetIncluder(std::make_unique<ShaderIncluder>());
 
-#if 1
             if (additionalOptions)
             {
                 for (uint32_t i = 0; i < (uint32_t)additionalOptions->macroDefinitionArray.size(); ++i)
@@ -347,16 +350,19 @@ namespace render
                     options.SetGenerateDebugInfo();
                 if (*additionalOptions->entryPoint)
                     entryPoint = additionalOptions->entryPoint;
-        }
+            }
             else
-#endif // 0
             {
                 options.SetGenerateDebugInfo();
                 //options.SetOptimizationLevel(shaderc_optimization_level_size);
             }
 
+            // build relative path in workspace path
+            char filepathInWs[Mist::MaxFilenameLength];
+            Mist::FileSystem::BuildFilepathInWorkspace(filepath, filepathInWs, sizeof(filepathInWs));
+
             shaderc_shader_kind kind = GetShaderType(shaderType);
-            shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, path, options);
+            shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, filepathInWs, options);
             if (!HandleError(prepRes, "preprocess"))
                 return CompiledBinary();
 
@@ -364,7 +370,7 @@ namespace render
 #ifdef SHADER_DUMP_PREPROCESS_RESULT
             Mist::Logf(Mist::LogLevel::Debug, "Preprocessed source:\n\n%s\n\n", preprocessSource.c_str());
 #endif
-            shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.getLength(), kind, path, entryPoint, options);
+            shaderc::AssemblyCompilationResult result = compiler.CompileGlslToSpvAssembly(preprocessSource.c_str(), preprocessSource.getLength(), kind, filepathInWs, entryPoint, options);
             if (!HandleError(result, "assembly"))
                 return CompiledBinary();
             Mist::String assemble(result.cbegin());
@@ -394,10 +400,9 @@ namespace render
 
         CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions, bool forceCompilation)
         {
-            Mist::cAssetPath assetPath(filepath);
-            profile_shader_scope_f(ProcessShaderFile, "shader_compiler::BuildShader (%s)", assetPath);
+            profile_shader_scope_f(ProcessShaderFile, "shader_compiler::BuildShader (%s)", filepath);
             shaderlog("******************************\n");
-            shaderlogf("Compiling shader source: [%s]\n", assetPath);
+            shaderlogf("Compiling shader source: [%s]\n", filepath);
             if (additionalOptions)
             {
                 shaderlogf("* Generate debug info: %s\n", additionalOptions->generateDebugInfo);
@@ -413,24 +418,24 @@ namespace render
 
             check(!strcmp(additionalOptions->entryPoint, "main") && "Set shader entry point not supported yet.");
             char binaryFilepath[1024];
-            GenerateSpvFileName(binaryFilepath, assetPath, *additionalOptions);
+            GenerateSpvFileName(binaryFilepath, filepath, *additionalOptions);
 
-            check(CheckShaderFileExtension(assetPath, type));
+            check(CheckShaderFileExtension(filepath, type));
 
             CompiledBinary bin;
-            if (!forceCompilation && !ShouldRecompileShaderFile(assetPath, additionalOptions))
+            if (!forceCompilation && !ShouldRecompileShaderFile(filepath, additionalOptions))
             {
-                shaderlogf("Loading shader binary from compiled file: %s.spv\n", filepath);
+                shaderlogf("Loading shader binary from compiled file: %s\n", filepath);
                 check(ReadSpvBinaryFromFile(binaryFilepath, &bin.binary, &bin.binaryCount));
             }
             else
             {
                 profile_shader_scope_f(ShaderCompilation, "Compile shader");
                 if (forceCompilation)
-                    logfwarn("Force shader recompilation: %s\n", assetPath);
+                    logfwarn("Force shader recompilation: %s\n", filepath);
                 else
-                    logfwarn("Compiled binary not found or shader source is newer (%s)\n", assetPath);
-                bin = shader_compiler::Compile(assetPath, type, additionalOptions);
+                    logfwarn("Compiled binary not found or shader source is newer (%s)\n", filepath);
+                bin = shader_compiler::Compile(filepath, type, additionalOptions);
                 if (!bin.IsCompilationSucceed())
                 {
                     logferror("Shader compilation failed (%s)\n", filepath);
@@ -460,7 +465,7 @@ namespace render
             // At this point we must have a valid binary.
             check(bin.IsCompilationSucceed());
 
-            shaderlogf("Shader built successfully (%s; %lld bytes)\n", assetPath, bin.binaryCount * sizeof(uint32_t));
+            shaderlogf("Shader built successfully (%s; %lld bytes)\n", filepath, bin.binaryCount * sizeof(uint32_t));
             return bin;
         }
 

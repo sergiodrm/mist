@@ -88,7 +88,8 @@ namespace rendersystem
         {
             profile_texload_scope_f(LoadTextureData_u8, "LoadTexture_u8 (%s)", filepath);
             check(out);
-            Mist::cAssetPath assetPath(filepath);
+            char assetPath[Mist::MaxFilenameLength];
+            Mist::FileSystem::BuildFilepathInWorkspace(filepath, assetPath, sizeof(assetPath));
             stbi_set_flip_vertically_on_load(flipVertical);
             int32_t width, height, channels;
             stbi_uc* pixels = stbi_load(assetPath, &width, &height, &channels, STBI_rgb_alpha);
@@ -111,7 +112,8 @@ namespace rendersystem
         {
             profile_texload_scope_f(LoadTextureData_f, "LoadTextureData_f (%s)", filepath);
             check(out);
-            Mist::cAssetPath assetPath(filepath);
+			char assetPath[Mist::MaxFilenameLength];
+			Mist::FileSystem::BuildFilepathInWorkspace(filepath, assetPath, sizeof(assetPath));
             stbi_set_flip_vertically_on_load(flipVertical);
             int32_t width, height, channels;
 			float* pixels = stbi_loadf(assetPath, &width, &height, &channels, STBI_rgb_alpha);

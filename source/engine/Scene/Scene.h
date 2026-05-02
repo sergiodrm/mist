@@ -79,10 +79,9 @@ namespace Mist
 
 	struct MeshComponent
 	{
-		cAssetPath MeshAssetPath;
 		uint32_t MeshIndex;
 
-		MeshComponent() : MeshIndex(UINT32_MAX), MeshAssetPath() { }
+		MeshComponent() : MeshIndex(UINT32_MAX) { }
 	};
 
 	struct CameraComponent
@@ -243,7 +242,7 @@ namespace Mist
 		render::TextureHandle cubemap;
 		render::TextureHandle irradiance;
 		render::TextureHandle specular;
-		cAssetPath filepath;
+		char filepath[MaxFilenameLength];
 	};
 
 	class Scene
@@ -322,7 +321,7 @@ namespace Mist
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr index_t MaxNodeLevel = 16;
-		cAssetPath m_sceneFile;
+		char m_sceneFile[MaxFilenameLength];
 		tFixedHeapArray<String> m_names;
 		tFixedHeapArray<Hierarchy> m_hierarchy;
 		tFixedHeapArray<TransformComponent> m_transformComponents;

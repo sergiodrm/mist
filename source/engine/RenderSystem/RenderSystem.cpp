@@ -962,8 +962,7 @@ namespace rendersystem
         m_screenQuadCopy.sampler = m_device->CreateSampler(samplerDesc);
 
         ShaderBuildDescription shaderDesc;
-        shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-        shaderDesc.fsDesc.filePath = "shaders/quad.frag";
+        shaderDesc.SetGraphics("shaders/quad.vert", "shaders/quad.frag");
         m_screenQuadCopy.shader = _new ShaderProgram(m_device, shaderDesc);
     }
 
@@ -1386,14 +1385,14 @@ namespace rendersystem
         bool Compile(const ShaderFileDescription& desc, render::ShaderType stage)
         {
             check(GetShader(stage) == nullptr);
-            render::shader_compiler::CompiledBinary bin = render::shader_compiler::BuildShader(desc.filePath.c_str(), stage, &desc.options);
+            render::shader_compiler::CompiledBinary bin = render::shader_compiler::BuildShader(desc.filePath, stage, &desc.options);
             if (!bin.IsCompilationSucceed())
                 return false;
             check(render::shader_compiler::BuildShaderParams(bin, stage, m_properties));
 
             render::ShaderDescription shaderDesc;
-            shaderDesc.debugName = desc.filePath.c_str();
-            shaderDesc.name = desc.filePath.c_str();
+            shaderDesc.debugName = desc.filePath;
+            shaderDesc.name = desc.filePath;
             shaderDesc.type = stage;
             m_shaders.push_back(m_device->CreateShader(shaderDesc, bin.binary, bin.binaryCount));
 
@@ -1617,22 +1616,22 @@ namespace rendersystem
 
     bool ShaderProgram::ReloadGraphics()
     {
-        check(!m_description->vsDesc.filePath.empty() || !m_description->fsDesc.filePath.empty());
+        check(*m_description->vsDesc.filePath || *m_description->fsDesc.filePath);
 
         // generate shader modules
         bool succeed = false;
 
         ShaderCompiler compiler(m_device);
-        if (!m_description->vsDesc.filePath.empty())
+        if (*m_description->vsDesc.filePath)
             succeed = compiler.Compile(m_description->vsDesc, render::ShaderType_Vertex);
-        if (succeed && !m_description->fsDesc.filePath.empty())
+        if (succeed && *m_description->fsDesc.filePath)
             succeed = compiler.Compile(m_description->fsDesc, render::ShaderType_Fragment);
 
         if (!succeed)
         {
             logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
-                m_description->vsDesc.filePath.empty() ? "none" : m_description->vsDesc.filePath.c_str(),
-                m_description->fsDesc.filePath.empty() ? "none" : m_description->fsDesc.filePath.c_str());
+                !*m_description->vsDesc.filePath ? "none" : m_description->vsDesc.filePath,
+                !*m_description->fsDesc.filePath ? "none" : m_description->fsDesc.filePath);
             return false;
         }
 
@@ -1658,14 +1657,14 @@ namespace rendersystem
 
     bool ShaderProgram::ReloadCompute()
     {
-        check(!m_description->csDesc.filePath.empty());
+        check(*m_description->csDesc.filePath);
 
         ShaderCompiler compiler(m_device);
 
         if (!compiler.Compile(m_description->csDesc, render::ShaderType_Compute))
         {
             logferror("Failed to generate shader modules for graphics shaders [%s]\n",
-                m_description->csDesc.filePath.empty() ? "none" : m_description->csDesc.filePath.c_str());
+                !*m_description->csDesc.filePath ? "none" : m_description->csDesc.filePath);
             return false;
         }
 

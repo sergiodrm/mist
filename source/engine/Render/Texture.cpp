@@ -33,7 +33,7 @@ namespace Mist
 		: m_owner(owner), m_params(params), m_textureData{}
 	{
 		check(m_owner);
-		check(FileSystem::FileExists(m_params.filepath.c_str()));
+		check(FileSystem::FileExists(m_params.filepath));
 	}
 
 	resources::IResourceLoader::ProcType Texture::TextureLoader::GetProcType() const

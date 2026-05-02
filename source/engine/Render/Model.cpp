@@ -307,25 +307,27 @@ namespace gltf_api
 
 	static cgltf_data* ParseFile(const char* filepath)
 	{
+		char assetPath[Mist::MaxFilenameLength];
+		Mist::FileSystem::BuildFilepathInWorkspace(filepath, assetPath, sizeof(assetPath));
 		cgltf_options options;
 		memset(&options, 0, sizeof(cgltf_options));
 		cgltf_data* data{ nullptr };
-		cgltf_result result = cgltf_parse_file(&options, filepath, &data);
+		cgltf_result result = cgltf_parse_file(&options, assetPath, &data);
 		if (result != cgltf_result_success)
 		{
-			HandleError(result, filepath);
+			HandleError(result, assetPath);
 			return nullptr;
 		}
-		result = cgltf_load_buffers(&options, data, filepath);
+		result = cgltf_load_buffers(&options, data, assetPath);
 		if (result != cgltf_result_success)
 		{
-			HandleError(result, filepath);
+			HandleError(result, assetPath);
 			return nullptr;
 		}
 		result = cgltf_validate(data);
 		if (result != cgltf_result_success)
 		{
-			HandleError(result, filepath);
+			HandleError(result, assetPath);
 			FreeData(data);
 			return nullptr;
 		}
@@ -443,7 +445,7 @@ namespace gltf_api
 		check(texView.texcoord == 0);
 
 		// Get full texture path
-		char texturePath[512];
+		char texturePath[Mist::MaxFilenameLength];
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
 
 		if (texView.has_transform)
@@ -454,7 +456,7 @@ namespace gltf_api
 		loadParams.format = format;
 		loadParams.calculateMipLevels = true;
 		loadParams.flipVertical = false;
-		loadParams.filepath = texturePath;
+		strcpy_s(loadParams.filepath, texturePath);
 		(*texOut) = _new Mist::Texture();
 		(*texOut)->LoadFromFile(loadParams);
 
@@ -609,49 +611,48 @@ namespace Mist
 	{
 		PROFILE_SCOPE_LOGF(LoadModel, "Load model (%s)", filepath);
 		check(m_materials.IsEmpty() && m_meshes.IsEmpty());
-		cAssetPath assetPath(filepath);
 		
-		if (!ValidateModelExtension(assetPath))
+		if (!ValidateModelExtension(filepath))
 		{
-			logferror("Model file extension not recognized: %s.\n", assetPath.c_str());
+			logferror("Model file extension not recognized: %s.\n", filepath);
 			return false;
 		}
 		
-		cgltf_data* data = gltf_api::ParseFile(assetPath);
-		char rootAssetPath[512];
-		FileSystem::GetDirectoryFromFilepath(assetPath, rootAssetPath, 512);
+		cgltf_data* data = gltf_api::ParseFile(filepath);
 		if (!data)
 		{
-			logferror("Cannot open file to load scene model: %s.\n", assetPath);
+			logferror("Cannot open file to load scene model: %s.\n", filepath);
 			return false;
 		}
-
 		if (!data->nodes_count)
 		{
-			logferror("Model file without nodes in scene: %s.\n", assetPath);
+			logferror("Model file without nodes in scene: %s.\n", filepath);
 			gltf_api::FreeData(data);
 			return false;
 		}
-		SetName(assetPath);
+		SetName(filepath);
+
+		char rootFilePath[512];
+		FileSystem::GetDirectoryFromFilepath(filepath, rootFilePath, 512);
 		
 		char nameFile[256];
 		*nameFile = 0;
-		FileSystem::GetFileNameFromFilepath(assetPath.c_str(), assetPath.GetSize(), nameFile, sizeof(nameFile));
+		FileSystem::GetFileNameFromFilepath(filepath, nameFile, sizeof(nameFile));
 		check(*nameFile);
 
 		loadmeshlog("=== Begin loading model ===\n");
-		loadmeshlogf("Loading model from file: %s\n", assetPath);
+		loadmeshlogf("Loading model from file: %s\n", filepath);
 		loadmeshlogf("* nodes:		%4d\n", data->nodes_count);
 		loadmeshlogf("* materials:	%4d\n", data->materials_count);
 		loadmeshlogf("* meshes:		%4d\n", data->meshes_count);
 		loadmeshlogf("* textures:	%4d\n", data->textures_count);
 
 		{
-			loadmesh_profile_logf_scope(LoadMaterials, "Load materials (%s)(%d)", assetPath, data->materials_count);
+			loadmesh_profile_logf_scope(LoadMaterials, "Load materials (%s)(%d)", filepath, data->materials_count);
 			if (data->materials_count)
 			{
 				char mtlFilepath[256];
-				sprintf_s(mtlFilepath, "%s/materials_%s.mtl", rootAssetPath, nameFile);
+				sprintf_s(mtlFilepath, "%s%s.mtl", rootFilePath, nameFile);
 				uint32_t materialsCount = UINT32_MAX;
 				cMaterial* materials = nullptr;
 				if (!cMaterial::UnserializeMaterials(mtlFilepath, materials, materialsCount))
@@ -660,7 +661,7 @@ namespace Mist
 					for (uint32_t i = 0; i < data->materials_count; ++i)
 					{
 						m_materials[i].SetName(data->materials[i].name && *data->materials[i].name ? data->materials[i].name : "unknown");					
-						gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootAssetPath);
+						gltf_api::LoadMaterial(m_materials[i], device, data->materials[i], rootFilePath);
 						m_materials[i].SetupShader(g_render);
 					}
 					
@@ -674,14 +675,14 @@ namespace Mist
 			}
 			else
 			{
-				logfwarn("Model without materials: %s\n", assetPath);
+				logfwarn("Model without materials: %s\n", filepath);
 				InitMaterials(1);
 				m_materials[0] = *cMaterial::GetDefaultMaterial();
 			}
 		}
 
 		{
-			loadmesh_profile_logf_scope(LoadMesh, "Load meshes (%s)(%d)", assetPath, data->meshes_count);
+			loadmesh_profile_logf_scope(LoadMesh, "Load meshes (%s)(%d)", filepath, data->meshes_count);
 			InitNodes((index_t)data->nodes_count);
 			InitMeshes((index_t)data->meshes_count);
 			m_aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };

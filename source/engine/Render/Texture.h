@@ -30,7 +30,7 @@ namespace Mist
 
             struct LoadParams
             {
-                cAssetPath filepath;
+                char filepath[MaxFilenameLength];
                 bool flipVertical = false;
                 bool calculateMipLevels = true;
                 render::Format format = render::Format_Undefined;

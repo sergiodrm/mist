@@ -197,8 +197,10 @@ namespace rendersystem
                 io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
                 io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-                Mist::cAssetPath fontPath("fonts/mono/cascadiamono.ttf");
-                io.Fonts->AddFontFromFileTTF(fontPath, 12.f);
+                const char* fontPath = "fonts/mono/cascadiamono.ttf";
+				char assetPath[Mist::MaxFilenameLength];
+				Mist::FileSystem::BuildFilepathInWorkspace(fontPath, assetPath, sizeof(assetPath));
+                io.Fonts->AddFontFromFileTTF(assetPath, 12.f);
                 io.Fonts->Build();
 
                 ImGuiStyle& style = ImGui::GetStyle();

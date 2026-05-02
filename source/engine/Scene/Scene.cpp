@@ -99,11 +99,12 @@ namespace Mist
 		m_irradianceRequestInfo->cubemapWidthHeight = 1024;
 		m_irradianceRequestInfo->irradianceCubemapWidthHeight = 32;
 		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
-		//m_irradianceRequestInfo->hdrFilepath = "textures/flamingo_pan_4k.hdr";
-		//m_irradianceRequestInfo->hdrFilepath = "textures/rosendal_park_sunset_puresky_4k.hdr";
-		m_irradianceRequestInfo->hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
-		//m_irradianceRequestInfo->hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
-		//m_irradianceRequestInfo->hdrFilepath = "textures/climbing_gym_4k.hdr";
+		//const char* hdrFilepath = "textures/flamingo_pan_4k.hdr";
+		//const char* hdrFilepath = "textures/rosendal_park_sunset_puresky_4k.hdr";
+		const char* hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
+		//const char* hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
+		//const char* hdrFilepath = "textures/climbing_gym_4k.hdr";
+		strcpy_s(m_irradianceRequestInfo->hdrFilepath, hdrFilepath);
 		m_irradianceRequestInfo->userData = this;
 	}
 
@@ -312,11 +313,10 @@ namespace Mist
 	void Scene::LoadScene(const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadScene, "Load scene (%s)", filepath);
-
-		m_sceneFile = filepath;
+		strcpy_s(m_sceneFile, sizeof(m_sceneFile), filepath);
 
 		cFile file;
-		check(file.OpenText(filepath, cFile::FileMode_Read) == cFile::Result_Ok);
+		check(file.OpenText(m_sceneFile, cFile::FileMode_Read) == cFile::Result_Ok);
 		size_t size = file.GetContentSize();
 		check(size);
 		char* content = _new char[size];
@@ -329,6 +329,7 @@ namespace Mist
 		check(root);
 		YAML::Node envNode = root["Environment"];
 		check(envNode);
+#if 0
 		m_ambientColor = envNode["Ambient"].as<glm::vec3>();
 		char skyboxTextures[Skybox::COUNT][256];
 		strcpy_s(skyboxTextures[Skybox::FRONT], envNode["Skybox"]["Front"].as<std::string>().c_str());
@@ -344,8 +345,7 @@ namespace Mist
 			skyboxTextures[Skybox::RIGHT],
 			skyboxTextures[Skybox::TOP],
 			skyboxTextures[Skybox::BOTTOM]);
-
-
+#endif // 0
 
 		YAML::Node renderObjectSeq = root["RenderObjects"];
 		check(renderObjectSeq);
@@ -388,8 +388,8 @@ namespace Mist
 			if (meshNode)
 			{
 				MeshComponent m;
-				m.MeshAssetPath.Set(meshNode["MeshAssetPath"].as<std::string>().c_str());
-				m.MeshIndex = LoadModel(m.MeshAssetPath);
+				std::string filepath = std::move(meshNode["MeshAssetPath"].as<std::string>());
+				m.MeshIndex = LoadModel(filepath.c_str());
 				SetMesh(rb, m);
 			}
 
@@ -435,12 +435,6 @@ namespace Mist
 			emitter << YAML::BeginMap;
 			emitter << YAML::Key << "Ambient" << YAML::Value << m_ambientColor;
 			emitter << YAML::Key << "Skybox" << YAML::BeginMap;
-			emitter << YAML::Key << "Front" << YAML::Value << m_skybox.CubemapFiles[Skybox::FRONT];
-			emitter << YAML::Key << "Back" << YAML::Value << m_skybox.CubemapFiles[Skybox::BACK];
-			emitter << YAML::Key << "Top" << YAML::Value << m_skybox.CubemapFiles[Skybox::TOP];
-			emitter << YAML::Key << "Bottom" << YAML::Value << m_skybox.CubemapFiles[Skybox::BOTTOM];
-			emitter << YAML::Key << "Left" << YAML::Value << m_skybox.CubemapFiles[Skybox::LEFT];
-			emitter << YAML::Key << "Right" << YAML::Value << m_skybox.CubemapFiles[Skybox::RIGHT];
 			emitter << YAML::EndMap;
 			emitter << YAML::EndMap;
 		}
@@ -485,10 +479,15 @@ namespace Mist
 
 			if (m_meshComponentMap.contains(i))
 			{
-				emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
 				const MeshComponent& mesh = m_meshComponentMap[i];
-				emitter << YAML::Key << "MeshAssetPath" << YAML::Value << mesh.MeshAssetPath;
-				emitter << YAML::EndMap;
+				if (mesh.MeshIndex != UINT32_MAX)
+				{
+					emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
+					const cModel* model = GetModel(mesh.MeshIndex);
+					check(model);
+					emitter << YAML::Key << "MeshAssetPath" << YAML::Value << model->GetName();
+					emitter << YAML::EndMap;
+				}
 			}
 
 			if (m_cameraComponentMap.contains(i))
@@ -512,12 +511,11 @@ namespace Mist
 		check(emitter.good());
 		const char* out = emitter.c_str();
 		size_t size = emitter.size();
-		//logfinfo("YAML %u b\n%s\n", size, out);
+		
 		cFile file;
 		check(file.OpenText(filepath, cFile::FileMode_Write) == cFile::Result_Ok);
 		file.Write(out, size);
 		file.Close();
-
 		logfok("--- Scene file saved in: %s (%d bytes) ---\n", filepath, size);
 	}
 
@@ -708,7 +706,7 @@ namespace Mist
 	{
 		const Renderer* renderer = m_engine->GetRenderer();
 		Preprocess* preprocess = (Preprocess*)renderer->GetRenderProcess(RENDERPROCESS_PREPROCESSES);
-		m_irradianceCube.filepath = info.hdrFilepath;
+		strcpy_s(m_irradianceCube.filepath, sizeof(m_irradianceCube.filepath), info.hdrFilepath);
 		check(info.userData == this);
 		preprocess->PushIrradiancePreprocess(info, 
 			[](const PreprocessIrradianceResult& result, void* userData) 
@@ -753,8 +751,8 @@ namespace Mist
 		float rotStep = 0.1f;
 		float sclStep = 0.5f;
 
-		char tempSceneFile[256];
-		strcpy_s(tempSceneFile, m_sceneFile.GetAssetPath());
+		char tempSceneFile[MaxFilenameLength];
+		strcpy_s(tempSceneFile, m_sceneFile);
 
 		ImGui::Columns(3);
 		if (ImGui::Button("Save"))
@@ -763,8 +761,8 @@ namespace Mist
 		if (ImGui::Button("Load"))
 			LoadScene(tempSceneFile);
 		ImGui::NextColumn();
-		if (ImGui::InputText("Scene file", tempSceneFile, 256))
-			m_sceneFile = tempSceneFile;
+		if (ImGui::InputText("Scene file", tempSceneFile, sizeof(tempSceneFile)))
+			strcpy_s(m_sceneFile, sizeof(m_sceneFile), tempSceneFile);
 		ImGui::Columns();
 
 		ImGui::Separator();
@@ -923,7 +921,6 @@ namespace Mist
 							const cModel& model = m_models[meshComp.MeshIndex];
 							AABB_t aabb = model.GetAABB().ApplyTransform(transform);
 							DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(0, 1, 0));
-							ImGui::Text("Model: [%u] %s", meshComp.MeshIndex, meshComp.MeshAssetPath);
 							ImGui::Text("Model name: %s", model.GetName());
 							if (ImGui::Button("Dump info"))
 								model.DumpInfo();
@@ -1003,10 +1000,10 @@ namespace Mist
 		{
 			if (ImGui::Button("Reload IBL"))
 				LoadIrradianceCube(*m_irradianceRequestInfo);
-			char buff[256];
+			char buff[Mist::MaxFilenameLength];
 			strcpy_s(buff, m_irradianceRequestInfo->hdrFilepath);
 			if (ImGui::InputText("HDR filepath", buff, sizeof(buff)))
-				m_irradianceRequestInfo->hdrFilepath = buff;
+				strcpy_s(m_irradianceRequestInfo->hdrFilepath, buff);
 			int res = m_irradianceRequestInfo->cubemapWidthHeight;
 			if (ImGui::DragInt("Cubemap resolution", &res, 1.f, 0, 8192, "%5d"))
 				m_irradianceRequestInfo->cubemapWidthHeight = res;

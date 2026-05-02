@@ -78,8 +78,7 @@ namespace Mist
 		}
 
 		rendersystem::ShaderBuildDescription desc;
-		desc.type = rendersystem::ShaderProgram_Compute;
-		desc.csDesc.filePath = "shaders/taa.comp";
+		desc.SetCompute("shaders/taa.comp");
 		desc.csDesc.options.PushMacroDefinition("TAA_WGS_X", TAA_WGS_X);
 		desc.csDesc.options.PushMacroDefinition("TAA_WGS_Y", TAA_WGS_Y);
 		m_taaShader[TAA_Basic] = rs->CreateShader(desc);
@@ -203,9 +202,7 @@ namespace Mist
 			}
 
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.type = rendersystem::ShaderProgram_Graphics;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/bloom.frag");
 			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_DOWNSAMPLE");
 			m_shaders.downsample = rs->CreateShader(shaderDesc);
 		}
@@ -214,9 +211,7 @@ namespace Mist
 		{
 			// Create shader without BLOOM_DOWNSCALE macro
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.type = rendersystem::ShaderProgram_Graphics;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/bloom.frag");
 			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_UPSAMPLE");
 			m_shaders.upsample = rs->CreateShader(shaderDesc);
 
@@ -224,18 +219,14 @@ namespace Mist
 
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.type = rendersystem::ShaderProgram_Graphics;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/mix.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/mix.frag");
 			m_shaders.compose = rs->CreateShader(shaderDesc);
 
 		}
 
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.type = rendersystem::ShaderProgram_Graphics;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/bloom.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/bloom.frag");
 			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_FILTER");
 			m_shaders.filter = rs->CreateShader(shaderDesc);
 		}
@@ -444,8 +435,7 @@ namespace Mist
 			m_hdrOutput = device->CreateRenderTarget(rtDesc);
 
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/hdr.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/hdr.frag");
 			m_hdrShader = rs->CreateShader(shaderDesc);
 		}
 		

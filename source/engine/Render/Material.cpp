@@ -41,7 +41,7 @@ namespace Mist
 			{
 				Texture* texture = _new Texture();
 				Mist::Texture::TextureLoader::LoadParams loadParams;
-				loadParams.filepath = str.c_str();
+				strcpy_s(loadParams.filepath, str.c_str());
 				loadParams.calculateMipLevels = true;
 				loadParams.format = GetMaterialTextureFormat(textureId);
 				texture->LoadFromFile(loadParams);
@@ -64,9 +64,12 @@ namespace Mist
 				emitter << YAML::Key << "Name" << YAML::Value << mtl.GetName();
 
 				// Shader
-				check(mtl.GetShaderProgram());
-				emitter << YAML::Key << "Vertex shader" << YAML::Value << (mtl.GetShaderProgram()->GetVertexShader() ? mtl.GetShaderProgram()->GetVertexShader()->m_description.name.c_str() : "None");
-				emitter << YAML::Key << "Fragment shader" << YAML::Value << (mtl.GetShaderProgram()->GetFragmentShader() ? mtl.GetShaderProgram()->GetFragmentShader()->m_description.name.c_str() : "None");
+				const rendersystem::ShaderProgram* shader = mtl.GetShaderProgram();
+				check(shader);
+				if (*shader->GetDescription().vsDesc.filePath)
+					emitter << YAML::Key << "Vertex shader" << YAML::Value << shader->GetDescription().vsDesc.filePath;
+				if (*shader->GetDescription().fsDesc.filePath)
+					emitter << YAML::Key << "Fragment shader" << YAML::Value << shader->GetDescription().fsDesc.filePath;
 
 				// Textures
 				emitter << YAML::Key << "Textures" << YAML::BeginMap;
@@ -74,7 +77,7 @@ namespace Mist
 				{
 					eMaterialTexture texId = (eMaterialTexture)i;
 					if (mtl.GetTexture(texId))
-						SerializeTexture(emitter, GetMaterialTextureStr(texId), mtl.GetTexture(texId)->GetLoadParams().filepath.c_str(), mtl.GetSampler(texId));
+						SerializeTexture(emitter, GetMaterialTextureStr(texId), mtl.GetTexture(texId)->GetLoadParams().filepath, mtl.GetSampler(texId));
 				}
 				emitter << YAML::EndMap;
 
@@ -116,15 +119,15 @@ namespace Mist
 
 				mtl.SetName(it["Name"].as<std::string>().c_str());
 
-				cAssetPath vs;
-				cAssetPath fs;
+				std::string vs;
+				std::string fs;
 
 				YAML::Node shader = it["Vertex shader"];
 				if (shader && shader.IsScalar())
-					vs = shader.as<std::string>().c_str();
+					vs = std::move(shader.as<std::string>());
 				shader = it["Fragment shader"];
 				if (shader && shader.IsScalar())
-					fs = shader.as<std::string>().c_str();
+					fs = std::move(shader.as<std::string>());
 
 				// textures
 				YAML::Node texNode = it["Textures"];
@@ -174,7 +177,7 @@ namespace Mist
 				return false;
 			f.Write(e.c_str(), e.size());
 			f.Close();
-			logfok("%d materials saved to: %s [%lld b]\n", count, cAssetPath(filepath), e.size());
+			logfok("%d materials saved to: %s [%lld b]\n", count, filepath, e.size());
 			return true;
 		}
 
@@ -330,9 +333,7 @@ namespace Mist
 	{
 		static const char* alphaTestFlag = "ALPHA_TEST";
 		rendersystem::ShaderBuildDescription desc;
-		desc.type = rendersystem::ShaderProgram_Graphics;
-		desc.vsDesc.filePath = vsFile;
-		desc.fsDesc.filePath = fsFile;
+		desc.SetGraphics(vsFile, fsFile);
 		if (m_flags & MATERIAL_FLAG_BLEND)
 		{
 			check(!(m_flags & MATERIAL_FLAG_OPAQUE) && !(m_flags & MATERIAL_FLAG_MASK));

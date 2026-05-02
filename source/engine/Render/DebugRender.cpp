@@ -194,14 +194,12 @@ namespace Mist
 			//Renderer* renderer = context.Renderer;
 			{
 				rendersystem::ShaderBuildDescription shaderDesc;
-				shaderDesc.vsDesc.filePath = "shaders/line.vert";
-				shaderDesc.fsDesc.filePath = "shaders/line.frag";
+				shaderDesc.SetGraphics("shaders/line.vert", "shaders/line.frag");
 				DebugRenderPipeline.m_lineShader = g_render->CreateShader(shaderDesc);
 			}
 			{
                 rendersystem::ShaderBuildDescription shaderDesc;
-                shaderDesc.vsDesc.filePath = "shaders/screenquad.vert";
-                shaderDesc.fsDesc.filePath = "shaders/screenquad.frag";
+				shaderDesc.SetGraphics("shaders/screenquad.vert", "shaders/screenquad.frag");
                 DebugRenderPipeline.m_quadShader = g_render->CreateShader(shaderDesc);
 			}
 

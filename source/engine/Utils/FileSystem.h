@@ -6,10 +6,17 @@
 
 namespace Mist
 {
-	extern CStrVar CVar_Workspace;
+	static constexpr uint32_t MaxFilenameLength = 256;
 
 	namespace FileSystem
 	{
+
+		void InitWorkspace();
+		// Relative path to the asset directory. All files needed must be read from this root path.
+		const char* GetWorkspacePath();
+		// Workspace path length counting with final \0 character
+		uint32_t GetWorkspacePathLength();
+
 		bool IsFileNewerThanOther(const char* file, const char* other);
         bool FileExists(const char* filename);
 		bool DirExists(const char* directory);
@@ -32,55 +39,11 @@ namespace Mist
 			GetDirectoryFromFilepath(filepath, N, dir, size);
 		}
 
-		void GetFileNameFromFilepath(const char* filepath, size_t filepathSize, char* outName, size_t outNameBufferSize);
+		void GetFileNameFromFilepath(const char* filepath, char* outName, size_t outNameBufferSize);
 		bool GetFileExtension(const char* filepath, char* outBuffer, size_t bufferSize);
+
+		void BuildFilepathInWorkspace(const char* filepath, char* filepathInWs, size_t bufferSize);
 	}
-
-	class cAssetPath
-	{
-	public:
-
-		cAssetPath();
-		cAssetPath(const char* path);
-
-		template <size_t N>
-		static void GetWorkspacePath(char(&path)[N])
-		{
-			char temp[N];
-			strcpy_s(temp, path);
-			GetWorkspacePath(path, temp);
-		}
-
-		template <size_t N>
-		static void GetWorkspacePath(char(&dst)[N], const char* path)
-		{
-			check(!strchr(path, ':') && "Absolute path not allowed.");
-			// check if path is already processed to our workspace.
-			if (!_strnicmp(CVar_Workspace.Get(), path, strlen(CVar_Workspace.Get()) - 1))
-				strcpy_s(dst, path);
-			else
-				sprintf_s(dst, "%s/%s", CVar_Workspace.Get(), path);
-		}
-
-		operator const char* () const { return m_path; }
-		const char* Get() const { return m_path; }
-		const char* c_str() const { return m_path; }
-		inline bool empty() const { return !*m_path; }
-		void Set(const char* path);
-		uint32_t GetSize() const { size_t s = strlen(m_path); check(s < UINT32_MAX); return static_cast<uint32_t>(s); }
-		const char* GetAssetPath() const;
-		void Clear() { *m_path = 0; }
-
-		inline bool operator==(const cAssetPath& other) const
-		{
-			return !strcmp(m_path, other.m_path);
-		}
-
-		inline bool operator!=(const cAssetPath& other) const { return !(*this == other); }
-
-	private:
-		char m_path[256];
-	};
 
 	class cFile
 	{
@@ -157,12 +120,13 @@ namespace Mist
  * hash functions
  */
 
+#if 0
 namespace std
 {
 	template <>
-	struct hash<Mist::cAssetPath>
+	struct hash<Mist::AssetPath>
 	{
-		size_t operator()(const Mist::cAssetPath& desc) const
+		size_t operator()(const Mist::AssetPath& desc) const
 		{
 			size_t seed = 0;
 			Mist::HashCombine(seed, desc.c_str());
@@ -170,6 +134,8 @@ namespace std
 		}
 	};
 }
+#endif // 0
+
 
 
 

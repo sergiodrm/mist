@@ -6,23 +6,125 @@
 
 namespace Mist
 {
-	CStrVar CVar_Workspace("Workspace", "../../../assets/", CVarFlag_SetOnlyByCmd);
+	static CStrVar CVar_Workspace("Workspace", "../../../assets/", CVarFlag_SetOnlyByCmd);
+
+	static char g_workspacePath[256];
+	static uint32_t g_workspacePathLength = 0;
+
+	class AssetPath
+	{
+	public:
+		AssetPath();
+		AssetPath(const char* path);
+
+		template <size_t N>
+		static void BuildWorkspacePath(char(&path)[N])
+		{
+			char temp[N];
+			strcpy_s(temp, path);
+			GetWorkspacePath(path, temp);
+		}
+
+		template <size_t N>
+		static void BuildWorkspacePath(char(&dst)[N], const char* path)
+		{
+			BuildWorkspacePath(dst, N, path);
+		}
+
+		static void BuildWorkspacePath(char* bufferOut, size_t bufferSize, const char* filepath)
+		{
+			check(!strchr(filepath, ':') && "Absolute path not allowed.");
+			const char* ws = FileSystem::GetWorkspacePath();
+			uint32_t wsl = FileSystem::GetWorkspacePathLength();
+			// check if path is already processed to our workspace.
+			if (!_strnicmp(ws, filepath, wsl - 1))
+				strcpy_s(bufferOut, bufferSize, filepath);
+			else
+				sprintf_s(bufferOut, bufferSize, "%s%s", ws, filepath);
+		}
+
+		// Return asset path, the relative without the workspace path.
+		const char* GetAssetPath() const;
+
+		// Return the relative path with workspace. Used for functionalities that need to read from disk.
+		const char* GetWorkspacePath() const { return m_path; }
+		operator const char* () const { return GetWorkspacePath(); }
+		const char* Get() const { return GetWorkspacePath(); }
+		const char* c_str() const { return GetWorkspacePath(); }
+
+
+		inline bool empty() const { return !*m_path; }
+		void Set(const char* path);
+		uint32_t GetSize() const { size_t s = strlen(m_path); check(s < UINT32_MAX); return static_cast<uint32_t>(s); }
+		void Clear() { *m_path = 0; }
+
+		inline bool operator==(const AssetPath& other) const
+		{
+			return !strcmp(m_path, other.m_path);
+		}
+
+		inline bool operator!=(const AssetPath& other) const { return !(*this == other); }
+
+	private:
+		char m_path[MaxFilenameLength];
+	};
+
+	void FileSystem::InitWorkspace()
+	{
+		check(g_workspacePathLength == 0);
+		const char* ws = CVar_Workspace.Get();
+		strcpy_s(g_workspacePath, sizeof(g_workspacePath), ws);
+		g_workspacePathLength = strlen(g_workspacePath) + 1;
+
+		// transform '\' to '/'
+		char* it = g_workspacePath;
+		while (*it)
+		{
+			if (*it == '\\')
+				*it = '/';
+			++it;
+		}
+
+		// [length - 1] should be \0
+		// [length - 2] should be /. Modify the path if it is not
+		if (g_workspacePath[g_workspacePathLength - 2] != '/')
+		{
+			g_workspacePath[g_workspacePathLength - 1] = '/';
+			g_workspacePath[g_workspacePathLength] = '\0';
+			++g_workspacePathLength;
+		}
+		logfok("Workspace: %s\n", FileSystem::GetWorkspacePath());
+	}
+
+	const char* FileSystem::GetWorkspacePath()
+	{
+		return g_workspacePath;
+	}
+
+	uint32_t FileSystem::GetWorkspacePathLength()
+	{
+		return g_workspacePathLength;
+	}
 
 	bool FileSystem::IsFileNewerThanOther(const char* file, const char* other)
 	{
 		check(file && *file && other && *other);
+		AssetPath filepath(file);
+		AssetPath otherFilepath(other);
 		struct stat statsFile;
-		stat(file, &statsFile);
+		stat(filepath, &statsFile);
 		struct stat statsOther;
-		stat(other, &statsOther);
+		stat(otherFilepath, &statsOther);
 		// stat.st_mtime: The most recent time that the file's contents were modified.
 		return statsFile.st_mtime > statsOther.st_mtime;
 	}
 
 	bool FileSystem::FileExists(const char* filename)
 	{
+		char assetPath[Mist::MaxFilenameLength];
+		Mist::FileSystem::BuildFilepathInWorkspace(filename, assetPath, sizeof(assetPath));
 		FILE* f = nullptr;
-		if (!fopen_s(&f, filename, "r"))
+		if (!fopen_s(&f, assetPath, "r"))
         {
 			check(f);
 			fclose(f);
@@ -48,12 +150,14 @@ namespace Mist
 
 	bool FileSystem::ReadFile(const char* filename, tDynArray<uint32_t>& data)
 	{
+		AssetPath assetPath(filename);
+		checkdbg(!strcmp(assetPath.GetAssetPath(), filename));
 		data.clear();
 		// Open file with std::ios::ate -> with cursor at the end of the file
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		std::ifstream file(assetPath, std::ios::ate | std::ios::binary);
 		if (!file.is_open())
 		{
-			logferror("File not found: %s.\n", filename);
+			logferror("File not found: %s.\n", assetPath.GetAssetPath());
 			return false;
 		}
 		// Tell size (remember cursor at the end of the file)
@@ -71,11 +175,13 @@ namespace Mist
 
 	bool FileSystem::ReadFile(const char* filename, uint32_t** data, size_t& size)
 	{
+		AssetPath assetPath(filename);
+		checkdbg(!strcmp(assetPath.GetAssetPath(), filename));
 		// Open file with std::ios::ate -> with cursor at the end of the file
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		std::ifstream file(assetPath, std::ios::ate | std::ios::binary);
 		if (!file.is_open())
 		{
-			logferror("File not found: %s.\n", filename);
+			logferror("File not found: %s.\n", assetPath);
 			return false;
 		}
 		// Tell size (remember cursor at the end of the file)
@@ -95,11 +201,13 @@ namespace Mist
 
 	bool FileSystem::ReadFile(const char* filename, char** out, size_t& size)
 	{
+		AssetPath assetPath(filename);
+		checkdbg(!strcmp(assetPath.GetAssetPath(), filename));
 		// Open file with std::ios::ate -> with cursor at the end of the file
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		std::ifstream file(assetPath, std::ios::ate | std::ios::binary);
 		if (!file.is_open())
 		{
-			logferror("File not found: %s.\n", filename);
+			logferror("File not found: %s.\n", assetPath.GetAssetPath());
 			return false;
 		}
 		// Tell size (remember cursor at the end of the file)
@@ -118,11 +226,13 @@ namespace Mist
 
 	bool FileSystem::ReadTextFile(const char* filename, char** out, size_t& size)
 	{
+		AssetPath assetPath(filename);
+		checkdbg(!strcmp(assetPath.GetAssetPath(), filename));
 		// Open file with std::ios::ate -> with cursor at the end of the file
-		std::ifstream file(filename, std::ios::ate | std::ios::binary);
+		std::ifstream file(assetPath, std::ios::ate | std::ios::binary);
 		if (!file.is_open())
 		{
-			logferror("File not found: %s.\n", filename);
+			logferror("File not found: %s.\n", assetPath.GetAssetPath());
 			return false;
 		}
 		// Tell size (remember cursor at the end of the file)
@@ -169,13 +279,15 @@ namespace Mist
 		}
 	}
 
-	void FileSystem::GetFileNameFromFilepath(const char* filepath, size_t filepathSize, char* outName, size_t outNameBufferSize)
+	void FileSystem::GetFileNameFromFilepath(const char* filepath, char* outName, size_t outNameBufferSize)
 	{
 		check(outName && filepath);
 		*outName = 0;
 		if (!*filepath)
 			return;
 
+		// TODO: with strlen we already have to iterate over the path. Rework this to iterate just once.
+		size_t filepathSize = strlen(filepath) + 1;
 		const char* lastDot = strrchr(filepath, '.');
 		if (!lastDot) lastDot = &filepath[filepathSize - 1];
 		const char* lastSlash = strrchr(filepath, '/');
@@ -198,6 +310,10 @@ namespace Mist
 		return lastDot!=nullptr;
 	}
 
+	void FileSystem::BuildFilepathInWorkspace(const char* filepath, char* filepathInWs, size_t bufferSize)
+	{
+		AssetPath::BuildWorkspacePath(filepathInWs, bufferSize, filepath);
+	}
 
 	cFile::~cFile()
 	{
@@ -230,7 +346,7 @@ namespace Mist
 	{
 		check(filepath && *filepath && mode && *mode);
 		FILE* f = nullptr;
-		cAssetPath assetPath(filepath);
+		AssetPath assetPath(filepath);
 		errno_t err = fopen_s(&f, assetPath.c_str(), mode);
 
 		eResult e = Result_Ok;
@@ -423,30 +539,35 @@ namespace Mist
 			m_keyValueMap[key] = (index_t)(m_keys.size() - 1);
 		}
 	}
-	cAssetPath::cAssetPath()
+
+	AssetPath::AssetPath()
 	{
 		Clear();
 	}
 
-	cAssetPath::cAssetPath(const char* path)
+	AssetPath::AssetPath(const char* path)
 	{
 		Set(path);
 	}
 
-	void cAssetPath::Set(const char* path)
+	void AssetPath::Set(const char* path)
 	{
 		if (path && *path)
-			GetWorkspacePath(m_path, path);
+			BuildWorkspacePath(m_path, path);
 		else
 			Clear();
 	}
 
-	const char* cAssetPath::GetAssetPath() const
+	const char* AssetPath::GetAssetPath() const
 	{
-		size_t l = strlen(CVar_Workspace.Get())-1;
-		check(!_strnicmp(CVar_Workspace.Get(), m_path, l));
-		const char* s = &m_path[l+1];
-		check(*s);
+		if (empty())
+			return m_path;
+
+		uint32_t l = FileSystem::GetWorkspacePathLength();
+		checkdbg(l > 0);
+		checkdbg(!_strnicmp(FileSystem::GetWorkspacePath(), m_path, l-1));
+		const char* s = &m_path[l-1];
+		checkdbg(*s);
 		return s;
 	}
 }

@@ -75,7 +75,7 @@ namespace Mist
 	void ShadowMapPipeline::Init(rendersystem::RenderSystem* rs)
 	{
 		rendersystem::ShaderBuildDescription shaderDesc;
-		shaderDesc.vsDesc.filePath = "shaders/depth.vert";
+		shaderDesc.SetGraphics("shaders/depth.vert", nullptr);
 		m_shader = rs->CreateShader(shaderDesc);
 	}
 

@@ -31,15 +31,13 @@ namespace Mist
 		// shaders
 		{
             rendersystem::ShaderBuildDescription shaderDesc;
-            shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-            shaderDesc.fsDesc.filePath = "shaders/ssao.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/ssao.frag");
             shaderDesc.fsDesc.options.PushMacroDefinition("KERNEL_SIZE", SSAO_KERNEL_SAMPLES);
             m_ssaoShader = rs->CreateShader(shaderDesc);
         }
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.vsDesc.filePath = "shaders/quad.vert";
-			shaderDesc.fsDesc.filePath = "shaders/ssaoblur.frag";
+			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/ssaoblur.frag");
 			m_blurShader = rs->CreateShader(shaderDesc);
 		}
 	}

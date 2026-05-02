@@ -348,12 +348,14 @@ namespace rendersystem
 
     struct ShaderFileDescription
     {
-        Mist::cAssetPath filePath;
+        char filePath[Mist::MaxFilenameLength];
         render::shader_compiler::CompilationOptions options;
+
+        ShaderFileDescription() : filePath{0} { }
 
         inline bool operator ==(const ShaderFileDescription& other) const
         {
-            return filePath == other.filePath
+            return !strcmp(filePath, other.filePath)
                 && options == other.options;
         }
 
@@ -382,6 +384,28 @@ namespace rendersystem
         ShaderFileDescription csDesc;
 
         Mist::tDynArray<ShaderDynamicBufferDescription> dynamicBuffers;
+
+        inline void SetGraphics(const char* vertexShaderFile, const char* fragmentShaderFile)
+        {
+            type = ShaderProgram_Graphics;
+            *vsDesc.filePath = 0;
+            *fsDesc.filePath = 0;
+            *csDesc.filePath = 0;
+            if (vertexShaderFile && *vertexShaderFile)
+                strcpy_s(vsDesc.filePath, vertexShaderFile);
+            if (fragmentShaderFile && *fragmentShaderFile)
+                strcpy_s(fsDesc.filePath, fragmentShaderFile);
+        }
+
+        inline void SetCompute(const char* computeShaderFile)
+        {
+            type = ShaderProgram_Compute;
+			*vsDesc.filePath = 0;
+			*fsDesc.filePath = 0;
+			*csDesc.filePath = 0;
+			if (computeShaderFile && *computeShaderFile)
+				strcpy_s(csDesc.filePath, computeShaderFile);
+        }
 
         inline bool operator ==(const ShaderBuildDescription& other) const
         {
@@ -499,11 +523,11 @@ namespace rendersystem
 				switch (desc.type)
 				{
 				case ShaderProgram_Graphics:
-					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.vsDesc.filePath.c_str(), desc.vsDesc.options));
-					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.fsDesc.filePath.c_str(), desc.fsDesc.options));
+					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.vsDesc.filePath, desc.vsDesc.options));
+					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.fsDesc.filePath, desc.fsDesc.options));
 					break;
 				case ShaderProgram_Compute:
-					h = render::shader_compiler::BuildShaderHash(desc.csDesc.filePath.c_str(), desc.csDesc.options);
+					h = render::shader_compiler::BuildShaderHash(desc.csDesc.filePath, desc.csDesc.options);
 					break;
 				}
 				return h;

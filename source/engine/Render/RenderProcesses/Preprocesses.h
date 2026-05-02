@@ -33,7 +33,7 @@ namespace Mist
 		uint32_t cubemapWidthHeight;
 		uint32_t irradianceCubemapWidthHeight;
 		uint32_t specularCubemapWidthHeight;
-		cAssetPath hdrFilepath;
+		char hdrFilepath[MaxFilenameLength];
 		void* userData = nullptr;
 	};
 
