@@ -19,7 +19,7 @@
 namespace Mist
 {
 	CBoolVar CVar_FogEnabled("r_fogenabled", false);
-	CBoolVar CVar_ForwardPipelineEnabled("r_forwardPipelineEnabled", false);
+	CBoolVar CVar_ForwardPipelineEnabled("r_forwardPipelineEnabled", true);
 
 	Lighting::Lighting(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
@@ -223,12 +223,7 @@ namespace Mist
 
 				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
 				rs->SetShaderProperty("u_ShadowMapInfo", m_shadowMapParams.lightViewProjectionArray.data(), sizeof(glm::mat4) * (uint32_t)m_shadowMapParams.lightViewProjectionArray.size());
-				// SSAO textures
-				rs->SetTextureSlot("u_ssao", ssao->GetRenderTarget()->m_description.colorAttachments[0].texture);
-				rs->SetSampler("u_ssao", render::Filter_Nearest, render::Filter_Nearest, render::Filter_Linear,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge);
+				
 				const EnvironmentData& env = scene->GetEnvironmentData();
 				rs->SetShaderProperty("u_env", &env, sizeof(env));
 				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
@@ -261,6 +256,8 @@ namespace Mist
 			{
 				check(m_skyModel && m_skyModel->GetMeshCount() == 1);
 				rs->BeginMarker("Sky");
+				rs->ClearState();
+				rs->SetDefaultGraphicsState();
 
 				rs->SetShader(m_skyboxShader);
 				rs->SetRenderTarget(m_skyboxRt);
