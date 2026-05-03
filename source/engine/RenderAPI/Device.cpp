@@ -14,6 +14,10 @@
 
 #define DEVICE_GC
 
+#if defined(_DEBUG)
+#define DEVICE_ENABLE_RESOURCE_TRACKING
+#endif // defined(_DEBUG)
+
 
 namespace Mist
 {
@@ -1488,13 +1492,20 @@ namespace render
         ++m_context->memoryContext.bufferStats.allocationCounts;
         m_context->memoryContext.bufferStats.currentAllocated += description.size;
         m_context->memoryContext.bufferStats.maxAllocated = __max(m_context->memoryContext.bufferStats.currentAllocated, m_context->memoryContext.bufferStats.maxAllocated);
-        m_bufferTracking.push_back(buffer);
+#if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_bufferTracking[size_t(buffer)] = buffer;
+#endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         return BufferHandle(buffer);
     }
 
     void Device::DestroyBuffer(Buffer* buffer)
     {
         check(m_context && buffer);
+#if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        check(m_bufferTracking.contains(size_t(buffer)));
+        m_bufferTracking.erase(size_t(buffer));
+#endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+
         --m_context->memoryContext.bufferStats.allocationCounts;
         check(m_context->memoryContext.bufferStats.currentAllocated - buffer->m_description.size < m_context->memoryContext.bufferStats.currentAllocated);
         m_context->memoryContext.bufferStats.currentAllocated -= buffer->m_description.size;
@@ -1619,7 +1630,9 @@ namespace render
         ++m_context->memoryContext.imageStats.allocationCounts;
         m_context->memoryContext.imageStats.currentAllocated += texture->GetImageSize();
         m_context->memoryContext.imageStats.maxAllocated = __max(m_context->memoryContext.imageStats.currentAllocated, m_context->memoryContext.imageStats.maxAllocated);
-        m_textureTracking.push_back(texture);
+#if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_textureTracking[size_t(texture)] = texture;
+#endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         return TextureHandle(texture);
     }
 
@@ -1644,13 +1657,19 @@ namespace render
             }
         }
         SetDebugName(texture, description.debugName.c_str());
-        m_textureTracking.push_back(texture);
+#if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_textureTracking[size_t(texture)] = texture;
+#endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         return TextureHandle(texture);
     }
 
     void Device::DestroyTexture(Texture* texture)
     {
         check(m_context && texture);
+#if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        check(m_textureTracking.contains(size_t(texture)));
+        m_textureTracking.erase(size_t(texture));
+#endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
 
         for (Texture::ViewIterator it = texture->m_views.begin(); it != texture->m_views.end(); ++it)
         {

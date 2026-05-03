@@ -1883,8 +1883,8 @@ namespace render
 
         Swapchain m_swapchain;
         uint32_t m_swapchainIndex;
-        Mist::tDynArray<Buffer*> m_bufferTracking;
-        Mist::tDynArray<Texture*> m_textureTracking;
+        Mist::tMap<size_t, Buffer*> m_bufferTracking;
+        Mist::tMap<size_t, Texture*> m_textureTracking;
 
         GarbageCollector m_garbageCollector;
     };
