@@ -116,14 +116,14 @@ namespace Mist
 
 	void Scene::Init()
 	{
-		m_globalTransforms.AllocateAndResize(globals::MaxRenderObjects);
-		m_localTransforms.AllocateAndResize(globals::MaxRenderObjects);
-		m_renderTransforms.AllocateAndResize(globals::MaxRenderObjects);
-		m_transformComponents.AllocateAndResize(globals::MaxRenderObjects);
+		m_globalTransforms.Allocate(globals::MaxRenderObjects);
+		m_localTransforms.Allocate(globals::MaxRenderObjects);
+		m_transformComponents.Allocate(globals::MaxRenderObjects);
 		m_names.Allocate(globals::MaxRenderObjects);
 		m_hierarchy.Allocate(globals::MaxRenderObjects);
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 			m_dirtyNodes[i].Allocate(globals::MaxRenderObjects);
+		m_renderTransforms.AllocateAndResize(globals::MaxRenderObjects);
 	}
 
 	void Scene::Destroy()
@@ -131,12 +131,20 @@ namespace Mist
 		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
 			m_models[i].Destroy();
 		m_models.Clear();
-		m_localTransforms.Delete();
-		m_globalTransforms.Delete();
-		m_hierarchy.Delete();
-		m_names.Delete();
+		m_transformComponents.Clear();
+		m_renderTransforms.Clear();
+		m_renderTransforms.Resize(globals::MaxRenderObjects);
+		m_cameras.Clear();
+		m_cameraIndex = 0;
+		m_localTransforms.Clear();
+		m_globalTransforms.Clear();
+		m_hierarchy.Clear();
+		m_names.Clear();
+		m_meshComponentMap.clear();
+		m_lightComponentMap.clear();
+		m_cameraComponentMap.clear();
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
-			m_dirtyNodes[i].Delete();
+			m_dirtyNodes[i].Clear();
 	}
 
 	void Scene::Tick(float deltaTime)
@@ -161,15 +169,19 @@ namespace Mist
 
 	sRenderObject Scene::CreateRenderObject(sRenderObject parent)
 	{
-		// Generate new node in all basics structures
-		sRenderObject node = m_hierarchy.GetSize();
-		m_localTransforms[node] = glm::mat4(1.f);
-		m_globalTransforms[node] = glm::mat4(1.f);
-		m_transformComponents[node] = { .Position = glm::vec3(0.f), .Rotation = tAngles(0.f), .Scale = glm::vec3(1.f) };
+		check(m_hierarchy.GetSize() == m_localTransforms.GetSize());
+		check(m_hierarchy.GetSize() == m_globalTransforms.GetSize());
+		check(m_hierarchy.GetSize() == m_transformComponents.GetSize());
+		m_hierarchy.Push({ .Parent = parent });
+		m_localTransforms.Push(glm::mat4(1.f));
+		m_globalTransforms.Push(glm::mat4(1.f));
+		m_transformComponents.Push({ .Position = glm::vec3(0.f), .Rotation = tAngles(0.f), .Scale = glm::vec3(1.f) });
+
+		sRenderObject node = m_hierarchy.GetSize()-1;
 		char buff[64];
 		sprintf_s(buff, "RenderObject_%u", node.Id);
 		m_names.Push(buff);
-		m_hierarchy.Push({ .Parent = parent });
+
 
 		// Connect siblings
 		if (parent.IsValid())
@@ -329,23 +341,6 @@ namespace Mist
 		check(root);
 		YAML::Node envNode = root["Environment"];
 		check(envNode);
-#if 0
-		m_ambientColor = envNode["Ambient"].as<glm::vec3>();
-		char skyboxTextures[Skybox::COUNT][256];
-		strcpy_s(skyboxTextures[Skybox::FRONT], envNode["Skybox"]["Front"].as<std::string>().c_str());
-		strcpy_s(skyboxTextures[Skybox::BACK], envNode["Skybox"]["Back"].as<std::string>().c_str());
-		strcpy_s(skyboxTextures[Skybox::TOP], envNode["Skybox"]["Top"].as<std::string>().c_str());
-		strcpy_s(skyboxTextures[Skybox::BOTTOM], envNode["Skybox"]["Bottom"].as<std::string>().c_str());
-		strcpy_s(skyboxTextures[Skybox::LEFT], envNode["Skybox"]["Left"].as<std::string>().c_str());
-		strcpy_s(skyboxTextures[Skybox::RIGHT], envNode["Skybox"]["Right"].as<std::string>().c_str());
-		LoadSkybox(m_skybox,
-			skyboxTextures[Skybox::FRONT],
-			skyboxTextures[Skybox::BACK],
-			skyboxTextures[Skybox::LEFT],
-			skyboxTextures[Skybox::RIGHT],
-			skyboxTextures[Skybox::TOP],
-			skyboxTextures[Skybox::BOTTOM]);
-#endif // 0
 
 		YAML::Node renderObjectSeq = root["RenderObjects"];
 		check(renderObjectSeq);
@@ -434,8 +429,6 @@ namespace Mist
 		{
 			emitter << YAML::BeginMap;
 			emitter << YAML::Key << "Ambient" << YAML::Value << m_ambientColor;
-			emitter << YAML::Key << "Skybox" << YAML::BeginMap;
-			emitter << YAML::EndMap;
 			emitter << YAML::EndMap;
 		}
 		emitter << YAML::Key << "RenderObjects";
