@@ -1,11 +1,11 @@
-- Name: initialShadingGroup
-  Vertex shader: ../../../assets//shaders/grid_prototype.vert
-  Fragment shader: ../../../assets//shaders/grid_prototype.frag
+- Name: Default OBJ
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
   Textures:
     {}
   Properties:
-    Albedo: [0, 0, 0, 1]
-    Roughness: 1
+    Albedo: [0.800000012, 0.800000012, 0.800000012, 1]
+    Roughness: 0.5
     Metallic: 0
     EmissiveColor: [0, 0, 0]
     EmissiveStrength: 0

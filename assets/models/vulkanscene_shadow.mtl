@@ -1,0 +1,209 @@
+- Name: White
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.537704885, 0.537704885, 0.537704885, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Black
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.0189205706, 0.0189205706, 0.0189205706, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: White_003
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.537704885, 0.537704885, 0.537704885, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Black_003
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.0189205706, 0.0189205706, 0.0189205706, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Logo_003
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.800000131, 0.00375817786, 0.00610586861, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: White_002
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.537704885, 0.537704885, 0.537704885, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Black_002
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.0189205706, 0.0189205706, 0.0189205706, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: White_001
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.537704885, 0.537704885, 0.537704885, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Logo_001
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.800000131, 0.00375817786, 0.00610586861, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Black_001
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.0189205706, 0.0189205706, 0.0189205706, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: Material.001
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    {}
+  Properties:
+    Albedo: [0.639999986, 0.639999986, 0.639999986, 1]
+    Roughness: 0.5
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false

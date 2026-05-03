@@ -1,0 +1,132 @@
+- Name: MatBed
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/alphablend/MatBed_baseColor.jpg
+      Sampler: ""
+    MATERIAL_TEXTURE_NORMAL:
+      Tex: models/alphablend/MatBed_normal.jpg
+      Sampler: ""
+    MATERIAL_TEXTURE_METALLIC_ROUGHNESS:
+      Tex: models/alphablend/MatBed_occlusionRoughnessMetallic.jpg
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 1
+    Metallic: 1
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: MatBlend
+  Vertex shader: shaders/forward_lighting.vert
+  Fragment shader: shaders/forward_lighting.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/alphablend/AlphaBlendLabels.png
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 0.800000012
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 0.5
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: false
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: true
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: MatCutoff25
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/alphablend/AlphaBlendLabels.png
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 0.800000012
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 0.25
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: false
+    MATERIAL_FLAG_MASK: true
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: MatCutoff75
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/alphablend/AlphaBlendLabels.png
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 0.800000012
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 0.75
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: false
+    MATERIAL_FLAG_MASK: true
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: MatCutoffDefault
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/alphablend/AlphaBlendLabels.png
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 0.800000012
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 0.5
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: false
+    MATERIAL_FLAG_MASK: true
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
+- Name: MatOpaque
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/alphablend/AlphaBlendLabels.png
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 0.800000012
+    Metallic: 0
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false

@@ -1,0 +1,24 @@
+- Name: unknown
+  Vertex shader: shaders/gbuffer_main.vert
+  Fragment shader: shaders/gbuffer_main.frag
+  Textures:
+    MATERIAL_TEXTURE_ALBEDO:
+      Tex: models/metalrough/Spheres_BaseColor.png
+      Sampler: ""
+    MATERIAL_TEXTURE_METALLIC_ROUGHNESS:
+      Tex: models/metalrough/Spheres_MetalRough.png
+      Sampler: ""
+  Properties:
+    Albedo: [1, 1, 1, 1]
+    Roughness: 1
+    Metallic: 1
+    EmissiveColor: [0, 0, 0]
+    EmissiveStrength: 0
+    Specular: 0
+    AlphaCutoff: 1
+    MATERIAL_FLAG_UNLIT: false
+    MATERIAL_FLAG_OPAQUE: true
+    MATERIAL_FLAG_MASK: false
+    MATERIAL_FLAG_BLEND: false
+    MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
+    MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
