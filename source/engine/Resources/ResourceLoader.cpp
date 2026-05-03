@@ -58,6 +58,14 @@ namespace Mist
 
 		static ResourceLoaderThread* g_loaderThread = nullptr;
 
+		static bool g_inmediateModeStack[4];
+		static uint32_t g_inmediateModeIndex = 0;
+
+		static bool InmediateMode()
+		{
+			return g_inmediateModeIndex > 0 ? g_inmediateModeStack[g_inmediateModeIndex - 1] : false;
+		}
+
 		void InitLoadThread()
 		{
 			if (g_loaderThread)
@@ -83,6 +91,20 @@ namespace Mist
 		{
 			check(g_loaderThread);
 			g_loaderThread->PushLoader(loader);
+		}
+
+		void PushInmediateMode(bool inmediateEnabled)
+		{
+			check(Mist::ThisThread::IsMainThread());
+			check(g_inmediateModeIndex < Mist::CountOf(g_inmediateModeStack));
+			g_inmediateModeStack[g_inmediateModeIndex++] = inmediateEnabled;
+		}
+
+		void PopInmediateMode()
+		{
+			check(Mist::ThisThread::IsMainThread());
+			check(g_inmediateModeIndex > 0);
+			--g_inmediateModeIndex;
 		}
 
 		/**
@@ -116,13 +138,41 @@ namespace Mist
 
 		void ResourceLoaderThread::PushLoader(IResourceLoader* loader)
 		{
-			GuardMutex guardMutex(m_mutex);
-			switch (loader->GetProcType())
+			if (!InmediateMode())
 			{
-			case IResourceLoader::ProcType::MainThread: PushLoaderIntoMainThread(loader); break;
-			case IResourceLoader::ProcType::LoadThread: PushLoaderIntoLoadThread(loader); break;
-			case IResourceLoader::ProcType::Finished:
-				unreachable_code();
+				GuardMutex guardMutex(m_mutex);
+				switch (loader->GetProcType())
+				{
+				case IResourceLoader::ProcType::MainThread: PushLoaderIntoMainThread(loader); break;
+				case IResourceLoader::ProcType::LoadThread: PushLoaderIntoLoadThread(loader); break;
+				case IResourceLoader::ProcType::Finished:
+					unreachable_code();
+				}
+			}
+			else
+			{
+				check(ThisThread::IsMainThread());
+				m_mutex.Lock();
+				FlushFinishedTasks();
+				m_mutex.Unlock();
+
+				IResourceLoader::ProcType type = loader->GetProcType();
+				while (type != IResourceLoader::ProcType::Finished)
+				{
+					switch (type)
+					{
+					case IResourceLoader::ProcType::MainThread: 
+						type = loader->ProcessMainThread();
+						break;
+					case IResourceLoader::ProcType::LoadThread: 
+						type = loader->ProcessLoadThread();
+						break;
+					}
+				}
+				m_mutex.Lock();
+				m_finishedTasks.push_back(loader);
+				FlushFinishedTasks();
+				m_mutex.Unlock();
 			}
 		}
 

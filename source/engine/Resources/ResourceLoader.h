@@ -23,5 +23,7 @@ namespace Mist
         void TerminateLoadThread();
         void SlotMainThread();
         void PushLoader(IResourceLoader* loader);
+        void PushInmediateMode(bool inmediateEnabled); 
+        void PopInmediateMode(); 
     }
 }
