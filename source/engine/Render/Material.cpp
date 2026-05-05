@@ -341,6 +341,15 @@ namespace Mist
 		}
 		else
 		{
+			if (m_alphaCutoff < 1.f)
+			{
+				if (m_flags & MATERIAL_FLAG_OPAQUE)
+				{
+					logfwarn("Material with alpha cutoff != 1.f but with OPAQUE mask active. [%s]\n", GetName());
+					m_flags |= MATERIAL_FLAG_MASK;
+					m_flags &= ~MATERIAL_FLAG_OPAQUE;
+				}
+			}
 			if (m_flags & MATERIAL_FLAG_MASK)
 			{
 				check(!(m_flags & MATERIAL_FLAG_OPAQUE));
