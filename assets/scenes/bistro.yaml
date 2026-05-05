@@ -36,13 +36,13 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [0, 0, 0]
-      Rotation: [46.5, 0, -92]
+      Rotation: [46, 39, -92]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
       Enabled: true
-      Color: [0.395973146, 0.297216177, 0.265753776]
-      Strength: 13.3999996
+      Color: [0.604026854, 0.164385855, 0.0243232436]
+      Strength: 27
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
@@ -64,12 +64,12 @@ RenderObjects:
     LightComponent:
       Type: Spot
       Enabled: true
-      Color: [1, 1, 1]
-      Strength: 1
-      Radius: 410
-      Compression: 410
-      OuterCutoff: 46.9000015
-      Cutoff: 32.7999992
+      Color: [0.637583852, 0.540170014, 0.363722324]
+      Strength: 9.39999962
+      Radius: 353.5
+      Compression: 409.100006
+      OuterCutoff: 47.4000015
+      Cutoff: 30.2999992
       ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
@@ -82,7 +82,7 @@ RenderObjects:
     Parent: 0
     TransformComponent:
       Position: [0, 0, 0]
-      Rotation: [0, -0, 0]
+      Rotation: [0, -25, 0]
       Scale: [1, 1, 1]
     MeshComponent:
       MeshAssetPath: models/bistro_v5_2/bistro_v5_2/bistro_exterior.gltf
@@ -95,5 +95,5 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [-19.2210102, 1.23497021, -2.11640406]
-      Rotation: [0.250000983, -1.82707953, 0]
+      Position: [-17.1258488, 9.13764477, -8.94462681]
+      Rotation: [-0.145367533, -1.94063795, 0]
