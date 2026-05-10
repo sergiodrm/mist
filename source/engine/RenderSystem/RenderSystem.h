@@ -1000,7 +1000,7 @@ namespace std
         size_t operator()(const rendersystem::ShaderFileDescription& desc) const
         {
             size_t seed = 0;
-            Mist::HashCombine(seed, desc.filePath);
+            seed = Mist::hash(desc.filePath, seed);
             Mist::HashCombine(seed, desc.options);
             return seed;
         }
