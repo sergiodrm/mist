@@ -695,6 +695,12 @@ namespace rendersystem
             FrameResourceTrack(uint32_t initialCapacity = 10)
                 : buffers(initialCapacity) { }
 
+            ~FrameResourceTrack()
+            {
+                check(buffers.empty());
+                buffers.clear();
+            }
+
             void Clear()
             {
                 buffers.clear();
