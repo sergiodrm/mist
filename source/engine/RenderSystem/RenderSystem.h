@@ -346,6 +346,15 @@ namespace rendersystem
         Mist::tMap<render::SamplerDescription, render::SamplerHandle> m_samplers;
     };
 
+    enum ShaderType
+    {
+        Shader_Vertex,
+        Shader_Fragment,
+        Shader_Compute,
+
+        Shader_Count
+    };
+
     struct ShaderFileDescription
     {
         char filePath[Mist::MaxFilenameLength];
@@ -429,9 +438,11 @@ namespace rendersystem
         bool IsLoaded() const;
         void ReleaseResources();
 
-        render::ShaderHandle GetVertexShader() const { return m_vs; }
-        render::ShaderHandle GetFragmentShader() const { return m_fs; }
-        render::ShaderHandle GetComputeShader() const { return m_cs; }
+        render::ShaderHandle GetVertexShader() const { return m_shaders[Shader_Vertex]; }
+        render::ShaderHandle GetFragmentShader() const { return m_shaders[Shader_Fragment]; }
+        render::ShaderHandle GetComputeShader() const { return m_shaders[Shader_Compute]; }
+
+        const render::BindingLayoutArray& GetShaderLayout() const { return m_layouts; }
 
         const render::shader_compiler::ShaderPropertyDescription* GetPropertyDescription(const char* id, uint32_t* setIndexOut) const;
         const ShaderBuildDescription& GetDescription() const { return *m_description; }
@@ -439,12 +450,12 @@ namespace rendersystem
     private:
         bool ReloadGraphics();
         bool ReloadCompute();
+        bool ProcessLayouts();
 
         render::Device* m_device;
     
-        render::ShaderHandle m_vs;
-        render::ShaderHandle m_fs;
-        render::ShaderHandle m_cs;
+        render::ShaderHandle m_shaders[Shader_Count];
+        render::BindingLayoutArray m_layouts;
         render::VertexInputLayout m_inputLayout;
         render::shader_compiler::ShaderReflectionProperties* m_properties;
         ShaderBuildDescription* m_description;

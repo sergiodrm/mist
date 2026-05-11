@@ -587,12 +587,14 @@ namespace rendersystem
         switch (shader->m_description->type)
         {
         case ShaderProgram_Graphics:
-            m_graphicsContext.pso.vertexShader = shader->m_vs;
-            m_graphicsContext.pso.fragmentShader = shader->m_fs;
+            m_graphicsContext.pso.vertexShader = shader->GetVertexShader();
+            m_graphicsContext.pso.fragmentShader = shader->GetFragmentShader();
             m_graphicsContext.pso.vertexInputLayout = shader->m_inputLayout;
+            m_graphicsContext.pso.bindingLayouts = shader->GetShaderLayout();
             break;
         case ShaderProgram_Compute:
-            m_computeContext.pso.computeShader = shader->m_cs;
+            m_computeContext.pso.computeShader = shader->GetComputeShader();
+            m_computeContext.pso.bindingLayouts = shader->GetShaderLayout();
             break;
         default:
             unreachable_code();
@@ -1076,7 +1078,7 @@ namespace rendersystem
 		// Bind descriptors sets and memory before draw call
 		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
 		check(properties->pushConstantMap.empty());
-        bindingLayoutArray.Resize((uint32_t)properties->params.size());
+        //bindingLayoutArray.Resize((uint32_t)properties->params.size());
 		render::BindingSetDescription& desc = m_bindingDesc;
 		for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
 		{
@@ -1149,10 +1151,10 @@ namespace rendersystem
 					break;
 				}
 			}
-			render::BindingSetHandle set = GetBindingSet(desc);
+			render::BindingSetHandle set = GetBindingSet(desc, bindingLayoutArray[paramSet.setIndex]);
 			bindingSetVector.SetBindingSlot(paramSet.setIndex, set);
-			check(paramSet.setIndex < bindingLayoutArray.GetSize());
-            bindingLayoutArray[paramSet.setIndex] = set->m_layout;
+			//check(paramSet.setIndex < bindingLayoutArray.GetSize());
+            //bindingLayoutArray[paramSet.setIndex] = set->m_layout;
 			// clear dirty
             m_shaderContext.ClearDirtySet(paramSet.setIndex);
 		}
@@ -1571,14 +1573,15 @@ namespace rendersystem
             break;
         }
         check(IsLoaded());
+        ProcessLayouts();
     }
 
     bool ShaderProgram::IsLoaded() const
     {
         switch (m_description->type)
         {
-        case ShaderProgram_Graphics: return m_vs || m_fs;
-        case ShaderProgram_Compute: return m_cs;
+        case ShaderProgram_Graphics: return GetVertexShader() || GetFragmentShader();
+        case ShaderProgram_Compute: return GetComputeShader();
         }
         unreachable_code();
         return false;
@@ -1586,9 +1589,9 @@ namespace rendersystem
 
     void ShaderProgram::ReleaseResources()
     {
-        m_vs = nullptr;
-        m_fs = nullptr;
-        m_cs = nullptr;
+        for (uint32_t i = 0; i < Shader_Count; ++i)
+            m_shaders[i] = nullptr;
+        m_layouts.Clear();
         if (m_properties)
             delete m_properties;
         m_properties = nullptr;
@@ -1650,8 +1653,8 @@ namespace rendersystem
         m_properties->pushConstantMap = std::move(prop.pushConstantMap);
         m_inputLayout = compiler.GetVertexInputLayout();
 
-        m_vs = compiler.GetShader(render::ShaderType_Vertex);
-        m_fs = compiler.GetShader(render::ShaderType_Fragment);
+        m_shaders[Shader_Vertex] = compiler.GetShader(render::ShaderType_Vertex);
+        m_shaders[Shader_Fragment] = compiler.GetShader(render::ShaderType_Fragment);
         return true;
     }
 
@@ -1682,7 +1685,29 @@ namespace rendersystem
         m_properties->params = std::move(prop.params);
         m_properties->pushConstantMap = std::move(prop.pushConstantMap);
 
-        m_cs = compiler.GetShader(render::ShaderType_Compute);
+        m_shaders[Shader_Compute] = compiler.GetShader(render::ShaderType_Compute);
+        return true;
+    }
+
+    bool ShaderProgram::ProcessLayouts()
+    {
+        m_layouts.Clear();
+        m_layouts.Resize(m_properties->params.size());
+        render::BindingLayoutDescription layoutDesc;
+        for (uint32_t i = 0; i < m_properties->params.size(); ++i)
+        {
+            const render::shader_compiler::ShaderPropertySetDescription& setDesc = m_properties->params[i];
+            layoutDesc.Clear();
+            layoutDesc.bindings.Resize(setDesc.params.size());
+            for (uint32_t j = 0; j < setDesc.params.size(); ++j)
+            {
+                const render::shader_compiler::ShaderPropertyDescription& propertyDesc = setDesc.params[j];
+                layoutDesc.bindings[propertyDesc.binding] = render::BindingLayoutItem(propertyDesc.type, propertyDesc.binding, propertyDesc.size, propertyDesc.stage, propertyDesc.arrayCount);
+            }
+            
+            m_layouts[setDesc.setIndex] = m_device->CreateBindingLayout(layoutDesc);
+        }
+
         return true;
     }
 

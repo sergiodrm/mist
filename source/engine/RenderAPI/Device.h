@@ -1055,6 +1055,12 @@ namespace render
         BindingLayoutDescription& PushVolatileConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size, shaderType, 1)); return *this; }
         BindingLayoutDescription& PushBufferUAV(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size, shaderType, 1)); return *this; }
 
+        inline void Clear()
+        {
+            bindings.Clear();
+            debugName.clear();
+        }
+
         inline bool operator==(const BindingLayoutDescription& other) const { return utils::EqualArrays(bindings.GetData(), bindings.GetSize(), other.bindings.GetData(), other.bindings.GetSize()); }
         inline bool operator!=(const BindingLayoutDescription& other) const { return !(*this == other); }
     };
@@ -1074,7 +1080,7 @@ namespace render
         inline bool IsAllocated() const { return m_layout != VK_NULL_HANDLE; }
         VkDescriptorSetLayout m_layout;
         BindingLayoutDescription m_description;
-        Mist::tStaticArray<VkDescriptorPoolSize, 8> m_poolSizes;
+        Mist::tStaticArray<VkDescriptorPoolSize, MaxLayouts> m_poolSizes;
     };
     typedef RenderResourceHandle<BindingLayout> BindingLayoutHandle;
     typedef Mist::tStaticArray<BindingLayoutHandle, BindingLayout::MaxLayouts> BindingLayoutArray;
