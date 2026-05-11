@@ -54,7 +54,8 @@ do \
 #include "tracy/public/tracy/Tracy.hpp"
 
 // performance
-#define PROF_FRAME_MARK(msg) FrameMarkNamed(msg)
+#define PROF_FRAME_MARK FrameMark
+#define PROF_FRAME_MARK_MSG(msg) FrameMarkNamed(msg)
 #define PROF_ZONE_SCOPED(msg) ZoneScopedN(msg)
 #define PROF_TAG(txt) ZoneText(txt, strlen(txt))
 #define PROF_LOG(txt) TracyMessage(txt, strlen(txt))
@@ -67,7 +68,8 @@ do \
 #else
 
 // performance
-#define PROF_FRAME_MARK(msg) DUMMY_MACRO
+#define PROF_FRAME_MARK DUMMY_MACRO
+#define PROF_FRAME_MARK_MSG(msg) DUMMY_MACRO
 #define PROF_ZONE_SCOPED(msg) DUMMY_MACRO
 #define PROF_TAG(txt) DUMMY_MACRO
 #define PROF_LOG(txt) DUMMY_MACRO

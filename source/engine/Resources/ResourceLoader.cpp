@@ -237,6 +237,7 @@ namespace Mist
 					// Process local buffer
 					while (!loaderInstance.m_localLoadThreadTasks.empty() && !loadThreadData->finished)
 					{
+						PROF_ZONE_SCOPED("ResourceLoader_ProcLoadThread");
 						IResourceLoader* loader = loaderInstance.m_localLoadThreadTasks.back();
 						loaderInstance.m_localLoadThreadTasks.pop_back();
 

@@ -26,6 +26,19 @@
 #define MEM_TRACE_ON
 #endif
 
+#define MEM_TRACY
+#ifdef MEM_TRACY
+#define MEM_TRACE_ALLOC(p, s) PROF_ALLOC(p, s)
+#define MEM_TRACE_ALLOC_N(p, s, n) PROF_ALLOC_NAMED(p, s, n)
+#define MEM_TRACE_FREE(p) PROF_FREE(p)
+#define MEM_TRACE_FREE_N(p, n) PROF_FREE_NAMED(p, n)
+#else
+#define MEM_TRACE_ALLOC(p, s) DUMMY_MACRO
+#define MEM_TRACE_ALLOC_N(p, s, n) DUMMY_MACRO
+#define MEM_TRACE_FREE(p) DUMMY_MACRO
+#define MEM_TRACE_FREE_N(p, n) DUMMY_MACRO
+#endif
+
 
 namespace Mist
 {
@@ -103,6 +116,7 @@ namespace Mist
 
 			void AddTrace(MemoryTracking& memoryTracking, const void* p, size_t size, const char* file, uint32_t line, size_t frame)
 			{
+				MEM_TRACE_ALLOC(p, size);
 #if defined(MEM_TRACE_ON)
 #if !defined(MEM_TRACE_MAP)
 				// Memory tracking could not be initialized. Dynamic initializators before main function.
@@ -162,6 +176,7 @@ namespace Mist
 			// Returns the size of the memory chunk tracked. 0 if there is no tracking info.
 			size_t RemoveTrace(MemoryTracking& memoryTracking, const void* p)
 			{
+				MEM_TRACE_FREE(p);
 #if defined(MEM_TRACE_ON)
 #if !defined(MEM_TRACE_MAP)
 				GuardMutex guardMutex(memoryTracking.mutex);

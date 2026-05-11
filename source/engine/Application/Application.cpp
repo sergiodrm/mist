@@ -214,7 +214,7 @@ namespace Mist
 		int result = 0;
 		while (!m_windowClosed)
 		{
-			PROF_FRAME_MARK("loop");
+			PROF_FRAME_MARK;
 			memory::Slot();
 			GFrame++;
 			Profiling::CpuProf_Reset();
