@@ -249,6 +249,37 @@ namespace render
             return VK_DESCRIPTOR_TYPE_MAX_ENUM;
         }
 
+        ResourceType ConvertFromDescriptorType(VkDescriptorType type)
+        {
+            switch (type)
+            {
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: return ResourceType_TextureSRV;
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: return ResourceType_TextureUAV;
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: return ResourceType_ConstantBuffer;
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: return ResourceType_BufferUAV;
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC: return ResourceType_VolatileConstantBuffer;
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: return ResourceType_DynamicBufferUAV;
+
+            case VK_DESCRIPTOR_TYPE_SAMPLER:
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+			case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+			case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+			case VK_DESCRIPTOR_TYPE_SAMPLE_WEIGHT_IMAGE_QCOM:
+			case VK_DESCRIPTOR_TYPE_BLOCK_MATCH_IMAGE_QCOM:
+			case VK_DESCRIPTOR_TYPE_TENSOR_ARM:
+			case VK_DESCRIPTOR_TYPE_MUTABLE_EXT:
+			case VK_DESCRIPTOR_TYPE_PARTITIONED_ACCELERATION_STRUCTURE_NV:
+            default:
+                unreachable_code();
+                break;
+            }
+            return ResourceType_MaxEnum;
+        }
+
         VkFormat ConvertFormat(Format format)
         {
             switch (format)

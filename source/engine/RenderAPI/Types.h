@@ -279,7 +279,9 @@ namespace render
 		ResourceType_VolatileConstantBuffer,
 		ResourceType_BufferUAV,
 		ResourceType_DynamicBufferUAV,
-		ResourceType_MaxEnum
+
+		ResourceType_Count,
+		ResourceType_MaxEnum = ResourceType_Count
 	};
 
 	enum Format

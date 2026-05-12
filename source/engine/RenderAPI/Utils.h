@@ -40,6 +40,7 @@ namespace render
         VkBufferUsageFlags ConvertBufferUsage(BufferUsage usage);
         VkImageUsageFlags ConvertImageUsage(ImageUsage usage);
         VkDescriptorType ConvertToDescriptorType(ResourceType type);
+        ResourceType ConvertFromDescriptorType(VkDescriptorType type);
         VkFormat ConvertFormat(Format format);
         const char* ConvertFormatToStr(Format format);
         uint32_t GetBytesPerPixel(Format format);
