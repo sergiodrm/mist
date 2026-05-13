@@ -119,34 +119,24 @@ namespace rendersystem
         QueryTree m_tree;
     };
 
-    class BindingLayoutCache
-    {
-    public:
-        BindingLayoutCache(render::Device* device) : m_device(device) {}
-        ~BindingLayoutCache() { m_cache.clear(); }
-
-        render::BindingLayoutHandle GetCachedLayout(const render::BindingLayoutDescription& desc);
-		uint32_t GetCacheSize() const { return (uint32_t)m_cache.size(); }
-		float GetLoadFactor() const { return m_cache.load_factor(); }
-		float GetMaxLoadFactor() const { return m_cache.max_load_factor(); }
-    private:
-        render::Device* m_device;
-        Mist::tMap<render::BindingLayoutDescription, render::BindingLayoutHandle> m_cache;
-    };
-
     class BindingCache
     {
     public:
-        BindingCache(render::Device* device) : m_device(device), m_layoutCache(device) {}
-        ~BindingCache() { m_cache.clear(); }
-        render::BindingSetHandle GetCachedBindingSet(const render::BindingSetDescription& desc);
+        BindingCache(render::Device* device) : m_device(device) {}
+        ~BindingCache() { m_cache.clear(); m_cacheLayout.clear(); }
+
+        render::BindingSetHandle GetCachedBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout);
+        render::BindingLayoutHandle GetCachedLayout(const render::BindingLayoutDescription& desc);
+
         uint32_t GetCacheSize() const { return (uint32_t)m_cache.size(); }
         float GetLoadFactor() const { return m_cache.load_factor(); }
-        float GetMaxLoadFactor() const { return m_cache.max_load_factor(); }
+
+        uint32_t GetLayoutCacheSize() const { return (uint32_t)m_cacheLayout.size(); }
+        float GetLayoutLoadFactor() const { return m_cacheLayout.load_factor(); }
     private:
         render::Device* m_device;
         Mist::tMap<render::BindingSetDescription, render::BindingSetHandle> m_cache;
-        BindingLayoutCache m_layoutCache;
+        Mist::tMap<render::BindingLayoutDescription, render::BindingLayoutHandle> m_cacheLayout;
     };
 
     struct ShaderPropertyDescriptor
@@ -748,7 +738,7 @@ namespace rendersystem
 
         inline uint64_t GetFrameCounter() const { return m_frame; }
         inline uint64_t GetFrameIndex() const { return m_frame % m_device->GetSwapchain().images.size(); }
-        render::BindingSetHandle GetBindingSet(const render::BindingSetDescription& desc);
+        render::BindingSetHandle GetBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout);
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);
         render::SamplerHandle GetSampler(render::Filter minFilter, 
             render::Filter magFilter, 

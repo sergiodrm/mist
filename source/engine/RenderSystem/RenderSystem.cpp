@@ -165,18 +165,18 @@ namespace rendersystem
         ImGuiDrawTreeItem(m_tree, itemIndex);
     }
 
-    render::BindingLayoutHandle BindingLayoutCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
+    render::BindingLayoutHandle BindingCache::GetCachedLayout(const render::BindingLayoutDescription& desc)
     {
-		auto it = m_cache.find(desc);
-		if (it != m_cache.end())
+		auto it = m_cacheLayout.find(desc);
+		if (it != m_cacheLayout.end())
 			return it->second;
-        //logfdebug("[%20s -> %3d]\n", "BindingLayoutCache", m_cache.size());
+        
         render::BindingLayoutHandle handle = m_device->CreateBindingLayout(desc);
-        m_cache[desc] = handle;
+        m_cacheLayout[desc] = handle;
         return handle;
     }
 
-    render::BindingSetHandle BindingCache::GetCachedBindingSet(const render::BindingSetDescription& desc)
+    render::BindingSetHandle BindingCache::GetCachedBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout)
     {
         auto it = m_cache.find(desc);
         if (it != m_cache.end())
@@ -184,33 +184,7 @@ namespace rendersystem
             //logfdebug("[%20s -> %3d] Reuse cached binding set\n", "BindingSetCache", m_cache.size());
             return it->second;
         }
-        render::BindingLayoutDescription layoutDesc;
-        for (uint32_t i = 0; i < desc.GetBindingItemCount(); ++i)
-        {
-            const render::BindingSetItem& item = desc.bindingItems[i];
-            switch (item.type)
-            {
-            case render::ResourceType_TextureSRV:
-                layoutDesc.PushTextureSRV(item.shaderStages, item.textures.GetSize());
-                break;
-            case render::ResourceType_TextureUAV:
-                layoutDesc.PushTextureUAV(item.shaderStages);
-                break;
-            case render::ResourceType_ConstantBuffer:
-                layoutDesc.PushConstantBuffer(item.shaderStages, item.bufferRange.size);
-                break;
-            case render::ResourceType_VolatileConstantBuffer:
-                layoutDesc.PushVolatileConstantBuffer(item.shaderStages, item.bufferRange.size);
-                break;
-            case render::ResourceType_BufferUAV:
-                layoutDesc.PushBufferUAV(item.shaderStages, item.bufferRange.size);
-                break;
-            default:
-                unreachable_code();
-                break;
-            }
-        }
-        render::BindingLayoutHandle layout = m_layoutCache.GetCachedLayout(layoutDesc);
+
         render::BindingSetHandle handle = m_device->CreateBindingSet(desc, layout);
         m_cache[desc] = handle;
 #if 0
@@ -288,22 +262,27 @@ namespace rendersystem
             m_frameSyncronization.Init(m_device, Mist::limits_cast<uint32_t>(swapchain.images.size()));
         }
         {
+            constexpr uint32_t defaultTextureExtent = 8;
+            static_assert(!(defaultTextureExtent & 0x1));
             render::TextureDescription desc;
-            desc.extent = {8, 8, 1};
+            desc.extent = {defaultTextureExtent, defaultTextureExtent, 1};
             desc.debugName = "default_texture";
             desc.isShaderResource = true;
             desc.format = render::Format_R8G8B8A8_UNorm;
             m_defaultTexture = m_device->CreateTexture(desc);
+
             render::utils::UploadContext upload(m_device);
-            uint32_t data[] = { 
-                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
-                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
-                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
-                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
-                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
-                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
-                0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000,
-                0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff, 0x000000, 0xff00ffff,
+            const uint32_t color0 = 0xffff00ff;
+            const uint32_t color1 = 0x00000000;
+            const uint32_t data[] = {
+                color0, color1, color0, color1, color0, color1, color0, color1,
+                color1, color0, color1, color0, color1, color0, color1, color0,
+                color0, color1, color0, color1, color0, color1, color0, color1,
+                color1, color0, color1, color0, color1, color0, color1, color0,
+                color0, color1, color0, color1, color0, color1, color0, color1,
+                color1, color0, color1, color0, color1, color0, color1, color0,
+                color0, color1, color0, color1, color0, color1, color0, color1,
+                color1, color0, color1, color0, color1, color0, color1, color0,
             };
             upload.WriteTexture(m_defaultTexture, 0, 0, data, sizeof(data));
         }
@@ -413,10 +392,10 @@ namespace rendersystem
 			GetCommandList()->RequireTextureState({ texture, layout });
     }
 
-    render::BindingSetHandle RenderSystem::GetBindingSet(const render::BindingSetDescription& desc)
+    render::BindingSetHandle RenderSystem::GetBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout)
     {
         PROF_ZONE_SCOPED("GetCachedDescriptor");
-        return m_bindingCache->GetCachedBindingSet(desc);
+        return m_bindingCache->GetCachedBindingSet(desc, layout);
     }
 
     render::SamplerHandle RenderSystem::GetSampler(const render::SamplerDescription& desc)
@@ -822,6 +801,7 @@ namespace rendersystem
     void RenderSystem::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t firstVertex, uint32_t firstInstance)
     {
         check(AllowsGraphicsCommand());
+        CPU_TSC(DrawIndexed);
         FlushBeforeDraw();
         GetCommandList()->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
     }
@@ -1060,7 +1040,10 @@ namespace rendersystem
 
     void RenderSystem::ResolveClearRenderTarget()
     {
-		GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
+        {
+            CPU_TSC(SetGraphicsState);
+		    GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
+        }
 		if (m_graphicsContext.pendingClearColor)
 		{
 			m_graphicsContext.pendingClearColor = false;
@@ -1075,6 +1058,7 @@ namespace rendersystem
 
     void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray)
     {
+        CPU_TSC(ResolveBindings);
 		// Bind descriptors sets and memory before draw call
 		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
 		check(properties->pushConstantMap.empty());
