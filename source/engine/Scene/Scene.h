@@ -316,8 +316,6 @@ namespace Mist
 		index_t NewCamera();
 		void SetCamera(sRenderObject r, const CameraComponent& cameraIndex);
 
-		void PrepareMeshToDraw(rendersystem::RenderSystem* renderSystem, const cModel& model, uint32_t meshIndex, uint32_t transformOffset) const;
-
 	private:
 		class VulkanRenderEngine* m_engine{nullptr};
 		static constexpr index_t MaxNodeLevel = 16;

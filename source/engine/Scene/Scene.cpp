@@ -314,14 +314,6 @@ namespace Mist
 			m_cameraIndex = cc.CameraIndex;
 	}
 
-	void Scene::PrepareMeshToDraw(rendersystem::RenderSystem* renderSystem, const cModel& model, uint32_t meshIndex, uint32_t transformOffset) const
-	{
-		const cMesh& mesh = model.GetMesh(meshIndex);
-		renderSystem->SetVertexBuffer(mesh.GetVertexBuffer());
-		renderSystem->SetIndexBuffer(mesh.GetIndexBuffer());
-		renderSystem->SetShaderProperty("u_model", &m_renderTransforms[transformOffset + model.GetNodeFromMeshIndex(meshIndex)], sizeof(glm::mat4));
-	}
-
 	void Scene::LoadScene(const char* filepath)
 	{
 		PROFILE_SCOPE_LOGF(LoadScene, "Load scene (%s)", filepath);
