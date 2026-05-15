@@ -24,6 +24,16 @@ namespace Mist
 		void Invalidate() { *this = InvalidAABB(); }
 		void BuildFromCenterAndExtent(const glm::vec3& center, const glm::vec3& extent);
 		AABB_t ApplyTransform(const glm::mat4& transform) const;
+
+		inline AABB_t Join(const glm::vec3& _min, const glm::vec3& _max) const
+		{
+			return { math::ComposeMinVector(min, _min), math::ComposeMaxVector(max, _max) };
+		}
+
+		inline AABB_t Join(const AABB_t& otherAABB) const
+		{
+			return Join(otherAABB.min, otherAABB.max);
+		}
 	};
 
 	//https://gist.github.com/podgorskiy/e698d18879588ada9014768e3e82a644
