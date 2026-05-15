@@ -404,7 +404,7 @@ namespace Mist
 		static SceneRenderer* GetSceneRenderer();
 	private:
 		void ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, const glm::mat4& worldTransform);
-		void ProcessMesh(const cMesh& mesh, const glm::mat4& nodeTransform, const glm::mat4& modelTransform);
+		void ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform, const glm::mat4& modelWorldTransform);
 
 		void BindMesh(rendersystem::RenderSystem* rs, const RenderItem& item);
 		void BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material);

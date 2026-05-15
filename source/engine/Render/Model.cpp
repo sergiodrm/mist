@@ -685,7 +685,7 @@ namespace Mist
 			loadmesh_profile_logf_scope(LoadMesh, "Load meshes (%s)(%d)", filepath, data->meshes_count);
 			InitNodes((index_t)data->nodes_count);
 			InitMeshes((index_t)data->meshes_count);
-			m_aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+			m_aabb = AABB_t::InvalidAABB();
 			m_renderPassMask = RenderPass_None;
 
 			tDynArray<Vertex> tempVertices;
@@ -709,15 +709,24 @@ namespace Mist
 				// Process mesh
 				if (node.mesh)
 				{
-					index_t meshIndex = CreateMesh();
-					m_nodes[nodeIndex].MeshId = meshIndex;
-					m_meshNodeIndex[meshIndex] = nodeIndex;
+					check(node.mesh >= data->meshes);
+					index_t meshIndex = Mist::limits_cast<index_t>(uint64_t(node.mesh - data->meshes));
+					check(meshIndex < m_meshes.GetSize());
+
+					LinkNodeToMesh(nodeIndex, meshIndex);
 
 					cMesh& mesh = m_meshes[meshIndex];
+					
+					// mesh could be previously loaded in another node. 
+					if (mesh.GetIndexCount())
+						continue;
+
+					// Do actual mesh loading.
 					mesh.SetRenderPassMask(RenderPass_None);
 					mesh.SetName(node.mesh->name && *node.mesh->name ? node.mesh->name : "unknown");
 					loadmeshlogf("node %d %s has mesh %s\n", i, m_nodeNames[i].CStr(), mesh.GetName());
 
+					mesh.SetAABB(AABB_t::InvalidAABB());
 					mesh.InitPrimitives(node.mesh->primitives_count);
 					check(mesh.GetPrimitiveCount() <= node.mesh->primitives_count);
 					loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
@@ -747,10 +756,13 @@ namespace Mist
 						// Calculate AABB
 						// calculate min and max of vertices in mesh space. After load all vertices and nodes, aabb will be transformed to model space.
 						// only calculate primitives bounding boxes.
-						primitive.aabb = { .min = glm::vec3(FLT_MAX), .max = glm::vec3(-FLT_MAX) };
+						primitive.aabb = AABB_t::InvalidAABB();
 						const Vertex* vertices = tempVertices.data() + vertexOffset;
 						for (uint32_t vertexIndex = 0; vertexIndex < vertexCount; ++vertexIndex)
-							primitive.aabb = { math::ComposeMinVector(primitive.aabb.min, vertices[vertexIndex].Position), math::ComposeMaxVector(primitive.aabb.max, vertices[vertexIndex].Position) };
+							primitive.aabb = primitive.aabb.Join(vertices[vertexIndex].Position, vertices[vertexIndex].Position);
+
+						// Acumulate aabb in mesh
+						mesh.SetAABB(mesh.GetAABB().Join(primitive.aabb));
 
 						// Set primitive
 						primitive.renderPassMask = 0;
@@ -783,7 +795,7 @@ namespace Mist
 					}
 
 					loadmeshlogf("* mesh %d: %d vertices (%lld b), %d indices (%lld b), render mask %d\n",
-						meshIndex, tempVertices.size(), tempVertices.size() * sizeof(Vertex), tempIndices.size(), tempIndices.size() * sizeof(uint32_t), mesh.GetRenderFlags());
+						meshIndex, tempVertices.size(), tempVertices.size() * sizeof(Vertex), tempIndices.size(), tempIndices.size() * sizeof(uint32_t), mesh.GetRenderPassMask());
 
 					//BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
 
@@ -796,37 +808,29 @@ namespace Mist
 					// Clear temp buffers without release memory
 					tempIndices.clear();
 					tempVertices.clear();
+
+					m_aabb = m_aabb.Join(mesh.GetAABB());
 				}
 				else
 					loadmeshlogf("node %d %s has no mesh\n", i, m_nodeNames[i].CStr());
 			}
 
-			// Transform AABB to model space
+			// Transform AABB to model space to calculate model AABB
 			{
 				glm::mat4* modelTransforms = _new glm::mat4[m_transforms.GetSize()];
 				UpdateRenderTransforms(modelTransforms, glm::mat4(1.f));
 				m_aabb.Invalidate();
-				for (uint32_t i = 0; i < m_nodes.GetSize(); ++i)
+				for (uint32_t i = 0; i < m_nodeMeshInfoArray.GetSize(); ++i)
 				{
-					if (m_nodes[i].MeshId != index_invalid)
-					{
-						cMesh& mesh = m_meshes[m_nodes[i].MeshId];
-						AABB_t meshAABB = AABB_t::InvalidAABB();
-						for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.GetPrimitiveCount(); ++primitiveIndex)
-						{
-							AABB_t& aabb = mesh.GetPrimitiveArray()[primitiveIndex].aabb;
-							aabb.min = modelTransforms[i] * glm::vec4(aabb.min, 1.f);
-							aabb.max = modelTransforms[i] * glm::vec4(aabb.max, 1.f);
-							meshAABB = { math::ComposeMinVector(aabb.min, meshAABB.min), math::ComposeMaxVector(aabb.max, meshAABB.max) };
-						}
-						mesh.SetAABB(meshAABB);
-						m_aabb = { math::ComposeMinVector(m_aabb.min,  meshAABB.min), math::ComposeMaxVector(m_aabb.max,  meshAABB.max) };
-					}
+					const NodeMeshInfo& meshInfo = m_nodeMeshInfoArray[i];
+					check(meshInfo.IsValid());
+					const cMesh& mesh = m_meshes[meshInfo.mesh];
+					m_aabb = m_aabb.Join(mesh.GetAABB().ApplyTransform(modelTransforms[meshInfo.node]));
 				}
 				delete[] modelTransforms;
 			}
 		}
-		loadmeshlog("=== End loading model ===\n");
+		loadmeshlog("=== End loading model ===\n\n");
 		gltf_api::FreeData(data);
 
 
@@ -866,9 +870,15 @@ namespace Mist
 		m_transforms.Allocate(n);
 		m_transforms.Resize(n);
 
+		check(m_nodeMeshInfoArray.IsEmpty());
+		m_nodeMeshInfoArray.Allocate(n);
+
+		check(m_renderNodesAABB.IsEmpty());
+		m_renderNodesAABB.Allocate(n);
+
 		// Build default root node
 		m_root = n - 1;
-		sNode* node = GetNode(m_root);
+		Node* node = GetNode(m_root);
 		check(node);
 		SetNodeName(m_root, "_root_");
 		SetNodeTransform(m_root, glm::mat4(1.f));
@@ -878,7 +888,7 @@ namespace Mist
 	{
 		check(m_meshes.IsEmpty());
 		m_meshes.Allocate(n);
-		m_meshNodeIndex.Allocate(n);
+		m_meshes.Resize(n);
 	}
 
 	void cModel::InitMaterials(index_t n)
@@ -891,8 +901,7 @@ namespace Mist
 	void cModel::CalculateGlobalTransforms(glm::mat4* transforms, index_t node) const
 	{
 		check(node != index_invalid);
-		const sNode& n = m_nodes[node];
-		check(n.MeshId == index_invalid || m_meshNodeIndex[n.MeshId] == node);
+		const Node& n = m_nodes[node];
 
 		// calculate current
 		if (n.Parent != index_invalid)
@@ -911,9 +920,9 @@ namespace Mist
 
 	index_t cModel::BuildNode(index_t nodeIndex, index_t parentIndex, const char* nodeName)
 	{
-		sNode& node = m_nodes[nodeIndex];
+		Node& node = m_nodes[nodeIndex];
 		SetNodeName(nodeIndex, nodeName && *nodeName ? nodeName : "unknown");
-		sNode* nodeParent = GetNode(parentIndex);
+		Node* nodeParent = GetNode(parentIndex);
 		if (!nodeParent)
 		{
 #if 0
@@ -934,7 +943,7 @@ namespace Mist
 		{
 			if (nodeParent->Child != index_invalid)
 			{
-				sNode* sibling = GetNode(nodeParent->Child);
+				Node* sibling = GetNode(nodeParent->Child);
 				for (; sibling->Sibling != index_invalid; sibling = GetNode(sibling->Sibling));
 				check(sibling && sibling->Sibling == index_invalid);
 				sibling->Sibling = nodeIndex;
@@ -946,7 +955,7 @@ namespace Mist
 		return nodeIndex;
 	}
 
-	cModel::sNode* cModel::GetNode(index_t i)
+	cModel::Node* cModel::GetNode(index_t i)
 	{
 		if (i < m_nodes.GetSize())
 			return &m_nodes[i];
@@ -969,7 +978,6 @@ namespace Mist
 	{
 		check(m_meshes.GetReservedSize());
 		m_meshes.Push();
-		m_meshNodeIndex.Push();
 		return m_meshes.GetSize() - 1;
 	}
 
@@ -980,13 +988,33 @@ namespace Mist
 		return m_materials.GetSize() - 1;
 	}
 
+	index_t cModel::LinkNodeToMesh(index_t node, index_t meshId)
+	{
+		check(node < m_nodes.GetSize());
+		check(meshId < m_meshes.GetSize());
+
+		// Create new NodeMeshInfo and fill data with indices
+		m_nodeMeshInfoArray.Push();
+		m_renderNodesAABB.Push();
+		NodeMeshInfo& nodeMeshInfo = m_nodeMeshInfoArray.Back();
+		nodeMeshInfo.node = node;
+		nodeMeshInfo.mesh = meshId;
+		nodeMeshInfo.aabb = m_renderNodesAABB.GetSize() - 1;
+
+		// Link node to new NodeMeshInfo
+		check(m_nodes[node].meshInfoIndex == index_invalid);
+		m_nodes[node].meshInfoIndex = m_nodeMeshInfoArray.GetSize() - 1;
+		return m_nodeMeshInfoArray.GetSize() - 1;
+	}
+
 	void cModel::DumpInfo() const
 	{
 		index_t it = m_root;
 		while (it != index_invalid)
 		{
-			const sNode& node = m_nodes[it];
-			logfinfo("* node: %d (%s) (Parent: %d|MeshId: %d)\n", it, m_nodeNames[it].CStr(), node.Parent, node.MeshId);
+			const Node& node = m_nodes[it];
+			logfinfo("* node: %d (%s) (Parent: %d)\n", it, m_nodeNames[it].CStr(), node.Parent);
+			logfinfo("* mesh: %d\n", node.meshInfoIndex != index_invalid ? m_nodeMeshInfoArray[node.meshInfoIndex].mesh : -1);
 			logfinfo("** transform: \n");
 			const glm::mat4& m = m_transforms[it];
 			logfinfo("** [%6.3f %6.3f %6.3f %6.3f]\n", m[0][0], m[1][0], m[2][0], m[3][0]);
@@ -1000,7 +1028,7 @@ namespace Mist
 				it = node.Sibling;
 			else if (node.Parent != index_invalid)
 			{
-				const sNode& parent = m_nodes[node.Parent];
+				const Node& parent = m_nodes[node.Parent];
 				if (parent.Sibling != index_invalid)
 					it = parent.Sibling;
 				else

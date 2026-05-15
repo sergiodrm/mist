@@ -238,11 +238,11 @@ namespace Mist
 			ImGui::PushID(model->GetName());
 			for (index_t i = 0; i < model->GetTransformsCount(); ++i)
 			{
-				const cModel::sNode& node = *model->GetNode(i);
+				const cModel::Node& node = *model->GetNode(i);
 				ImGui::PushID(i);
 				if (ImGui::TreeNode(model->GetNodeName(i)))
 				{
-					if (node.MeshId != index_invalid)
+					/*if (node.MeshId != index_invalid)
 					{
 						const cMesh& mesh = model->GetMesh(node.MeshId);
 						if (ImGui::TreeNode(mesh.GetName()))
@@ -275,7 +275,7 @@ namespace Mist
 						}
 					}
 					else
-						ImGui::Text("No mesh");
+						ImGui::Text("No mesh");*/
 					ImGui::TreePop();
 				}
 				ImGui::PopID();
@@ -1207,16 +1207,16 @@ namespace Mist
 	{
 		check(model && nodeIndex != index_invalid);
 		glm::mat4 transform = parentTransform * model->GetTransform(nodeIndex);
-		const cModel::sNode& node = *model->GetNode(nodeIndex);
-		if (node.MeshId != index_invalid)
-			ProcessMesh(model->GetMesh(node.MeshId), transform, worldTransform);
+		const cModel::Node& node = *model->GetNode(nodeIndex);
+		if (node.meshInfoIndex != index_invalid)
+			ProcessMesh(*model->GetMeshFromNode(nodeIndex), transform, worldTransform);
 		if (node.Sibling != index_invalid)
 			ProcessModelNode(model, node.Sibling, parentTransform, worldTransform);
 		if (node.Child != index_invalid)
 			ProcessModelNode(model, node.Child, transform, worldTransform);
 	}
 
-	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeTransform, const glm::mat4& modelTransform)
+	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform, const glm::mat4& modelWorldTransform)
 	{
 		// process mesh flags
 		static constexpr uint32_t maxCount = 8;
@@ -1232,7 +1232,7 @@ namespace Mist
 
 		for (uint32_t i = 0; i < m_creationInfo.GetSize(); ++i)
 		{
-			AABB_t aabb = mesh.GetAABB().ApplyTransform(modelTransform);
+			AABB_t aabb = mesh.GetAABB().ApplyTransform(nodeWorldTransform);
 			if ((mesh.GetRenderPassMask() & m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_creationInfo[i].cameraData.ViewProjection))))
 			{
 				if (!IsGeometryPass(m_creationInfo[i].pass))
@@ -1243,7 +1243,7 @@ namespace Mist
 					RenderItem& item = m_renderPasses[i].items.emplace_back();
 					item.mesh = &mesh;
 					item.primitive = UINT32_MAX;
-					item.transform = nodeTransform;
+					item.transform = nodeWorldTransform;
 				}
 			}
 		}
@@ -1263,10 +1263,10 @@ namespace Mist
 					RenderItem& item = pass.items.emplace_back();
 					item.mesh = &mesh;
 					item.primitive = i;
-					item.transform = nodeTransform;
+					item.transform = nodeWorldTransform;
 
 					// Culling info
-					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(modelTransform));
+					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(nodeWorldTransform));
 				}
 			}
 		}
