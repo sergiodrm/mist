@@ -101,7 +101,8 @@ namespace Mist
 		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
 		//const char* hdrFilepath = "textures/flamingo_pan_4k.hdr";
 		//const char* hdrFilepath = "textures/rosendal_park_sunset_puresky_4k.hdr";
-		const char* hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
+		const char* hdrFilepath = "textures/san_giuseppe_bridge_4k.hdr";
+		//const char* hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
 		//const char* hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
 		//const char* hdrFilepath = "textures/climbing_gym_4k.hdr";
 		strcpy_s(m_irradianceRequestInfo->hdrFilepath, hdrFilepath);
