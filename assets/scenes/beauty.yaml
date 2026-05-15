@@ -1,0 +1,30 @@
+Environment:
+  Ambient: [0.0500000007, 0.0500000007, 0.0500000007]
+RenderObjects:
+  - RenderObject: 0
+    Name: Root
+    Parent: 65535
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+  - RenderObject: 1
+    Name: BeautyModel
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [10, 10, 10]
+    MeshComponent:
+      MeshAssetPath: models/ABeautifulGame/ABeautifulGame.gltf
+  - RenderObject: 2
+    Name: DefaultMainCamera
+    Parent: 0
+    TransformComponent:
+      Position: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Main: true
+      Position: [-17.1258488, 9.13764477, -8.94462681]
+      Rotation: [-0.145367533, -1.94063795, 0]

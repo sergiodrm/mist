@@ -1,5 +1,5 @@
 Environment:
-  Ambient: [0.0500000007, 0.0500000007, 0.0500000007]
+  Ambient: [1, 1, 1]
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -17,8 +17,8 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [0.24645555, 15.1520662, 91.6709976]
-      Rotation: [-0.548149824, -6.72864294, 0]
+      Position: [-5.16826057, 5.74707222, 90.0056458]
+      Rotation: [-0.367594093, -7.03228998, 0]
   - RenderObject: 2
     Name: RenderObject_2
     Parent: 0
