@@ -32,9 +32,8 @@ namespace Mist
 		{
 			index_t node = index_invalid;
 			index_t mesh = index_invalid;
-			index_t aabb = index_invalid;
 
-			inline bool IsValid() const { return node != index_invalid && mesh != index_invalid && aabb != index_invalid; }
+			inline bool IsValid() const { return node != index_invalid && mesh != index_invalid; }
 		};
 
 		bool LoadModel(render::Device* device, const char* filepath);
@@ -88,7 +87,6 @@ namespace Mist
 
 		// indices to relate the meshes with their nodes.
 		tFixedHeapArray<NodeMeshInfo> m_nodeMeshInfoArray;
-		tFixedHeapArray<AABB_t> m_renderNodesAABB;
 
 		// Cached info. Computed at model creation. Must be constant after loading.
 		AABB_t m_aabb;

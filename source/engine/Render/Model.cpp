@@ -873,9 +873,6 @@ namespace Mist
 		check(m_nodeMeshInfoArray.IsEmpty());
 		m_nodeMeshInfoArray.Allocate(n);
 
-		check(m_renderNodesAABB.IsEmpty());
-		m_renderNodesAABB.Allocate(n);
-
 		// Build default root node
 		m_root = n - 1;
 		Node* node = GetNode(m_root);
@@ -995,11 +992,9 @@ namespace Mist
 
 		// Create new NodeMeshInfo and fill data with indices
 		m_nodeMeshInfoArray.Push();
-		m_renderNodesAABB.Push();
 		NodeMeshInfo& nodeMeshInfo = m_nodeMeshInfoArray.Back();
 		nodeMeshInfo.node = node;
 		nodeMeshInfo.mesh = meshId;
-		nodeMeshInfo.aabb = m_renderNodesAABB.GetSize() - 1;
 
 		// Link node to new NodeMeshInfo
 		check(m_nodes[node].meshInfoIndex == index_invalid);
