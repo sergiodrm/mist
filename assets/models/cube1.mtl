@@ -1,6 +1,6 @@
 - Name: initialShadingGroup
   Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Fragment shader: shaders/gbuffer_grid.frag
   Textures:
     {}
   Properties:
