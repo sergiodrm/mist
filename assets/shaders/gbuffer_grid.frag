@@ -66,11 +66,11 @@ void main()
 	data.normal = normalize(inNormal);
 
 	// Metallic and Roughness
-	data.roughness = 1.f;//u_material.data.MetallicRoughness.g;
-	data.metallic = 0.f;//u_material.data.MetallicRoughness.r;
+	data.roughness = u_material.data.MetallicRoughness.g;
+	data.metallic = u_material.data.MetallicRoughness.r;
 
 	// Specular
-	data.specular = 0.f;//u_material.data.MetallicRoughness.b;
+	data.specular = u_material.data.MetallicRoughness.b;
 
 	// Motion vectors
 	vec2 currPos = (inCurrWSPos.xy / inCurrWSPos.w) * 0.5 + 0.5;

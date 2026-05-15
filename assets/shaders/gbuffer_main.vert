@@ -50,7 +50,7 @@ void main()
 	outCurrWSPos = u_camera.data.viewProjection * u_model.data.worldTransform * vec4(inPosition,1.f);
 	outPrevWSPos = u_prevCamera.data.viewProjection * u_prevModel.data.worldTransform * vec4(inPosition, 1.f);
 
-	outWorldPos = vec3(u_camera.data.view * vec4(worldPos, 1.f));
+	outWorldPos = vec3(vec4(worldPos, 1.f));
 	outNormal = normalize(normalTransform * normalize(inNormal));	
 	outTangent = normalize(normalTransform * normalize(inTangent.xyz));
 	vec3 B = cross(outNormal, outTangent) * inTangent.w;
