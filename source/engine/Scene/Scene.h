@@ -352,7 +352,7 @@ namespace Mist
 	{
 		uint32_t primitive;
 		const cMesh* mesh;
-		glm::mat4 transform;
+		uint32_t transformIndex;
 	};
 
 	struct RenderPass
@@ -360,6 +360,7 @@ namespace Mist
 		tDynArray<RenderItem> items;
 		tDynArray<AABB_t> cullingData;
 		tDynArray<uint32_t> drawList;
+		tDynArray<glm::mat4> transforms;
 
 		RenderPass() = default;
 		DELETE_COPY_CONSTRUCTORS(RenderPass);
@@ -369,6 +370,7 @@ namespace Mist
 			items.clear();
 			cullingData.clear();
 			drawList.clear();
+			transforms.clear();
 		}
 	};
 
@@ -411,7 +413,7 @@ namespace Mist
 
 		void DoCulling();
 
-		void DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial);
+		void DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial, uint32_t& lastTransform);
 		void DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item);
 
 	private:

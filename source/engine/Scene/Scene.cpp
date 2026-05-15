@@ -1124,18 +1124,19 @@ namespace Mist
 		RenderPass& pass = m_renderPasses[renderContext.passId];
 		const cMaterial* lastMaterial = nullptr;
 		const cMesh* lastMesh = nullptr;
+		uint32_t lastTransform = UINT32_MAX;
 		if (!IsGeometryPass(m_creationInfo[renderContext.passId].pass))
 		{
 			CPU_PROFILE_SCOPE(Scene_Draw);
 			if (IsCullingEnabled())
 			{ 
 				for (uint32_t i = 0; i < pass.drawList.size(); ++i)
-					DrawItem(renderContext, pass.items[pass.drawList[i]], lastMesh, lastMaterial);
+					DrawItem(renderContext, pass.items[pass.drawList[i]], lastMesh, lastMaterial, lastTransform);
 			}
 			else
 			{
 				for (uint32_t i = 0; i < pass.items.size(); ++i)
-					DrawItem(renderContext, pass.items[i], lastMesh, lastMaterial);
+					DrawItem(renderContext, pass.items[i], lastMesh, lastMaterial, lastTransform);
 			}
 		}
 		else
@@ -1239,14 +1240,20 @@ namespace Mist
 					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = i;
 				else if (m_creationInfo[i].pass & RenderPass_ShadowMap)
 				{
+					m_renderPasses[i].transforms.emplace_back(nodeWorldTransform);
+
 					// add whole mesh to the list
 					RenderItem& item = m_renderPasses[i].items.emplace_back();
 					item.mesh = &mesh;
 					item.primitive = UINT32_MAX;
-					item.transform = nodeWorldTransform;
+					item.transformIndex = m_renderPasses[i].transforms.size() - 1;
 				}
 			}
 		}
+
+		// Append transform to primitive passes
+		for (uint32_t i = 0; i < primitiveRenderPasses.index; ++i)
+			m_renderPasses[primitiveRenderPasses.indices[i]].transforms.emplace_back(nodeWorldTransform);
 
 		// primitive lists
 		for (uint32_t i = 0; i < mesh.GetPrimitiveCount(); ++i)
@@ -1263,7 +1270,7 @@ namespace Mist
 					RenderItem& item = pass.items.emplace_back();
 					item.mesh = &mesh;
 					item.primitive = i;
-					item.transform = nodeWorldTransform;
+					item.transformIndex = pass.transforms.size() - 1;
 
 					// Culling info
 					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(nodeWorldTransform));
@@ -1276,8 +1283,6 @@ namespace Mist
 	{
 		rs->SetVertexBuffer(item.mesh->GetVertexBuffer());
 		rs->SetIndexBuffer(item.mesh->GetIndexBuffer());
-		rs->SetShaderProperty("u_model", &item.transform, sizeof(item.transform));
-		rs->SetShaderProperty("u_prevModel", &item.transform, sizeof(item.transform));
 	}
 
 	void SceneRenderer::BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material)
@@ -1311,7 +1316,7 @@ namespace Mist
 		}
 	}
 
-	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial)
+	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial, uint32_t& lastTransform)
 	{
 		const PrimitiveMeshData& primitive = item.mesh->GetPrimitiveArray()[item.primitive];
 
@@ -1319,6 +1324,13 @@ namespace Mist
 		{
 			lastMesh = item.mesh;
 			BindMesh(renderContext.rs, item);
+		}
+		if (lastTransform != item.transformIndex)
+		{
+			lastTransform = item.transformIndex;
+			const glm::mat4& transform = m_renderPasses[renderContext.passId].transforms[item.transformIndex];
+			renderContext.rs->SetShaderProperty("u_model", &transform, sizeof(transform));
+			renderContext.rs->SetShaderProperty("u_prevModel", &transform, sizeof(transform));
 		}
 		if (lastMaterial != primitive.material)
 		{
