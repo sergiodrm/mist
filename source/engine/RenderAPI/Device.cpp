@@ -2095,6 +2095,7 @@ namespace render
 
         // Create descriptor set layout
         Mist::tStaticArray<VkDescriptorSetLayoutBinding, BindingLayoutDescription::MaxBindings> bindings;
+        Mist::tStaticArray<VkDescriptorBindingFlags, BindingLayoutDescription::MaxBindings> flags;
 
         for (uint32_t i = 0; i < description.bindings.GetSize(); ++i)
         {
@@ -2106,12 +2107,21 @@ namespace render
             b.descriptorCount = Mist::limits_cast<uint32_t>(binding.arrayCount);
             b.stageFlags = utils::ConvertShaderStage(binding.shaderType);
             b.pImmutableSamplers = nullptr;
+
+            VkDescriptorBindingFlags& f = flags.Push();
+            f = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
         }
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlags{};
+        bindingFlags.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        bindingFlags.pNext = nullptr;
+        bindingFlags.pBindingFlags = flags.GetData();
+        bindingFlags.bindingCount = flags.GetSize();
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.pNext = nullptr;
-        layoutInfo.flags = 0;
+        layoutInfo.pNext = &bindingFlags;
+        layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
         layoutInfo.bindingCount = bindings.GetSize();
         layoutInfo.pBindings = bindings.GetData();
         check_result(vkCreateDescriptorSetLayout(m_context->device, &layoutInfo, m_context->allocationCallbacks, &bindingLayout->m_layout));
@@ -2204,7 +2214,7 @@ namespace render
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.pNext = nullptr;
-        poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT | VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
         poolInfo.maxSets = 1;
         poolInfo.poolSizeCount = layout->m_poolSizes.GetSize();
         poolInfo.pPoolSizes = layout->m_poolSizes.GetData();
@@ -2637,6 +2647,7 @@ namespace render
             .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
             .select()
             .value();
+        VkPhysicalDevice physicalDevice = vkbPhysicalDevice.physical_device;
         vkb::DeviceBuilder deviceBuilder{ vkbPhysicalDevice };
 
         // Enable shader draw parameters
@@ -2645,13 +2656,6 @@ namespace render
         shaderDrawParamsFeatures.pNext = nullptr;
         shaderDrawParamsFeatures.shaderDrawParameters = VK_TRUE;
         deviceBuilder.add_pNext(&shaderDrawParamsFeatures);
-
-        // Build PhysicalDeviceFeatures
-        VkPhysicalDeviceFeatures2 features;
-        features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        features.pNext = nullptr;
-        vkGetPhysicalDeviceFeatures2(vkbPhysicalDevice.physical_device, &features);
-        deviceBuilder.add_pNext(&features);
 
         // Enable timeline semaphores.
         VkPhysicalDeviceTimelineSemaphoreFeatures timelineSemaphoreFeatures;
@@ -2667,11 +2671,29 @@ namespace render
         sync2Features.synchronization2 = VK_TRUE;
         deviceBuilder.add_pNext(&sync2Features);
 
+        // Enable descriptor indexing for bindless model
+        VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
+        descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        descriptorIndexingFeatures.pNext = nullptr;
+
+        // Build PhysicalDeviceFeatures
+        VkPhysicalDeviceFeatures2 features;
+        features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        features.pNext = &descriptorIndexingFeatures;
+        vkGetPhysicalDeviceFeatures2(vkbPhysicalDevice.physical_device, &features);
+        deviceBuilder.add_pNext(&features);
+
+		check(descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing);
+		check(descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind);
+		check(descriptorIndexingFeatures.shaderUniformBufferArrayNonUniformIndexing);
+		check(descriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind);
+		check(descriptorIndexingFeatures.shaderStorageBufferArrayNonUniformIndexing);
+		check(descriptorIndexingFeatures.descriptorBindingStorageBufferUpdateAfterBind);
+
         // Create Device
         vkb::Result<vkb::Device> deviceResult = deviceBuilder.build();
         check(deviceResult.has_value());
         VkDevice device = deviceResult.value().device;
-        VkPhysicalDevice physicalDevice = vkbPhysicalDevice.physical_device;
 
         // Compute queue from device
 #if 0
