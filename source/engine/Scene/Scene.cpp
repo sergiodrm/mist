@@ -1135,6 +1135,13 @@ namespace Mist
 		if (!IsGeometryPass(m_creationInfo[renderContext.passId].pass))
 		{
 			CPU_PROFILE_SCOPE(Scene_Draw);
+
+			if (CVar_RenderWireframe.Get())
+			{
+				renderContext.rs->SetFillMode(render::RasterFillMode_Line);
+				renderContext.rs->SetLineWidth(Mist::math::Clamp(CVar_RenderWireframe.Get(), 0.0001f, FLT_MAX));
+			}
+
 			if (IsCullingEnabled())
 			{ 
 				for (uint32_t i = 0; i < pass.drawList.size(); ++i)
