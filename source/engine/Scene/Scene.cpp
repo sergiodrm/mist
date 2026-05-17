@@ -45,6 +45,17 @@ namespace Mist
 
 	SceneRenderer* g_sceneRenderer = nullptr;
 
+	static const char* g_iblImagePaths[] =
+	{
+		"textures/san_giuseppe_bridge_4k.hdr",
+		"textures/quarry_01_puresky_4k.hdr",
+		"textures/flamingo_pan_4k.hdr",
+		"textures/rosendal_park_sunset_puresky_4k.hdr",
+		"textures/citrus_orchard_road_puresky_4k.hdr",
+		"textures/climbing_gym_4k.hdr",
+	};
+	static int g_iblIndex = 0;
+
 	bool SceneFilter(const char* name)
 	{
 		if (*CVar_RenderInclude.Get() && !WildStricmp(CVar_RenderInclude.Get(), name))
@@ -99,13 +110,7 @@ namespace Mist
 		m_irradianceRequestInfo->cubemapWidthHeight = 1024;
 		m_irradianceRequestInfo->irradianceCubemapWidthHeight = 32;
 		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
-		//const char* hdrFilepath = "textures/flamingo_pan_4k.hdr";
-		//const char* hdrFilepath = "textures/rosendal_park_sunset_puresky_4k.hdr";
-		const char* hdrFilepath = "textures/san_giuseppe_bridge_4k.hdr";
-		//const char* hdrFilepath = "textures/quarry_01_puresky_4k.hdr";
-		//const char* hdrFilepath = "textures/citrus_orchard_road_puresky_4k.hdr";
-		//const char* hdrFilepath = "textures/climbing_gym_4k.hdr";
-		strcpy_s(m_irradianceRequestInfo->hdrFilepath, hdrFilepath);
+		strcpy_s(m_irradianceRequestInfo->hdrFilepath, g_iblImagePaths[g_iblIndex]);
 		m_irradianceRequestInfo->userData = this;
 	}
 
@@ -985,11 +990,13 @@ namespace Mist
 		if (ImGui::TreeNode("IBL cubemap"))
 		{
 			if (ImGui::Button("Reload IBL"))
+			{
+				strcpy_s(m_irradianceRequestInfo->hdrFilepath, g_iblImagePaths[g_iblIndex]);
 				LoadIrradianceCube(*m_irradianceRequestInfo);
-			char buff[Mist::MaxFilenameLength];
-			strcpy_s(buff, m_irradianceRequestInfo->hdrFilepath);
-			if (ImGui::InputText("HDR filepath", buff, sizeof(buff)))
-				strcpy_s(m_irradianceRequestInfo->hdrFilepath, buff);
+			}
+
+			ImGuiUtils::ComboBox("IBL files", &g_iblIndex, g_iblImagePaths, _countof(g_iblImagePaths));
+
 			int res = m_irradianceRequestInfo->cubemapWidthHeight;
 			if (ImGui::DragInt("Cubemap resolution", &res, 1.f, 0, 8192, "%5d"))
 				m_irradianceRequestInfo->cubemapWidthHeight = res;
