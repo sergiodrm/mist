@@ -730,6 +730,40 @@ namespace Mist
 					mesh.InitPrimitives(node.mesh->primitives_count);
 					check(mesh.GetPrimitiveCount() <= node.mesh->primitives_count);
 					loadmeshlogf("* primitives: %d\n", node.mesh->primitives_count);
+
+					// Get vertex attribute mask. All primitives should have the same mask as the first one
+					VertexAttributeMask mask = VertexAttribute_None;
+					{
+						const cgltf_primitive& primitive = node.mesh->primitives[0];
+						for (uint32_t j = 0; j < primitive.attributes_count; ++j)
+						{
+							switch (primitive.attributes[j].type)
+							{
+							case cgltf_attribute_type_position: mask |= VertexAttribute_Position; break;
+							case cgltf_attribute_type_normal: mask |= VertexAttribute_Normal; break;
+							case cgltf_attribute_type_tangent: mask |= VertexAttribute_Tangent; break;
+							case cgltf_attribute_type_texcoord: 
+								if (!strcmp(primitive.attributes[j].name, "TEXCOORD_0"))
+									mask |= VertexAttribute_TexCoord0;
+								else if (!strcmp(primitive.attributes[j].name, "TEXCOORD_1"))
+									mask |= VertexAttribute_TexCoord1;
+								else
+									unreachable_code();
+								break;
+							case cgltf_attribute_type_color: mask |= VertexAttribute_Color; break;
+							case cgltf_attribute_type_joints:
+							case cgltf_attribute_type_weights:
+							case cgltf_attribute_type_custom:
+							case cgltf_attribute_type_invalid:
+							case cgltf_attribute_type_max_enum:
+							default:
+								unreachable_code();
+								break;
+							}
+						}
+					}
+
+					// Load primitives
 					for (uint32_t j = 0; j < node.mesh->primitives_count; ++j)
 					{
 						const cgltf_primitive& cgltfprimitive = node.mesh->primitives[j];
@@ -797,7 +831,11 @@ namespace Mist
 					loadmeshlogf("* mesh %d: %d vertices (%lld b), %d indices (%lld b), render mask %d\n",
 						meshIndex, tempVertices.size(), tempVertices.size() * sizeof(Vertex), tempIndices.size(), tempIndices.size() * sizeof(uint32_t), mesh.GetRenderPassMask());
 
-					//BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
+					if (!(mask & VertexAttribute_Tangent))
+					{
+						logfwarn("Mesh %s from model %s without tangent vertices.\n", mesh.GetName(), GetName());
+						BuildTangents(tempVertices.data(), tempVertices.size(), tempIndices.data(), tempIndices.size());
+					}
 
 					// Create mesh resources.
 					mesh.InitBuffers(device, tempVertices.data(), tempVertices.size() * sizeof(Vertex), tempIndices.data(), tempIndices.size());
