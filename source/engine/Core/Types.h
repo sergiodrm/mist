@@ -656,6 +656,17 @@ namespace Mist
 		PtrType GetPtr() const { return m_ptr; }
 		size_t GetRefCounter() const { return m_ptr ? m_ptr->GetRefCounter() : 0; }
 
+		operator uint8_t() const = delete;
+		operator int8_t() const = delete;
+		operator uint16_t() const = delete;
+		operator int16_t() const = delete;
+		operator uint32_t() const = delete;
+		operator int32_t() const = delete;
+		operator uint64_t() const = delete;
+		operator int64_t() const = delete;
+		operator float() const = delete;
+		operator double() const = delete;
+
 	protected:
 
 		size_t InternalAddRef()
