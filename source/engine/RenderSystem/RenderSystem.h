@@ -792,6 +792,7 @@ namespace rendersystem
         void SetScissor(float x0, float x1, float y0, float y1);
         void SetScissor(const render::Rect& scissor);
 
+        void SetLineWidth(float lineWidth = 1.f);
         void SetFillMode(render::RasterFillMode mode = render::RasterFillMode_Fill);
         void SetCullMode(render::RasterCullMode mode = render::RasterCullMode_Back);
         void SetPrimitive(render::PrimitiveType type = render::PrimitiveType_TriangleList);

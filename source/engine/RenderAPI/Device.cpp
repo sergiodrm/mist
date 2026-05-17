@@ -1952,7 +1952,8 @@ namespace render
         rasterizer.depthBiasConstantFactor = description.renderState.rasterState.depthBiasConstantFactor;
         rasterizer.depthBiasClamp = description.renderState.rasterState.depthBiasClamp;
         rasterizer.depthBiasSlopeFactor = description.renderState.rasterState.depthBiasSlopeFactor;
-        rasterizer.lineWidth = 1.f;
+        rasterizer.lineWidth = description.renderState.rasterState.lineWidth;
+        checkdbg(rasterizer.lineWidth > 0);
 
         // Pipeline Multisampling
         VkPipelineMultisampleStateCreateInfo multisampling = {};

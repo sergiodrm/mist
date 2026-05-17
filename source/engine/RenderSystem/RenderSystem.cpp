@@ -436,6 +436,7 @@ namespace rendersystem
         SetBlendFactor();
         SetBlendAlphaState();
         SetBlendWriteMask();
+        SetLineWidth();
         SetFillMode();
         SetCullMode();
         SetViewport(0.f, 0.f,
@@ -542,6 +543,12 @@ namespace rendersystem
     void RenderSystem::SetScissor(const render::Rect& scissor)
     {
         m_graphicsContext.pso.renderState.viewportState.scissor = scissor;
+    }
+
+    void RenderSystem::SetLineWidth(float lineWidth)
+    {
+        checkdbg(lineWidth > 0.f);
+        m_graphicsContext.pso.renderState.rasterState.lineWidth = lineWidth;
     }
 
     void RenderSystem::SetFillMode(render::RasterFillMode mode)

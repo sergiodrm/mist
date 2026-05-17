@@ -941,6 +941,7 @@ namespace render
         float depthBiasConstantFactor = 0.f;
         float depthBiasClamp = 0.f;
         float depthBiasSlopeFactor = 0.f;
+        float lineWidth = 1.f;
         bool depthClampEnable = false;
         bool scissorEnable = false;
 
@@ -954,6 +955,7 @@ namespace render
                 depthBiasClamp == other.depthBiasClamp &&
                 depthBiasSlopeFactor == other.depthBiasSlopeFactor &&
                 depthClampEnable == other.depthClampEnable &&
+                lineWidth == other.lineWidth &&
                 scissorEnable == other.scissorEnable;
         }
 
@@ -1987,6 +1989,7 @@ namespace std
             Mist::HashCombine(seed, state.depthBiasEnable);
             Mist::HashCombine(seed, state.depthBiasSlopeFactor);
             Mist::HashCombine(seed, state.depthClampEnable);
+            Mist::HashCombine(seed, state.lineWidth);
             Mist::HashCombine(seed, state.fillMode);
             Mist::HashCombine(seed, state.cullMode);
             Mist::HashCombine(seed, state.frontFaceCounterClockWise);
