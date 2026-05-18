@@ -1911,330 +1911,8 @@ namespace rendersystem
         }
 	}
 
-    ShaderMemoryContext::ShaderMemoryContext(render::Device* device)
-        : m_device(device)
-    {
-        check(m_device);
-        check(MinTempBufferSize() == m_device->AlignUniformSize(MinTempBufferSize()));
-    }
-
-    ShaderMemoryContext::~ShaderMemoryContext()
-    {
-        Invalidate();
-    }
-
-    ShaderMemoryContext::ShaderMemoryContext(const ShaderMemoryContext& other)
-    {
-        // copy constructor must be done over empty objects.
-        // just allowing use the class inside std containers.
-        check(other.m_device);
-        check(other.m_properties.empty());
-        check(other.m_buffers.empty());
-        check(other.m_freeBuffers.empty());
-        check(other.m_usedBuffers.empty());
-
-        Invalidate();
-        m_device = other.m_device;
-        m_pointer = other.m_pointer;
-        if (other.m_size)
-        {
-            ResizeTempBuffer(other.m_size);
-            memcpy_s(m_tempBuffer, m_size, other.m_tempBuffer, other.m_size);
-        }
-        m_submissionId = other.m_submissionId;
-    }
-
-    ShaderMemoryContext::ShaderMemoryContext(ShaderMemoryContext&& rvl)
-    {
-        check(rvl.m_device);
-        Invalidate();
-        m_device = rvl.m_device;
-        m_buffers = std::move(rvl.m_buffers);
-        m_freeBuffers = std::move(rvl.m_freeBuffers);
-        m_usedBuffers = std::move(rvl.m_usedBuffers);
-        m_properties = std::move(rvl.m_properties);
-        m_pointer = rvl.m_pointer;
-        m_tempBuffer = rvl.m_tempBuffer;
-        rvl.m_tempBuffer = nullptr;
-        m_size = rvl.m_size;
-        m_submissionId = rvl.m_submissionId;
-        rvl.Invalidate();
-    }
-
-    ShaderMemoryContext& ShaderMemoryContext::operator=(const ShaderMemoryContext& other)
-    {
-        new(this)ShaderMemoryContext(other);
-        return *this;
-    }
-
-    ShaderMemoryContext& ShaderMemoryContext::operator=(ShaderMemoryContext&& rvl)
-    {
-		check(rvl.m_device);
-		Invalidate();
-		m_device = rvl.m_device;
-		m_buffers = std::move(rvl.m_buffers);
-		m_freeBuffers = std::move(rvl.m_freeBuffers);
-		m_usedBuffers = std::move(rvl.m_usedBuffers);
-		m_properties = std::move(rvl.m_properties);
-		m_pointer = rvl.m_pointer;
-		m_tempBuffer = rvl.m_tempBuffer;
-		rvl.m_tempBuffer = nullptr;
-		m_size = rvl.m_size;
-		m_submissionId = rvl.m_submissionId;
-		rvl.Invalidate();
-        return *this;
-    }
-
-    void ShaderMemoryContext::ReserveProperty(const char* id, uint64_t size)
-    {
-        check(m_pointer == m_device->AlignUniformSize(m_pointer));
-        check(size);
-        size = m_device->AlignUniformSize(size);
-        auto it = m_properties.find(id);
-        if (it != m_properties.end())
-        {
-            // if already created, see if there is a buffer binded to the property
-            ShaderPropertyDescriptor& p = it->second;
-            if (p.buffer)
-            {
-                // if there is a buffer, override property (new property instance)
-                check(p.buffer.GetRefCounter() > 1);
-                p.buffer = nullptr;
-                p.size = size;
-                p.offset = m_pointer;
-                m_pointer += size;
-            }
-            check(p.size >= size);
-            // if not, there is already allocated previously and it is a valid allocation
-            return;
-        }
-
-        // new allocation
-        m_properties[id] = ShaderPropertyDescriptor{ .buffer = nullptr, .offset = m_pointer, .size = size};
-        m_pointer += size;
-    }
-
-    void ShaderMemoryContext::WriteProperty(const char* id, const void* data, uint64_t size)
-    {
-        size = m_device->AlignUniformSize(size);
-        ReserveProperty(id, size);
-        ShaderPropertyDescriptor property = GetProperty(id);
-        //check(property.IsValid());
-        check(!property.buffer && property.size >= size);
-        Write(data, size, 0, property.offset);
-    }
-
-    ShaderPropertyDescriptor ShaderMemoryContext::GetProperty(const char* id) const
-    {
-        auto it = m_properties.find(id);
-        if (it == m_properties.end())
-            return ShaderPropertyDescriptor::Invalid;
-        return it->second;
-    }
-
-	void ShaderMemoryContext::BeginFrame()
-	{
-        if (!m_usedBuffers.empty())
-        {
-            uint32_t size = (uint32_t)m_usedBuffers.size();
-            uint32_t initialSize = (uint32_t)m_freeBuffers.size();
-            m_freeBuffers.resize(size + initialSize);
-            memcpy_s(m_freeBuffers.data() + initialSize, size * sizeof(uint32_t), m_usedBuffers.data(), size * sizeof(uint32_t));
-            m_usedBuffers.clear();
-
-            // integrity check: indices must be unique
-            for (uint32_t i = 0; i < m_freeBuffers.size() - 1; ++i)
-            {
-                for (uint32_t j = i + 1; j < m_freeBuffers.size(); ++j)
-                    check(m_freeBuffers[i] != m_freeBuffers[j]);
-            }
-        }
-	}
-
-	void ShaderMemoryContext::FlushMemory()
-    {
-        if (!m_pointer)
-            return;
-        uint32_t bufferIndex = GetOrCreateBuffer(m_pointer);
-        render::BufferHandle buffer = m_buffers[bufferIndex];
-        m_usedBuffers.push_back(bufferIndex);
-        m_device->WriteBuffer(buffer, m_tempBuffer, m_pointer);
-
-        for (auto it = m_properties.begin(); it != m_properties.end(); ++it)
-        {
-            //check(it->second.buffer == nullptr);
-            if (!it->second.buffer)
-                it->second.buffer = buffer;
-        }
-
-        m_pointer = 0;
-    }
-
-    void ShaderMemoryContext::ResizeTempBuffer(uint64_t size)
-    {
-        size = m_device->AlignUniformSize(size);
-        size = __max(size, MinTempBufferSize());
-        if (m_size < size)
-        {
-            uint8_t* p = nullptr;
-            if (m_tempBuffer)
-                p = (uint8_t*)_realloc(m_tempBuffer, size);
-            else
-                p = (uint8_t*)_malloc(size);
-            check(p);
-            m_tempBuffer = p;
-            m_size = size;
-        }
-    }
-
-    void ShaderMemoryContext::Write(const void* data, uint64_t size, uint64_t srcOffset, uint64_t dstOffset)
-    {
-        if (dstOffset + size > m_size)
-            ResizeTempBuffer(dstOffset + size);
-        check(m_tempBuffer && dstOffset + size <= m_size);
-        const uint8_t* src = (const uint8_t*)data + srcOffset;
-        uint8_t* dst = m_tempBuffer + dstOffset;
-        memcpy_s(dst, m_size - dstOffset, src, size);
-    }
-
-    uint32_t ShaderMemoryContext::GetOrCreateBuffer(uint64_t size)
-    {
-        size = m_device->AlignUniformSize(size);
-
-        uint32_t freeIndex = UINT32_MAX;
-        for (uint32_t i = (uint32_t)m_freeBuffers.size() - 1; i < (uint32_t)m_freeBuffers.size(); --i)
-        {
-            const render::BufferHandle& buffer = m_buffers[m_freeBuffers[i]];
-            if (buffer->m_description.size > size)
-            {
-                if (freeIndex != UINT32_MAX)
-                {
-                    const render::BufferHandle& selectedBuffer = m_buffers[m_freeBuffers[freeIndex]];
-                    if (buffer->m_description.size < selectedBuffer->m_description.size)
-                        freeIndex = i;
-                }
-                else
-                    freeIndex = i;
-            }
-            else if (buffer->m_description.size == size)
-            {
-                freeIndex = i;
-                break;
-            }
-        }
-
-        if (freeIndex != UINT32_MAX)
-        {
-            uint32_t index = m_freeBuffers[freeIndex];
-			if (freeIndex != (uint32_t)m_freeBuffers.size() - 1)
-				m_freeBuffers[freeIndex] = m_freeBuffers.back();
-			m_freeBuffers.pop_back();
-			return index;
-        }
-
-        m_buffers.emplace_back(render::utils::CreateUniformBuffer(m_device, size, "ShaderMemoryContext_UB"));
-        return (uint32_t)m_buffers.size() - 1;
-    }
-
-    void ShaderMemoryContext::Invalidate()
-    {
-        m_device = nullptr;
-        if (m_tempBuffer)
-            _free(m_tempBuffer);
-        m_tempBuffer = nullptr;
-        m_pointer = 0;
-        m_size = 0;
-        m_submissionId = UINT64_MAX;
-        m_buffers.clear();
-        m_properties.clear();
-        m_freeBuffers.clear();
-        m_usedBuffers.clear();
-    }
-
-    ShaderMemoryPool::ShaderMemoryPool(render::Device* device)
-        : m_device(device)
-    {
-        check(m_device);
-        m_contexts.reserve(10);
-        m_usedContexts.reserve(10);
-        m_freeContexts.reserve(10);
-    }
-
-    uint32_t ShaderMemoryPool::CreateContext()
-    {
-        uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
-
-        uint32_t index = UINT32_MAX;
-        if (!m_freeContexts.empty())
-        {
-            index = m_freeContexts[m_freeContexts.size() - 1];
-            check(index < (uint32_t)m_contexts.size() && m_contexts[index].m_submissionId == UINT64_MAX);
-            m_freeContexts.pop_back();
-        }
-        else
-        {
-            m_contexts.emplace_back(m_device);
-            //m_usedContexts.push_back((uint32_t)m_contexts.size() - 1);
-            index = (uint32_t)m_contexts.size() - 1;
-            m_contexts[index].m_submissionId = UINT64_MAX;
-        }
-
-        check(index < (uint32_t)m_contexts.size());
-        m_contexts[index].BeginFrame();
-        return index;
-    }
-
-    ShaderMemoryContext* ShaderMemoryPool::GetContext(uint32_t context)
-    {
-        check(context < (uint32_t)m_contexts.size());
-        // integrity check: only must return used buffers with invalid submission id
-        for (uint32_t i = 0; i < (uint32_t)m_usedContexts.size(); ++i)
-            check(m_usedContexts[i] != context);
-        check(m_contexts[context].m_submissionId == UINT64_MAX);
-
-        return &m_contexts[context];
-    }
-
-    void ShaderMemoryPool::Submit(uint64_t submissionId, uint32_t* contexts, uint32_t count)
-    {
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            // integrity check
-            uint32_t index = contexts[i];
-            check(index < (uint32_t)m_contexts.size() && m_contexts[index].m_submissionId == UINT64_MAX);
-            for (uint32_t j = 0; j < (uint32_t)m_usedContexts.size(); ++j)
-                check(m_usedContexts[j] != index);
-
-            m_contexts[index].m_submissionId = submissionId;
-            m_usedContexts.emplace_back(index);
-            contexts[i] = UINT32_MAX;
-        }
-    }
-
-    void ShaderMemoryPool::ProcessInFlight()
-    {
-        // iterates over used contexts and store those which have finished submission id
-        const uint64_t lastFinishedId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
-        //logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
-        //    lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
-        for (uint32_t i = (uint32_t)m_usedContexts.size() - 1; i < (uint32_t)m_usedContexts.size(); --i)
-        {
-            uint32_t index = m_usedContexts[i];
-            if (m_contexts[index].m_submissionId <= lastFinishedId)
-            {
-                if (i != (uint32_t)m_usedContexts.size() - 1)
-                    m_usedContexts[i] = m_usedContexts.back();
-                m_usedContexts.pop_back();
-                m_freeContexts.emplace_back(index);
-                m_contexts[index].m_submissionId = UINT64_MAX;
-            }
-        }
-		//logfinfo("[ShaderMemoryPool] (submissionId: %6d; used: %4d; free: %4d; created: %4d)\n",
-		//	lastFinishedId, m_usedContexts.size(), m_freeContexts.size(), m_contexts.size());
-    }
-
 	ShaderStream::ShaderStream(render::Device* device)
-        : m_device(device), m_pool(device), m_memoryPool(device), m_currentId(UINT32_MAX), m_useNewPool(true)
+        : m_device(device), m_pool(device), m_currentId(UINT32_MAX)
 	{
         check(m_device);
         m_tempBuffer.Init(1 << 16);
@@ -2248,67 +1926,44 @@ namespace rendersystem
 	void ShaderStream::BeginFrame()
 	{
         check(m_currentId == UINT32_MAX);
-        if (m_useNewPool)
-            m_currentId = m_pool.CreateShaderBuffer();
-        else
-            m_currentId = m_memoryPool.CreateContext();
+        m_currentId = m_pool.CreateShaderBuffer();
         check(m_currentId != UINT32_MAX);
 	}
 
 	void ShaderStream::Write(const char* id, const void* data, uint64_t size)
 	{
         check(m_currentId != UINT32_MAX);
-        if (m_useNewPool)
-        {
-            ShaderBuffer* buffer = m_pool.GetShaderBuffer(m_currentId);
-            buffer->WriteProperty(m_device, id, data, size);
-        }
-        else
-        {
-            ShaderMemoryContext* context = m_memoryPool.GetContext(m_currentId);
-            context->WriteProperty(id, data, size);
-        }
+        ShaderBuffer* buffer = m_pool.GetShaderBuffer(m_currentId);
+        buffer->WriteProperty(m_device, id, data, size);
 	}
 
 	void ShaderStream::Submit(uint64_t submissionId)
 	{
         check(m_currentId != UINT32_MAX);
-        if (m_useNewPool)
-            m_pool.Submit(submissionId, m_currentId);
-        else
-            m_memoryPool.Submit(submissionId, &m_currentId, 1);
+        m_pool.Submit(submissionId, m_currentId);
         m_currentId = UINT32_MAX;
 	}
 
 	void ShaderStream::Flush()
 	{
         check(m_currentId != UINT32_MAX);
-        if (!m_useNewPool)
-            m_memoryPool.GetContext(m_currentId)->FlushMemory();
 	}
 
     void ShaderStream::EndFrame()
     {
 		check(m_currentId != UINT32_MAX);
-		if (m_useNewPool)
-			m_pool.GetShaderBuffer(m_currentId)->EndUse(m_device);
+		m_pool.GetShaderBuffer(m_currentId)->EndUse(m_device);
     }
 
     void ShaderStream::ProcessInFlight()
     {
-        if (m_useNewPool)
-            m_pool.ProcessInFlight();
-        else
-            m_memoryPool.ProcessInFlight();
+        m_pool.ProcessInFlight();
     }
 
     ShaderPropertyDescriptor ShaderStream::GetPropertyDescriptor(const char* id)
     {
         check(m_currentId != UINT32_MAX);
-        if (m_useNewPool)
-            return m_pool.GetShaderBuffer(m_currentId)->GetProperty(id);
-        else
-            return m_memoryPool.GetContext(m_currentId)->GetProperty(id);
+        return m_pool.GetShaderBuffer(m_currentId)->GetProperty(id);
     }
 
     SamplerCache::SamplerCache(render::Device* device)

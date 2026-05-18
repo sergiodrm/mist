@@ -236,76 +236,6 @@ namespace rendersystem
         ShaderBuffer::TemporalBuffer m_tempBuffer;
     };
 
-    class ShaderMemoryContext
-    {
-    public:
-
-        ShaderMemoryContext(render::Device* device);
-        ~ShaderMemoryContext();
-        ShaderMemoryContext(const ShaderMemoryContext& other);
-        ShaderMemoryContext(ShaderMemoryContext&& rvl);
-        ShaderMemoryContext& operator=(const ShaderMemoryContext& other);
-        ShaderMemoryContext& operator=(ShaderMemoryContext&& rvl);
-
-        void ReserveProperty(const char* id, uint64_t size);
-        void WriteProperty(const char* id, const void* data, uint64_t size);
-        ShaderPropertyDescriptor GetProperty(const char* id) const;
-
-        void BeginFrame();
-        void FlushMemory();
-        static constexpr uint64_t MinTempBufferSize() { return (1 << 14); }
-
-        inline size_t GetBufferCount() const { return m_buffers.size(); }
-        inline size_t GetFreeBufferCount() const { return m_freeBuffers.size(); }
-        inline size_t GetUsedBufferCount() const { return m_usedBuffers.size(); }
-        inline size_t GetPropertyCount() const { return m_properties.size(); }
-        inline size_t GetTemporalBufferSize() const { return m_size; }
-        inline size_t GetDeviceMemorySize() const
-        {
-            size_t s = 0;
-            for (uint32_t i = 0; i < (uint32_t)m_buffers.size(); ++i)
-                s += m_buffers[i]->m_description.size;
-            return s;
-        }
-    private:
-        void ResizeTempBuffer(uint64_t size);
-        void Write(const void* data, uint64_t size, uint64_t srcOffset = 0, uint64_t dstOffset = 0);
-        uint32_t GetOrCreateBuffer(uint64_t size);
-        void Invalidate();
-    public:
-        render::Device* m_device;
-        uint8_t* m_tempBuffer = nullptr;
-        uint64_t m_pointer = 0;
-        uint64_t m_size = 0;
-        uint64_t m_submissionId = UINT64_MAX;
-
-        Mist::tDynArray<render::BufferHandle> m_buffers;
-        Mist::tDynArray<uint32_t> m_freeBuffers;
-        Mist::tDynArray<uint32_t> m_usedBuffers;
-        Mist::tMap<Mist::tFixedString<32>, ShaderPropertyDescriptor> m_properties;
-    };
-
-    class ShaderMemoryPool
-    {
-    public:
-        ShaderMemoryPool(render::Device* device);
-
-        uint32_t CreateContext();
-        ShaderMemoryContext* GetContext(uint32_t context);
-        void Submit(uint64_t submissionId, uint32_t* contexts, uint32_t count);
-        void ProcessInFlight();
-
-        inline size_t GetContextCount() const { return m_contexts.size(); }
-        inline size_t GetFreeContextCount() const { return m_freeContexts.size(); }
-        inline size_t GetUsedContextCount() const { return m_usedContexts.size(); }
-
-    private:
-        render::Device* m_device;
-        Mist::tDynArray<ShaderMemoryContext> m_contexts;
-        Mist::tDynArray<uint32_t> m_freeContexts;
-        Mist::tDynArray<uint32_t> m_usedContexts;
-    };
-
     class TextureCache
     {
     public:
@@ -477,19 +407,13 @@ namespace rendersystem
         void ProcessInFlight();
         ShaderPropertyDescriptor GetPropertyDescriptor(const char* id);
 
-        inline uint32_t GetPoolCount() const { return m_useNewPool ? m_pool.GetPoolCount() : m_memoryPool.GetContextCount(); }
-        inline uint32_t GetPoolUsedCount() const { return m_useNewPool ? m_pool.GetPoolUsedCount() : m_memoryPool.GetUsedContextCount(); }
-        inline uint32_t GetPoolFreeCount() const { return m_useNewPool ? m_pool.GetPoolFreeCount() : m_memoryPool.GetFreeContextCount(); }
+        inline uint32_t GetPoolCount() const { return m_pool.GetPoolCount(); }
+        inline uint32_t GetPoolUsedCount() const { return m_pool.GetPoolUsedCount(); }
+        inline uint32_t GetPoolFreeCount() const { return m_pool.GetPoolFreeCount(); }
         inline uint64_t GetTemporalBufferSize() const { return m_tempBuffer.GetSize(); }
-        inline uint32_t GetBufferCount() const { return m_useNewPool 
-            ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetBufferCount() 
-            : const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetBufferCount(); }
-        inline uint64_t GetDeviceMemorySize() const { return m_useNewPool 
-            ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetDeviceMemorySize()
-			: const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetDeviceMemorySize(); }
-        inline uint32_t GetPropertyCount() const { return m_useNewPool
-                ? const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetPropertyCount()
-                : const_cast<ShaderMemoryPool*>(&m_memoryPool)->GetContext(m_currentId)->GetPropertyCount(); }
+        inline uint32_t GetBufferCount() const { return const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetBufferCount(); }
+        inline uint64_t GetDeviceMemorySize() const { return const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetDeviceMemorySize(); }
+        inline uint32_t GetPropertyCount() const { return const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetPropertyCount(); }
 
         inline Stats GetStats() const
         {
@@ -509,9 +433,6 @@ namespace rendersystem
         uint32_t m_currentId;
         ShaderBufferPool m_pool;
         ShaderBuffer::TemporalBuffer m_tempBuffer;
-        ShaderMemoryPool m_memoryPool;
-
-        bool m_useNewPool = false;
     };
 
     class ShaderDb
