@@ -43,6 +43,8 @@ namespace Mist
 	CStrVar CVar_RenderExclude("r_renderExclude", "");
 	CStrVar CVar_ShowAABBMeshName("r_showAABBMeshName", "");
 
+	CFloatVar CVar_RenderWireframe("r_wireframe", 0.f);
+
 	SceneRenderer* g_sceneRenderer = nullptr;
 
 	static const char* g_iblImagePaths[] =
