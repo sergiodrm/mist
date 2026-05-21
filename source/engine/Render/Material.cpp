@@ -66,10 +66,10 @@ namespace Mist
 				// Shader
 				const rendersystem::ShaderProgram* shader = mtl.GetShaderProgram();
 				check(shader);
-				if (*shader->GetDescription().vsDesc.filePath)
-					emitter << YAML::Key << "Vertex shader" << YAML::Value << shader->GetDescription().vsDesc.filePath;
-				if (*shader->GetDescription().fsDesc.filePath)
-					emitter << YAML::Key << "Fragment shader" << YAML::Value << shader->GetDescription().fsDesc.filePath;
+				if (*shader->GetDescription().shaderDesc[render::ShaderType_Vertex].filePath)
+					emitter << YAML::Key << "Vertex shader" << YAML::Value << shader->GetDescription().shaderDesc[render::ShaderType_Vertex].filePath;
+				if (*shader->GetDescription().shaderDesc[render::ShaderType_Fragment].filePath)
+					emitter << YAML::Key << "Fragment shader" << YAML::Value << shader->GetDescription().shaderDesc[render::ShaderType_Fragment].filePath;
 
 				// Textures
 				emitter << YAML::Key << "Textures" << YAML::BeginMap;
@@ -252,7 +252,7 @@ namespace Mist
 
 	void cMaterial::ConfigureShaderDescription(tMaterialFlags flags, rendersystem::ShaderBuildDescription& shaderDesc)
 	{
-#define DECLARE_MACRO_ENUM(_flag) if (flags & _flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag)
+#define DECLARE_MACRO_ENUM(_flag) if (flags & _flag) shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition(#_flag)
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NONE);
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_UNLIT);
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_NO_PROJECT_SHADOWS);
@@ -262,7 +262,7 @@ namespace Mist
 		DECLARE_MACRO_ENUM(MATERIAL_FLAG_BLEND);
 #undef DECLARE_MACRO_ENUM
 
-#define DECLARE_MACRO_ENUM(_flag) shaderDesc.fsDesc.options.PushMacroDefinition(#_flag, _flag)
+#define DECLARE_MACRO_ENUM(_flag) shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition(#_flag, _flag)
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_ALBEDO);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_NORMAL);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_SPECULAR);
@@ -337,7 +337,7 @@ namespace Mist
 		if (m_flags & MATERIAL_FLAG_BLEND)
 		{
 			check(!(m_flags & MATERIAL_FLAG_OPAQUE) && !(m_flags & MATERIAL_FLAG_MASK));
-			desc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
+			desc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
 		}
 		else
 		{
@@ -353,7 +353,7 @@ namespace Mist
 			if (m_flags & MATERIAL_FLAG_MASK)
 			{
 				check(!(m_flags & MATERIAL_FLAG_OPAQUE));
-				desc.fsDesc.options.PushMacroDefinition(alphaTestFlag);
+				desc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition(alphaTestFlag);
 			}
 		}
 

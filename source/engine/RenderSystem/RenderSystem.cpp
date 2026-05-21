@@ -567,6 +567,11 @@ namespace rendersystem
         m_graphicsContext.pso.primitiveType = type;
     }
 
+    void RenderSystem::SetPatchControlPoints(uint32_t patchControlPoints)
+    {
+        m_graphicsContext.pso.renderState.tesselationState.patchPoints = patchControlPoints;
+    }
+
     void RenderSystem::SetShader(ShaderProgram* shader)
     {
         check(shader);
@@ -1110,16 +1115,16 @@ namespace rendersystem
 						subresources.Push(render::TextureSubresourceRange::AllSubresources());
 					}
 					if (property.type == render::ResourceType_TextureSRV)
-						desc.PushTextureSRV(property.binding, tex, sampler, property.stage, subresources.GetData(), property.arrayCount);
+						desc.PushTextureSRV(property.binding, tex, sampler, property.stageMask, subresources.GetData(), property.arrayCount);
 					else
-						desc.PushTextureUAV(property.binding, tex, property.stage, subresources.GetData(), property.arrayCount);
+						desc.PushTextureUAV(property.binding, tex, property.stageMask, subresources.GetData(), property.arrayCount);
 				}
 				break;
 				case render::ResourceType_ConstantBuffer:
 				{
                     const ShaderPropertyDescriptor propertyDescriptor = m_shaderContext.memoryStream->GetPropertyDescriptor(property.name.c_str());
 					check(propertyDescriptor.IsValid());
-					desc.PushConstantBuffer(property.binding, propertyDescriptor.buffer.GetPtr(), property.stage, render::BufferRange(propertyDescriptor.offset, propertyDescriptor.size));
+					desc.PushConstantBuffer(property.binding, propertyDescriptor.buffer.GetPtr(), property.stageMask, render::BufferRange(propertyDescriptor.offset, propertyDescriptor.size));
 				}
 				break;
 				case render::ResourceType_VolatileConstantBuffer:
@@ -1129,7 +1134,7 @@ namespace rendersystem
                 {
 					check(paramSet.setIndex < MaxDescriptorSetSlots && property.binding < MaxBindingsPerSlot);
                     check(m_shaderContext.buffers[paramSet.setIndex][property.binding]);
-                    desc.PushBufferUAV(property.binding, m_shaderContext.buffers[paramSet.setIndex][property.binding].GetPtr(), property.stage);
+                    desc.PushBufferUAV(property.binding, m_shaderContext.buffers[paramSet.setIndex][property.binding].GetPtr(), property.stageMask);
                 }
 					break;
 				case render::ResourceType_DynamicBufferUAV:
@@ -1378,10 +1383,10 @@ namespace rendersystem
         bool Compile(const ShaderFileDescription& desc, render::ShaderType stage)
         {
             check(GetShader(stage) == nullptr);
-            render::shader_compiler::CompiledBinary bin = render::shader_compiler::BuildShader(desc.filePath, stage, &desc.options);
+            render::shader_compiler::CompiledBinary bin = render::shader_compiler::BuildShader(desc.filePath, render::utils::ConvertShaderTypeToMask(stage), &desc.options);
             if (!bin.IsCompilationSucceed())
                 return false;
-            check(render::shader_compiler::BuildShaderParams(bin, stage, m_properties));
+            check(render::shader_compiler::BuildShaderParams(bin, render::utils::ConvertShaderTypeToMask(stage), m_properties));
 
             render::ShaderDescription shaderDesc;
             shaderDesc.debugName = desc.filePath;
@@ -1580,7 +1585,7 @@ namespace rendersystem
 
     void ShaderProgram::ReleaseResources()
     {
-        for (uint32_t i = 0; i < Shader_Count; ++i)
+        for (uint32_t i = 0; i < render::ShaderType_Count; ++i)
             m_shaders[i] = nullptr;
         m_layouts.Clear();
         if (m_properties)
@@ -1610,73 +1615,54 @@ namespace rendersystem
 
     bool ShaderProgram::ReloadGraphics()
     {
-        check(*m_description->vsDesc.filePath || *m_description->fsDesc.filePath);
-
-        // generate shader modules
-        bool succeed = false;
-
-        ShaderCompiler compiler(m_device);
-        if (*m_description->vsDesc.filePath)
-            succeed = compiler.Compile(m_description->vsDesc, render::ShaderType_Vertex);
-        if (succeed && *m_description->fsDesc.filePath)
-            succeed = compiler.Compile(m_description->fsDesc, render::ShaderType_Fragment);
-
-        if (!succeed)
-        {
-            logferror("Failed to generate shader modules for graphics shaders [%s, %s]\n",
-                !*m_description->vsDesc.filePath ? "none" : m_description->vsDesc.filePath,
-                !*m_description->fsDesc.filePath ? "none" : m_description->fsDesc.filePath);
-            return false;
-        }
-
-        if (IsLoaded())
-            ReleaseResources();
-
-        // Generate shader reflection data
-        // Override with external info
-        for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
-            compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
-
-        check(!m_properties);
-        m_properties = _new render::shader_compiler::ShaderReflectionProperties();
-        const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
-        m_properties->params = std::move(prop.params);
-        m_properties->pushConstantMap = std::move(prop.pushConstantMap);
-        m_inputLayout = compiler.GetVertexInputLayout();
-
-        m_shaders[Shader_Vertex] = compiler.GetShader(render::ShaderType_Vertex);
-        m_shaders[Shader_Fragment] = compiler.GetShader(render::ShaderType_Fragment);
-        return true;
+        static const render::ShaderType types[] = { 
+            render::ShaderType_Vertex, 
+            render::ShaderType_Fragment, 
+            render::ShaderType_TesselationControl, 
+            render::ShaderType_TesselationEvaluation 
+        };
+        return ReloadShaderModules(types, Mist::CountOf(types));
     }
 
     bool ShaderProgram::ReloadCompute()
     {
-        check(*m_description->csDesc.filePath);
+        render::ShaderType type = render::ShaderType_Compute;
+        return ReloadShaderModules(&type, 1);
+    }
 
+    bool ShaderProgram::ReloadShaderModules(const render::ShaderType* types, uint32_t count)
+    {
+        bool succeed = true;
         ShaderCompiler compiler(m_device);
-
-        if (!compiler.Compile(m_description->csDesc, render::ShaderType_Compute))
+        for (uint32_t i = 0; (i < count) && succeed; ++i)
         {
-            logferror("Failed to generate shader modules for graphics shaders [%s]\n",
-                !*m_description->csDesc.filePath ? "none" : m_description->csDesc.filePath);
+            if (*m_description->shaderDesc[types[i]].filePath)
+			    succeed = compiler.Compile(m_description->shaderDesc[types[i]], types[i]);
+        }
+
+        if (!succeed)
+        {
+            logerror("Failed loading shader modules.\n");
             return false;
         }
 
-        if (IsLoaded())
-            ReleaseResources();
+		if (IsLoaded())
+			ReleaseResources();
 
-        // Generate shader reflection data
-        // Override with external info
-        for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
-            compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
+		// Generate shader reflection data
+		// Override with external info
+		for (const ShaderDynamicBufferDescription& dynBuffer : m_description->dynamicBuffers)
+			compiler.SetUniformBufferAsDynamic(dynBuffer.name.c_str());
 
 		check(!m_properties);
 		m_properties = _new render::shader_compiler::ShaderReflectionProperties();
-        const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
-        m_properties->params = std::move(prop.params);
-        m_properties->pushConstantMap = std::move(prop.pushConstantMap);
+		const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
+		m_properties->params = std::move(prop.params);
+		m_properties->pushConstantMap = std::move(prop.pushConstantMap);
+		m_inputLayout = compiler.GetVertexInputLayout();
 
-        m_shaders[Shader_Compute] = compiler.GetShader(render::ShaderType_Compute);
+		for (uint32_t i = 0; i < count; ++i)
+			m_shaders[types[i]] = compiler.GetShader(types[i]);
         return true;
     }
 
@@ -1693,7 +1679,7 @@ namespace rendersystem
             for (uint32_t j = 0; j < setDesc.params.size(); ++j)
             {
                 const render::shader_compiler::ShaderPropertyDescription& propertyDesc = setDesc.params[j];
-                layoutDesc.bindings[propertyDesc.binding] = render::BindingLayoutItem(propertyDesc.type, propertyDesc.binding, propertyDesc.size, propertyDesc.stage, propertyDesc.arrayCount);
+                layoutDesc.bindings[propertyDesc.binding] = render::BindingLayoutItem(propertyDesc.type, propertyDesc.binding, propertyDesc.size, propertyDesc.stageMask, propertyDesc.arrayCount);
             }
             
             m_layouts[setDesc.setIndex] = m_device->CreateBindingLayout(layoutDesc);

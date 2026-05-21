@@ -32,7 +32,7 @@ namespace Mist
 		{
             rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/ssao.frag");
-            shaderDesc.fsDesc.options.PushMacroDefinition("KERNEL_SIZE", SSAO_KERNEL_SAMPLES);
+            shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("KERNEL_SIZE", SSAO_KERNEL_SAMPLES);
             m_ssaoShader = rs->CreateShader(shaderDesc);
         }
 		{

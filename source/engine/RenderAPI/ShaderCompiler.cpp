@@ -178,9 +178,9 @@ namespace render
             return ret;
         }
 
-        static shaderc_shader_kind GetShaderType(ShaderType type)
+        static shaderc_shader_kind GetShaderType(ShaderStageMask shaderMask)
         {
-            switch (type)
+            switch (shaderMask)
             {
             case ShaderType_Vertex: return shaderc_glsl_vertex_shader;
             case ShaderType_Fragment: return shaderc_glsl_fragment_shader;
@@ -189,22 +189,28 @@ namespace render
             }
         }
 
-        bool CheckShaderFileExtension(const char* filepath, ShaderType type)
+        bool CheckShaderFileExtension(const char* filepath, ShaderStageMask shaderMask)
         {
             bool res = false;
             if (filepath && *filepath)
             {
                 const char* desiredExt;
-                switch (type)
+                switch (shaderMask)
                 {
-                case ShaderType_Vertex: 
+                case ShaderStageMask_Vertex: 
                     desiredExt = ".vert";
                     break;
-                case ShaderType_Fragment: 
+                case ShaderStageMask_Fragment:
                     desiredExt = ".frag"; 
                     break;
-                case ShaderType_Compute: 
+                case ShaderStageMask_Compute:
                     desiredExt = ".comp";
+                    break;
+                case ShaderStageMask_TesselationControl:
+                    desiredExt = ".tsc";
+                    break;
+                case ShaderStageMask_TesselationEvaluation:
+                    desiredExt = ".tse";
                     break;
                 default:
                     return res;
@@ -323,7 +329,7 @@ namespace render
             return ContainsNewerFileInIncludes_Recursive(filepath, filepath, compileOptions);
         }
 
-        CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions)
+        CompiledBinary Compile(const char* filepath, ShaderStageMask shaderMask, const CompilationOptions* additionalOptions)
         {
             profile_shader_scope_f(Compile, "Compile shader (%s)", filepath);
             char* source;
@@ -361,7 +367,7 @@ namespace render
             char filepathInWs[Mist::MaxFilenameLength];
             Mist::FileSystem::BuildFilepathInWorkspace(filepath, filepathInWs, sizeof(filepathInWs));
 
-            shaderc_shader_kind kind = GetShaderType(shaderType);
+            shaderc_shader_kind kind = GetShaderType(shaderMask);
             shaderc::PreprocessedSourceCompilationResult prepRes = compiler.PreprocessGlsl(source, s, kind, filepathInWs, options);
             if (!HandleError(prepRes, "preprocess"))
                 return CompiledBinary();
@@ -398,7 +404,7 @@ namespace render
             }
         }
 
-        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions, bool forceCompilation)
+        CompiledBinary BuildShader(const char* filepath, ShaderStageMask shaderMask, const CompilationOptions* additionalOptions, bool forceCompilation)
         {
             profile_shader_scope_f(ProcessShaderFile, "shader_compiler::BuildShader (%s)", filepath);
             shaderlog("******************************\n");
@@ -420,7 +426,7 @@ namespace render
             char binaryFilepath[1024];
             GenerateSpvFileName(binaryFilepath, filepath, *additionalOptions);
 
-            check(CheckShaderFileExtension(filepath, type));
+            check(CheckShaderFileExtension(filepath, shaderMask));
 
             CompiledBinary bin;
             if (!forceCompilation && !ShouldRecompileShaderFile(filepath, additionalOptions))
@@ -435,7 +441,7 @@ namespace render
                     logfwarn("Force shader recompilation: %s\n", filepath);
                 else
                     logfwarn("Compiled binary not found or shader source is newer (%s)\n", filepath);
-                bin = shader_compiler::Compile(filepath, type, additionalOptions);
+                bin = shader_compiler::Compile(filepath, shaderMask, additionalOptions);
                 if (!bin.IsCompilationSucceed())
                 {
                     logferror("Shader compilation failed (%s)\n", filepath);
@@ -469,13 +475,13 @@ namespace render
             return bin;
         }
 
-        bool BuildShaderParams(const CompiledBinary& bin, ShaderType stage, ShaderReflectionProperties& outProperties)
+        bool BuildShaderParams(const CompiledBinary& bin, ShaderStageMask shaderMask, ShaderReflectionProperties& outProperties)
         {
             profile_shader_scope(BuildShaderParams, "Build shader param reflection");
             auto processSpirvResource = [](ShaderReflectionProperties& properties, 
                 const spirv_cross::CompilerGLSL& compiler, 
                 const spirv_cross::Resource& resource, 
-                ShaderType stage, 
+                ShaderStageMask shaderMask,
                 ResourceType resourceType)
                 {
                     ShaderPropertyDescription bufferInfo;
@@ -502,7 +508,7 @@ namespace render
                         bufferInfo.arrayCount = type.array.size() > 0 ? type.array[0] : 1;
                     }
                     bufferInfo.type = resourceType;
-                    bufferInfo.stage = stage;
+                    bufferInfo.stageMask = shaderMask;
 
                     uint32_t setIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
                     ShaderPropertySetDescription* setDesc = nullptr;
@@ -544,27 +550,27 @@ namespace render
 
 
             for (const spirv_cross::Resource& resource : resources.uniform_buffers)
-                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_ConstantBuffer);
+                processSpirvResource(outProperties, compiler, resource, shaderMask, ResourceType_ConstantBuffer);
 
             for (const spirv_cross::Resource& resource : resources.storage_buffers)
-                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_BufferUAV);
+                processSpirvResource(outProperties, compiler, resource, shaderMask, ResourceType_BufferUAV);
 
             for (const spirv_cross::Resource& resource : resources.sampled_images)
-                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_TextureSRV);
+                processSpirvResource(outProperties, compiler, resource, shaderMask, ResourceType_TextureSRV);
 
             for (const spirv_cross::Resource& resource : resources.storage_images)
-                processSpirvResource(outProperties, compiler, resource, stage, ResourceType_TextureUAV);
+                processSpirvResource(outProperties, compiler, resource, shaderMask, ResourceType_TextureUAV);
 
             for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
             {
-                check(!outProperties.pushConstantMap.contains(stage));
+                check(!outProperties.pushConstantMap.contains(shaderMask));
                 ShaderPushConstantDescription desc;
                 desc.name = resource.name.c_str();
                 desc.offset = compiler.get_decoration(resource.id, spv::DecorationOffset);
                 const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
                 desc.size = (uint32_t)compiler.get_declared_struct_size(type);
-                desc.stage = stage;
-                outProperties.pushConstantMap[stage] = desc;
+                desc.stage = shaderMask;
+                outProperties.pushConstantMap[shaderMask] = desc;
 #ifdef MIST_SHADER_REFLECTION_LOG
                 logfdebug("> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
                     vkutils::GetVulkanShaderStageName(shaderStage), info.Name.c_str(), info.Offset, info.Size);
@@ -572,7 +578,7 @@ namespace render
 
             }
 
-            if (stage & ShaderType_Vertex)
+            if (shaderMask & ShaderStageMask_Vertex)
             {
                 for (const auto& resource : resources.stage_inputs)
                 {

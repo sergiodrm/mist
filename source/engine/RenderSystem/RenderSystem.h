@@ -266,15 +266,6 @@ namespace rendersystem
         Mist::tMap<render::SamplerDescription, render::SamplerHandle> m_samplers;
     };
 
-    enum ShaderType
-    {
-        Shader_Vertex,
-        Shader_Fragment,
-        Shader_Compute,
-
-        Shader_Count
-    };
-
     struct ShaderFileDescription
     {
         char filePath[Mist::MaxFilenameLength];
@@ -289,6 +280,17 @@ namespace rendersystem
         }
 
         inline bool operator!=(const ShaderFileDescription& other) const { return !(*this == other); }
+
+        inline void HashCombine(uint64_t& h) const
+        {
+            Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(filePath, options));
+        }
+
+        inline void Clear()
+        {
+            *filePath = 0;
+            options.Reset();
+        }
     };
 
     struct ShaderDynamicBufferDescription
@@ -308,44 +310,83 @@ namespace rendersystem
     struct ShaderBuildDescription
     {
         ShaderProgramType type = ShaderProgram_Graphics;
-        ShaderFileDescription vsDesc;
-        ShaderFileDescription fsDesc;
-        ShaderFileDescription csDesc;
+        ShaderFileDescription shaderDesc[render::ShaderType_Count];
 
         Mist::tDynArray<ShaderDynamicBufferDescription> dynamicBuffers;
 
-        inline void SetGraphics(const char* vertexShaderFile, const char* fragmentShaderFile)
+        inline void Clear()
         {
             type = ShaderProgram_Graphics;
-            *vsDesc.filePath = 0;
-            *fsDesc.filePath = 0;
-            *csDesc.filePath = 0;
-            if (vertexShaderFile && *vertexShaderFile)
-                strcpy_s(vsDesc.filePath, vertexShaderFile);
-            if (fragmentShaderFile && *fragmentShaderFile)
-                strcpy_s(fsDesc.filePath, fragmentShaderFile);
+            for (uint32_t i = 0; i < Mist::CountOf(shaderDesc); ++i)
+                shaderDesc[i].Clear();
+            dynamicBuffers.clear();
+        }
+
+        inline void SetFileDescription(uint32_t shaderIndex, const char* filepath)
+        {
+            check(shaderIndex < render::ShaderType_Count);
+			if (filepath)
+				strcpy_s(shaderDesc[shaderIndex].filePath, filepath);
+        }
+
+        inline void SetEntryPoint(uint32_t shaderIndex, const char* entryPoint)
+        {
+            check(shaderIndex < render::ShaderType_Count);
+            strcpy_s(shaderDesc[shaderIndex].options.entryPoint, entryPoint);
+        }
+
+        inline void SetGraphics(const char* vertexShaderFile, const char* fragmentShaderFile, const char* tesselationControl = nullptr, const char* tesselationEvaluation = nullptr)
+        {
+            Clear();
+            type = ShaderProgram_Graphics;
+            SetEntryPoint(render::ShaderType_Vertex, "main");
+            SetEntryPoint(render::ShaderType_Fragment, "main");
+            SetEntryPoint(render::ShaderType_TesselationControl, "main");
+            SetEntryPoint(render::ShaderType_TesselationEvaluation, "main");
+            SetFileDescription(render::ShaderType_Vertex, vertexShaderFile);
+            SetFileDescription(render::ShaderType_Fragment, fragmentShaderFile);
+            SetFileDescription(render::ShaderType_TesselationControl, tesselationControl);
+            SetFileDescription(render::ShaderType_TesselationEvaluation, tesselationEvaluation);
         }
 
         inline void SetCompute(const char* computeShaderFile)
         {
+            Clear();
             type = ShaderProgram_Compute;
-			*vsDesc.filePath = 0;
-			*fsDesc.filePath = 0;
-			*csDesc.filePath = 0;
-			if (computeShaderFile && *computeShaderFile)
-				strcpy_s(csDesc.filePath, computeShaderFile);
+            SetEntryPoint(render::ShaderType_Compute, "main");
+            SetFileDescription(render::ShaderType_Compute, computeShaderFile);
         }
 
         inline bool operator ==(const ShaderBuildDescription& other) const
         {
             return type == other.type
-                && vsDesc == other.vsDesc
-                && fsDesc == other.fsDesc
-                && csDesc == other.csDesc
+                && render::utils::EqualArrays(shaderDesc, render::ShaderType_Count, other.shaderDesc, render::ShaderType_Count)
                 && render::utils::EqualArrays(dynamicBuffers.data(), (uint32_t)dynamicBuffers.size(),
                     other.dynamicBuffers.data(), (uint32_t)other.dynamicBuffers.size());
         }
         inline bool operator!=(const ShaderBuildDescription& other) const { return !(*this == other); }
+
+        inline void HashCombine(uint64_t& h) const
+        {
+			Mist::HashCombine(h, type);
+			static auto hashCombineShader = [](uint64_t& seed, const ShaderFileDescription& fileDesc) {
+				Mist::HashCombine(seed, render::shader_compiler::BuildShaderHash(fileDesc.filePath, fileDesc.options));
+				};
+			switch (type)
+			{
+			case ShaderProgram_Graphics:
+				hashCombineShader(h, shaderDesc[render::ShaderType_Vertex]);
+				hashCombineShader(h, shaderDesc[render::ShaderType_Fragment]);
+				hashCombineShader(h, shaderDesc[render::ShaderType_TesselationControl]);
+				hashCombineShader(h, shaderDesc[render::ShaderType_TesselationEvaluation]);
+				break;
+			case ShaderProgram_Compute:
+				hashCombineShader(h, shaderDesc[render::ShaderType_Compute]);
+				break;
+			}
+			for (uint32_t i = 0; i < (uint32_t)dynamicBuffers.size(); ++i)
+				Mist::HashCombine(h, dynamicBuffers[i]);
+        }
     };
 
     class ShaderProgram
@@ -358,9 +399,11 @@ namespace rendersystem
         bool IsLoaded() const;
         void ReleaseResources();
 
-        render::ShaderHandle GetVertexShader() const { return m_shaders[Shader_Vertex]; }
-        render::ShaderHandle GetFragmentShader() const { return m_shaders[Shader_Fragment]; }
-        render::ShaderHandle GetComputeShader() const { return m_shaders[Shader_Compute]; }
+        render::ShaderHandle GetVertexShader() const { return m_shaders[render::ShaderType_Vertex]; }
+        render::ShaderHandle GetFragmentShader() const { return m_shaders[render::ShaderType_Fragment]; }
+        render::ShaderHandle GetComputeShader() const { return m_shaders[render::ShaderType_Compute]; }
+        render::ShaderHandle GetTesselationControlShader() const { return m_shaders[render::ShaderType_TesselationControl]; }
+        render::ShaderHandle GetTesselationEvaluationShader() const { return m_shaders[render::ShaderType_TesselationEvaluation]; }
 
         const render::BindingLayoutArray& GetShaderLayout() const { return m_layouts; }
 
@@ -370,11 +413,12 @@ namespace rendersystem
     private:
         bool ReloadGraphics();
         bool ReloadCompute();
+        bool ReloadShaderModules(const render::ShaderType* types, uint32_t count);
         bool ProcessLayouts();
 
         render::Device* m_device;
     
-        render::ShaderHandle m_shaders[Shader_Count];
+        render::ShaderHandle m_shaders[render::ShaderType_Count];
         render::BindingLayoutArray m_layouts;
         render::VertexInputLayout m_inputLayout;
         render::shader_compiler::ShaderReflectionProperties* m_properties;
@@ -437,21 +481,13 @@ namespace rendersystem
 
     class ShaderDb
     {
+    public:
 		struct Hasher
 		{
 			std::size_t operator()(const ShaderBuildDescription& desc) const
 			{
 				uint64_t h = 0;
-				switch (desc.type)
-				{
-				case ShaderProgram_Graphics:
-					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.vsDesc.filePath, desc.vsDesc.options));
-					Mist::HashCombine(h, render::shader_compiler::BuildShaderHash(desc.fsDesc.filePath, desc.fsDesc.options));
-					break;
-				case ShaderProgram_Compute:
-					h = render::shader_compiler::BuildShaderHash(desc.csDesc.filePath, desc.csDesc.options);
-					break;
-				}
+                desc.HashCombine(h);
 				return h;
 			}
 		};
@@ -459,7 +495,6 @@ namespace rendersystem
         using ShaderMapIterator = ShaderMap::iterator;
         using ShaderMapConstIterator = ShaderMap::const_iterator;
 
-    public:
         ShaderDb()
         {
             m_programs.reserve(10);
@@ -718,6 +753,7 @@ namespace rendersystem
         void SetCullMode(render::RasterCullMode mode = render::RasterCullMode_Back);
         void SetPrimitive(render::PrimitiveType type = render::PrimitiveType_TriangleList);
 
+        void SetPatchControlPoints(uint32_t patchControlPoints = UINT32_MAX);
 
 		void SetRenderTarget(render::RenderTargetHandle rt);
 
@@ -947,22 +983,7 @@ namespace std
         size_t operator()(const rendersystem::ShaderBuildDescription& desc) const
         {
             size_t seed = 0;
-            Mist::HashCombine(seed, desc.type);
-            switch (desc.type)
-            {
-            case rendersystem::ShaderProgram_Graphics:
-                Mist::HashCombine(seed, desc.vsDesc);
-                Mist::HashCombine(seed, desc.fsDesc);
-                break;
-            case rendersystem::ShaderProgram_Compute:
-                Mist::HashCombine(seed, desc.csDesc);
-                break;
-            default:
-                unreachable_code();
-                break;
-            }
-            for (uint32_t i = 0; i < (uint32_t)desc.dynamicBuffers.size(); ++i)
-                Mist::HashCombine(seed, desc.dynamicBuffers[i]);
+            desc.HashCombine(seed);
             return seed;
         }
     };

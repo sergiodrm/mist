@@ -79,11 +79,11 @@ namespace Mist
 
 		rendersystem::ShaderBuildDescription desc;
 		desc.SetCompute("shaders/taa.comp");
-		desc.csDesc.options.PushMacroDefinition("TAA_WGS_X", TAA_WGS_X);
-		desc.csDesc.options.PushMacroDefinition("TAA_WGS_Y", TAA_WGS_Y);
+		desc.shaderDesc[render::ShaderType_Compute].options.PushMacroDefinition("TAA_WGS_X", TAA_WGS_X);
+		desc.shaderDesc[render::ShaderType_Compute].options.PushMacroDefinition("TAA_WGS_Y", TAA_WGS_Y);
 		m_taaShader[TAA_Basic] = rs->CreateShader(desc);
 
-		desc.csDesc.options.PushMacroDefinition("TAA_CLAMPING_COLOR");
+		desc.shaderDesc[render::ShaderType_Compute].options.PushMacroDefinition("TAA_CLAMPING_COLOR");
 		m_taaShader[TAA_ClampingColor] = rs->CreateShader(desc);
 
 		for (uint32_t i = 0; i < TAA_ShaderCount; ++i)
@@ -203,7 +203,7 @@ namespace Mist
 
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/bloom.frag");
-			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_DOWNSAMPLE");
+			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("BLOOM_DOWNSAMPLE");
 			m_shaders.downsample = rs->CreateShader(shaderDesc);
 		}
 
@@ -212,7 +212,7 @@ namespace Mist
 			// Create shader without BLOOM_DOWNSCALE macro
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/bloom.frag");
-			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_UPSAMPLE");
+			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("BLOOM_UPSAMPLE");
 			m_shaders.upsample = rs->CreateShader(shaderDesc);
 
 		}
@@ -227,7 +227,7 @@ namespace Mist
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/bloom.frag");
-			shaderDesc.fsDesc.options.PushMacroDefinition("BLOOM_FILTER");
+			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("BLOOM_FILTER");
 			m_shaders.filter = rs->CreateShader(shaderDesc);
 		}
 	}

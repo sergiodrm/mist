@@ -1348,21 +1348,21 @@ namespace render
             return VK_SAMPLER_ADDRESS_MODE_MAX_ENUM;
         }
 
-        VkShaderStageFlags ConvertShaderStage(ShaderType type)
+        VkShaderStageFlags ConvertShaderStage(ShaderStageMask mask)
         {
             VkShaderStageFlags flags = 0;
-            if (type & ShaderType_Vertex) flags |= VK_SHADER_STAGE_VERTEX_BIT;
-            if (type & ShaderType_TesselationControl) flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-            if (type & ShaderType_TesselationEvaluation) flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-            if (type & ShaderType_Geometry) flags |= VK_SHADER_STAGE_GEOMETRY_BIT;
-            if (type & ShaderType_Fragment) flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-            if (type & ShaderType_Compute) flags |= VK_SHADER_STAGE_COMPUTE_BIT;
-            if (type & ShaderType_RayGen) flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-            if (type & ShaderType_RayAnyHit) flags |= VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-            if (type & ShaderType_RayClosestHit) flags |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-            if (type & ShaderType_RayMiss) flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
-            if (type & ShaderType_RayIntersection) flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
-            if (type & ShaderType_RayCallable) flags |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+            if (mask & ShaderStageMask_Vertex) flags |= VK_SHADER_STAGE_VERTEX_BIT;
+            if (mask & ShaderStageMask_TesselationControl) flags |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+            if (mask & ShaderStageMask_TesselationEvaluation) flags |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            if (mask & ShaderStageMask_Geometry) flags |= VK_SHADER_STAGE_GEOMETRY_BIT;
+            if (mask & ShaderStageMask_Fragment) flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+            if (mask & ShaderStageMask_Compute) flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+            if (mask & ShaderStageMask_RayGen) flags |= VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+            if (mask & ShaderStageMask_RayAnyHit) flags |= VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+            if (mask & ShaderStageMask_RayClosestHit) flags |= VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+            if (mask & ShaderStageMask_RayMiss) flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
+            if (mask & ShaderStageMask_RayIntersection) flags |= VK_SHADER_STAGE_MISS_BIT_KHR;
+            if (mask & ShaderStageMask_RayCallable) flags |= VK_SHADER_STAGE_CALLABLE_BIT_KHR;
             return flags;
         }
 

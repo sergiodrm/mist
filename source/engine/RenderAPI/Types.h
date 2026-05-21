@@ -617,24 +617,42 @@ namespace render
 		SamplerAddressMode_MaxEnum,
 	};
 
-	enum ShaderTypeFlags
+	enum ShaderType
 	{
-		ShaderType_None = 0x0000,
-		ShaderType_Vertex = 0x0001,
-		ShaderType_TesselationControl = 0x0002,
-		ShaderType_TesselationEvaluation = 0x0004,
-		ShaderType_Geometry = 0x0008,
-		ShaderType_Fragment = 0x0010,
-		ShaderType_Compute = 0x0020,
-		ShaderType_RayGen = 0x0040,
-		ShaderType_RayAnyHit = 0x0080,
-		ShaderType_RayClosestHit = 0x0100,
-		ShaderType_RayMiss = 0x0200,
-		ShaderType_RayIntersection = 0x0400,
-		ShaderType_RayCallable = 0x0800,
-		ShaderType_MaxEnum = 0xffff
+		ShaderType_Vertex,
+		ShaderType_TesselationControl,
+		ShaderType_TesselationEvaluation,
+		ShaderType_Geometry,
+		ShaderType_Fragment,
+		ShaderType_Compute,
+		ShaderType_RayGen,
+		ShaderType_RayAnyHit,
+		ShaderType_RayClosestHit,
+		ShaderType_RayMiss,
+		ShaderType_RayIntersection,
+		ShaderType_RayCallable,
+		ShaderType_MaxEnum,
+		ShaderType_Count = ShaderType_MaxEnum
 	};
-	typedef uint32_t ShaderType;
+
+	enum ShaderStageMaskFlags
+	{
+		ShaderStageMask_None = 0x0000,
+		ShaderStageMask_Vertex = 1 << ShaderType_Vertex,
+		ShaderStageMask_TesselationControl = 1 << ShaderType_TesselationControl,
+		ShaderStageMask_TesselationEvaluation = 1 << ShaderType_TesselationEvaluation,
+		ShaderStageMask_Geometry = 1 << ShaderType_Geometry,
+		ShaderStageMask_Fragment = 1 << ShaderType_Fragment,
+		ShaderStageMask_Compute = 1 << ShaderType_Compute,
+		ShaderStageMask_RayGen = 1 << ShaderType_RayGen,
+		ShaderStageMask_RayAnyHit = 1 << ShaderType_RayAnyHit,
+		ShaderStageMask_RayClosestHit = 1 << ShaderType_RayClosestHit,
+		ShaderStageMask_RayMiss = 1 << ShaderType_RayMiss,
+		ShaderStageMask_RayIntersection = 1 << ShaderType_RayIntersection,
+		ShaderStageMask_RayCallable = 1 << ShaderType_RayCallable,
+		ShaderStageMask_MaxEnum = 0xffff
+	};
+	typedef uint32_t ShaderStageMask;
 
 	enum BlendFactor
 	{

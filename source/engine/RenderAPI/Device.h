@@ -691,7 +691,7 @@ namespace render
 
     struct ShaderDescription
     {
-        ShaderType type = ShaderType_None;
+        ShaderType type = ShaderType_MaxEnum;
         Mist::String name;
         Mist::String entryPoint = "main";
         Mist::String debugName;
@@ -989,6 +989,14 @@ namespace render
 		inline bool operator!=(const MultisampleState& other) const { return !(*this == other); };
     };
 
+    struct TesselationState
+    {
+        uint32_t patchPoints = UINT32_MAX;
+
+        inline bool operator==(const TesselationState& other) const { return patchPoints == other.patchPoints; }
+        inline bool operator!=(const TesselationState& other) const { return !(*this == other); }
+    };
+
     struct RenderState
     {
         BlendState blendState;
@@ -996,6 +1004,7 @@ namespace render
         RasterState rasterState;
         ViewportState viewportState;
         MultisampleState multisampleState;
+        TesselationState tesselationState;
 
         inline bool operator==(const RenderState& other) const
         {
@@ -1003,7 +1012,8 @@ namespace render
                 depthStencilState == other.depthStencilState &&
                 rasterState == other.rasterState &&
                 viewportState == other.viewportState &&
-                multisampleState == other.multisampleState;
+                multisampleState == other.multisampleState &&
+                tesselationState == other.tesselationState;
         }
         inline bool operator!=(const RenderState& other) const
         {
@@ -1021,14 +1031,14 @@ namespace render
         uint32_t binding = 0;
         uint64_t size = 0;
         uint64_t arrayCount = 0;
-        ShaderType shaderType = ShaderType_None;
+        ShaderStageMask shaderMask = ShaderStageMask_None;
 
         BindingLayoutItem() = default;
-        BindingLayoutItem(ResourceType _type, uint32_t _binding, uint64_t _size, ShaderType _shaderType, uint64_t _arrayCount)
+        BindingLayoutItem(ResourceType _type, uint32_t _binding, uint64_t _size, ShaderStageMask _shaderMask, uint64_t _arrayCount)
             : type(_type),
             binding(_binding),
             size(_size),
-            shaderType(_shaderType),
+            shaderMask(_shaderMask),
             arrayCount(_arrayCount)
         { }
 
@@ -1051,11 +1061,11 @@ namespace render
         Mist::tStaticArray<BindingLayoutItem, MaxBindings> bindings;
         Mist::String debugName;
 
-        BindingLayoutDescription& PushTextureSRV(ShaderType shaderType, uint64_t arrayCount) { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0, shaderType, arrayCount)); return *this; }
-        BindingLayoutDescription& PushTextureUAV(ShaderType shaderType) { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0, shaderType, 1)); return *this; }
-        BindingLayoutDescription& PushConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_ConstantBuffer, bindings.GetSize(), size, shaderType, 1)); return *this; }
-        BindingLayoutDescription& PushVolatileConstantBuffer(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size, shaderType, 1)); return *this; }
-        BindingLayoutDescription& PushBufferUAV(ShaderType shaderType, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size, shaderType, 1)); return *this; }
+        BindingLayoutDescription& PushTextureSRV(ShaderStageMask shaderMask, uint64_t arrayCount) { bindings.Push(BindingLayoutItem(ResourceType_TextureSRV, bindings.GetSize(), 0, shaderMask, arrayCount)); return *this; }
+        BindingLayoutDescription& PushTextureUAV(ShaderStageMask shaderMask) { bindings.Push(BindingLayoutItem(ResourceType_TextureUAV, bindings.GetSize(), 0, shaderMask, 1)); return *this; }
+        BindingLayoutDescription& PushConstantBuffer(ShaderStageMask shaderMask, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_ConstantBuffer, bindings.GetSize(), size, shaderMask, 1)); return *this; }
+        BindingLayoutDescription& PushVolatileConstantBuffer(ShaderStageMask shaderMask, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_VolatileConstantBuffer, bindings.GetSize(), size, shaderMask, 1)); return *this; }
+        BindingLayoutDescription& PushBufferUAV(ShaderStageMask shaderMask, uint64_t size) { bindings.Push(BindingLayoutItem(ResourceType_BufferUAV, bindings.GetSize(), size, shaderMask, 1)); return *this; }
 
         inline void Clear()
         {
@@ -1105,7 +1115,7 @@ namespace render
         uint32_t binding;
         ResourceType type;
         ImageDimension dimension;
-        ShaderType shaderStages;
+        ShaderStageMask shaderStageMask;
 
         Mist::tStaticArray<TextureSubresourceRange, MaxBindingTexturesPerBinding> textureSubresources;
         BufferRange bufferRange;
@@ -1113,21 +1123,21 @@ namespace render
         BindingSetItem() : buffer (nullptr) {}
         ~BindingSetItem() {}
 
-        static BindingSetItem CreateTextureSRVItem(uint32_t slot, TextureHandle texture, SamplerHandle sampler, ShaderType shaderStages,
+        static BindingSetItem CreateTextureSRVItem(uint32_t slot, TextureHandle texture, SamplerHandle sampler, ShaderStageMask shaderStageMask,
             TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined);
-		static BindingSetItem CreateTextureSRVItem(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages,
+		static BindingSetItem CreateTextureSRVItem(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderStageMask shaderStageMask,
 			TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined);
-        static BindingSetItem CreateTextureUAVItem(uint32_t slot, TextureHandle texture, ShaderType shaderStages,
+        static BindingSetItem CreateTextureUAVItem(uint32_t slot, TextureHandle texture, ShaderStageMask shaderStageMask,
             TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined);
-		static BindingSetItem CreateTextureUAVItem(uint32_t slot, TextureHandle* textures, ShaderType shaderStages,
+		static BindingSetItem CreateTextureUAVItem(uint32_t slot, TextureHandle* textures, ShaderStageMask shaderStageMask,
 			TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined);
-        static BindingSetItem CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
-        static BindingSetItem CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
-        static BindingSetItem CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer());
+        static BindingSetItem CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer());
+        static BindingSetItem CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer());
+        static BindingSetItem CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer());
 
         inline bool operator==(const BindingSetItem& other) const
         {
-            if (type != other.type || binding != other.binding || shaderStages != other.shaderStages)
+            if (type != other.type || binding != other.binding || shaderStageMask != other.shaderStageMask)
                 return false;
             switch (type)
             {
@@ -1175,39 +1185,39 @@ namespace render
         inline uint32_t GetBindingItemCount() const { return (uint32_t)bindingItems.size(); }
         inline BindingSetDescription& PushItem(const BindingSetItem& item) { bindingItems.emplace_back(item); return *this; }
 
-        inline BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderStageMask shaderStageMask, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, shaderStages, subresource, dimension));
+            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, ShaderStageMask_RayGen, subresource, dimension));
         }
 
-        inline BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderStageMask shaderStageMask, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, shaderStages, subresources, count, dimension));
+            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, ShaderStageMask_RayGen, subresources, count, dimension));
         }
 
-        inline BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderType shaderStages, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderStageMask shaderStageMask, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStages, subresource, dimension));
+            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, texture, ShaderStageMask_RayGen, subresource, dimension));
         }
 
-        inline BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
+        inline BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderStageMask shaderStageMask, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, textures, shaderStages, subresources, count, dimension));
+            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, textures, ShaderStageMask_RayGen, subresources, count, dimension));
         }
 
-        inline BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
+        inline BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            return PushItem(BindingSetItem::CreateConstantBufferItem(slot, buffer, shaderStages, bufferRange));
+            return PushItem(BindingSetItem::CreateConstantBufferItem(slot, buffer, ShaderStageMask_RayGen, bufferRange));
         }
 
-        inline BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
+        inline BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            return PushItem(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, shaderStages, bufferRange));
+            return PushItem(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, ShaderStageMask_RayGen, bufferRange));
         }
 
-        inline BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange = BufferRange::WholeBuffer())
+        inline BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            return PushItem(BindingSetItem::CreateBufferUAVItem(slot, buffer, shaderStages, bufferRange));
+            return PushItem(BindingSetItem::CreateBufferUAVItem(slot, buffer, ShaderStageMask_RayGen, bufferRange));
         }
 
         inline bool operator==(const BindingSetDescription& other) const
@@ -1315,6 +1325,8 @@ namespace render
         PrimitiveType primitiveType = PrimitiveType_TriangleList;
         ShaderHandle vertexShader;
         ShaderHandle fragmentShader;
+        ShaderHandle tesselationControlShader;
+        ShaderHandle tesselationEvaluationShader;
         RenderState renderState;
         VertexInputLayout vertexInputLayout;
         BindingLayoutArray bindingLayouts;
@@ -1325,6 +1337,8 @@ namespace render
             return primitiveType == desc.primitiveType &&
                 vertexShader == desc.vertexShader &&
                 fragmentShader == desc.fragmentShader &&
+                tesselationControlShader == desc.tesselationControlShader &&
+                tesselationEvaluationShader == desc.tesselationEvaluationShader &&
                 renderState == desc.renderState &&
                 vertexInputLayout == desc.vertexInputLayout &&
                 utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
@@ -1334,6 +1348,8 @@ namespace render
         {
             vertexShader = nullptr;
             fragmentShader = nullptr;
+            tesselationControlShader = nullptr;
+            tesselationEvaluationShader = nullptr;
             bindingLayouts.Clear();
         }
     };

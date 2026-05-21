@@ -1879,8 +1879,13 @@ namespace render
         check(rt && rt->m_renderPass != VK_NULL_HANDLE);
 
         // Pipeline Shader Stages
-        ShaderHandle shaders[2] = { description.vertexShader, description.fragmentShader };
-        VkPipelineShaderStageCreateInfo shaderStages[2];
+        ShaderHandle shaders[] = { 
+            description.vertexShader, 
+            description.fragmentShader,
+            description.tesselationControlShader,
+            description.tesselationEvaluationShader,
+        };
+        VkPipelineShaderStageCreateInfo shaderStages[Mist::CountOf(shaders)];
         uint32_t stageCount = 0;
         for (uint32_t i = 0; i < Mist::CountOf(shaderStages); ++i)
         {
@@ -1890,9 +1895,9 @@ namespace render
             shaderStages[stageCount].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shaderStages[stageCount].pNext = nullptr;
             shaderStages[stageCount].flags = 0;
-            shaderStages[stageCount].stage = (VkShaderStageFlagBits)utils::ConvertShaderStage(shaders[i]->m_description.type);
+            shaderStages[stageCount].stage = (VkShaderStageFlagBits)utils::ConvertShaderStage( 1 << shaders[i]->m_description.type );
             shaderStages[stageCount].module = shaders[i]->m_shader;
-            shaderStages[stageCount].pName = "main";
+            shaderStages[stageCount].pName = shaders[i]->m_description.entryPoint.c_str();
             shaderStages[stageCount].pSpecializationInfo = nullptr;
             ++stageCount;
         }
@@ -1992,6 +1997,19 @@ namespace render
         depthStencil.front.depthFailOp = utils::ConvertStencilOp(description.renderState.depthStencilState.backFace.depthFailOp);
         depthStencil.front.compareOp = utils::ConvertCompareOp(description.renderState.depthStencilState.backFace.compareOp);
 
+        // Tesselation state if needed
+        VkPipelineTessellationStateCreateInfo* pTesselation = nullptr;
+        VkPipelineTessellationStateCreateInfo tesselationState = {};
+        tesselationState.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+        tesselationState.pNext = nullptr;
+        tesselationState.flags = 0;
+        tesselationState.patchControlPoints = description.renderState.tesselationState.patchPoints;
+        if (description.renderState.tesselationState.patchPoints != UINT32_MAX)
+        {
+            check(description.tesselationControlShader && description.tesselationEvaluationShader);
+            pTesselation = &tesselationState;
+        }
+
         // Pipeline Color Blending
         Mist::tStaticArray<VkPipelineColorBlendAttachmentState, RenderTargetDescription::MaxRenderAttachments> colorBlendAttachments;
         for (uint32_t i = 0; i < description.renderState.blendState.renderTargetBlendStates.GetSize(); ++i)
@@ -2063,7 +2081,7 @@ namespace render
         graphicsPipelineInfo.pStages = shaderStages;
         graphicsPipelineInfo.pVertexInputState = &vertexInputInfo;
         graphicsPipelineInfo.pInputAssemblyState = &inputAssembly;
-        graphicsPipelineInfo.pTessellationState = nullptr;
+        graphicsPipelineInfo.pTessellationState = pTesselation;
         graphicsPipelineInfo.pViewportState = &viewportInfo;
         graphicsPipelineInfo.pRasterizationState = &rasterizer;
         graphicsPipelineInfo.pMultisampleState = &multisampling;
@@ -2106,7 +2124,7 @@ namespace render
             b.binding = binding.binding;
             b.descriptorType = utils::ConvertToDescriptorType(binding.type);
             b.descriptorCount = Mist::limits_cast<uint32_t>(binding.arrayCount);
-            b.stageFlags = utils::ConvertShaderStage(binding.shaderType);
+            b.stageFlags = utils::ConvertShaderStage(binding.shaderMask);
             b.pImmutableSamplers = nullptr;
 
             VkDescriptorBindingFlags& f = flags.Push();
@@ -3061,7 +3079,7 @@ namespace render
         return range;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, TextureHandle texture, SamplerHandle sampler, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, TextureHandle texture, SamplerHandle sampler, ShaderStageMask shaderStageMask, TextureSubresourceRange subresource, ImageDimension dimension)
     {
         BindingSetItem item;
         item.textures.Push(texture);
@@ -3070,11 +3088,11 @@ namespace render
         item.textureSubresources.Push(subresource);
         item.dimension = dimension;
         item.type = ResourceType_TextureSRV;
-        item.shaderStages = shaderStages;
+        item.shaderStageMask = shaderStageMask;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureSRVItem(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderStageMask shaderStageMask, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension)
     {
         BindingSetItem item;
         for (uint32_t i = 0; i < count; ++i)
@@ -3086,11 +3104,11 @@ namespace render
         item.binding = slot;
         item.dimension = dimension;
         item.type = ResourceType_TextureSRV;
-        item.shaderStages = shaderStages;
+        item.shaderStageMask = shaderStageMask;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, TextureHandle texture, ShaderType shaderStages, TextureSubresourceRange subresource, ImageDimension dimension)
+    BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, TextureHandle texture, ShaderStageMask shaderStageMask, TextureSubresourceRange subresource, ImageDimension dimension)
     {
         BindingSetItem item;
 		item.textures.Push(texture);
@@ -3098,11 +3116,11 @@ namespace render
         item.textureSubresources.Push(subresource);
         item.dimension = dimension;
         item.type = ResourceType_TextureUAV;
-        item.shaderStages = shaderStages;
+        item.shaderStageMask = shaderStageMask;
         return item;
     }
 
-	BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, TextureHandle* textures, ShaderType shaderStages, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension /*= ImageDimension_Undefined*/)
+	BindingSetItem BindingSetItem::CreateTextureUAVItem(uint32_t slot, TextureHandle* textures, ShaderStageMask shaderStageMask, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension /*= ImageDimension_Undefined*/)
 	{
 		BindingSetItem item;
 		for (uint32_t i = 0; i < count; ++i)
@@ -3113,11 +3131,11 @@ namespace render
 		item.binding = slot;
 		item.dimension = dimension;
 		item.type = ResourceType_TextureUAV;
-		item.shaderStages = shaderStages;
+		item.shaderStageMask = shaderStageMask;
 		return item;
 	}
 
-	BindingSetItem BindingSetItem::CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
+	BindingSetItem BindingSetItem::CreateConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
@@ -3125,11 +3143,11 @@ namespace render
         item.bufferRange = bufferRange;
         item.type = ResourceType_ConstantBuffer;
         item.dimension = ImageDimension_Undefined;
-        item.shaderStages = shaderStages;
+        item.shaderStageMask = shaderStageMask;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
+    BindingSetItem BindingSetItem::CreateVolatileConstantBufferItem(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
@@ -3137,11 +3155,11 @@ namespace render
         item.bufferRange = bufferRange;
         item.type = ResourceType_VolatileConstantBuffer;
         item.dimension = ImageDimension_Undefined;
-        item.shaderStages = shaderStages;
+        item.shaderStageMask = shaderStageMask;
         return item;
     }
 
-    BindingSetItem BindingSetItem::CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderType shaderStages, BufferRange bufferRange)
+    BindingSetItem BindingSetItem::CreateBufferUAVItem(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange)
     {
         BindingSetItem item;
         item.buffer = buffer;
@@ -3149,7 +3167,7 @@ namespace render
         item.bufferRange = bufferRange;
         item.type = ResourceType_BufferUAV;
         item.dimension = ImageDimension_Undefined;
-        item.shaderStages = shaderStages;
+        item.shaderStageMask = shaderStageMask;
         return item;
     }
 

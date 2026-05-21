@@ -61,9 +61,9 @@ namespace Mist
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
 			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/deferred.frag");
-			shaderDesc.fsDesc.options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
+			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
 			m_lightingShader = rs->CreateShader(shaderDesc);
-			shaderDesc.fsDesc.options.PushMacroDefinition("DEFERRED_APPLY_FOG");
+			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("DEFERRED_APPLY_FOG");
 			m_lightingFogShader = rs->CreateShader(shaderDesc);
 		}
 		{

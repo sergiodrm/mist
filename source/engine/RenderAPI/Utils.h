@@ -64,7 +64,8 @@ namespace render
         VkFilter ConvertFilter(Filter filter);
         VkSamplerMipmapMode ConvertMipmapMode(Filter filter);
         VkSamplerAddressMode ConvertSamplerAddressMode(SamplerAddressMode mode);
-        VkShaderStageFlags ConvertShaderStage(ShaderType type);
+        VkShaderStageFlags ConvertShaderStage(ShaderStageMask mask);
+        inline ShaderStageMask ConvertShaderTypeToMask(ShaderType type) { return (1 << type); }
         VkBlendFactor ConvertBlendFactor(BlendFactor factor);
         VkBlendOp ConvertBlendOp(BlendOp op);
         VkCompareOp ConvertCompareOp(CompareOp op);

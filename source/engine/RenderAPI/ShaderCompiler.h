@@ -82,6 +82,13 @@ namespace render
                 macroDefinitionArray.push_back(CompileMacroDefinition(macro, value));
             }
 
+            inline void Reset()
+            {
+                generateDebugInfo = true;
+                strcpy_s(entryPoint, "main");
+                macroDefinitionArray.clear();
+            }
+
             inline bool operator ==(const CompilationOptions& other) const
             {
                 return !strcmp(entryPoint, other.entryPoint)
@@ -129,7 +136,7 @@ namespace render
             uint64_t size = 0;
             uint32_t binding = 0;
             uint32_t arrayCount = 0;
-            ShaderType stage = ShaderType_None;
+            ShaderStageMask stageMask = ShaderStageMask_None;
             std::string name;
         };
 
@@ -144,21 +151,21 @@ namespace render
             std::string name;
             uint32_t offset = 0;
             uint32_t size = 0;
-            ShaderType stage = ShaderType_None;
+            ShaderStageMask stage = ShaderStageMask_None;
         };
 
         struct ShaderReflectionProperties
         {
             Mist::tDynArray<ShaderPropertySetDescription> params;
-            Mist::tMap<ShaderType, ShaderPushConstantDescription> pushConstantMap;
+            Mist::tMap<ShaderStageMask, ShaderPushConstantDescription> pushConstantMap;
             VertexInputLayout inputLayout;
         };
 
-        CompiledBinary Compile(const char* filepath, ShaderType shaderType, const CompilationOptions* additionalOptions = nullptr);
+        CompiledBinary Compile(const char* filepath, ShaderStageMask shaderMask, const CompilationOptions* additionalOptions = nullptr);
         void FreeBinary(CompiledBinary& binary);
 
-        CompiledBinary BuildShader(const char* filepath, ShaderType type, const CompilationOptions* additionalOptions = nullptr, bool forceCompilation = false);
-        bool BuildShaderParams(const CompiledBinary& bin, ShaderType type, ShaderReflectionProperties& outProperties);
+        CompiledBinary BuildShader(const char* filepath, ShaderStageMask shaderMask, const CompilationOptions* additionalOptions = nullptr, bool forceCompilation = false);
+        bool BuildShaderParams(const CompiledBinary& bin, ShaderStageMask shaderMask, ShaderReflectionProperties& outProperties);
         uint64_t BuildShaderHash(const char* filepath, const CompilationOptions& options);
     }
 }
