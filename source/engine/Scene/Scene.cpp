@@ -1078,17 +1078,22 @@ namespace Mist
 								model.DumpInfo();
 							if (ImGui::TreeNode("Meshes"))
 							{
-								for (uint32_t j = 0; j < model.GetMeshCount(); ++j)
+								glm::mat4 nodeTransform = transform;
+								for (uint32_t j = 0; j < model.GetTransformsCount(); ++j)
 								{
-									const cMesh& mesh = model.GetMesh(j);
-									aabb = mesh.GetAABB().ApplyTransform(transform);
+									/*const glm::mat4& nodeLocalTransform = model.GetTransform(j);
+									const cMesh* mesh = model.GetMeshFromNode(j);
+									if (!mesh)
+										continue;
+
+									aabb = mesh->GetAABB().ApplyTransform(nodeLocalTranstransform);
 									ImGui::Text("%s [%4d triangles; %4d indices; %3d primitives] (VB: %lld B; IB: %lld B) (Extent: (%3.3f, %3.3f, %3.3f; %3.3f, %3.3f, %3.3f))",
 										mesh.GetName(), mesh.GetIndexCount()/3, mesh.GetIndexCount(), mesh.GetPrimitiveCount(),
 										mesh.GetVertexBuffer()->m_description.size, mesh.GetIndexBuffer()->m_description.size,
 										aabb.min.x, aabb.min.y, aabb.min.z,
 										aabb.max.x, aabb.max.y, aabb.max.z);
 									if (*CVar_ShowAABBMeshName.Get() && WildStricmp(CVar_ShowAABBMeshName.Get(), mesh.GetName()))
-										DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(1, 1, 0));
+										DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(1, 1, 0));*/
 								}
 								ImGui::TreePop();
 							}
