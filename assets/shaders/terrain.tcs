@@ -1,0 +1,41 @@
+#version 450
+
+layout (vertices=4) out;
+
+layout (location = 0) in vec2 inTexCoords[];
+layout (location = 1) in vec3 inWorldPos[];
+layout (location = 2) in vec4 inCurrWSPos[];
+layout (location = 3) in vec4 inPrevWSPos[];
+
+layout (location = 0) out vec2 outTexCoords[];
+layout (location = 1) out vec3 outWorldPos[];
+layout (location = 2) out vec4 outCurrWSPos[];
+layout (location = 3) out vec4 outPrevWSPos[];
+
+// in gl_PerVertex
+// {
+//     vec4 gl_Position;
+//     float gl_PointSize;
+//     float gl_ClipDistance[];
+// } gl_in[gl_MaxPatchVertices];
+
+void main()
+{
+    gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+
+    outTexCoords[gl_InvocationID] = inTexCoords[gl_InvocationID];
+    outWorldPos[gl_InvocationID] = inWorldPos[gl_InvocationID];
+    outCurrWSPos[gl_InvocationID] = inCurrWSPos[gl_InvocationID];
+    outPrevWSPos[gl_InvocationID] = inPrevWSPos[gl_InvocationID];
+
+    if (gl_InvocationID == 0)
+    {
+        gl_TessLevelOuter[0] = 16;
+        gl_TessLevelOuter[1] = 16;
+        gl_TessLevelOuter[2] = 16;
+        gl_TessLevelOuter[3] = 16;
+
+        gl_TessLevelInner[0] = 16;
+        gl_TessLevelInner[1] = 16;
+    }
+}
