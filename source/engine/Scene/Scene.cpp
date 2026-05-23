@@ -106,6 +106,165 @@ namespace Mist
 		ambientColor = { 0.02f, 0.02f, 0.02f };
 	}
 
+	CIntVar CVar_TerrainMethod("r_terrainMethod", 1);
+
+	void Terrain::Init(rendersystem::RenderSystem* rs)
+	{
+		const char* heightMap = "textures/iceland_heightmap.png";
+		rendersystem::textureloader::TextureData texData;
+		{
+			PROFILE_SCOPE_LOG(LoadHeightmap, "Load heightmap");
+			rendersystem::textureloader::LoadTextureData_u8(&texData, heightMap);
+		}
+
+		// Method 1
+		{
+			uint64_t vertexCount = texData.width * texData.height;
+			PROFILE_SCOPE_LOGF(CreateHeightmap, "CreateHeightmap_Method1 %dx%d = %d", texData.width, texData.height, vertexCount);
+
+			struct TerrainVertex
+			{
+				glm::vec3 p;
+			};
+			uint64_t vertexBufferSize = vertexCount * sizeof(TerrainVertex);
+
+			TerrainVertex* vertices = (TerrainVertex*)_malloc(vertexBufferSize);
+			float scale = 64.f / 256.f;
+			float shift = 16.f;
+
+			for (uint32_t i = 0; i < vertexCount; ++i)
+			{
+				uint32_t row = i / texData.width;
+				uint32_t col = i % texData.width;
+				uint8_t* texel = &texData.u8data[i * texData.channels];
+
+				vertices[i] = {
+					{ -(float)texData.height * 0.5f + col, (float)(*texel) * scale - shift, -(float)texData.width * 0.5f + row }
+				};
+			}
+
+			m_terrain.m_stripsCount = texData.height - 1;
+			m_terrain.m_vertexPerStrip = texData.width * 2;
+			m_terrain.m_indexCount = m_terrain.m_stripsCount * m_terrain.m_vertexPerStrip;
+
+			uint32_t* indices = (uint32_t*)_malloc(sizeof(uint32_t) * m_terrain.m_indexCount);
+			uint32_t c = 0;
+			for (uint32_t i = 0; i < m_terrain.m_stripsCount; ++i)
+			{
+				for (uint32_t j = 0; j < texData.width; ++j)
+				{
+					indices[c] = j + texData.width * (i+0);
+					indices[c+1] = j + texData.width * (i+1);
+					c += 2;
+				}
+			}
+
+			render::Device* device = rs->GetDevice();
+			render::utils::UploadContext uploadCtx(device);
+			m_terrain.m_vb = render::utils::CreateVertexBuffer(device, vertices, vertexBufferSize, &uploadCtx, "terrainVB");
+			m_terrain.m_ib = render::utils::CreateIndexBuffer(device, indices, sizeof(uint32_t) * m_terrain.m_indexCount, &uploadCtx, "terrainIB");
+			uploadCtx.Submit();
+			_free(vertices);
+			_free(indices);
+
+			m_terrain.m_mtl.SetupShader(rs, "shaders/gbuffer_terrain.vert", "shaders/gbuffer_terrain.frag");
+		}
+
+		// Method 2: optimized
+		{
+			PROFILE_SCOPE_LOG(CreateMesh_Method2, "CreateHeightmap_Method2");
+			float width = (float)texData.width;
+			float height = (float)texData.height;
+			float halfWidth = width * 0.5f;
+			float halfHeight = height * 0.5f;
+
+			struct TerrainVertex
+			{
+				glm::vec3 p;
+				glm::vec2 uv;
+			};
+			m_tesselatedTerrain.m_patchDimensions = 20;
+			m_tesselatedTerrain.m_patchPoints = 4;
+
+			float invPatchCount = 1.f / (float)m_tesselatedTerrain.m_patchDimensions;
+			float patchesInWidth = width / m_tesselatedTerrain.m_patchDimensions;
+			float patchesInHeight = width / m_tesselatedTerrain.m_patchDimensions;
+
+			uint32_t vertexCount = m_tesselatedTerrain.GetVertexCount();
+			uint64_t bufferSize = vertexCount * sizeof(TerrainVertex);
+			TerrainVertex* vertices = (TerrainVertex*)_malloc(bufferSize);
+			uint32_t c = 0;
+			auto computeVertex = [&](uint32_t i, uint32_t j) -> TerrainVertex { 
+				return { { -halfWidth + (float)i * patchesInWidth, 0.f, -halfHeight + (float)j * patchesInHeight}, { (float)i * invPatchCount, (float)j * invPatchCount } };
+				};
+			for (uint32_t i = 0; i <= m_tesselatedTerrain.m_patchDimensions - 1; ++i)
+			{
+				for (uint32_t j = 0; j <= m_tesselatedTerrain.m_patchDimensions - 1; ++j)
+				{
+					vertices[c++] = computeVertex(i, j);
+					vertices[c++] = computeVertex(i+1, j);
+					vertices[c++] = computeVertex(i, j+1);
+					vertices[c++] = computeVertex(i+1, j+1);
+				}
+			}
+			m_tesselatedTerrain.m_vb = render::utils::CreateVertexBuffer(rs->GetDevice(), vertices, bufferSize);
+			_free(vertices);
+
+
+			rendersystem::ShaderBuildDescription shaderDesc;
+			shaderDesc.SetGraphics("shaders/gbuffer_terrain_dyn.vert", "shaders/gbuffer_terrain.frag", "shaders/terrain.tcs", "shaders/terrain.tes");
+			rendersystem::ShaderProgram* terrain = rs->CreateShader(shaderDesc);
+			m_tesselatedTerrain.m_shader = terrain;
+
+			rendersystem::textureloader::LoadTextureFromFile(&m_tesselatedTerrain.m_heightMap, rs->GetDevice(), heightMap);
+		}
+		rendersystem::textureloader::FreeTextureData(texData);
+		
+	}
+
+	void Terrain::Destroy()
+	{
+		m_terrain.m_vb = nullptr;
+		m_terrain.m_ib = nullptr;
+
+		m_tesselatedTerrain.m_vb = nullptr;
+		m_tesselatedTerrain.m_heightMap = nullptr;
+	}
+
+	void Terrain::Draw(rendersystem::RenderSystem* rs)
+	{
+		rs->SetDepthEnable(true, true);
+		rs->SetBlendEnable(false);
+
+		if (CVar_TerrainMethod.Get()%2)
+		{
+			rs->BeginMarker("Terrain");
+			rs->SetPrimitive(render::PrimitiveType_TriangleStrip);
+			rs->SetShader(m_terrain.m_mtl.GetShaderProgram());
+			rs->SetVertexBuffer(m_terrain.m_vb);
+			rs->SetIndexBuffer(m_terrain.m_ib);
+			m_terrain.m_mtl.BindTextures(rs);
+			sMaterialRenderData materialData = m_terrain.m_mtl.GetRenderData();
+			rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+			for (uint32_t i = 0; i < m_terrain.m_stripsCount; ++i)
+				rs->DrawIndexed(m_terrain.m_vertexPerStrip, 1, m_terrain.m_vertexPerStrip * i);
+			rs->EndMarker();
+		}
+		else
+		{
+			rs->BeginMarker("Terrain tesselation");
+			rs->SetShader(m_tesselatedTerrain.m_shader);
+			rs->SetPatchControlPoints(4);
+			rs->SetPrimitive(render::PrimitiveType_PatchList);
+			rs->SetVertexBuffer(m_tesselatedTerrain.m_vb);
+			sMaterialRenderData materialData = m_terrain.m_mtl.GetRenderData();
+			rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+			rs->SetTextureSlot("u_HeightMap", m_tesselatedTerrain.m_heightMap);
+			rs->Draw(m_tesselatedTerrain.GetVertexCount());
+			rs->EndMarker();
+		}
+	}
+
 	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine))
 	{
 		m_irradianceRequestInfo = _new PreprocessIrradianceInfo();

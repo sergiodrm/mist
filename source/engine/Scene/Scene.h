@@ -245,6 +245,38 @@ namespace Mist
 		char filepath[MaxFilenameLength];
 	};
 
+	class Terrain
+	{
+	public:
+		void Init(rendersystem::RenderSystem* rs);
+		void Destroy();
+
+		void Draw(rendersystem::RenderSystem* rs);
+
+	private:
+		struct
+		{
+			render::BufferHandle m_vb;
+			render::BufferHandle m_ib;
+			uint32_t m_indexCount;
+			uint32_t m_stripsCount;
+			uint32_t m_vertexPerStrip;
+			cMaterial m_mtl;
+		} m_terrain;
+
+		struct 
+		{
+			render::BufferHandle m_vb;
+			rendersystem::ShaderProgram* m_shader;
+			uint32_t m_patchPoints;
+			uint32_t m_patchDimensions;
+			cMaterial m_mtl;
+			render::TextureHandle m_heightMap;
+
+			inline uint32_t GetVertexCount() const { return m_patchPoints * m_patchDimensions * m_patchDimensions; }
+		} m_tesselatedTerrain;
+	};
+
 	class Scene
 	{
 	protected:
