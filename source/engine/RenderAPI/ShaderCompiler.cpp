@@ -182,9 +182,11 @@ namespace render
         {
             switch (shaderMask)
             {
-            case ShaderType_Vertex: return shaderc_glsl_vertex_shader;
-            case ShaderType_Fragment: return shaderc_glsl_fragment_shader;
-            case ShaderType_Compute: return shaderc_glsl_compute_shader;
+            case ShaderStageMask_Vertex: return shaderc_glsl_vertex_shader;
+            case ShaderStageMask_Fragment: return shaderc_glsl_fragment_shader;
+            case ShaderStageMask_Compute: return shaderc_glsl_compute_shader;
+            case ShaderStageMask_TesselationControl: return shaderc_glsl_tess_control_shader;
+            case ShaderStageMask_TesselationEvaluation: return shaderc_glsl_tess_evaluation_shader;
             default: check(false); return shaderc_glsl_infer_from_source;
             }
         }
@@ -207,10 +209,10 @@ namespace render
                     desiredExt = ".comp";
                     break;
                 case ShaderStageMask_TesselationControl:
-                    desiredExt = ".tsc";
+                    desiredExt = ".tcs";
                     break;
                 case ShaderStageMask_TesselationEvaluation:
-                    desiredExt = ".tse";
+                    desiredExt = ".tes";
                     break;
                 default:
                     return res;

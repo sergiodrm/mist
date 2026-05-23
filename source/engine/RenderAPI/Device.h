@@ -1038,7 +1038,8 @@ namespace render
             : type(_type),
             binding(_binding),
             size(_size),
-            shaderMask(_shaderMask),
+            //shaderMask(_shaderMask),
+            shaderMask(ShaderStageMask_All),
             arrayCount(_arrayCount)
         { }
 
@@ -2202,7 +2203,7 @@ namespace std
             size_t seed = 0;
             Mist::HashCombine(seed, item.binding);
             Mist::HashCombine(seed, item.type);
-            Mist::HashCombine(seed, item.shaderType);
+            Mist::HashCombine(seed, item.shaderMask);
             switch (item.type)
             {
             case render::ResourceType_ConstantBuffer:

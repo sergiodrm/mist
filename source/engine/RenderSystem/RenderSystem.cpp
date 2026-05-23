@@ -445,6 +445,7 @@ namespace rendersystem
 		SetScissor(0.f, static_cast<float>(m_renderResolution.width),
             0.f, static_cast<float>(m_renderResolution.height));
         SetPrimitive();
+        SetPatchControlPoints();
     }
 
     void RenderSystem::ClearState()
@@ -580,6 +581,8 @@ namespace rendersystem
         case ShaderProgram_Graphics:
             m_graphicsContext.pso.vertexShader = shader->GetVertexShader();
             m_graphicsContext.pso.fragmentShader = shader->GetFragmentShader();
+            m_graphicsContext.pso.tesselationControlShader = shader->GetTesselationControlShader();
+            m_graphicsContext.pso.tesselationEvaluationShader = shader->GetTesselationEvaluationShader();
             m_graphicsContext.pso.vertexInputLayout = shader->m_inputLayout;
             m_graphicsContext.pso.bindingLayouts = shader->GetShaderLayout();
             break;
@@ -1669,7 +1672,6 @@ namespace rendersystem
     bool ShaderProgram::ProcessLayouts()
     {
         m_layouts.Clear();
-        m_layouts.Resize(m_properties->params.size());
         render::BindingLayoutDescription layoutDesc;
         for (uint32_t i = 0; i < m_properties->params.size(); ++i)
         {
@@ -1682,6 +1684,9 @@ namespace rendersystem
                 layoutDesc.bindings[propertyDesc.binding] = render::BindingLayoutItem(propertyDesc.type, propertyDesc.binding, propertyDesc.size, propertyDesc.stageMask, propertyDesc.arrayCount);
             }
             
+            checkdbg(setDesc.setIndex < m_layouts.GetCapacity());
+            if (setDesc.setIndex >= m_layouts.GetSize())
+                m_layouts.Resize(setDesc.setIndex + 1);
             m_layouts[setDesc.setIndex] = m_device->CreateBindingLayout(layoutDesc);
         }
 

@@ -2007,6 +2007,8 @@ namespace render
         if (description.renderState.tesselationState.patchPoints != UINT32_MAX)
         {
             check(description.tesselationControlShader && description.tesselationEvaluationShader);
+            check_msgf(description.primitiveType == PrimitiveType_PatchList, 
+                "Primitive type must be PatchList if PatchControlPoints %d is specified.", description.renderState.tesselationState.patchPoints);
             pTesselation = &tesselationState;
         }
 
@@ -2995,12 +2997,10 @@ namespace render
         pipelineLayoutInfo.pNext = nullptr;
 
         Mist::tStaticArray<VkDescriptorSetLayout, BindingLayout::MaxLayouts> layouts;
-        layouts.Resize(bindingLayouts.GetSize());
-        ZeroMem(layouts.GetData(), layouts.GetSize() * sizeof(VkDescriptorSetLayout));
         for (uint32_t i = 0; i < bindingLayouts.GetSize(); ++i)
         {
-            check(bindingLayouts[i]->m_layout != VK_NULL_HANDLE);
-            layouts[i] = bindingLayouts[i]->m_layout;
+            if (bindingLayouts[i] && bindingLayouts[i]->m_layout)
+                layouts.Push(bindingLayouts[i]->m_layout);
         }
 
         pipelineLayoutInfo.flags = 0;

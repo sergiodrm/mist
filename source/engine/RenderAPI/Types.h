@@ -650,7 +650,8 @@ namespace render
 		ShaderStageMask_RayMiss = 1 << ShaderType_RayMiss,
 		ShaderStageMask_RayIntersection = 1 << ShaderType_RayIntersection,
 		ShaderStageMask_RayCallable = 1 << ShaderType_RayCallable,
-		ShaderStageMask_MaxEnum = 0xffff
+		ShaderStageMask_All = 0xffff,
+		ShaderStageMask_MaxEnum = ShaderStageMask_All
 	};
 	typedef uint32_t ShaderStageMask;
 
