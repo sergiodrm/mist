@@ -22,8 +22,9 @@ int main(int argc, char* argv[])
 	{
 		PROFILE_SCOPE_LOG(InitApp, "Destroy app");
 		Mist::tApplication::DestroyApplication(app);
+		Mist::TerminateLog();
+		Mist::Profiling::Terminate();
+		Mist::memory::TerminateSystemMemory();
 	}
-	Mist::TerminateLog();
-	Mist::memory::TerminateSystemMemory();
 	return exitCode;
 }

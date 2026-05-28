@@ -410,7 +410,7 @@ namespace Mist
 				}
 				ImGui::End();
 			}
-		} GProfiler;
+		} *GProfiler = nullptr;
 
 		void sProfilingTimer::Start()
 		{
@@ -451,11 +451,30 @@ namespace Mist
 			SetBindingCount = 0;
 		}
 
+		static sProfiler& GetProfiler()
+		{
+			checkdbg(GProfiler);
+			return *GProfiler;
+		}
+
+		void Init()
+		{
+			check(!GProfiler);
+			GProfiler = _new sProfiler();
+		}
+
+		void Terminate()
+		{
+			check(GProfiler);
+			delete GProfiler;
+			GProfiler = nullptr;
+		}
+
 		void AddProfilerEntry(const char* key, double timeDiff)
 		{
-			if (!GProfiler.EntryMap.contains(key))
-				GProfiler.EntryMap[key] = sProfilerEntry();
-			sProfilerEntry& entry = GProfiler.EntryMap[key];
+			if (!GetProfiler().EntryMap.contains(key))
+				GetProfiler().EntryMap[key] = sProfilerEntry();
+			sProfilerEntry& entry = GetProfiler().EntryMap[key];
 			entry.Data.Push(timeDiff);
 			entry.Max = __max(timeDiff, entry.Max);
 			entry.Min = __min(timeDiff, entry.Min);
@@ -463,12 +482,12 @@ namespace Mist
 
 		void AddCPUTime(float ms)
 		{
-			GProfiler.CPUTimeArray.Push(ms);
+			GetProfiler().CPUTimeArray.Push(ms);
 		}
 
 		void AddGPUTime(float ms)
 		{
-			GProfiler.GPUTimeArray.Push(ms);
+			GetProfiler().GPUTimeArray.Push(ms);
 		}
 
 		float ImGuiGetFpsPlotValue(void* data, int index)
@@ -491,8 +510,8 @@ namespace Mist
 			} cpuTimes, gpuTimes;
 			if (CVar_ShowStats.Get())
 			{
-				sProfiler::GetStats(GProfiler.CPUTimeArray, cpuTimes.minMs, cpuTimes.maxMs, cpuTimes.meanMs, cpuTimes.lastMs);
-				sProfiler::GetStats(GProfiler.GPUTimeArray, gpuTimes.minMs, gpuTimes.maxMs, gpuTimes.meanMs, gpuTimes.lastMs);
+				sProfiler::GetStats(GetProfiler().CPUTimeArray, cpuTimes.minMs, cpuTimes.maxMs, cpuTimes.meanMs, cpuTimes.lastMs);
+				sProfiler::GetStats(GetProfiler().GPUTimeArray, gpuTimes.minMs, gpuTimes.maxMs, gpuTimes.meanMs, gpuTimes.lastMs);
 
 				ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove
 					| ImGuiWindowFlags_NoDecoration
@@ -647,7 +666,7 @@ namespace Mist
 
 		Profiling::sProfiler::tCpuProfStackTree& CpuProfGetStack()
 		{
-			return GProfiler.CpuProfStack[GetCurrentFrameIndex()];
+			return GetProfiler().CpuProfStack[GetCurrentFrameIndex()];
 		}
 
 		bool CpuProfSetActive(bool active) 
@@ -686,7 +705,7 @@ namespace Mist
 		void CpuProf_ImGuiDraw()
 		{
 			if (Profiling::g_cpuProfilingEnabled)
-				GProfiler.ImGuiDraw();
+				GetProfiler().ImGuiDraw();
 		}
-	}
+}
 }

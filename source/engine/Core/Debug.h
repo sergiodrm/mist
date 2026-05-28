@@ -144,6 +144,8 @@ namespace Mist
 			void Reset();
 		};
 
+		void Init();
+		void Terminate();
 		void AddProfilerEntry(const char* key, double timeDiff);
 		void AddGPUTime(float ms);
 		void AddCPUTime(float ms);
