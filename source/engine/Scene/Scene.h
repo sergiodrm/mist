@@ -420,6 +420,15 @@ namespace Mist
 
 	class SceneRenderer
 	{
+		struct RenderState
+		{
+			const cMesh* mesh = nullptr;
+			const cMaterial* material = nullptr;
+			uint32_t transformIndex = UINT32_MAX;
+
+			RenderState() = default;
+			inline void Invalidate() { *this = RenderState(); }
+		};
 	public:
 
 		SceneRenderer(uint32_t size = 4);
@@ -438,18 +447,20 @@ namespace Mist
 		static SceneRenderer* GetSceneRenderer();
 	private:
 		void ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, const glm::mat4& worldTransform);
-		void ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform, const glm::mat4& modelWorldTransform);
+		void ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform);
 
-		void BindMesh(rendersystem::RenderSystem* rs, const RenderItem& item);
-		void BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material);
+		void BindMesh(const RenderContext& rc, const RenderItem& item);
+		void BindMaterial(const RenderContext& rc, const cMaterial& material);
+		void SetTransform(const RenderContext& rc, const RenderItem& item);
 
 		void DoCulling();
 
-		void DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial, uint32_t& lastTransform);
+		void DrawItem(const RenderContext& renderContext, const RenderItem& item);
 		void DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item);
 
 	private:
 		tFixedHeapArray<RenderPassInfo> m_creationInfo;
 		tFixedHeapArray<RenderPass> m_renderPasses;
+		RenderState m_state;
 	};
 }

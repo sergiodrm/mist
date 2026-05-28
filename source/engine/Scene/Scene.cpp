@@ -1299,9 +1299,7 @@ namespace Mist
 		check(renderContext.passId < m_creationInfo.GetSize());
 
 		RenderPass& pass = m_renderPasses[renderContext.passId];
-		const cMaterial* lastMaterial = nullptr;
-		const cMesh* lastMesh = nullptr;
-		uint32_t lastTransform = UINT32_MAX;
+		m_state.Invalidate();
 		if (!IsGeometryPass(m_creationInfo[renderContext.passId].pass))
 		{
 			CPU_PROFILE_SCOPE(Scene_Draw);
@@ -1315,12 +1313,12 @@ namespace Mist
 			if (IsCullingEnabled())
 			{ 
 				for (uint32_t i = 0; i < pass.drawList.size(); ++i)
-					DrawItem(renderContext, pass.items[pass.drawList[i]], lastMesh, lastMaterial, lastTransform);
+					DrawItem(renderContext, pass.items[pass.drawList[i]]);
 			}
 			else
 			{
 				for (uint32_t i = 0; i < pass.items.size(); ++i)
-					DrawItem(renderContext, pass.items[i], lastMesh, lastMaterial, lastTransform);
+					DrawItem(renderContext, pass.items[i]);
 			}
 		}
 		else
@@ -1394,14 +1392,14 @@ namespace Mist
 		glm::mat4 transform = parentTransform * model->GetTransform(nodeIndex);
 		const cModel::Node& node = *model->GetNode(nodeIndex);
 		if (node.meshInfoIndex != index_invalid)
-			ProcessMesh(*model->GetMeshFromNode(nodeIndex), transform, worldTransform);
+			ProcessMesh(*model->GetMeshFromNode(nodeIndex), transform);
 		if (node.Sibling != index_invalid)
 			ProcessModelNode(model, node.Sibling, parentTransform, worldTransform);
 		if (node.Child != index_invalid)
 			ProcessModelNode(model, node.Child, transform, worldTransform);
 	}
 
-	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform, const glm::mat4& modelWorldTransform)
+	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform)
 	{
 		// process mesh flags
 		static constexpr uint32_t maxCount = 8;
@@ -1463,17 +1461,39 @@ namespace Mist
 		}
 	}
 
-	void SceneRenderer::BindMesh(rendersystem::RenderSystem* rs, const RenderItem& item)
+	void SceneRenderer::BindMesh(const RenderContext& rc, const RenderItem& item)
 	{
-		rs->SetVertexBuffer(item.mesh->GetVertexBuffer());
-		rs->SetIndexBuffer(item.mesh->GetIndexBuffer());
+		if (m_state.mesh != item.mesh)
+		{
+			rc.rs->SetVertexBuffer(item.mesh->GetVertexBuffer());
+			rc.rs->SetIndexBuffer(item.mesh->GetIndexBuffer());
+			m_state.mesh = item.mesh;
+		}
 	}
 
-	void SceneRenderer::BindMaterial(rendersystem::RenderSystem* rs, const cMaterial& material)
+	void SceneRenderer::BindMaterial(const RenderContext& rc, const cMaterial& material)
 	{
-		material.BindTextures(rs);
-		sMaterialRenderData materialData = material.GetRenderData();
-		rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+		if (m_state.material != &material)
+		{
+			if (!m_state.material || m_state.material->GetShaderProgram() != material.GetShaderProgram())
+				rc.rs->SetShader(material.GetShaderProgram());
+
+			material.BindTextures(rc.rs);
+			sMaterialRenderData materialData = material.GetRenderData();
+			rc.rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+			m_state.material = &material;
+		}
+	}
+
+	void SceneRenderer::SetTransform(const RenderContext& rc, const RenderItem& item)
+	{
+		if (m_state.transformIndex != item.transformIndex)
+		{
+			const glm::mat4& transform = m_renderPasses[rc.passId].transforms[item.transformIndex];
+			rc.rs->SetShaderProperty("u_model", &transform, sizeof(transform));
+			rc.rs->SetShaderProperty("u_prevModel", &transform, sizeof(transform));
+			m_state.transformIndex = item.transformIndex;
+		}
 	}
 
 	void SceneRenderer::DoCulling()
@@ -1500,35 +1520,19 @@ namespace Mist
 		}
 	}
 
-	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderItem& item, const cMesh*& lastMesh, const cMaterial*& lastMaterial, uint32_t& lastTransform)
+	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderItem& item)
 	{
 		const PrimitiveMeshData& primitive = item.mesh->GetPrimitiveArray()[item.primitive];
-
-		if (lastMesh != item.mesh)
-		{
-			lastMesh = item.mesh;
-			BindMesh(renderContext.rs, item);
-		}
-		if (lastTransform != item.transformIndex)
-		{
-			lastTransform = item.transformIndex;
-			const glm::mat4& transform = m_renderPasses[renderContext.passId].transforms[item.transformIndex];
-			renderContext.rs->SetShaderProperty("u_model", &transform, sizeof(transform));
-			renderContext.rs->SetShaderProperty("u_prevModel", &transform, sizeof(transform));
-		}
-		if (lastMaterial != primitive.material)
-		{
-			if ((!lastMaterial) || (lastMaterial && lastMaterial->GetShaderProgram() != primitive.material->GetShaderProgram()))
-				renderContext.rs->SetShader(primitive.material->GetShaderProgram());
-			lastMaterial = primitive.material;
-			BindMaterial(renderContext.rs, *primitive.material);
-		}
+		BindMesh(renderContext, item);
+		BindMaterial(renderContext, *primitive.material);
+		SetTransform(renderContext, item);
 		renderContext.rs->DrawIndexed(primitive.count, 1, primitive.firstIndex);
 	}
 
 	void SceneRenderer::DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item)
 	{
-		BindMesh(renderContext.rs, item);
+		BindMesh(renderContext, item);
+		SetTransform(renderContext, item);
 		renderContext.rs->DrawIndexed(item.mesh->GetIndexCount());
 	}
 
