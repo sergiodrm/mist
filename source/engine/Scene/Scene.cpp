@@ -345,6 +345,7 @@ namespace Mist
 		m_transformComponents.Push({ .Position = glm::vec3(0.f), .Rotation = tAngles(0.f), .Scale = glm::vec3(1.f) });
 
 		sRenderObject node = m_hierarchy.GetSize()-1;
+		check(parent != node);
 		char buff[64];
 		sprintf_s(buff, "RenderObject_%u", node.Id);
 		m_names.Push(buff);
@@ -505,8 +506,9 @@ namespace Mist
 		check(renderObjectSeq);
 		for (const auto& it : renderObjectSeq)
 		{
-			uint32_t parent = it["Parent"].as<uint32_t>();
+			sRenderObject parent = Mist::u32_to_u16(it["Parent"].as<uint32_t>());
 			sRenderObject rb = CreateRenderObject(parent);
+			check_msgf(rb != parent, "Object can't be a parent of itself. (Object %d in %s)", rb, filepath);
 			SetRenderObjectName(rb, it["Name"].as<std::string>().c_str());
 
 			TransformComponent t;
@@ -785,6 +787,8 @@ namespace Mist
 				{
 					int32_t node = m_dirtyNodes[level][nodeIndex];
 					int32_t parentNode = m_hierarchy[node].Parent;
+					checkdbg(node != parentNode);
+					checkdbg(m_hierarchy[node].Level == level);
 					m_globalTransforms[node] = m_globalTransforms[parentNode] * m_localTransforms[node];
 				}
 				m_dirtyNodes[level].Clear();
@@ -932,7 +936,7 @@ namespace Mist
 				{
 					glm::mat4 transform;
 					TransformComponentToMatrix(&m_transformComponents[i], &transform, 1);
-					DebugRender::DrawAxis(transform);
+					DebugRender::DrawAxis(m_globalTransforms[i]);
 					const Hierarchy& node = m_hierarchy[i];
 					ImGui::Text("Parent: %s", node.Parent != UINT32_MAX ? GetRenderObjectName(node.Parent) : "None");
 					if (ImGui::TreeNode("Transform component"))

@@ -57,6 +57,30 @@ namespace Mist
 	template <typename T, typename U>
 	T limits_cast(U v) { check(v>= std::numeric_limits<T>::min() && v <= std::numeric_limits<T>::max()); return static_cast<T>(v); }
 
+	inline uint16_t u32_to_u16(uint32_t v)
+	{
+		check(v <= UINT16_MAX);
+		return static_cast<uint16_t>(v);
+	}
+
+	inline uint8_t u32_to_u8(uint32_t v)
+	{
+		check(v <= UINT8_MAX);
+		return static_cast<uint8_t>(v);
+	}
+
+	inline uint16_t i32_to_u16(int32_t v)
+	{
+		check(v >= 0 && v <= UINT16_MAX);
+		return static_cast<uint16_t>(v);
+	}
+
+	inline uint8_t i32_to_u8(int32_t v)
+	{
+		check(v >= 0 && v <= UINT8_MAX);
+		return static_cast<uint8_t>(v);
+	}
+
 	uint16_t f32Tof16(float v);
 	float f16Tof32(uint16_t v);
 

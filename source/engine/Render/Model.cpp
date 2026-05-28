@@ -449,7 +449,7 @@ namespace gltf_api
 		sprintf_s(texturePath, "%s%s", rootAssetPath, texView.texture->image->uri);
 
 		if (texView.has_transform)
-			logfwarn("Texture view with transform: %s (Not supported yet)\n", texturePath);
+			logferror("Texture view with transform: %s (Not supported yet)\n", texturePath);
 
 		// Create and load texture
 		Mist::Texture::TextureLoader::LoadParams loadParams;
