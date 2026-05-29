@@ -3,7 +3,7 @@ Environment:
 RenderObjects:
   - RenderObject: 0
     Name: VkScene
-    Parent: 0
+    Parent: 65535
     TransformComponent:
       Position: [0, 0, 0]
       Rotation: [0, -0, 0]
@@ -12,7 +12,7 @@ RenderObjects:
       MeshAssetPath: models/vulkanscene_shadow.gltf
   - RenderObject: 1
     Name: Light_2
-    Parent: 0
+    Parent: 65535
     TransformComponent:
       Position: [7.5, 12.5, 0]
       Rotation: [6, 1, -83]
@@ -35,7 +35,7 @@ RenderObjects:
       FarClip: 16
   - RenderObject: 2
     Name: DefaultMainCamera
-    Parent: 0
+    Parent: 65535
     TransformComponent:
       Position: [0, 0, 0]
       Rotation: [0, 0, 0]
