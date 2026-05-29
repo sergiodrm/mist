@@ -12,6 +12,7 @@ int main(int argc, char* argv[])
 	{
 		PROFILE_SCOPE_LOG(InitApp, "Init app");
 		Mist::memory::InitSytemMemory();
+		Mist::Profiling::Init();
 		Mist::InitLog("log.html");
 		app = Mist::tApplication::CreateApplication(argc, argv);
 	}
