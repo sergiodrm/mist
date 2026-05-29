@@ -247,11 +247,25 @@ namespace Mist
 
 	class Terrain
 	{
+		struct TesselationControlParams
+		{
+			float minTesselationLevel = 4.f;
+			float maxTesselationLevel = 16.f;
+			float minDistance = 20.f;
+			float maxDistance = 800.f;
+		};
+		struct TesselationEvaluationParams
+		{
+			float heightScale = 64.f;
+			float heightShift = 16.f;
+			glm::vec2 uvPadding = {};
+		};
 	public:
 		void Init(rendersystem::RenderSystem* rs);
 		void Destroy();
 
 		void Draw(rendersystem::RenderSystem* rs);
+		void ImGuiDraw();
 
 	private:
 		struct
@@ -270,6 +284,8 @@ namespace Mist
 			rendersystem::ShaderProgram* m_shader;
 			uint32_t m_patchPoints;
 			uint32_t m_patchDimensions;
+			TesselationControlParams m_controlParams;
+			TesselationEvaluationParams m_evaluationParams;
 			cMaterial m_mtl;
 			render::TextureHandle m_heightMap;
 

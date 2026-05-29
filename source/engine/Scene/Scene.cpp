@@ -33,6 +33,7 @@
 #include "Render/RendererBase.h"
 #include "Render/RenderProcesses/ShadowMap.h"
 #include "Render/RenderProcesses/Preprocesses.h"
+#include "RenderSystem/UI.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -220,6 +221,13 @@ namespace Mist
 		}
 		rendersystem::textureloader::FreeTextureData(texData);
 		
+		rendersystem::ui::AddWindowCallback("Terrain", [](void* data)
+			{
+				check(data);
+				Mist::Terrain* t = static_cast<Mist::Terrain*>(data);
+				t->ImGuiDraw();
+			}, this);
+
 	}
 
 	void Terrain::Destroy()
@@ -233,6 +241,8 @@ namespace Mist
 
 	void Terrain::Draw(rendersystem::RenderSystem* rs)
 	{
+		if (!CVar_TerrainMethod.Get())
+			return;
 		rs->SetDepthEnable(true, true);
 		rs->SetBlendEnable(false);
 
@@ -260,9 +270,42 @@ namespace Mist
 			sMaterialRenderData materialData = m_terrain.m_mtl.GetRenderData();
 			rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
 			rs->SetTextureSlot("u_HeightMap", m_tesselatedTerrain.m_heightMap);
+			rs->SetShaderProperty("u_tess", &m_tesselatedTerrain.m_controlParams, sizeof(TesselationControlParams));
+			rs->SetShaderProperty("u_params", &m_tesselatedTerrain.m_evaluationParams, sizeof(TesselationEvaluationParams));
 			rs->Draw(m_tesselatedTerrain.GetVertexCount());
 			rs->EndMarker();
 		}
+	}
+
+	void Terrain::ImGuiDraw()
+	{
+		ImGui::Begin("Terrain");
+		ImGui::SeparatorText("Common");
+		static const char* modes[] = { "Disabled", "CPU tesselated", "GPU dynamic tesselation" };
+		int selection = 0;
+		if (CVar_TerrainMethod.Get())
+			selection = (CVar_TerrainMethod.Get() % 2) ? 1 : 2;
+		if (ImGuiUtils::ComboBox("Mode", &selection, modes, Mist::CountOf(modes)))
+			CVar_TerrainMethod.Set(selection);
+		if (selection == 1)
+		{
+			ImGui::Text("VB: %lld", m_terrain.m_vb->m_description.size);
+			ImGui::Text("IB: %lld", m_terrain.m_ib->m_description.size);
+		}
+
+		if (selection == 2)
+		{
+			ImGui::Text("VB: %lld", m_tesselatedTerrain.m_vb->m_description.size);
+			ImGui::SeparatorText("TCS");
+			ImGui::DragFloat("MinTessLevel", &m_tesselatedTerrain.m_controlParams.minTesselationLevel, 0.5f, 0.f, m_tesselatedTerrain.m_controlParams.maxTesselationLevel);
+			ImGui::DragFloat("MaxTessLevel", &m_tesselatedTerrain.m_controlParams.maxTesselationLevel, 0.5f, m_tesselatedTerrain.m_controlParams.minTesselationLevel, FLT_MAX);
+			ImGui::DragFloat("MinDistance", &m_tesselatedTerrain.m_controlParams.minDistance, 0.1f, 0.f, FLT_MAX);
+			ImGui::DragFloat("MaxDistance", &m_tesselatedTerrain.m_controlParams.maxDistance, 0.1f, 0.f, FLT_MAX);
+			ImGui::SeparatorText("TES");
+			ImGui::DragFloat("Height scale", &m_tesselatedTerrain.m_evaluationParams.heightScale);
+			ImGui::DragFloat("Height shift", &m_tesselatedTerrain.m_evaluationParams.heightShift);
+		}
+		ImGui::End();
 	}
 
 	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine))
