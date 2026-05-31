@@ -2767,12 +2767,10 @@ namespace render
         check(!m_context);
         m_context = _new VulkanContext(instance, device, surface, physicalDevice, vkDebugMessenger, nullptr);
 
-        const VkPhysicalDeviceProperties& properties = m_context->physicalDeviceProperties;
-        logfinfo("GPU has minimum buffer alignment of %Id bytes.\n",
-            properties.limits.minUniformBufferOffsetAlignment);
-        logfinfo("GPU max bound descriptor sets: %d\n",
-            properties.limits.maxBoundDescriptorSets);
-        logfinfo("GPU max sampling: 0x%x\n", m_context->GetMaxUsableSampleCount());
+        logfinfo("Device has minimum buffer alignment of %Id bytes.\n", m_context->GetMinUniformBufferOffsetAlignment());
+        logfinfo("Device max bound descriptor sets: %d\n", m_context->GetMaxBoundDescriptorSets());
+        logfinfo("Device max sampling: 0x%x\n", m_context->GetMaxUsableSampleCount());
+        logfinfo("Device max uniform buffer range: %d\n", m_context->GetMaxUniformBufferRange());
     }
 
     void Device::InitMemoryContext()
