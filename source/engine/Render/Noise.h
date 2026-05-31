@@ -7,6 +7,19 @@ namespace Mist
 
     // Returns values between 0 and 1
     float Random();
+    void RandomSeed(uint64_t seed = 111);
+
+    class ValueNoise1D
+    {
+    public:
+        ValueNoise1D(uint64_t seed = 113);
+
+        float Evaluate(float point);
+    private:
+        float Interpolate(float a, float b, float t) const;
+        static constexpr uint32_t Size = 256;
+        float m_ruler[Size];
+    };
 
     // Returns 2D blue noise with 4 channels
     class BlueNoise2D

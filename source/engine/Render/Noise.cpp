@@ -6,6 +6,7 @@
 #include <vector>
 #include "Utils/GenericUtils.h"
 #include "Core/Debug.h"
+#include <stdlib.h>
 
 namespace Mist
 {
@@ -16,6 +17,32 @@ namespace Mist
 		static std::default_random_engine generator;
 		static std::uniform_real_distribution distribution(0.f, 1.f);
 		return distribution(generator);
+	}
+
+	void RandomSeed(uint64_t seed)
+	{
+		srand(seed);
+	}
+
+	ValueNoise1D::ValueNoise1D(uint64_t seed)
+	{
+		RandomSeed(seed);
+		for (uint32_t i = 0; i < Size; ++i)
+			m_ruler[i] = Random();
+	}
+
+	float ValueNoise1D::Evaluate(float point)
+	{
+		uint32_t xi = (uint32_t)point - (point < 0 && point != (uint32_t)point);
+		float t = point - (float)xi;
+		uint32_t prevIndex = xi & (Size-1);
+		uint32_t nextIndex = (xi + 1) & (Size-1);
+		return math::Lerp(m_ruler[prevIndex], m_ruler[nextIndex], t);
+	}
+
+	float ValueNoise1D::Interpolate(float a, float b, float t) const
+	{
+		return Mist::math::Lerp(a, b, t);
 	}
 
 	float BlueNoise2D::Sample::ComputeDist(const Sample& s0, const Sample& s1)
