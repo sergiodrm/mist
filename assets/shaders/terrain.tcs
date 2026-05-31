@@ -19,6 +19,40 @@ layout (location = 3) out vec4 outPrevWSPos[];
 //     float gl_ClipDistance[];
 // } gl_in[gl_MaxPatchVertices];
 
+
+#define DYNAMIC_LOD
+#ifdef DYNAMIC_LOD
+
+
+#include <shaders/includes/camera.glsl>
+
+// Uniforms
+layout (set = 0, binding = 0) uniform CameraBlock 
+{
+	Camera data;
+} u_camera;
+
+layout (set = 0, binding = 1) uniform PrevCameraBlock 
+{
+	Camera data;
+} u_prevCamera;
+
+layout (set = 3, binding = 0) uniform TerrainTesselation
+{
+    float minTessLevel;
+    float maxTessLevel;
+    float minDistance;
+    float maxDistance;
+} u_tess;
+
+
+#define MIN_TESS_LEVEL u_tess.minTessLevel
+#define MAX_TESS_LEVEL u_tess.maxTessLevel
+#define MIN_DISTANCE u_tess.minDistance
+#define MAX_DISTANCE u_tess.maxDistance
+
+#endif
+
 void main()
 {
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
@@ -30,6 +64,29 @@ void main()
 
     if (gl_InvocationID == 0)
     {
+#ifdef DYNAMIC_LOD
+        vec4 vsPos00 = u_camera.data.view * gl_in[0].gl_Position;
+        vec4 vsPos01 = u_camera.data.view * gl_in[1].gl_Position;
+        vec4 vsPos10 = u_camera.data.view * gl_in[2].gl_Position;
+        vec4 vsPos11 = u_camera.data.view * gl_in[3].gl_Position;
+
+        float dist00 = clamp((abs(vsPos00.z)-MIN_DISTANCE)/(MAX_DISTANCE-MIN_DISTANCE), 0.f, 1.f);
+        float dist01 = clamp((abs(vsPos01.z)-MIN_DISTANCE)/(MAX_DISTANCE-MIN_DISTANCE), 0.f, 1.f);
+        float dist10 = clamp((abs(vsPos10.z)-MIN_DISTANCE)/(MAX_DISTANCE-MIN_DISTANCE), 0.f, 1.f);
+        float dist11 = clamp((abs(vsPos11.z)-MIN_DISTANCE)/(MAX_DISTANCE-MIN_DISTANCE), 0.f, 1.f);
+
+        float tessLevel0 = mix(MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(dist10, dist00));
+        float tessLevel1 = mix(MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(dist00, dist01));
+        float tessLevel2 = mix(MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(dist01, dist11));
+        float tessLevel3 = mix(MAX_TESS_LEVEL, MIN_TESS_LEVEL, min(dist11, dist10));
+        gl_TessLevelOuter[0] = tessLevel0;
+        gl_TessLevelOuter[1] = tessLevel1;
+        gl_TessLevelOuter[2] = tessLevel2;
+        gl_TessLevelOuter[3] = tessLevel3;
+
+        gl_TessLevelInner[0] = max(tessLevel1, tessLevel3);
+        gl_TessLevelInner[1] = max(tessLevel0, tessLevel2);
+#else
         gl_TessLevelOuter[0] = 16;
         gl_TessLevelOuter[1] = 16;
         gl_TessLevelOuter[2] = 16;
@@ -37,5 +94,6 @@ void main()
 
         gl_TessLevelInner[0] = 16;
         gl_TessLevelInner[1] = 16;
+#endif
     }
 }

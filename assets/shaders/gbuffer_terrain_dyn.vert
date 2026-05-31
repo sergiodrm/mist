@@ -22,6 +22,11 @@ layout (set = 0, binding = 1) uniform PrevCameraBlock
 	Camera data;
 } u_prevCamera;
 
+layout (set = 4, binding = 0) uniform ModelBlock
+{
+	Model data;
+} u_model;
+
 #define VERTEX_MESH_DISABLE_DEFAULT_VERTEX
 #include <shaders/includes/vertex_mesh.glsl>
 layout (location = 0) in vec3 inPosition;
@@ -30,13 +35,13 @@ layout (location = 1) in vec2 inTexCoords;
 void main() 
 {
 	// Compute world space vertex position
-	vec3 worldPos = vec3(vec4(inPosition,1.f));
-	gl_Position = vec4(inPosition, 1.f);
+	vec4 worldPos = u_model.data.worldTransform * vec4(inPosition,1.f);
+	gl_Position = worldPos;
 
 	// motion vectors
-	outCurrWSPos = u_camera.data.viewProjection * vec4(inPosition,1.f);
-	outPrevWSPos = u_prevCamera.data.viewProjection * vec4(inPosition, 1.f);
+	outCurrWSPos = u_camera.data.viewProjection * worldPos;
+	outPrevWSPos = u_prevCamera.data.viewProjection * worldPos;
 
-	outWorldPos = worldPos;
+	outWorldPos = worldPos.xyz;
 	outTexCoords = inTexCoords;
 }
