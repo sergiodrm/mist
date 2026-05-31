@@ -989,21 +989,9 @@ namespace Mist
 					if (ImGui::TreeNode("Transform component"))
 					{
 						TransformComponent t = m_transformComponents[i];
-						ImGui::Columns(2);
-						ImGui::Text("Position");
-						ImGui::NextColumn();
-						bool dirty = ImGui::DragFloat3("Position", &t.Position[0], posStep);
-						ImGui::NextColumn();
-						dirty |= ImGuiUtils::EditAngles("Rotation", "Rotation", t.Rotation);
-						ImGui::NextColumn();
-						ImGui::Text("Scale");
-						ImGui::NextColumn();
-						dirty |= ImGui::DragFloat3("Scale", &t.Scale[0], sclStep);
-						ImGui::Columns();
-						ImGui::TreePop();
-
-						if (dirty)
+						if (ImGuiUtils::EditTransform("Transform", &t.Position[0], &t.Rotation, &t.Scale[0]))
 							SetTransform(i, t);
+						ImGui::TreePop();
 					}
 					if (m_lightComponentMap.contains(i))
 					{
