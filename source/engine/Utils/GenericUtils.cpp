@@ -205,3 +205,30 @@ bool Mist::ImGuiUtils::ComboBox(const char* title, int* currentSelection, const 
 	}
 	return res;
 }
+
+bool Mist::ImGuiUtils::EditTransform(const char* title, float* position, tAngles* angles, float* scale, bool makeColumns, float posStep, float angleStep, float scaleStep)
+{
+	bool dirty = false;
+	if (makeColumns)
+	{
+		ImGui::Columns(2);
+		ImGui::Text("Position");
+		ImGui::NextColumn();
+		dirty |= ImGui::DragFloat3("Position", position, posStep);
+		ImGui::NextColumn();
+		dirty |= ImGuiUtils::EditAngles("Rotation", "Rotation", *angles);
+		ImGui::NextColumn();
+		ImGui::Text("Scale");
+		ImGui::NextColumn();
+		dirty |= ImGui::DragFloat3("Scale", scale, scaleStep);
+		ImGui::Columns();
+	}
+	else
+	{
+		ImGui::Text("Position");
+		dirty |= ImGui::DragFloat3("Position", position, posStep);
+		dirty |= ImGuiUtils::EditAngles("Rotation", "Rotation", *angles);
+		dirty |= ImGui::DragFloat3("Scale", scale, scaleStep);
+	}
+	return dirty;
+}

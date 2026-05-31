@@ -63,5 +63,7 @@ namespace Mist
 		bool EditCVar(CVar& cvar);
 
 		bool ComboBox(const char* title, int* currentSelection, const char** values, int valueCount);
+
+		bool EditTransform(const char* title, float* position, tAngles* angles, float* scale, bool makeColumns = true, float posStep = 0.5f, float angleStep = 0.1f, float scaleStep = 0.5f);
 	}
 }
