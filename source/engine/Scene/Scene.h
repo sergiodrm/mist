@@ -247,6 +247,20 @@ namespace Mist
 
 	class Terrain
 	{
+		struct TerrainDescription
+		{
+			float width = 0.f;
+			float height = 0.f;
+			int32_t patchCount = 0;
+			int32_t patchPoints = 4;
+		};
+		struct NoiseDescription
+		{
+			int32_t width = 64;
+			int32_t height = 64;
+			float scale = 64.f;
+			bool showTex = false;
+		};
 		struct TesselationControlParams
 		{
 			float minTesselationLevel = 4.f;
@@ -261,36 +275,30 @@ namespace Mist
 			glm::vec2 uvPadding = {};
 		};
 	public:
+		Terrain();
 		void Init(rendersystem::RenderSystem* rs);
 		void Destroy();
 
 		void Draw(rendersystem::RenderSystem* rs);
 		void ImGuiDraw();
 
+		inline uint32_t GetVertexCount() const { return m_description.patchPoints * m_description.patchCount * m_description.patchCount; }
 	private:
-		struct
-		{
-			render::BufferHandle m_vb;
-			render::BufferHandle m_ib;
-			uint32_t m_indexCount;
-			uint32_t m_stripsCount;
-			uint32_t m_vertexPerStrip;
-			cMaterial m_mtl;
-		} m_terrain;
+		void InitTerrainVertices(rendersystem::RenderSystem* rs, const TerrainDescription& desc);
+		void InitNoiseTexture(rendersystem::RenderSystem* rs, uint32_t width, uint32_t height, float scale);
 
-		struct 
-		{
-			render::BufferHandle m_vb;
-			rendersystem::ShaderProgram* m_shader;
-			uint32_t m_patchPoints;
-			uint32_t m_patchDimensions;
-			TesselationControlParams m_controlParams;
-			TesselationEvaluationParams m_evaluationParams;
-			cMaterial m_mtl;
-			render::TextureHandle m_heightMap;
+	private:
+		render::BufferHandle m_vb;
+		rendersystem::ShaderProgram* m_shader;
+		TerrainDescription m_description;
+		TesselationControlParams m_controlParams;
+		TesselationEvaluationParams m_evaluationParams;
+		NoiseDescription m_noiseDesc;
+		cMaterial m_mtl;
+		render::TextureHandle m_heightMap;
+		TransformComponent m_transform;
+		render::TextureHandle m_noiseTex;
 
-			inline uint32_t GetVertexCount() const { return m_patchPoints * m_patchDimensions * m_patchDimensions; }
-		} m_tesselatedTerrain;
 	};
 
 	class Scene
