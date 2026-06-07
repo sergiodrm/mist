@@ -43,9 +43,17 @@ void main()
 	data.roughness = 1.f;
 	data.metallic = 0.f;
 
+	float waterLimit = -50.f;
+	float groundLimit = 10.f;
+	float snowLimit = 200.f;
 	vec3 snowColor = vec3(1.f, 1.f, 1.f);
-	vec3 floorColor = vec3(0.0362f, 0.0212f, 0.0017f);
-	data.albedo = mix(floorColor, snowColor, (inWorldPos.y+16.f)/64.f);
-	//data.albedo = vec3((inWorldPos.y+16.f)/64.f, 0,0);
+	vec3 groundColor = vec3(0.115f, 0.322f, 0.054f);
+	vec3 waterColor = vec3(0.041f, 0.755f, 1.f);
+
+	float yw = (inWorldPos.y - waterLimit)/(groundLimit-waterLimit);
+	float yg = (inWorldPos.y - groundLimit)/(snowLimit-groundLimit);
+	data.albedo = mix(waterColor, groundColor, clamp(yw, 0, 1));
+	data.albedo = mix(data.albedo, snowColor, clamp(yg,0,1));
+
 	GBuffer_Write(data);
 }
