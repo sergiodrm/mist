@@ -20,8 +20,12 @@ namespace Mist
 		{
 			int32_t width = 64;
 			int32_t height = 64;
-			float scale = 64.f;
-			bool showTex = false;
+			float freq = 0.02f;
+			float freqMult = 1.8f;
+			float amplitude = 2.f;
+			float amplitudeMult = 0.35f;
+			uint32_t layers = 5;
+			bool showTex = true;
 		};
 		struct TesselationControlParams
 		{
@@ -41,13 +45,13 @@ namespace Mist
 		void Init(rendersystem::RenderSystem* rs);
 		void Destroy();
 
-		void Draw(rendersystem::RenderSystem* rs);
+		void Draw(rendersystem::RenderSystem* rs) const;
 		void ImGuiDraw();
 
 		inline uint32_t GetVertexCount() const { return m_description.patchPoints * m_description.patchCount * m_description.patchCount; }
 	private:
 		void InitTerrainVertices(rendersystem::RenderSystem* rs, const TerrainDescription& desc);
-		void InitNoiseTexture(rendersystem::RenderSystem* rs, uint32_t width, uint32_t height, float scale);
+		void InitNoiseTexture(rendersystem::RenderSystem* rs);
 
 	private:
 		render::BufferHandle m_vb;

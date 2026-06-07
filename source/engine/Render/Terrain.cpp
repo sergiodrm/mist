@@ -26,7 +26,7 @@ namespace Mist
 		rendersystem::textureloader::LoadTextureFromFile(&m_heightMap, rs->GetDevice(), heightMap);
 		rendersystem::textureloader::FreeTextureData(texData);
 
-		InitNoiseTexture(rs, 256, 256, 564.765f);
+		InitNoiseTexture(rs);
 
 		TerrainDescription desc;
 		desc.width = 100.f;
@@ -53,7 +53,7 @@ namespace Mist
 		m_heightMap = nullptr;
 	}
 
-	void Terrain::Draw(rendersystem::RenderSystem* rs)
+	void Terrain::Draw(rendersystem::RenderSystem* rs) const
 	{
 		if (!CVar_Terrain.Get())
 			return;
@@ -68,6 +68,11 @@ namespace Mist
 		sMaterialRenderData materialData = m_mtl.GetRenderData();
 		rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
 		rs->SetTextureSlot("u_HeightMap", m_noiseTex);
+		rs->SetSampler("u_HeightMap", 
+			render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+			render::SamplerAddressMode_MirrorRepeat, 
+			render::SamplerAddressMode_MirrorRepeat, 
+			render::SamplerAddressMode_MirrorRepeat);
 		rs->SetShaderProperty("u_tess", &m_controlParams, sizeof(TesselationControlParams));
 		rs->SetShaderProperty("u_params", &m_evaluationParams, sizeof(TesselationEvaluationParams));
 		glm::mat4 t;
@@ -98,6 +103,8 @@ namespace Mist
 			m_transform.Position.y = 0.f;
 		}
 
+		m_evaluationParams.uvPadding = { m_transform.Position.x * 0.01f, m_transform.Position.z * 0.01f };
+
 		ImGui::SeparatorText("Terrain generation");
 		ImGui::Text("VB: %lld B", m_vb->m_description.size);
 		ImGui::DragFloat("Width", &m_description.width, 0.5f, 0.f, FLT_MAX);
@@ -109,12 +116,16 @@ namespace Mist
 		ImGui::SeparatorText("Height map noise");
 		ImGui::DragInt("Width tex", &m_noiseDesc.width, 1, 0, INT32_MAX);
 		ImGui::DragInt("Height tex", &m_noiseDesc.height, 1, 0, INT32_MAX);
-		ImGui::DragFloat("Scale", &m_noiseDesc.scale, 0.25f);
+		ImGui::DragFloat("Freq", &m_noiseDesc.freq, 0.25f);
+		ImGui::DragFloat("FreqMult", &m_noiseDesc.freqMult, 0.25f);
+		ImGui::DragFloat("Amplitude", &m_noiseDesc.amplitude, 0.25f);
+		ImGui::DragFloat("AmplitudeMult", &m_noiseDesc.amplitudeMult, 0.25f);
+		int layers = m_noiseDesc.layers;
+		ImGui::DragInt("Layers", &layers);
+		m_noiseDesc.layers = layers;
 		ImGui::Checkbox("Show tex", &m_noiseDesc.showTex);
-		if (ImGui::Button("Randomize scale"))
-			m_noiseDesc.scale = 8273.213498f * Random();
 		if (ImGui::Button("Regenerate noise texture"))
-			InitNoiseTexture(g_render, m_noiseDesc.width, m_noiseDesc.height, m_noiseDesc.scale);
+			InitNoiseTexture(g_render);
 
 		ImGui::SeparatorText("TCS");
 		ImGui::DragFloat("MinTessLevel", &m_controlParams.minTesselationLevel, 0.5f, 0.f, m_controlParams.maxTesselationLevel);
@@ -174,32 +185,46 @@ namespace Mist
 		_free(vertices);
 	}
 
-	void Terrain::InitNoiseTexture(rendersystem::RenderSystem* rs, uint32_t width, uint32_t height, float scale)
+	void Terrain::InitNoiseTexture(rendersystem::RenderSystem* rs)
 	{
-		const uint32_t channels = 4;
-		uint32_t size = width * height * channels;
-		//scale = 1.f / scale;
+		uint32_t size = m_noiseDesc.width * m_noiseDesc.height;
+		float* noise = (float*)_malloc(sizeof(float) * size);
 
-		ValueNoise1D noiseGenerator;
-		uint8_t* data = (uint8_t*)_malloc(sizeof(uint8_t) * size);
-		for (uint32_t i = 0; i < size; i += channels)
+		float maxNoise = 0.f;
+		ValueNoise2D noiseGenerator;
+		for (uint32_t i = 0; i < m_noiseDesc.width; ++i)
 		{
-			float p = (float)i / (float)(size)*scale;
-			float n = noiseGenerator.Evaluate(p);
-			data[i + 0] = (uint8_t)(n * 255.f);
-			data[i + 1] = (uint8_t)(n * 255.f);
-			data[i + 2] = (uint8_t)(n * 255.f);
-			data[i + 3] = (uint8_t)(n * 255.f);
+			for (uint32_t j = 0; j < m_noiseDesc.height; ++j)
+			{
+				uint32_t index = (j * m_noiseDesc.width + i);
+
+				glm::vec2 pointNoise = { i * m_noiseDesc.freq, j * m_noiseDesc.freq };
+				float amplitude = m_noiseDesc.amplitude;
+				noise[index] = 0.f;
+				for (uint32_t i = 0; i < m_noiseDesc.layers; ++i)
+				{
+					noise[index] += noiseGenerator.Evaluate(pointNoise) * amplitude;
+					pointNoise *= m_noiseDesc.freqMult;
+					amplitude *= m_noiseDesc.amplitudeMult;
+				}
+				maxNoise = __max(maxNoise, noise[index]);
+			}
 		}
+
+		uint16_t* data = (uint16_t*)_malloc(sizeof(uint16_t) * size);
+		for (uint32_t i = 0; i < size; ++i)
+			data[i] = uint16_t((float)(UINT16_MAX) * noise[i] / maxNoise);
+		_free(noise);
+
 		render::TextureDescription desc;
-		desc.extent = { width, height, 1 };
-		desc.format = render::Format_R8G8B8A8_UNorm;
+		desc.extent = { (uint32_t)m_noiseDesc.width, (uint32_t)m_noiseDesc.height, 1 };
+		desc.format = render::Format_R16_UNorm;
 		desc.memoryUsage = render::MemoryUsage_Gpu;
 		desc.isRenderTarget = false;
 		desc.isShaderResource = true;
 		m_noiseTex = rs->GetDevice()->CreateTexture(desc);
 		render::utils::UploadContext uploadCtx(rs->GetDevice());
-		uploadCtx.WriteTexture(m_noiseTex, 0, 0, data, size * sizeof(uint8_t));
+		uploadCtx.WriteTexture(m_noiseTex, 0, 0, data, size * sizeof(uint16_t));
 		uploadCtx.SetTextureLayout(m_noiseTex, render::ImageLayout_ShaderReadOnly);
 		uploadCtx.Submit();
 		_free(data);
