@@ -340,7 +340,7 @@ namespace rendersystem
         ShaderProgram* shader = FindShader(desc);
         if (!shader)
         {
-            shader = _new ShaderProgram(m_device, desc);
+            shader = _new ShaderProgram(m_device, desc, *m_bindingCache);
             m_shaderDb.AddProgram(shader);
         }
         return shader;
@@ -357,7 +357,7 @@ namespace rendersystem
     void RenderSystem::ReloadAllShaders()
     {
         m_device->WaitIdle();
-        m_shaderDb.ReloadAll();
+        m_shaderDb.ReloadAll(*m_bindingCache);
         m_graphicsPsoMap.clear();
     }
 
@@ -1568,11 +1568,11 @@ namespace rendersystem
         render::shader_compiler::ShaderReflectionProperties m_properties;
     };
 
-    ShaderProgram::ShaderProgram(render::Device* device, const ShaderBuildDescription& description)
+    ShaderProgram::ShaderProgram(render::Device* device, const ShaderBuildDescription& description, BindingCache& bindingCache)
         : m_device(device), m_properties(nullptr)
     {
         m_description = _new ShaderBuildDescription(description);
-        Reload();
+        Reload(bindingCache);
     }
 
     ShaderProgram::~ShaderProgram()
@@ -1584,7 +1584,7 @@ namespace rendersystem
         m_description = nullptr;
     }
 
-    void ShaderProgram::Reload()
+    void ShaderProgram::Reload(BindingCache& bindingCache)
     {
         switch (m_description->type)
         {
@@ -1596,7 +1596,7 @@ namespace rendersystem
             break;
         }
         check(IsLoaded());
-        ProcessLayouts();
+        ProcessLayouts(bindingCache);
     }
 
     bool ShaderProgram::IsLoaded() const
@@ -1716,7 +1716,7 @@ namespace rendersystem
         return true;
     }
 
-    bool ShaderProgram::ProcessLayouts()
+    bool ShaderProgram::ProcessLayouts(BindingCache& bindingCache)
     {
         m_layouts.Clear();
         render::BindingLayoutDescription layoutDesc;
@@ -1734,7 +1734,7 @@ namespace rendersystem
             checkdbg(setDesc.setIndex < m_layouts.GetCapacity());
             if (setDesc.setIndex >= m_layouts.GetSize())
                 m_layouts.Resize(setDesc.setIndex + 1);
-            m_layouts[setDesc.setIndex] = m_device->CreateBindingLayout(layoutDesc);
+            m_layouts[setDesc.setIndex] = bindingCache.GetCachedLayout(layoutDesc);
         }
 
         return true;

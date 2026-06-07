@@ -122,7 +122,7 @@ namespace rendersystem
     class BindingCache
     {
     public:
-        BindingCache(render::Device* device) : m_device(device) {}
+        BindingCache(render::Device* device) : m_device(device) { m_cache.reserve(1 << 16); }
         ~BindingCache() { m_cache.clear(); m_cacheLayout.clear(); }
 
         render::BindingSetHandle GetCachedBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout);
@@ -390,10 +390,10 @@ namespace rendersystem
     class ShaderProgram
     {
         friend class RenderSystem;
-        ShaderProgram(render::Device* device, const ShaderBuildDescription& description);
+        ShaderProgram(render::Device* device, const ShaderBuildDescription& description, BindingCache& bindingCache);
     public:
         ~ShaderProgram();
-        void Reload();
+        void Reload(BindingCache& bindingCache);
         bool IsLoaded() const;
         void ReleaseResources();
 
@@ -414,7 +414,7 @@ namespace rendersystem
         bool ReloadGraphics();
         bool ReloadCompute();
         bool ReloadShaderModules(const render::ShaderType* types, uint32_t count);
-        bool ProcessLayouts();
+        bool ProcessLayouts(BindingCache& bindingCache);
 
         render::Device* m_device;
     
@@ -531,11 +531,11 @@ namespace rendersystem
             m_programs.erase(it);
         }
 
-        void ReloadAll()
+        void ReloadAll(BindingCache& bindingCache)
         {
             for (ShaderMapIterator it = m_programs.begin(); it != m_programs.end(); ++it)
             {
-                it->second->Reload();
+                it->second->Reload(bindingCache);
                 check(it->second->IsLoaded());
             }
         }
