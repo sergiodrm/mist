@@ -2771,6 +2771,7 @@ namespace render
         logfinfo("Device max bound descriptor sets: %d\n", m_context->GetMaxBoundDescriptorSets());
         logfinfo("Device max sampling: 0x%x\n", m_context->GetMaxUsableSampleCount());
         logfinfo("Device max uniform buffer range: %d\n", m_context->GetMaxUniformBufferRange());
+        logfinfo("Device max push constant size: %d\n", m_context->GetMaxPushConstantsSize());
     }
 
     void Device::InitMemoryContext()
@@ -2985,52 +2986,6 @@ namespace render
     {
         m_garbageCollector.Run(submissionId);
     }
-    
-    void CreatePipelineLayout(Device* device, const BindingLayoutArray& bindingLayouts, VkPipelineLayout& pipelineLayout)
-    {
-        check(device);
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.pNext = nullptr;
-
-        Mist::tStaticArray<VkDescriptorSetLayout, BindingLayout::MaxLayouts> layouts;
-        for (uint32_t i = 0; i < bindingLayouts.GetSize(); ++i)
-        {
-            if (bindingLayouts[i] && bindingLayouts[i]->m_layout)
-                layouts.Push(bindingLayouts[i]->m_layout);
-        }
-
-        pipelineLayoutInfo.flags = 0;
-        pipelineLayoutInfo.pPushConstantRanges = nullptr;
-        pipelineLayoutInfo.pushConstantRangeCount = 0;
-        pipelineLayoutInfo.setLayoutCount = layouts.GetSize();
-        pipelineLayoutInfo.pSetLayouts = layouts.GetData();
-
-        check_result(vkCreatePipelineLayout(device->GetContext().device, &pipelineLayoutInfo, device->GetContext().allocationCallbacks, &pipelineLayout));
-    }
-
-    uint32_t FindFamilyQueueIndex(Device* device, QueueType type)
-    {
-        uint32_t count = 0;
-        vkGetPhysicalDeviceQueueFamilyProperties(device->GetContext().physicalDevice, &count, nullptr);
-        VkQueueFamilyProperties* properties = _new VkQueueFamilyProperties[count];
-        vkGetPhysicalDeviceQueueFamilyProperties(device->GetContext().physicalDevice, &count, properties);
-
-        uint32_t familyIndex = UINT32_MAX;
-        VkQueueFlags flags = utils::ConvertQueueFlags(type);
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            if ((properties[i].queueFlags & flags) == flags)
-            {
-                familyIndex = i;
-                break;
-            }
-        }
-        delete[] properties;
-        return familyIndex;
-    }
-
 
     TextureSubresourceRange TextureSubresourceRange::Resolve(const TextureDescription& description, bool singleMipLevel) const
     {

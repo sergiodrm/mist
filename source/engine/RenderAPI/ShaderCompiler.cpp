@@ -532,7 +532,28 @@ namespace render
                     check(setDesc && setDesc->setIndex == setIndex);
                     if (setDesc->params.size() < bufferInfo.binding + 1)
                         setDesc->params.resize(bufferInfo.binding + 1);
-                    setDesc->params[bufferInfo.binding] = bufferInfo;
+
+                    ShaderPropertyDescription& bindingDesc = setDesc->params[bufferInfo.binding];
+                    // Sets and bindings can be shared between shader stages.
+                    // Check if current binding already exists. In that case, binding info must match.
+                    // Just update the shader stage in order to be accesed from all required stages.
+                    if (bindingDesc.type == ResourceType_None)
+                    {
+                        // Binding does not exist. Fill it with current buffer info.
+                        bindingDesc = bufferInfo;
+                    }
+                    else
+                    {
+                        // Binding already exists. Must match with current binding.
+                        check(bindingDesc.binding == bufferInfo.binding);
+                        check(!strcmp(bindingDesc.name.c_str(), bufferInfo.name.c_str()));
+                        check(bindingDesc.size == bufferInfo.size);
+                        check(bindingDesc.arrayCount == bufferInfo.arrayCount);
+                        check(bindingDesc.type == bufferInfo.type);
+                        // Update stage for making it accesible
+                        bindingDesc.stageMask |= bufferInfo.stageMask;
+                    }
+
 
 #ifdef MIST_SHADER_REFLECTION_LOG
                     logfdebug("> %s [ShaderStage: %s; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", vkutils::GetVulkanDescriptorTypeName(descriptorType),

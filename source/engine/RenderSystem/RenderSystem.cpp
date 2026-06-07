@@ -1071,13 +1071,11 @@ namespace rendersystem
 		}
     }
 
-    void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray)
+    void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray)
     {
         CPU_TSC(ResolveBindings);
 		// Bind descriptors sets and memory before draw call
 		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
-		check(properties->pushConstantMap.empty());
-        //bindingLayoutArray.Resize((uint32_t)properties->params.size());
 		render::BindingSetDescription& desc = m_bindingDesc;
 		for (uint32_t i = 0; i < (uint32_t)properties->params.size(); ++i)
 		{
@@ -1152,8 +1150,6 @@ namespace rendersystem
 			}
 			render::BindingSetHandle set = GetBindingSet(desc, bindingLayoutArray[paramSet.setIndex]);
 			bindingSetVector.SetBindingSlot(paramSet.setIndex, set);
-			//check(paramSet.setIndex < bindingLayoutArray.GetSize());
-            //bindingLayoutArray[paramSet.setIndex] = set->m_layout;
 			// clear dirty
             m_shaderContext.ClearDirtySet(paramSet.setIndex);
 		}
@@ -1761,8 +1757,9 @@ namespace rendersystem
 
     void ShaderBuffer::BeginUse(render::Device* device, TemporalBuffer* temporalBuffer)
 	{
+        check(!m_tempBuffer);
+        checkdbg(m_bufferSize == device->AlignUniformSize(m_bufferSize));
         m_tempBuffer = temporalBuffer;
-        check(m_bufferSize == device->AlignUniformSize(m_bufferSize));
         check(m_tempBuffer && m_tempBuffer->GetSize());
         check(m_tempBuffer->GetSize() == device->AlignUniformSize(m_tempBuffer->GetSize()));
         check(m_bufferSize <= m_tempBuffer->GetSize());
@@ -1771,10 +1768,11 @@ namespace rendersystem
         m_currentBuffer = 0;
 	}
 
-
 	void ShaderBuffer::WriteProperty(render::Device* device, const char* id, const void* data, uint64_t size)
 	{
         check(device && id && *id && data && size);
+        check(size <= m_bufferSize);
+        check(size <= m_tempBuffer->GetSize());
 
         if (!m_tempBuffer->IsEnoughRoom(device, size))
         {

@@ -1038,8 +1038,7 @@ namespace render
             : type(_type),
             binding(_binding),
             size(_size),
-            //shaderMask(_shaderMask),
-            shaderMask(ShaderStageMask_All),
+            shaderMask(_shaderMask),
             arrayCount(_arrayCount)
         { }
 
@@ -1097,10 +1096,6 @@ namespace render
     };
     typedef RenderResourceHandle<BindingLayout> BindingLayoutHandle;
     typedef Mist::tStaticArray<BindingLayoutHandle, BindingLayout::MaxLayouts> BindingLayoutArray;
-
-    void CreatePipelineLayout(Device* device, const BindingLayoutArray& bindingLayouts,
-        VkPipelineLayout& pipelineLayout);
-
 
     struct BindingSetItem
     {
@@ -1188,37 +1183,37 @@ namespace render
 
         inline BindingSetDescription& PushTextureSRV(uint32_t slot, Texture* texture, SamplerHandle sampler, ShaderStageMask shaderStageMask, TextureSubresourceRange subresource = TextureSubresourceRange::AllSubresources(), ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, ShaderStageMask_RayGen, subresource, dimension));
+            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, texture, sampler, shaderStageMask, subresource, dimension));
         }
 
         inline BindingSetDescription& PushTextureSRV(uint32_t slot, TextureHandle* textures, SamplerHandle* samplers, ShaderStageMask shaderStageMask, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, ShaderStageMask_RayGen, subresources, count, dimension));
+            return PushItem(BindingSetItem::CreateTextureSRVItem(slot, textures, samplers, shaderStageMask, subresources, count, dimension));
         }
 
         inline BindingSetDescription& PushTextureUAV(uint32_t slot, Texture* texture, ShaderStageMask shaderStageMask, TextureSubresourceRange subresource = { 0,1,0,TextureSubresourceRange::AllLayers }, ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, texture, ShaderStageMask_RayGen, subresource, dimension));
+            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, texture, shaderStageMask, subresource, dimension));
         }
 
         inline BindingSetDescription& PushTextureUAV(uint32_t slot, TextureHandle* textures, ShaderStageMask shaderStageMask, TextureSubresourceRange* subresources, uint32_t count, ImageDimension dimension = ImageDimension_Undefined)
         {
-            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, textures, ShaderStageMask_RayGen, subresources, count, dimension));
+            return PushItem(BindingSetItem::CreateTextureUAVItem(slot, textures, shaderStageMask, subresources, count, dimension));
         }
 
         inline BindingSetDescription& PushConstantBuffer(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            return PushItem(BindingSetItem::CreateConstantBufferItem(slot, buffer, ShaderStageMask_RayGen, bufferRange));
+            return PushItem(BindingSetItem::CreateConstantBufferItem(slot, buffer, shaderStageMask, bufferRange));
         }
 
         inline BindingSetDescription& PushVolatileConstantBuffer(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            return PushItem(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, ShaderStageMask_RayGen, bufferRange));
+            return PushItem(BindingSetItem::CreateVolatileConstantBufferItem(slot, buffer, shaderStageMask, bufferRange));
         }
 
         inline BindingSetDescription& PushBufferUAV(uint32_t slot, Buffer* buffer, ShaderStageMask shaderStageMask, BufferRange bufferRange = BufferRange::WholeBuffer())
         {
-            return PushItem(BindingSetItem::CreateBufferUAVItem(slot, buffer, ShaderStageMask_RayGen, bufferRange));
+            return PushItem(BindingSetItem::CreateBufferUAVItem(slot, buffer, shaderStageMask, bufferRange));
         }
 
         inline bool operator==(const BindingSetDescription& other) const
@@ -1359,7 +1354,9 @@ namespace render
 	{
 	public:
 		GraphicsPipeline(Device* device)
-		: RenderResourceRef(device)
+		: RenderResourceRef(device),
+            m_pipeline{VK_NULL_HANDLE},
+            m_pipelineLayout{VK_NULL_HANDLE}
 		{}
 		~GraphicsPipeline();
 
