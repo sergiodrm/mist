@@ -280,6 +280,22 @@ namespace render
             return ResourceType_MaxEnum;
         }
 
+        const char* ConvertResourceTypeToStr(ResourceType type)
+        {
+            switch (type)
+            {
+            case ResourceType_None: return "ResourceType_None";
+            case ResourceType_TextureSRV: return "ResourceType_TextureSRV";
+            case ResourceType_TextureUAV: return "ResourceType_TextureUAV";
+            case ResourceType_ConstantBuffer: return "ResourceType_ConstantBuffer";
+            case ResourceType_VolatileConstantBuffer: return "ResourceType_VolatileConstantBuffer";
+            case ResourceType_BufferUAV: return "ResourceType_BufferUAV";
+            case ResourceType_DynamicBufferUAV: return "ResourceType_DynamicBufferUAV";
+            case ResourceType_Count: return "ResourceType_Count";
+            }
+            return "Unknown";
+        }
+
         VkFormat ConvertFormat(Format format)
         {
             switch (format)
