@@ -406,6 +406,8 @@ namespace rendersystem
         const render::BindingLayoutArray& GetShaderLayout() const { return m_layouts; }
 
         const render::shader_compiler::ShaderPropertyDescription* GetPropertyDescription(const char* id, uint32_t* setIndexOut) const;
+        const render::shader_compiler::ShaderPushConstantDescription* GetPushConstantDescription(const char* id) const;
+        render::PushConstantDescriptionArray GetPushConstantDescription() const;
         const ShaderBuildDescription& GetDescription() const { return *m_description; }
 
     private:
@@ -559,6 +561,7 @@ namespace rendersystem
         static constexpr uint32_t MaxDescriptorSetSlots = 8;
         static constexpr uint32_t MaxBindingsPerSlot = 8;
         static constexpr uint32_t MaxTextureArrayCount = 8;
+        static constexpr uint32_t MaxPushConstant = render::PushConstantDescription::MaxPushConstant;
 
     private:
         struct GraphicsPipelineContext
@@ -592,11 +595,41 @@ namespace rendersystem
             }
         };
 
+        template <uint64_t BufferSize = 128>
+        struct PushConstantBuffer
+        {
+            uint8_t data[BufferSize];
+            uint64_t size = 0;
+            render::ShaderStageMask stageMask = render::ShaderStageMask_None;
+
+            static uint64_t GetPushConstantBufferSize() { return BufferSize; }
+
+            inline bool IsValid() const { return stageMask != render::ShaderStageMask_None; }
+
+            inline void Invalidate()
+            {
+                stageMask = render::ShaderStageMask_None;
+            }
+
+            inline void Set(const void* _data, uint64_t _size, render::ShaderStageMask _stageMask)
+            {
+                check(_size <= BufferSize);
+                memcpy_s(data, BufferSize, _data, _size);
+                size = _size;
+                stageMask = _stageMask;
+            }
+        };
+        using PushConstantBuffer128 = PushConstantBuffer<128>;
+
         struct ShaderContext
         {
+            static constexpr uint32_t PushConstantFlag = 0x80000000;
+
 			render::TextureHandle textureSlots[MaxDescriptorSetSlots][MaxBindingsPerSlot][MaxTextureArrayCount];
 			render::SamplerHandle samplerSlots[MaxDescriptorSetSlots][MaxBindingsPerSlot][MaxTextureArrayCount];
             render::BufferHandle buffers[MaxDescriptorSetSlots][MaxBindingsPerSlot];
+            Mist::tStaticArray<PushConstantBuffer128, MaxPushConstant> pushConstantBuffers;
+            
 			ShaderProgram* program;
             ShaderStream* memoryStream; // owned
 			uint32_t dirtyPropertiesFlags;
@@ -621,22 +654,40 @@ namespace rendersystem
 
             inline void MarkSetAsDirty(uint32_t setIndex)
             {
+                checkdbg(!((1 << setIndex) & PushConstantFlag));
                 dirtyPropertiesFlags |= (1 << setIndex);
             }
 
             inline bool IsSetDirty(uint32_t setIndex)
             {
+                checkdbg(!((1 << setIndex) & PushConstantFlag));
                 return dirtyPropertiesFlags & (1 << setIndex);
             }
 
-            inline void ClearDirtyAll()
+            inline void MarkDirtyAll()
             {
-                dirtyPropertiesFlags = 0xffffffff;
+                dirtyPropertiesFlags = UINT32_MAX;
             }
 
             inline void ClearDirtySet(uint32_t setIndex)
             {
+                checkdbg(!((1 << setIndex) & PushConstantFlag));
                 dirtyPropertiesFlags &= ~(1 << setIndex);
+            }
+
+            inline void MarkPushConstantDirty()
+            {
+                dirtyPropertiesFlags |= PushConstantFlag;
+            }
+
+            inline void ClearPushConstant()
+            {
+                dirtyPropertiesFlags &= ~PushConstantFlag;
+            }
+
+            inline bool IsPushConstantDirty() const
+            {
+                return dirtyPropertiesFlags & PushConstantFlag;
             }
         };
 
@@ -702,6 +753,8 @@ namespace rendersystem
             render::SamplerAddressMode addressModeW,
             bool compareEnabled,
             render::CompareOp compareOp);
+
+        void PushConstant(const char* id, const void* data, uint64_t size, uint64_t offset = 0);
 
 
         void ClearState();
@@ -841,7 +894,8 @@ namespace rendersystem
         void FlushBeforeDispatch();
         void FlushMemoryContext();
         void ResolveClearRenderTarget();
-        void ResolveBindings(render::BindingSetVector& bindingSetVector, render::BindingLayoutArray& bindingLayoutArray);
+        void ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray);
+        void ResolvePushConstants();
         render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
         render::ComputePipelineHandle GetPso(const render::ComputePipelineDescription& psoDesc);
 

@@ -586,14 +586,28 @@ namespace render
 
             for (const spirv_cross::Resource& resource : resources.push_constant_buffers)
             {
-                check(!outProperties.pushConstantMap.contains(shaderMask));
-                ShaderPushConstantDescription desc;
-                desc.name = resource.name.c_str();
-                desc.offset = compiler.get_decoration(resource.id, spv::DecorationOffset);
                 const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
-                desc.size = (uint32_t)compiler.get_declared_struct_size(type);
-                desc.stage = shaderMask;
-                outProperties.pushConstantMap[shaderMask] = desc;
+                bool alreadyExists = false;
+                for (uint32_t index = 0; index < outProperties.pushConstants.size(); ++index)
+                {
+                    if (!strcmp(resource.name.c_str(), outProperties.pushConstants[index].name.c_str()))
+                    {
+                        check(outProperties.pushConstants[index].offset == compiler.get_decoration(resource.id, spv::DecorationOffset));
+                        check(outProperties.pushConstants[index].size == compiler.get_declared_struct_size(type));
+                        outProperties.pushConstants[index].stage |= shaderMask;
+                        alreadyExists = true;
+                        break;
+                    }
+                }
+                if (!alreadyExists)
+                {
+                    ShaderPushConstantDescription desc;
+                    desc.name = resource.name.c_str();
+                    desc.offset = compiler.get_decoration(resource.id, spv::DecorationOffset);
+                    desc.size = (uint32_t)compiler.get_declared_struct_size(type);
+                    desc.stage = shaderMask;
+                    outProperties.pushConstants.emplace_back(desc);
+                }
 #ifdef MIST_SHADER_REFLECTION_LOG
                 logfdebug("> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
                     vkutils::GetVulkanShaderStageName(shaderStage), info.Name.c_str(), info.Offset, info.Size);

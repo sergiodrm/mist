@@ -299,6 +299,8 @@ namespace rendersystem
 
         InitScreenQuad();
         InvalidateBlueNoise();
+
+        check(PushConstantBuffer128::GetPushConstantBufferSize() <= m_device->GetContext().GetMaxPushConstantsSize());
     }
 
     void RenderSystem::Destroy()
@@ -422,6 +424,17 @@ namespace rendersystem
         desc.compareEnabled = compareEnabled;
         desc.compareOp = compareOp;
         return GetSampler(desc);
+    }
+
+    void RenderSystem::PushConstant(const char* id, const void* data, uint64_t size, uint64_t offset)
+    {
+        check(m_shaderContext.program);
+        const render::shader_compiler::ShaderPushConstantDescription* description = m_shaderContext.program->GetPushConstantDescription(id);
+        check(description);
+        check(description->size == size);
+        check(description->offset == offset);
+        m_shaderContext.pushConstantBuffers.Push().Set(data, size, description->stage);
+        m_shaderContext.MarkPushConstantDirty();
     }
 
     void RenderSystem::SetDefaultGraphicsState()
@@ -585,6 +598,7 @@ namespace rendersystem
             m_graphicsContext.pso.tesselationEvaluationShader = shader->GetTesselationEvaluationShader();
             m_graphicsContext.pso.vertexInputLayout = shader->m_inputLayout;
             m_graphicsContext.pso.bindingLayouts = shader->GetShaderLayout();
+            m_graphicsContext.pso.pushConstantDescription = shader->GetPushConstantDescription();
             break;
         case ShaderProgram_Compute:
             m_computeContext.pso.computeShader = shader->GetComputeShader();
@@ -595,8 +609,7 @@ namespace rendersystem
             break;
         }
         m_shaderContext.program = shader;
-        m_shaderContext.ClearDirtyAll();
-
+        m_shaderContext.MarkDirtyAll();
 #if 0 
         // reserve shader properties in current shader context memory
         ShaderMemoryContext* memoryContext = GetMemoryContext();
@@ -616,7 +629,6 @@ namespace rendersystem
             }
         }
 #endif // 0
-
     }
 
     void RenderSystem::SetTextureSlot(const render::TextureHandle& texture, uint32_t set, uint32_t binding, uint32_t textureIndex)
@@ -815,8 +827,8 @@ namespace rendersystem
 
     void RenderSystem::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t firstVertex, uint32_t firstInstance)
     {
-        check(AllowsGraphicsCommand());
         CPU_TSC(DrawIndexed);
+        check(AllowsGraphicsCommand());
         FlushBeforeDraw();
         GetCommandList()->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
     }
@@ -1032,7 +1044,16 @@ namespace rendersystem
         // Process graphics pipeline
         m_graphicsContext.graphicsState.pipeline = GetPso(m_graphicsContext.pso, m_graphicsContext.graphicsState.rt);
 
+
+		{
+			CPU_TSC(SetGraphicsState);
+			GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
+		}
+
         ResolveClearRenderTarget();
+
+        // Push constants must be done after binding pso because pipeline layout should be set on CommandBuffer.
+        ResolvePushConstants();
 
         FrameResourceTrack& resources = GetFrameResources();
         resources.buffers.emplace_back(m_graphicsContext.graphicsState.indexBuffer);
@@ -1055,10 +1076,6 @@ namespace rendersystem
 
     void RenderSystem::ResolveClearRenderTarget()
     {
-        {
-            CPU_TSC(SetGraphicsState);
-		    GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
-        }
 		if (m_graphicsContext.pendingClearColor)
 		{
 			m_graphicsContext.pendingClearColor = false;
@@ -1153,6 +1170,17 @@ namespace rendersystem
 			// clear dirty
             m_shaderContext.ClearDirtySet(paramSet.setIndex);
 		}
+    }
+
+    void RenderSystem::ResolvePushConstants()
+    {
+        if (m_shaderContext.IsPushConstantDirty())
+        {
+            for (uint32_t i =0;i< m_shaderContext.pushConstantBuffers.GetSize(); ++i)
+                GetCommandList()->PushConstants(m_shaderContext.pushConstantBuffers[i].data, m_shaderContext.pushConstantBuffers[i].size, 0, m_shaderContext.pushConstantBuffers[i].stageMask);
+            m_shaderContext.ClearPushConstant();
+            m_shaderContext.pushConstantBuffers.Clear();
+        }
     }
 
     void RenderSystem::ImGuiDrawGpuProfiler()
@@ -1413,7 +1441,7 @@ namespace rendersystem
             for (uint32_t i = 0; i < (uint32_t)m_shaders.size(); ++i)
                 m_shaders[i] = nullptr;
             m_properties.params.clear();
-            m_properties.pushConstantMap.clear();
+            m_properties.pushConstants.clear();
         }
 
         void SetUniformBufferAsDynamic(const char* uniformBufferName)
@@ -1612,6 +1640,29 @@ namespace rendersystem
         return nullptr;
     }
 
+    const render::shader_compiler::ShaderPushConstantDescription* ShaderProgram::GetPushConstantDescription(const char* id) const
+    {
+        for (uint32_t i = 0; i < (uint32_t)m_properties->pushConstants.size(); ++i)
+        {
+            if (!strcmp(id, m_properties->pushConstants[i].name.c_str()))
+                return &m_properties->pushConstants[i];
+        }
+        return nullptr;
+    }
+
+    render::PushConstantDescriptionArray ShaderProgram::GetPushConstantDescription() const
+    {
+        render::PushConstantDescriptionArray ret;
+        for (uint32_t i = 0; i < (uint32_t)m_properties->pushConstants.size(); ++i)
+        {
+            render::PushConstantDescription& desc = ret.Push();
+            desc.offset = m_properties->pushConstants[i].offset;
+            desc.size = m_properties->pushConstants[i].size;
+            desc.stageMask = m_properties->pushConstants[i].stage;
+        }
+        return ret;
+    }
+
     bool ShaderProgram::ReloadGraphics()
     {
         static const render::ShaderType types[] = { 
@@ -1657,7 +1708,7 @@ namespace rendersystem
 		m_properties = _new render::shader_compiler::ShaderReflectionProperties();
 		const render::shader_compiler::ShaderReflectionProperties& prop = compiler.GetReflectionProperties();
 		m_properties->params = std::move(prop.params);
-		m_properties->pushConstantMap = std::move(prop.pushConstantMap);
+		m_properties->pushConstants = std::move(prop.pushConstants);
 		m_inputLayout = compiler.GetVertexInputLayout();
 
 		for (uint32_t i = 0; i < count; ++i)

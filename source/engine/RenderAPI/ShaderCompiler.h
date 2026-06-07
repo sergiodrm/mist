@@ -157,7 +157,7 @@ namespace render
         struct ShaderReflectionProperties
         {
             Mist::tDynArray<ShaderPropertySetDescription> params;
-            Mist::tMap<ShaderStageMask, ShaderPushConstantDescription> pushConstantMap;
+            Mist::tDynArray<ShaderPushConstantDescription> pushConstants;
             VertexInputLayout inputLayout;
         };
 
