@@ -24,6 +24,17 @@ namespace Mist
 		srand(seed);
 	}
 
+	namespace NoiseUtils
+	{
+		void ComputeNoiseIndex(float point, uint32_t size, uint32_t& index0, uint32_t& index1, float& t)
+		{
+			uint32_t xi = (uint32_t)point - (point < 0 && point != (uint32_t)point);
+			t = point - (float)xi;
+			index0 = xi & (size - 1);
+			index1 = (xi + 1) & (size - 1);
+		}
+	}
+
 	ValueNoise1D::ValueNoise1D(uint64_t seed)
 	{
 		RandomSeed(seed);
@@ -33,11 +44,50 @@ namespace Mist
 
 	float ValueNoise1D::Evaluate(float point)
 	{
-		uint32_t xi = (uint32_t)point - (point < 0 && point != (uint32_t)point);
-		float t = point - (float)xi;
-		uint32_t prevIndex = xi & (Size-1);
-		uint32_t nextIndex = (xi + 1) & (Size-1);
-		return math::Lerp(m_ruler[prevIndex], m_ruler[nextIndex], t);
+		uint32_t i0;
+		uint32_t i1;
+		float t;
+		NoiseUtils::ComputeNoiseIndex(point, Size, i0, i1, t);
+		return math::Lerp(m_ruler[i0], m_ruler[i1], t);
+	}
+
+	ValueNoise2D::ValueNoise2D(uint64_t seed)
+	{
+		RandomSeed(seed);
+		for (uint32_t i = 0; i < Size; ++i)
+		{
+			m_ruler[i] = Random();
+			m_table[i] = i;
+		}
+
+		// shuffle table
+		std::shuffle(std::begin(m_table), std::end(m_table), std::mt19937{ std::random_device{}()});
+	}
+
+	float ValueNoise2D::Evaluate(const glm::vec2& point) const
+	{
+		struct  
+		{
+			uint32_t i0;
+			uint32_t i1;
+			float t;
+		} rx, ry;
+		NoiseUtils::ComputeNoiseIndex(point.x, Size, rx.i0, rx.i1, rx.t);
+		NoiseUtils::ComputeNoiseIndex(point.y, Size, ry.i0, ry.i1, ry.t);
+
+		const float r00 = Get(rx.i0, ry.i0);
+		const float r01 = Get(rx.i0, ry.i1);
+		const float r10 = Get(rx.i1, ry.i0);
+		const float r11 = Get(rx.i1, ry.i1);
+
+		const float r0 = Interpolate(r00, r10, rx.t);
+		const float r1 = Interpolate(r01, r11, rx.t);
+		return Interpolate(r0, r1, ry.t);
+	}
+
+	float ValueNoise2D::Interpolate(float a, float b, float t) const
+	{
+		return Mist::math::Lerp(a, b, t);
 	}
 
 	float ValueNoise1D::Interpolate(float a, float b, float t) const

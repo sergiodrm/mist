@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Types.h"
+#include <glm/glm.hpp>
 
 namespace Mist
 {
@@ -19,6 +20,25 @@ namespace Mist
         float Interpolate(float a, float b, float t) const;
         static constexpr uint32_t Size = 256;
         float m_ruler[Size];
+    };
+
+    class ValueNoise2D
+    {
+    public:
+        ValueNoise2D(uint64_t seed = 113);
+
+        float Evaluate(const glm::vec2& point) const;
+    private:
+        float Interpolate(float a, float b, float t) const;
+        inline float Get(uint32_t x, uint32_t y) const 
+        { 
+            check(x < Size && y < Size);
+            return m_ruler[m_table[(m_table[x] + y)%Size]];
+        }
+
+        static constexpr uint32_t Size = 256;
+        float m_ruler[Size];
+        uint32_t m_table[Size];
     };
 
     // Returns 2D blue noise with 4 channels
