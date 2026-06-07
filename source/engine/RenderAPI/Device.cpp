@@ -908,6 +908,11 @@ namespace render
         if (m_graphicsState.pipeline != state.pipeline && state.pipeline)
         {
             state.pipeline->UsePipeline(m_currentCommandBuffer);
+
+            // Invalidate bindings if pipeline layout change
+            if (m_graphicsState.pipeline && state.pipeline && m_graphicsState.pipeline->m_pipelineLayout != state.pipeline->m_pipelineLayout)
+                m_graphicsState.bindings.Clear();
+
             m_graphicsState.pipeline = state.pipeline;
             ++m_stats.pipelines;
         }
@@ -1015,6 +1020,11 @@ namespace render
         if (m_computeState.pipeline != state.pipeline)
         {
             state.pipeline->UsePipeline(m_currentCommandBuffer);
+
+			// Invalidate bindings if pipeline layout change
+			if (m_graphicsState.pipeline && state.pipeline && m_graphicsState.pipeline->m_pipelineLayout != state.pipeline->m_pipelineLayout)
+				m_graphicsState.bindings.Clear();
+
             m_computeState.pipeline = state.pipeline;
             ++m_stats.pipelines;
         }
