@@ -972,12 +972,12 @@ namespace rendersystem
 
         ShaderBuildDescription shaderDesc;
         shaderDesc.SetGraphics("shaders/quad.vert", "shaders/quad.frag");
-        m_screenQuadCopy.shader = _new ShaderProgram(m_device, shaderDesc);
+        m_screenQuadCopy.shader = CreateShader(shaderDesc);
     }
 
     void RenderSystem::DestroyScreenQuad()
     {
-        delete m_screenQuadCopy.shader;
+        m_screenQuadCopy.shader = nullptr;
         m_screenQuadCopy.vb = nullptr;
         m_screenQuadCopy.ib = nullptr;
         m_screenQuadCopy.sampler = nullptr;
