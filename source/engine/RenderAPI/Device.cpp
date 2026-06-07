@@ -1071,9 +1071,12 @@ namespace render
     {
         check(AllowsCommandType(Queue_Graphics));
         vkCmdDrawIndexed(m_currentCommandBuffer->cmd, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
-        check((indexCount % 3) == 0);
         ++m_stats.drawCalls;
-        m_stats.tris += indexCount / 3;
+        if (m_graphicsState.pipeline->m_description.primitiveType == PrimitiveType_TriangleList)
+        {
+            check((indexCount % 3) == 0);
+            m_stats.tris += indexCount / 3;
+        }
     }
 
     void CommandList::SetComputeState(const ComputeState& state)
