@@ -193,17 +193,17 @@ namespace rendersystem
         inline uint32_t GetPropertyCount() const { return (uint32_t)m_propertyMap.size(); }
         inline uint64_t GetDeviceMemorySize() const { return m_buffers.size() * m_bufferSize; }
 
-    //protected:
+    protected:
         void FlushBuffer(render::Device* device);
         void SubmitProperty(const char* id, uint64_t offset, uint64_t size);
         void CreateBuffer(render::Device* device, uint64_t size);
-    //private:
+    private:
         Mist::tDynArray<render::BufferHandle> m_buffers;
         uint32_t m_currentBuffer{ UINT32_MAX };
         using PropertyMap = Mist::tMap<Mist::tFixedString<32>, ShaderPropertyDescriptor>;
         PropertyMap m_propertyMap;
         TemporalBuffer* m_tempBuffer{nullptr};
-        uint64_t m_bufferSize{ 0 };
+        const uint64_t m_bufferSize{ 0 };
     };
 
     class ShaderBufferPool
@@ -216,8 +216,6 @@ namespace rendersystem
     public:
         ShaderBufferPool(render::Device* device);
         ~ShaderBufferPool();
-
-        DELETE_COPY_CONSTRUCTORS(ShaderBufferPool);
 
         uint32_t CreateShaderBuffer();
         ShaderBuffer* GetShaderBuffer(uint32_t index);
