@@ -1312,11 +1312,47 @@ namespace render
         BindingSetSlot m_slots[MaxSets];
     };
 
+    struct PushConstantDescription
+    {
+        static constexpr uint32_t MaxPushConstant = 8;
+        uint64_t size;
+        uint64_t offset;
+        ShaderStageMask stageMask;
+
+        inline bool operator==(const PushConstantDescription& other) const { return size == other.size && offset == other.offset && stageMask == other.stageMask; }
+        inline bool operator!=(const PushConstantDescription& other) const { return !(*this == other); }
+
+        inline void HashCombine(std::size_t& h)
+        {
+            Mist::HashCombine(h, size);
+            Mist::HashCombine(h, offset);
+            Mist::HashCombine(h, stageMask);
+        }
+    };
+    using PushConstantDescriptionArray = Mist::tStaticArray<PushConstantDescription, PushConstantDescription::MaxPushConstant>;
+
     /**
      * Pipelines
      */
 
-    struct GraphicsPipelineDescription
+    struct CommonPipelineDescription
+    {
+        BindingLayoutArray bindingLayouts;
+        PushConstantDescriptionArray pushConstantDescription;
+
+        inline bool operator==(const CommonPipelineDescription& other) const 
+        { 
+            return utils::EqualArrays(pushConstantDescription.GetData(), pushConstantDescription.GetSize(), other.pushConstantDescription.GetData(), other.pushConstantDescription.GetSize())
+                && utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), other.bindingLayouts.GetData(), other.bindingLayouts.GetSize());
+        }
+
+        inline bool operator!=(const CommonPipelineDescription& other) const
+        {
+            return !(*this == other);
+        }
+    };
+
+    struct GraphicsPipelineDescription : public CommonPipelineDescription
     {
         PrimitiveType primitiveType = PrimitiveType_TriangleList;
         ShaderHandle vertexShader;
@@ -1325,7 +1361,6 @@ namespace render
         ShaderHandle tesselationEvaluationShader;
         RenderState renderState;
         VertexInputLayout vertexInputLayout;
-        BindingLayoutArray bindingLayouts;
         Mist::String debugName;
 
         inline bool operator==(const GraphicsPipelineDescription& desc) const
@@ -1337,7 +1372,12 @@ namespace render
                 tesselationEvaluationShader == desc.tesselationEvaluationShader &&
                 renderState == desc.renderState &&
                 vertexInputLayout == desc.vertexInputLayout &&
-                utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
+                CommonPipelineDescription::operator==(desc);
+        }
+
+        inline bool operator!=(const GraphicsPipelineDescription& desc) const
+        {
+            return !(*this == desc);
         }
 
         inline void Invalidate()
@@ -1375,16 +1415,20 @@ namespace render
 	};
     typedef RenderResourceHandle<GraphicsPipeline> GraphicsPipelineHandle;
 
-    struct ComputePipelineDescription
+    struct ComputePipelineDescription : public CommonPipelineDescription
     {
         ShaderHandle computeShader;
-        BindingLayoutArray bindingLayouts;
         Mist::String debugName;
 
         inline bool operator==(const ComputePipelineDescription& desc) const
         {
             return computeShader == desc.computeShader
-                && utils::EqualArrays(bindingLayouts.GetData(), bindingLayouts.GetSize(), desc.bindingLayouts.GetData(), desc.bindingLayouts.GetSize());
+                && CommonPipelineDescription::operator==(desc);
+        }
+
+        inline bool operator!=(const ComputePipelineDescription& desc) const
+        {
+            return !(*this == desc);
         }
 
         inline void Invalidate()
@@ -1683,6 +1727,9 @@ namespace render
         void BeginMarker(const char* name, Color color = Color::White());
         void BeginMarkerFmt(const char* fmt, ...);
         void EndMarker();
+
+        // Common
+        void PushConstants(const void* data, uint64_t size, uint64_t offset, ShaderStageMask stageMask);
 
         // Graphics
         void SetGraphicsState(const GraphicsState& state);

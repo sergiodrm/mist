@@ -59,6 +59,62 @@ namespace render
         return VK_FALSE;
     }
 
+	static void CreatePipelineLayout(Device* device, const CommonPipelineDescription& description, VkPipelineLayout& pipelineLayout)
+	{
+		check(device);
+
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.pNext = nullptr;
+
+		Mist::tStaticArray<VkDescriptorSetLayout, BindingLayout::MaxLayouts> layouts;
+		for (uint32_t i = 0; i < description.bindingLayouts.GetSize(); ++i)
+		{
+			if (description.bindingLayouts[i] && description.bindingLayouts[i]->m_layout)
+				layouts.Push(description.bindingLayouts[i]->m_layout);
+		}
+
+		Mist::tStaticArray<VkPushConstantRange, PushConstantDescription::MaxPushConstant> pushConstantRanges;
+		for (uint32_t i = 0; i < description.pushConstantDescription.GetSize(); ++i)
+		{
+			VkPushConstantRange& p = pushConstantRanges.Push();
+			p.stageFlags = utils::ConvertShaderStage(description.pushConstantDescription[i].stageMask);
+			p.size = description.pushConstantDescription[i].size;
+			p.offset = description.pushConstantDescription[i].offset;
+
+			check(p.size <= device->GetContext().GetMaxPushConstantsSize());
+		}
+
+		pipelineLayoutInfo.flags = 0;
+		pipelineLayoutInfo.pPushConstantRanges = pushConstantRanges.GetData();
+		pipelineLayoutInfo.pushConstantRangeCount = pushConstantRanges.GetSize();
+		pipelineLayoutInfo.setLayoutCount = layouts.GetSize();
+		pipelineLayoutInfo.pSetLayouts = layouts.GetData();
+
+		check_result(vkCreatePipelineLayout(device->GetContext().device, &pipelineLayoutInfo, device->GetContext().allocationCallbacks, &pipelineLayout));
+	}
+
+	static uint32_t FindFamilyQueueIndex(Device* device, QueueType type)
+	{
+		uint32_t count = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device->GetContext().physicalDevice, &count, nullptr);
+		VkQueueFamilyProperties* properties = _new VkQueueFamilyProperties[count];
+		vkGetPhysicalDeviceQueueFamilyProperties(device->GetContext().physicalDevice, &count, properties);
+
+		uint32_t familyIndex = UINT32_MAX;
+		VkQueueFlags flags = utils::ConvertQueueFlags(type);
+		for (uint32_t i = 0; i < count; ++i)
+		{
+			if ((properties[i].queueFlags & flags) == flags)
+			{
+				familyIndex = i;
+				break;
+			}
+		}
+		delete[] properties;
+		return familyIndex;
+	}
+
     bool VulkanContext::FormatSupportsLinearFiltering(Format format) const
     {
         VkFormatProperties props;
@@ -794,6 +850,19 @@ namespace render
 		const VulkanContext& context = GetDevice()->GetContext();
 		check(context.pfn_vkCmdEndDebugUtilsLabelEXT);
         context.pfn_vkCmdEndDebugUtilsLabelEXT(m_currentCommandBuffer->cmd);
+    }
+
+    void CommandList::PushConstants(const void* data, uint64_t size, uint64_t offset, ShaderStageMask stageMask)
+    {
+        check(IsRecording());
+        VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+        if (m_graphicsState.pipeline)
+            pipelineLayout = m_graphicsState.pipeline->m_pipelineLayout;
+        else if (m_computeState.pipeline)
+            pipelineLayout = m_computeState.pipeline->m_pipelineLayout;
+        check(pipelineLayout);
+        check(GetDevice()->GetContext().GetMaxPushConstantsSize() >= size);
+        vkCmdPushConstants(m_currentCommandBuffer->cmd, pipelineLayout, utils::ConvertShaderStage(stageMask), offset, size, data);
     }
 
     void CommandList::BindSets(const BindingSetVector& setsToBind, const BindingSetVector& currentBinding)
@@ -2080,7 +2149,7 @@ namespace render
 
         // create pipeline layout
         pipeline->m_pipelineLayout = VK_NULL_HANDLE;
-        CreatePipelineLayout(this, description.bindingLayouts, pipeline->m_pipelineLayout);
+        CreatePipelineLayout(this, description, pipeline->m_pipelineLayout);
         check(pipeline->m_pipelineLayout != VK_NULL_HANDLE);
 
 
@@ -2210,7 +2279,7 @@ namespace render
 
         // Create pipeline layout
         pipeline->m_pipelineLayout = VK_NULL_HANDLE;
-        CreatePipelineLayout(this, description.bindingLayouts, pipeline->m_pipelineLayout);
+        CreatePipelineLayout(this, description, pipeline->m_pipelineLayout);
         check(pipeline->m_pipelineLayout != VK_NULL_HANDLE);
 
         VkComputePipelineCreateInfo pipelineInfo = {};
