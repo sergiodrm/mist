@@ -419,7 +419,7 @@ namespace Mist
 		static void Destroy();
 		static SceneRenderer* GetSceneRenderer();
 	private:
-		void ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, const glm::mat4& worldTransform);
+		void ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform);
 		void ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform);
 
 		void BindMesh(const RenderContext& rc, const RenderItem& item);

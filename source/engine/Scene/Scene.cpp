@@ -1216,7 +1216,7 @@ namespace Mist
 		return g_sceneRenderer;
 	}
 
-	void SceneRenderer::ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, const glm::mat4& worldTransform)
+	void SceneRenderer::ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform)
 	{
 		check(model && nodeIndex != index_invalid);
 		glm::mat4 transform = parentTransform * model->GetTransform(nodeIndex);
@@ -1224,9 +1224,9 @@ namespace Mist
 		if (node.meshInfoIndex != index_invalid)
 			ProcessMesh(*model->GetMeshFromNode(nodeIndex), transform);
 		if (node.Sibling != index_invalid)
-			ProcessModelNode(model, node.Sibling, parentTransform, worldTransform);
+			ProcessModelNode(model, node.Sibling, parentTransform);
 		if (node.Child != index_invalid)
-			ProcessModelNode(model, node.Child, transform, worldTransform);
+			ProcessModelNode(model, node.Child, transform);
 	}
 
 	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform)
