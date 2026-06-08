@@ -211,6 +211,11 @@ namespace Mist
 			JitteredProjection = jitteredProjection;
 			JitteredViewProjection = jitteredProjection * view;
 		}
+
+		inline Frustum GetFrustum() const
+		{
+			return Frustum(ViewProjection);
+		}
 	};
 
 	struct Skybox
