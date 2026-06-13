@@ -556,8 +556,8 @@ namespace render
 
 
 #ifdef MIST_SHADER_REFLECTION_LOG
-                    logfdebug("> %s [ShaderStage: %s; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", vkutils::GetVulkanDescriptorTypeName(descriptorType),
-                        vkutils::GetVulkanShaderStageName(shaderStage), bufferInfo.Name.c_str(), setIndex, bufferInfo.Binding, bufferInfo.Size, bufferInfo.ArrayCount);
+                    logfdebug("> %s [ShaderStage: %d; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", render::utils::ConvertResourceTypeToStr(resourceType),
+                        shaderMask, bufferInfo.name.c_str(), setIndex, bufferInfo.binding, bufferInfo.size, bufferInfo.arrayCount);
 #endif // MIST_SHADER_REFLECTION_LOG
 
                     return setIndex;
@@ -595,6 +595,10 @@ namespace render
                         check(outProperties.pushConstants[index].offset == compiler.get_decoration(resource.id, spv::DecorationOffset));
                         check(outProperties.pushConstants[index].size == compiler.get_declared_struct_size(type));
                         outProperties.pushConstants[index].stage |= shaderMask;
+#ifdef MIST_SHADER_REFLECTION_LOG
+						logfdebug("> PUSH_CONSTANT [ShaderStage: %d; Name: %s; Offset: %zd; Size: %zd]\n",
+							shaderMask, outProperties.pushConstants[index].name.c_str(), outProperties.pushConstants[index].offset, outProperties.pushConstants[index].size);
+#endif // MIST_SHADER_REFLECTION_LOG
                         alreadyExists = true;
                         break;
                     }
@@ -607,11 +611,11 @@ namespace render
                     desc.size = (uint32_t)compiler.get_declared_struct_size(type);
                     desc.stage = shaderMask;
                     outProperties.pushConstants.emplace_back(desc);
-                }
 #ifdef MIST_SHADER_REFLECTION_LOG
-                logfdebug("> PUSH_CONSTANT [ShaderStage: %s; Name: %s; Offset: %zd; Size: %zd]\n",
-                    vkutils::GetVulkanShaderStageName(shaderStage), info.Name.c_str(), info.Offset, info.Size);
+                logfdebug("> PUSH_CONSTANT [ShaderStage: %d; Name: %s; Offset: %zd; Size: %zd]\n",
+                    shaderMask, desc.name.c_str(), desc.offset, desc.size);
 #endif // MIST_SHADER_REFLECTION_LOG
+                }
 
             }
 
