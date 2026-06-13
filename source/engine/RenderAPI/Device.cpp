@@ -2849,11 +2849,13 @@ namespace render
         check(!m_context);
         m_context = _new VulkanContext(instance, device, surface, physicalDevice, vkDebugMessenger, nullptr);
 
-        logfinfo("Device has minimum buffer alignment of %Id bytes.\n", m_context->GetMinUniformBufferOffsetAlignment());
-        logfinfo("Device max bound descriptor sets: %d\n", m_context->GetMaxBoundDescriptorSets());
-        logfinfo("Device max sampling: 0x%x\n", m_context->GetMaxUsableSampleCount());
-        logfinfo("Device max uniform buffer range: %d\n", m_context->GetMaxUniformBufferRange());
-        logfinfo("Device max push constant size: %d\n", m_context->GetMaxPushConstantsSize());
+        logfinfo("Device max bound descriptor sets:     %10u descriptors\n", m_context->GetMaxBoundDescriptorSets());
+        logfinfo("Device max sampling:                  0x%08x\n", m_context->GetMaxUsableSampleCount());
+        logfinfo("Device max uniform buffer range:      %10u bytes\n", m_context->GetMaxUniformBufferRange());
+        logfinfo("Device max storage buffer range:      %10u bytes\n", m_context->GetMaxStorageBufferRange());
+        logfinfo("Device max push constant size:        %10u bytes\n", m_context->GetMaxPushConstantsSize());
+        logfinfo("Device min uniform alignemt:          %10u bytes\n", m_context->GetMinUniformBufferOffsetAlignment());
+        logfinfo("Device min storage alignemt:          %10u bytes\n", m_context->GetMinStorageBufferOffsetAlignment());
     }
 
     void Device::InitMemoryContext()
@@ -3255,6 +3257,28 @@ namespace render
             if (debugName && *debugName)
                 desc.debugName = debugName;
             return device->CreateBuffer(desc);
+        }
+
+        BufferHandle CreateStorageBuffer(Device* device, uint64_t size, const char* debugName)
+        {
+			BufferDescription desc;
+			desc.size = device->AlignUniformSize(size);
+			desc.bufferUsage = BufferUsage_StorageBuffer;
+			desc.memoryUsage = MemoryUsage_CpuToGpu;
+			if (debugName && *debugName)
+				desc.debugName = debugName;
+			return device->CreateBuffer(desc);
+        }
+
+        BufferHandle CreateGPUStorageBuffer(Device* device, uint64_t size, const char* debugName)
+        {
+			BufferDescription desc;
+			desc.size = device->AlignUniformSize(size);
+			desc.bufferUsage = BufferUsage_StorageBuffer;
+			desc.memoryUsage = MemoryUsage_Gpu;
+			if (debugName && *debugName)
+				desc.debugName = debugName;
+			return device->CreateBuffer(desc);
         }
 
         BufferHandle CreateDynamicVertexBuffer(Device* device, uint64_t bufferSize, const char* debugName)

@@ -1990,6 +1990,8 @@ namespace render
         BufferHandle CreateVertexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
         BufferHandle CreateIndexBuffer(Device* device, const void* buffer, uint64_t bufferSize, UploadContext* uploadContext = nullptr, const char* debugName = nullptr);
         BufferHandle CreateUniformBuffer(Device* device, uint64_t size, const char* debugName = nullptr);
+        BufferHandle CreateStorageBuffer(Device* device, uint64_t size, const char* debugName = nullptr);
+        BufferHandle CreateGPUStorageBuffer(Device* device, uint64_t size, const char* debugName = nullptr);
         BufferHandle CreateDynamicVertexBuffer(Device* device, uint64_t bufferSize, const char* debugName);
 
         /**
