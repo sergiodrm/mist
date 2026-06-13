@@ -292,7 +292,7 @@ namespace rendersystem
         {
             m_bindingCache = _new BindingCache(m_device);
             m_samplerCache = _new SamplerCache(m_device);
-            m_shaderContext.memoryStream = _new ShaderStream(m_device);
+            m_shaderContext.memoryPool = _new ShaderBufferPool(this);
         }
 
         ui::Init(m_device, m_ldrRt, window->GetWindowNative());
@@ -314,8 +314,8 @@ namespace rendersystem
         ui::Destroy();
         delete m_bindingCache;
         delete m_samplerCache;
-        delete m_shaderContext.memoryStream;
-        m_shaderContext.memoryStream = nullptr;
+        delete m_shaderContext.memoryPool;
+        m_shaderContext.memoryPool = nullptr;
         for (auto it = m_shaderDb.m_programs.begin(); it != m_shaderDb.m_programs.end(); ++it)
             delete it->second;
         m_shaderDb.m_programs.clear();
@@ -735,7 +735,7 @@ namespace rendersystem
     {
         PROF_ZONE_SCOPED("SetShaderProperty");
         check(id && *id && param && size);
-        m_shaderContext.memoryStream->Write(id, param, size);
+        m_shaderContext.memoryPool->Get().WriteProperty(GetDevice(), id, param, size);
 
         // If there is a shader bound, mark property as dirty
         uint32_t setIndex = UINT32_MAX;
@@ -913,7 +913,6 @@ namespace rendersystem
         rs.bindingLayoutCacheSize = m_bindingCache->GetLayoutCacheSize();
         rs.bufferStats = m_device->GetContext().memoryContext.bufferStats;
         rs.imageStats = m_device->GetContext().memoryContext.imageStats;
-        rs.shaderMemoryStats = m_shaderContext.memoryStream->GetStats();
         rs.shaderCount = m_shaderDb.m_programs.size();
         return rs;
     }
@@ -1071,7 +1070,6 @@ namespace rendersystem
 
     void RenderSystem::FlushMemoryContext()
     {
-        m_shaderContext.memoryStream->Flush();
     }
 
     void RenderSystem::ResolveClearRenderTarget()
@@ -1140,8 +1138,8 @@ namespace rendersystem
 				break;
 				case render::ResourceType_ConstantBuffer:
 				{
-                    const ShaderPropertyDescriptor propertyDescriptor = m_shaderContext.memoryStream->GetPropertyDescriptor(property.name.c_str());
-					check(propertyDescriptor.IsValid());
+                    ShaderPropertyDescriptor propertyDescriptor = m_shaderContext.memoryPool->Get().GetProperty(property.name.c_str());
+					check_msgf(propertyDescriptor.IsValid(), "Uniform buffer with no data found. [%s]", property.name.c_str());
 					desc.PushConstantBuffer(property.binding, propertyDescriptor.buffer.GetPtr(), property.stageMask, render::BufferRange(propertyDescriptor.offset, propertyDescriptor.size));
 				}
 				break;
@@ -1240,13 +1238,12 @@ namespace rendersystem
 			const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
 			render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
 			commandQueue->ProcessInFlightCommands();
-            m_shaderContext.memoryStream->ProcessInFlight();
 			commandQueue->AddWaitSemaphore(presentSemaphore, 0);
 			commandQueue->AddSignalSemaphore(renderSemaphore, 0);
 			GetFrameResources().Clear();
 		}
 
-        m_shaderContext.memoryStream->BeginFrame();
+        m_shaderContext.memoryPool->BeginUseBuffer();
         GetCommandList()->BeginRecording();
         GetFrameProfiler().Reset(GetCommandList());
         BeginMarker("Frame"); // frame marker
@@ -1266,7 +1263,7 @@ namespace rendersystem
         EndMarker(); // frame marker
         GetCommandList()->EndRecording();
 
-        m_shaderContext.memoryStream->EndFrame();
+        m_shaderContext.memoryPool->EndUseBuffer();
 
         uint64_t submissionId = GetCommandList()->ExecuteCommandList();
 
@@ -1277,7 +1274,6 @@ namespace rendersystem
             m_device->Present(renderSemaphore);
         }
 
-        m_shaderContext.memoryStream->Submit(submissionId);
         SetPresentSubmissionId(submissionId);
         m_swapchainHistoric.Push(m_swapchainIndex);
         m_swapchainIndex = UINT32_MAX;
@@ -1883,127 +1879,34 @@ namespace rendersystem
         m_buffers.emplace_back(device->CreateBuffer(desc));
     }
 
-	ShaderBufferPool::ShaderBufferPool(render::Device* device)
-        : m_device(device)
+	ShaderBufferPool::ShaderBufferPool(rendersystem::RenderSystem* rs, uint64_t tempBufferSize)
+        : m_rs(rs)
 	{
-        check(m_device);
-        m_tempBuffer.Init(m_device->AlignUniformSize(1 << 16));
-        m_items.reserve(3);
-        m_usedItems.reserve(3);
-        m_freeItems.reserve(3);
+        check(m_rs);
+        m_tempBuffer.Init(tempBufferSize);
+        m_buffers.Init(m_rs->GetFramesInFlightCount());
 	}
 
 	ShaderBufferPool::~ShaderBufferPool()
 	{
         m_tempBuffer.Destroy();
-        m_items.clear();
-        m_usedItems.clear();
-        m_freeItems.clear();
+        m_buffers.Destroy();
 	}
 
-	uint32_t ShaderBufferPool::CreateShaderBuffer()
+	void ShaderBufferPool::BeginUseBuffer()
 	{
-        uint32_t index = UINT32_MAX;
-        if (!m_freeItems.empty())
-        {
-            index = m_freeItems.back();
-            m_freeItems.pop_back();
-        }
-        else
-        {
-            m_items.emplace_back(PoolItem{ UINT64_MAX, ShaderBuffer(1 << 16) });
-            index = (uint32_t)m_items.size() - 1;
-        }
-        check(index < (uint32_t)m_items.size());
-        check(m_items[index].submissionId == UINT64_MAX);
-        m_items[index].buffer.BeginUse(m_device, &m_tempBuffer);
-		return index;
+        m_buffers.Next();
+        m_buffers.Get().BeginUse(m_rs->GetDevice(), &m_tempBuffer);
 	}
 
-	ShaderBuffer* ShaderBufferPool::GetShaderBuffer(uint32_t index)
+	ShaderBuffer& ShaderBufferPool::Get()
 	{
-        check(m_items[index].submissionId == UINT64_MAX);
-		return &m_items[index].buffer;
+		return m_buffers.Get();
 	}
 
-	void ShaderBufferPool::Submit(uint64_t submissionId, uint32_t bufferIndex)
-	{
-        check(bufferIndex < (uint32_t)m_items.size() && m_items[bufferIndex].submissionId == UINT64_MAX);
-        m_items[bufferIndex].buffer.EndUse(m_device);
-        m_items[bufferIndex].submissionId = submissionId;
-        m_usedItems.emplace_back(bufferIndex);
-	}
-
-	void ShaderBufferPool::ProcessInFlight()
-	{
-        uint64_t lastSubmissionId = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished();
-        for (uint32_t i = 0; i < m_usedItems.size(); ++i)
-        {
-            uint32_t index = m_usedItems[i];
-            if (m_items[index].submissionId <= lastSubmissionId)
-            {
-                if (i != (uint32_t)m_usedItems.size() - 1)
-                    m_usedItems[i] = m_usedItems.back();
-                m_usedItems.pop_back();
-                m_freeItems.emplace_back(index);
-                m_items[index].submissionId = UINT64_MAX;
-            }
-        }
-	}
-
-	ShaderStream::ShaderStream(render::Device* device)
-        : m_device(device), m_pool(device), m_currentId(UINT32_MAX)
-	{
-        check(m_device);
-        m_tempBuffer.Init(1 << 16);
-	}
-
-	ShaderStream::~ShaderStream()
-	{
-        m_tempBuffer.Destroy();
-	}
-
-	void ShaderStream::BeginFrame()
-	{
-        check(m_currentId == UINT32_MAX);
-        m_currentId = m_pool.CreateShaderBuffer();
-        check(m_currentId != UINT32_MAX);
-	}
-
-	void ShaderStream::Write(const char* id, const void* data, uint64_t size)
-	{
-        check(m_currentId != UINT32_MAX);
-        ShaderBuffer* buffer = m_pool.GetShaderBuffer(m_currentId);
-        buffer->WriteProperty(m_device, id, data, size);
-	}
-
-	void ShaderStream::Submit(uint64_t submissionId)
-	{
-        check(m_currentId != UINT32_MAX);
-        m_pool.Submit(submissionId, m_currentId);
-        m_currentId = UINT32_MAX;
-	}
-
-	void ShaderStream::Flush()
-	{
-        check(m_currentId != UINT32_MAX);
-	}
-
-    void ShaderStream::EndFrame()
+    void ShaderBufferPool::EndUseBuffer()
     {
-		check(m_currentId != UINT32_MAX);
-		m_pool.GetShaderBuffer(m_currentId)->EndUse(m_device);
-    }
-
-    void ShaderStream::ProcessInFlight()
-    {
-        m_pool.ProcessInFlight();
-    }
-
-    ShaderPropertyDescriptor ShaderStream::GetPropertyDescriptor(const char* id)
-    {
-        check(m_currentId != UINT32_MAX);
-        return m_pool.GetShaderBuffer(m_currentId)->GetProperty(id);
+        Get().EndUse(m_rs->GetDevice());
     }
 
     SamplerCache::SamplerCache(render::Device* device)

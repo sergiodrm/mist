@@ -8,6 +8,8 @@
 
 namespace rendersystem
 {
+    class RenderSystem;
+
     template <typename DataType, typename IndexType = uint32_t>
     struct HeapArray
     {
@@ -208,29 +210,18 @@ namespace rendersystem
 
     class ShaderBufferPool
     {
-        struct PoolItem
-        {
-            uint64_t submissionId{UINT64_MAX};
-            ShaderBuffer buffer;
-        };
     public:
-        ShaderBufferPool(render::Device* device);
+        ShaderBufferPool(rendersystem::RenderSystem* rs, uint64_t tempBufferSize = 1<<16);
         ~ShaderBufferPool();
 
-        uint32_t CreateShaderBuffer();
-        ShaderBuffer* GetShaderBuffer(uint32_t index);
-        void Submit(uint64_t submissionId, uint32_t bufferIndex);
-        void ProcessInFlight();
+        void BeginUseBuffer();
+        ShaderBuffer& Get();
+        void EndUseBuffer();
 
-        inline uint32_t GetPoolCount() const { return (uint32_t)m_items.size(); }
-        inline uint32_t GetPoolUsedCount() const { return (uint32_t)m_usedItems.size(); }
-        inline uint32_t GetPoolFreeCount() const { return (uint32_t)m_freeItems.size(); }
         inline uint64_t GetTemporalBufferSize() const { return m_tempBuffer.GetSize(); }
-    //private:
-        render::Device* m_device;
-        Mist::tDynArray<PoolItem> m_items;
-        Mist::tDynArray<uint32_t> m_usedItems;
-        Mist::tDynArray<uint32_t> m_freeItems;
+    private:
+        rendersystem::RenderSystem* m_rs;
+        Mist::RingBufferContainer<ShaderBuffer> m_buffers;
         ShaderBuffer::TemporalBuffer m_tempBuffer;
     };
 
@@ -425,60 +416,6 @@ namespace rendersystem
         ShaderBuildDescription* m_description;
     };
 
-    class ShaderStream
-    {
-    public:
-
-        struct Stats
-        {
-            uint32_t poolCount;
-            uint32_t poolUsed;
-            uint32_t poolFree;
-            uint32_t bufferCount;
-            uint32_t propertyCount;
-            uint64_t deviceMemoryUsedSize;
-            uint64_t temporalBufferSize;
-        };
-
-        ShaderStream(render::Device* device);
-        ~ShaderStream();
-
-        void BeginFrame();
-        void Write(const char* id, const void* data, uint64_t size);
-        void Submit(uint64_t submissionId);
-        void Flush();
-        void EndFrame();
-        void ProcessInFlight();
-        ShaderPropertyDescriptor GetPropertyDescriptor(const char* id);
-
-        inline uint32_t GetPoolCount() const { return m_pool.GetPoolCount(); }
-        inline uint32_t GetPoolUsedCount() const { return m_pool.GetPoolUsedCount(); }
-        inline uint32_t GetPoolFreeCount() const { return m_pool.GetPoolFreeCount(); }
-        inline uint64_t GetTemporalBufferSize() const { return m_tempBuffer.GetSize(); }
-        inline uint32_t GetBufferCount() const { return const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetBufferCount(); }
-        inline uint64_t GetDeviceMemorySize() const { return const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetDeviceMemorySize(); }
-        inline uint32_t GetPropertyCount() const { return const_cast<ShaderBufferPool*>(&m_pool)->GetShaderBuffer(m_currentId)->GetPropertyCount(); }
-
-        inline Stats GetStats() const
-        {
-            Stats stats{};
-            stats.poolCount = GetPoolCount();
-            stats.poolUsed = GetPoolUsedCount();
-            stats.poolFree = GetPoolFreeCount();
-            stats.bufferCount = GetBufferCount();
-            stats.propertyCount = GetPropertyCount();
-            stats.deviceMemoryUsedSize = GetDeviceMemorySize();
-            stats.temporalBufferSize = GetTemporalBufferSize();
-            return stats;
-        }
-
-    private:
-        render::Device* m_device;
-        uint32_t m_currentId;
-        ShaderBufferPool m_pool;
-        ShaderBuffer::TemporalBuffer m_tempBuffer;
-    };
-
     class ShaderDb
     {
     public:
@@ -549,7 +486,6 @@ namespace rendersystem
         render::CommandStats cmdStats;
         render::MemoryStats bufferStats;
         render::MemoryStats imageStats;
-        ShaderStream::Stats shaderMemoryStats;
         uint32_t shaderCount;
         uint32_t bindingSetCacheSize;
         uint32_t bindingLayoutCacheSize;
@@ -631,7 +567,7 @@ namespace rendersystem
             Mist::tStaticArray<PushConstantBuffer128, MaxPushConstant> pushConstantBuffers;
             
 			ShaderProgram* program;
-            ShaderStream* memoryStream; // owned
+            ShaderBufferPool* memoryPool;
 			uint32_t dirtyPropertiesFlags;
 
             inline void Invalidate()
@@ -743,6 +679,9 @@ namespace rendersystem
 
         inline uint64_t GetFrameCounter() const { return m_frame; }
         inline uint64_t GetFrameIndex() const { return m_frame % m_device->GetSwapchain().images.size(); }
+        inline uint64_t GetFramesInFlightCount() const { return m_frameSyncronization.count; }
+        inline uint64_t GetLastFinishedSubmissionId() const { return m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionIdFinished(); }
+
         render::BindingSetHandle GetBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout);
         render::SamplerHandle GetSampler(const render::SamplerDescription& desc);
         render::SamplerHandle GetSampler(render::Filter minFilter, 

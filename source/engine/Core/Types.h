@@ -81,6 +81,12 @@ namespace Mist
 		return static_cast<uint8_t>(v);
 	}
 
+	inline uint16_t u64_to_u16(uint64_t v)
+	{
+		check(v < UINT16_MAX);
+		return static_cast<uint16_t>(v);
+	}
+
 	uint16_t f32Tof16(float v);
 	float f16Tof32(uint16_t v);
 
