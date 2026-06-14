@@ -1870,13 +1870,7 @@ namespace rendersystem
     void ShaderBuffer::CreateBuffer(render::Device* device, uint64_t size)
     {
         check(device && size);
-
-        render::BufferDescription desc;
-        desc.size = size;
-        desc.bufferUsage = render::BufferUsage_UniformBuffer;
-        desc.memoryUsage = render::MemoryUsage_CpuToGpu;
-        desc.debugName = "ShaderBuffer";
-        m_buffers.emplace_back(device->CreateBuffer(desc));
+        m_buffers.emplace_back(render::utils::CreateUniformBuffer(device, size, "ShaderBuffer"));
     }
 
 	ShaderBufferPool::ShaderBufferPool(rendersystem::RenderSystem* rs, uint64_t tempBufferSize)
