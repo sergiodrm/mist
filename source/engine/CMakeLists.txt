@@ -52,6 +52,10 @@ file(GLOB VKBOOTSTRAP_SOURCES
 	${THIRDPARTY_DIR}/vkbootstrap/*.cpp
 	)
 
+source_group(TREE ./source/ FILES ${ENGINE_SOURCES})
+source_group("ImGui" FILES ${IMGUI_SOURCES})
+source_group("VkBootstrap" FILES ${VKBOOTSTRAP_SOURCES})
+
 
 option(RBE_VK "Use Vulkan API" ON)
 

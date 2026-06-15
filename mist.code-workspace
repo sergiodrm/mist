@@ -9,9 +9,9 @@
 			"**/*.spv": true
 		},
 		"files.associations": {
-			"*.glsl": "glsl",
-			"*.frag": "glsl",
-			"*.vert": "glsl",
+			"*.glsl": "hlsl",
+			"*.frag": "hlsl",
+			"*.vert": "hlsl",
 			"chrono": "cpp",
 			"ranges": "cpp",
 			"variant": "cpp"
