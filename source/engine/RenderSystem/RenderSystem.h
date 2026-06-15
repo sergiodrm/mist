@@ -570,6 +570,21 @@ namespace rendersystem
             ShaderBufferPool* memoryPool;
 			uint32_t dirtyPropertiesFlags;
 
+            Mist::tDynArray<render::BufferHandle> uavBuffers;
+            Mist::tMap<Mist::tFixedString<32>, uint32_t> uavBuffersNames;
+
+            ~ShaderContext()
+            {
+                Destroy();
+            }
+
+            inline void Destroy()
+            {
+				Invalidate();
+				uavBuffers.clear();
+				uavBuffersNames.clear();
+            }
+
             inline void Invalidate()
             {
                 dirtyPropertiesFlags = UINT32_MAX;

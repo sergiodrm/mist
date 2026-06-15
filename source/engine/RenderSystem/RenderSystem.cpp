@@ -770,14 +770,25 @@ namespace rendersystem
 
     void RenderSystem::BindUAV(const char* id, const render::BufferHandle& buffer)
     {
-        check(id && *id && buffer && m_shaderContext.program);
-        uint32_t setIndex = UINT32_MAX;
-        const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
-        check(property && setIndex != UINT32_MAX);
-        check(property->type == render::ResourceType_BufferUAV);
-        check(setIndex < MaxDescriptorSetSlots && property->binding < MaxBindingsPerSlot);
-        m_shaderContext.buffers[setIndex][property->binding] = buffer;
-        m_shaderContext.MarkSetAsDirty(setIndex);
+        //check(id && *id && buffer && m_shaderContext.program);
+        //uint32_t setIndex = UINT32_MAX;
+        //const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
+        //check(property && setIndex != UINT32_MAX);
+        //check(property->type == render::ResourceType_BufferUAV);
+        //check(setIndex < MaxDescriptorSetSlots && property->binding < MaxBindingsPerSlot);
+        //m_shaderContext.buffers[setIndex][property->binding] = buffer;
+        //m_shaderContext.MarkSetAsDirty(setIndex);
+
+        auto it = m_shaderContext.uavBuffersNames.find(id);
+        if (it != m_shaderContext.uavBuffersNames.end())
+        {
+            m_shaderContext.uavBuffers[it->second] = buffer;
+        }
+        else
+        {
+            m_shaderContext.uavBuffers.emplace_back(buffer);
+            m_shaderContext.uavBuffersNames[id] = m_shaderContext.uavBuffers.size() - 1;
+        }
     }
 
     void RenderSystem::BindSRV(const char* id, const render::BufferHandle& buffer)
@@ -1149,8 +1160,17 @@ namespace rendersystem
 				case render::ResourceType_BufferUAV:
                 {
 					check(paramSet.setIndex < MaxDescriptorSetSlots && property.binding < MaxBindingsPerSlot);
-                    check(m_shaderContext.buffers[paramSet.setIndex][property.binding]);
-                    desc.PushBufferUAV(property.binding, m_shaderContext.buffers[paramSet.setIndex][property.binding].GetPtr(), property.stageMask);
+                    render::Buffer* buffer = nullptr;
+                    if (!m_shaderContext.buffers[paramSet.setIndex][property.binding])
+                    {
+                        auto it = m_shaderContext.uavBuffersNames.find(property.name.c_str());
+                        check(it != m_shaderContext.uavBuffersNames.end());
+                        buffer = m_shaderContext.uavBuffers[it->second].GetPtr();
+                    }
+                    else
+                        buffer = m_shaderContext.buffers[paramSet.setIndex][property.binding].GetPtr();
+                    check(buffer);
+                    desc.PushBufferUAV(property.binding, buffer, property.stageMask);
                 }
 					break;
 				case render::ResourceType_DynamicBufferUAV:
