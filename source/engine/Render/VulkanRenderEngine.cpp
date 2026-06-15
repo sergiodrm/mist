@@ -225,7 +225,7 @@ namespace Mist
 		{
 			m_scene->UpdateRenderData();
 			m_renderer.Update();
-			SceneRenderer::GetSceneRenderer()->BuildRenderLists(m_scene);
+			SceneRenderer::GetSceneRenderer()->BuildRenderLists(m_renderSystem, m_scene);
 		}
 		else
 			m_renderer.Update();
