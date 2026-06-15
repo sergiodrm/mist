@@ -1073,23 +1073,55 @@ namespace Mist
 		}
 	}
 
-	SceneRenderer::SceneRenderer(uint32_t size)
+	static int CompareRenderSortId(void* context, const void* item0, const void* item1)
 	{
-		m_creationInfo.Allocate(size);
-		m_renderPasses.Allocate(size);
+		const RenderSortId& id0 = *static_cast<const RenderSortId*>(item0);
+		const RenderSortId& id1 = *static_cast<const RenderSortId*>(item1);
+		return id0.id - id1.id;
+	}
+
+	SceneRenderer::SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount, uint32_t maxItemCount)
+	{
+		m_creationInfo.Allocate(passCount);
+		m_renderPasses.Allocate(passCount);
+		m_meshes.Allocate(maxItemCount);
+		m_transforms.Allocate(maxItemCount);
+		m_materials.Allocate(maxItemCount);
+		m_materialRenderData.Allocate(maxItemCount);
+		m_cullingData.Allocate(maxItemCount);
+		m_ssboTransforms.Init(rs->GetFramesInFlightCount());
+		m_ssboMaterials.Init(rs->GetFramesInFlightCount());
+
+		for (uint32_t i = 0; i < m_ssboMaterials.GetCount(); ++i)
+		{
+			m_ssboTransforms.Get(i) = render::utils::CreateStorageBuffer(rs->GetDevice(), sizeof(glm::mat4) * m_transforms.GetReservedSize(), "Transforms SSBO");
+			m_ssboMaterials.Get(i) = render::utils::CreateStorageBuffer(rs->GetDevice(), sizeof(sMaterialRenderData) * m_materialRenderData.GetReservedSize(), "Materials SSBO");
+		}
 	}
 
 	SceneRenderer::~SceneRenderer()
 	{
 		m_renderPasses.Delete();
 		m_creationInfo.Delete();
+		m_meshes.Delete();
+		m_transforms.Delete();
+		m_materials.Delete();
+		m_materialRenderData.Delete();
+		m_cullingData.Delete();
+		for (uint32_t i = 0; i < m_ssboMaterials.GetCount(); ++i)
+		{
+			m_ssboTransforms.Get(i) = nullptr;
+			m_ssboMaterials.Get(i) = nullptr;
+		}
+		m_ssboTransforms.Destroy();
+		m_ssboMaterials.Destroy();
 	}
 
 	uint32_t SceneRenderer::CreateRenderList(const RenderPassInfo& info)
 	{
 		check(((info.pass & (RenderPass_Opaque|RenderPass_Transparent)) && !(info.pass & RenderPass_ShadowMap)) || (info.pass & RenderPass_ShadowMap) == info.pass);
 		m_creationInfo.Push(info);
-		m_renderPasses.Push();
+		m_renderPasses.Push(m_transforms.GetReservedSize());
 		return m_renderPasses.GetSize()-1;
 	}
 
@@ -1099,27 +1131,31 @@ namespace Mist
 		m_creationInfo[id] = info;
 	}
 
-	void SceneRenderer::BuildRenderLists(const Scene* scene)
+	void SceneRenderer::BuildRenderLists(rendersystem::RenderSystem* rs, const Scene* scene)
 	{
 		CPU_PROFILE_SCOPE(BuildRenderLists);
 		if (!scene)
 			return;
 		check(m_renderPasses.GetSize() == m_creationInfo.GetSize());
+
+		// Clear
 		for (uint32_t i = 0; i < m_renderPasses.GetSize(); ++i)
 			m_renderPasses[i].Clear();
+		m_transforms.Clear();
+		m_materialRenderData.Clear();
+		m_materials.Clear();
+		m_cullingData.Clear();
+		m_meshes.Clear();
 
-		const glm::mat4* worldTransforms = scene->GetRawGlobalTransforms();
-		for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
-		{
-			const MeshComponent* mc = scene->GetMesh(i);
-			if (mc)
-			{
-				check(mc->MeshIndex != UINT32_MAX);
-				const cModel* model = scene->GetModel(mc->MeshIndex);
-				ProcessModelNode(model, model->GetRoot(), worldTransforms[i], worldTransforms[i]);
-			}
-		}
-		DoCulling();
+		// Build render lists
+		RenderListBuilder builder(*this);
+		builder.Build(scene);
+
+		// Submit buffers to gpu
+		m_ssboTransforms.Next();
+		m_ssboMaterials.Next();
+		rs->GetDevice()->WriteBuffer(m_ssboTransforms.GetHead(), m_transforms.GetData(), m_transforms.GetSize() * sizeof(glm::mat4));
+		rs->GetDevice()->WriteBuffer(m_ssboMaterials.GetHead(), m_materialRenderData.GetData(), m_materialRenderData.GetSize() * sizeof(sMaterialRenderData));
 	}
 
 	void SceneRenderer::DrawList(const RenderContext& renderContext)
@@ -1129,6 +1165,14 @@ namespace Mist
 		check(renderContext.passId < m_creationInfo.GetSize());
 
 		RenderPass& pass = m_renderPasses[renderContext.passId];
+		check(pass.m_items.GetSize() == pass.m_sortIds.GetSize());
+		if (pass.m_sortIds.IsEmpty())
+			return;
+
+		renderContext.rs->BindUAV("u_modelBuffer", m_ssboTransforms.GetHead());
+		renderContext.rs->BindUAV("u_prevModelBuffer", m_ssboTransforms.GetHead());
+		renderContext.rs->BindUAV("u_materialBuffer", m_ssboMaterials.GetHead());
+
 		m_state.Invalidate();
 		if (!IsGeometryPass(m_creationInfo[renderContext.passId].pass))
 		{
@@ -1140,22 +1184,14 @@ namespace Mist
 				renderContext.rs->SetLineWidth(Mist::math::Clamp(CVar_RenderWireframe.Get(), 0.0001f, FLT_MAX));
 			}
 
-			if (IsCullingEnabled())
-			{ 
-				for (uint32_t i = 0; i < pass.drawList.size(); ++i)
-					DrawItem(renderContext, pass.items[pass.drawList[i]]);
-			}
-			else
-			{
-				for (uint32_t i = 0; i < pass.items.size(); ++i)
-					DrawItem(renderContext, pass.items[i]);
-			}
+			for (uint32_t i = 0; i < pass.m_sortIds.GetSize(); ++i)
+				DrawItem(renderContext, pass.m_sortIds[i]);
 		}
 		else
 		{
 			CPU_PROFILE_SCOPE(Scene_DrawGeometry);
-			for (uint32_t i = 0; i < pass.items.size(); ++i)
-				DrawGeometryItem(renderContext, pass.items[i]);
+			for (uint32_t i = 0; i < pass.m_sortIds.GetSize(); ++i)
+				DrawGeometryItem(renderContext, pass.m_sortIds[i]);
 		}
 	}
 
@@ -1163,6 +1199,8 @@ namespace Mist
 	{
 		ImGui::Begin("SceneRenderer");
 		{
+			ImGui::Checkbox("Enable sorting", &m_enableSorting);
+			ImGui::Checkbox("Enable culling", &m_enableCulling);
 			char buff[256];
 			for (uint32_t i = 0; i < m_renderPasses.GetSize(); ++i)
 			{
@@ -1175,17 +1213,19 @@ namespace Mist
 				if (ImGui::TreeNode(buff))
 				{
 					ImGui::Text("Mask			: %d", m_creationInfo[i].pass);
-					ImGui::Text("Item count		: %d", m_renderPasses[i].items.size());
-					ImGui::Text("Culling count	: %d", m_renderPasses[i].drawList.size());
+					ImGui::Text("Item count		: %d", m_renderPasses[i].m_items.GetSize());
 					if (ImGui::TreeNode("Draw list"))
 					{
-						for (uint32_t j = 0; j < m_renderPasses[i].items.size(); ++j)
+						for (uint32_t j = 0; j < m_renderPasses[i].m_sortIds.GetSize(); ++j)
 						{
-							ImGui::Text("(#%3d) mesh: %s; primitive: %d; material: 0x%p",
+							const RenderSortId& id = m_renderPasses[i].m_sortIds[j];
+							ImGui::Text("%4d - sort_id: 0x%016llx; mesh: %4d '%16s'; primitive: %4d; material: %4d",
 								j,
-								m_renderPasses[i].items[j].mesh->GetName(),
-								m_renderPasses[i].items[j].primitive,
-								m_renderPasses[i].items[j].mesh->GetPrimitiveArray()[m_renderPasses[i].items[j].primitive].material);
+								id.id,
+								id.GetMesh(),
+								m_meshes[id.GetMesh()]->GetName(),
+								m_renderPasses[i].m_items[id.GetIndex()].primitive,
+								id.GetMaterial());
 						}
 						ImGui::TreePop();
 					}
@@ -1201,7 +1241,7 @@ namespace Mist
 	void SceneRenderer::Init()
 	{
 		check(!g_sceneRenderer);
-		g_sceneRenderer = _new SceneRenderer(8);
+		g_sceneRenderer = _new SceneRenderer(g_render, 8, 1<<12);
 	}
 
 	void SceneRenderer::Destroy()
@@ -1216,88 +1256,13 @@ namespace Mist
 		return g_sceneRenderer;
 	}
 
-	void SceneRenderer::ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform)
+	void SceneRenderer::BindMesh(const RenderContext& rc, const cMesh& mesh)
 	{
-		check(model && nodeIndex != index_invalid);
-		glm::mat4 transform = parentTransform * model->GetTransform(nodeIndex);
-		const cModel::Node& node = *model->GetNode(nodeIndex);
-		if (node.meshInfoIndex != index_invalid)
-			ProcessMesh(*model->GetMeshFromNode(nodeIndex), transform);
-		if (node.Sibling != index_invalid)
-			ProcessModelNode(model, node.Sibling, parentTransform);
-		if (node.Child != index_invalid)
-			ProcessModelNode(model, node.Child, transform);
-	}
-
-	void SceneRenderer::ProcessMesh(const cMesh& mesh, const glm::mat4& nodeWorldTransform)
-	{
-		// process mesh flags
-		static constexpr uint32_t maxCount = 8;
-		check(m_creationInfo.GetSize() <= maxCount);
-		struct  
+		if (m_state.mesh != &mesh)
 		{
-			uint32_t indices[maxCount];
-			uint32_t index = 0;
-		} primitiveRenderPasses;
-
-		if (!SceneFilter(mesh.GetName()))
-			return;
-
-		for (uint32_t i = 0; i < m_creationInfo.GetSize(); ++i)
-		{
-			AABB_t aabb = mesh.GetAABB().ApplyTransform(nodeWorldTransform);
-			if ((mesh.GetRenderPassMask() & m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_creationInfo[i].cameraData.ViewProjection))))
-			{
-				if (!IsGeometryPass(m_creationInfo[i].pass))
-					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = i;
-				else if (m_creationInfo[i].pass & RenderPass_ShadowMap)
-				{
-					m_renderPasses[i].transforms.emplace_back(nodeWorldTransform);
-
-					// add whole mesh to the list
-					RenderItem& item = m_renderPasses[i].items.emplace_back();
-					item.mesh = &mesh;
-					item.primitive = UINT32_MAX;
-					item.transformIndex = m_renderPasses[i].transforms.size() - 1;
-				}
-			}
-		}
-
-		// Append transform to primitive passes
-		for (uint32_t i = 0; i < primitiveRenderPasses.index; ++i)
-			m_renderPasses[primitiveRenderPasses.indices[i]].transforms.emplace_back(nodeWorldTransform);
-
-		// primitive lists
-		for (uint32_t i = 0; i < mesh.GetPrimitiveCount(); ++i)
-		{
-			const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[i];
-			for (uint32_t j = 0; j < primitiveRenderPasses.index; ++j)
-			{
-				check(primitive.material);
-				const RenderPassInfo& info = m_creationInfo[primitiveRenderPasses.indices[j]];
-				RenderPass& pass = m_renderPasses[primitiveRenderPasses.indices[j]];
-				if (primitive.renderPassMask & info.pass)
-				{
-					// Render info
-					RenderItem& item = pass.items.emplace_back();
-					item.mesh = &mesh;
-					item.primitive = i;
-					item.transformIndex = pass.transforms.size() - 1;
-
-					// Culling info
-					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(nodeWorldTransform));
-				}
-			}
-		}
-	}
-
-	void SceneRenderer::BindMesh(const RenderContext& rc, const RenderItem& item)
-	{
-		if (m_state.mesh != item.mesh)
-		{
-			rc.rs->SetVertexBuffer(item.mesh->GetVertexBuffer());
-			rc.rs->SetIndexBuffer(item.mesh->GetIndexBuffer());
-			m_state.mesh = item.mesh;
+			rc.rs->SetVertexBuffer(mesh.GetVertexBuffer());
+			rc.rs->SetIndexBuffer(mesh.GetIndexBuffer());
+			m_state.mesh = &mesh;
 		}
 	}
 
@@ -1309,25 +1274,13 @@ namespace Mist
 				rc.rs->SetShader(material.GetShaderProgram());
 
 			material.BindTextures(rc.rs);
-			sMaterialRenderData materialData = material.GetRenderData();
-			rc.rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
 			m_state.material = &material;
-		}
-	}
-
-	void SceneRenderer::SetTransform(const RenderContext& rc, const RenderItem& item)
-	{
-		if (m_state.transformIndex != item.transformIndex)
-		{
-			const glm::mat4& transform = m_renderPasses[rc.passId].transforms[item.transformIndex];
-			rc.rs->SetShaderProperty("u_model", &transform, sizeof(transform));
-			rc.rs->SetShaderProperty("u_prevModel", &transform, sizeof(transform));
-			m_state.transformIndex = item.transformIndex;
 		}
 	}
 
 	void SceneRenderer::DoCulling()
 	{
+#if 0
 		CPU_PROFILE_SCOPE(Culling);
 		if (!IsCullingEnabled())
 			return;
@@ -1348,22 +1301,232 @@ namespace Mist
 					pass.drawList.emplace_back(j);
 			}
 		}
+#endif // 0
+
 	}
 
-	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderItem& item)
+	void SceneRenderer::DrawItem(const RenderContext& renderContext, const RenderSortId& id)
 	{
-		const PrimitiveMeshData& primitive = item.mesh->GetPrimitiveArray()[item.primitive];
-		BindMesh(renderContext, item);
+		const cMesh* mesh = m_meshes[id.GetMesh()];
+		const RenderItem& item = m_renderPasses[renderContext.passId].m_items[id.GetIndex()];
+		const PrimitiveMeshData& primitive = mesh->GetPrimitiveArray()[item.primitive];
+		BindMesh(renderContext, *mesh);
 		BindMaterial(renderContext, *primitive.material);
-		SetTransform(renderContext, item);
+
+		RenderData_Id rdid;
+		rdid.modelId = id.GetMesh();
+		rdid.materialId = id.GetMaterial();
+		renderContext.rs->PushConstant("u_instance", &rdid, sizeof(rdid));
 		renderContext.rs->DrawIndexed(primitive.count, 1, primitive.firstIndex);
 	}
 
-	void SceneRenderer::DrawGeometryItem(const RenderContext& renderContext, const RenderItem& item)
+	void SceneRenderer::DrawGeometryItem(const RenderContext& renderContext, const RenderSortId& id)
 	{
-		BindMesh(renderContext, item);
-		SetTransform(renderContext, item);
-		renderContext.rs->DrawIndexed(item.mesh->GetIndexCount());
+		const cMesh* mesh = m_meshes[id.GetMesh()];
+		BindMesh(renderContext, *mesh);
+		renderContext.rs->DrawIndexed(mesh->GetIndexCount());
+	}
+
+	void SceneRenderer::RenderListBuilder::Build(const Scene* scene)
+	{
+		const glm::mat4* worldTransforms = scene->GetRawGlobalTransforms();
+		for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
+		{
+			const MeshComponent* mc = scene->GetMesh(i);
+			if (mc)
+			{
+				check(mc->MeshIndex != UINT32_MAX);
+				const cModel* model = scene->GetModel(mc->MeshIndex);
+				const glm::mat4& transform = worldTransforms[i];
+
+				// Coarse culling
+				bool visible = false;
+				AABB_t aabb = model->GetAABB().ApplyTransform(transform);
+				for (uint32_t pass = 0; pass < m_sceneRenderer.m_creationInfo.GetSize(); ++pass)
+				{
+					Frustum f = m_sceneRenderer.m_creationInfo[pass].cameraData.GetFrustum();
+					if (m_sceneRenderer.IsVisible(aabb, f))
+					{
+						visible = true;
+						break;
+					}
+				}
+
+				if (visible)
+				{
+					uint16_t materialRoot = ProcessMaterials(model);
+					ProcessModelNode(model, model->GetRoot(), transform, materialRoot);
+				}
+			}
+		}
+
+		if (m_sceneRenderer.m_enableSorting)
+		{
+			for (uint32_t passIndex = 0; passIndex < m_sceneRenderer.m_renderPasses.GetSize(); ++passIndex)
+			{
+				RenderPass& pass = m_sceneRenderer.m_renderPasses[passIndex];
+				qsort_s(pass.m_sortIds.GetData(), pass.m_sortIds.GetSize(), sizeof(RenderSortId), &CompareRenderSortId, nullptr);
+			}
+		}
+
+		//DoCulling();
+	}
+
+	void SceneRenderer::RenderListBuilder::ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, uint16_t materialRoot)
+	{
+		check(model && nodeIndex != index_invalid);
+		glm::mat4 transform = parentTransform * model->GetTransform(nodeIndex);
+		const cModel::Node& node = *model->GetNode(nodeIndex);
+		if (node.meshInfoIndex != index_invalid)
+			ProcessMesh(*model, *model->GetMeshFromNode(nodeIndex), transform, materialRoot);
+		if (node.Sibling != index_invalid)
+			ProcessModelNode(model, node.Sibling, parentTransform, materialRoot);
+		if (node.Child != index_invalid)
+			ProcessModelNode(model, node.Child, transform, materialRoot);
+	}
+
+	void SceneRenderer::RenderListBuilder::ProcessMesh(const cModel& model, const cMesh& mesh, const glm::mat4& nodeWorldTransform, uint16_t materialRoot)
+	{
+		if (!SceneFilter(mesh.GetName()))
+			return;
+
+		m_sceneRenderer.m_transforms.Push(nodeWorldTransform);
+		uint16_t transformIndex = u32_to_u16(m_sceneRenderer.m_transforms.GetSize() - 1);
+
+		m_sceneRenderer.m_meshes.Push(&mesh);
+		uint16_t meshIndex = u32_to_u16(m_sceneRenderer.m_meshes.GetSize() - 1);
+
+		static constexpr uint32_t maxCount = 8;
+		check(m_sceneRenderer.m_creationInfo.GetSize() <= maxCount);
+		struct
+		{
+			uint32_t indices[maxCount];
+			uint32_t index = 0;
+		} primitiveRenderPasses;
+
+		AABB_t meshWorldAABB = mesh.GetAABB().ApplyTransform(nodeWorldTransform);
+		for (uint32_t passIndex = 0; passIndex < m_sceneRenderer.m_creationInfo.GetSize(); ++passIndex)
+		{
+			const RenderPassInfo& passInfo = m_sceneRenderer.m_creationInfo[passIndex];
+			if (passInfo.pass & mesh.GetRenderPassMask()
+				&& m_sceneRenderer.IsVisible(meshWorldAABB, m_sceneRenderer.m_creationInfo[passIndex].cameraData.GetFrustum()))
+			{
+				// Only push mesh geometry in geometry pass. All the VB and IB in one draw call.
+				if (IsGeometryPass(m_sceneRenderer.m_creationInfo[passIndex].pass))
+				{
+					RenderPass& pass = m_sceneRenderer.m_renderPasses[passIndex];
+					pass.m_items.Push();
+					pass.m_items.Back().primitive = 0;
+					pass.m_sortIds.Push();
+					pass.m_sortIds.Back().Set(0, meshIndex, 0, pass.m_items.GetSize() - 1);
+				}
+				else
+				{
+					// Mark current render pass to process primitives
+					check(primitiveRenderPasses.index < Mist::CountOf(primitiveRenderPasses.indices));
+					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = passIndex;
+				}
+			}
+		}
+
+		// Iterate primitives
+		for (uint32_t primitiveIndex = 0; primitiveIndex < mesh.GetPrimitiveCount(); ++primitiveIndex)
+		{
+			const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[primitiveIndex];
+			AABB_t primitiveWorldAABB = primitive.aabb.ApplyTransform(nodeWorldTransform);
+			m_sceneRenderer.m_cullingData.Push(primitiveWorldAABB);
+
+			for (uint32_t passIndex = 0; passIndex < primitiveRenderPasses.index; ++passIndex)
+			{
+				const RenderPassInfo& passInfo = m_sceneRenderer.m_creationInfo[primitiveRenderPasses.indices[passIndex]];
+				RenderPass& pass = m_sceneRenderer.m_renderPasses[primitiveRenderPasses.indices[passIndex]];
+				if (passInfo.pass & primitive.renderPassMask && m_sceneRenderer.IsVisible(primitiveWorldAABB, passInfo.cameraData.GetFrustum()))
+				{
+					// Push item with primitive info
+					pass.m_items.Push();
+					pass.m_items.Back().primitive = primitiveIndex;
+
+					// Push sort id to do the sort of the list
+					uint16_t materialIndex = u64_to_u16(size_t(primitive.material - &model.GetMaterial(0)));
+					check(materialIndex < u32_to_u16(model.GetMaterialCount()));
+					materialIndex += materialRoot;
+
+					pass.m_sortIds.Push();
+					pass.m_sortIds.Back().Set(materialIndex, meshIndex, 0, pass.m_items.GetSize() - 1);
+					break;
+				}
+			}
+		}
+
+#if 0
+
+		// First iterarion in passes to get the geometry passes.
+		for (uint32_t i = 0; i < m_sceneRenderer.m_creationInfo.GetSize(); ++i)
+		{
+			AABB_t aabb = mesh.GetAABB().ApplyTransform(nodeWorldTransform);
+			if ((mesh.GetRenderPassMask() & m_sceneRenderer.m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_sceneRenderer.m_creationInfo[i].cameraData.ViewProjection))))
+			{
+				if (!IsGeometryPass(m_creationInfo[i].pass))
+					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = i;
+				else if (m_creationInfo[i].pass & RenderPass_ShadowMap)
+				{
+					m_renderPasses[i].transforms.Push(nodeWorldTransform);
+
+					// add whole mesh to the list
+					RenderItem& item = m_renderPasses[i].items.emplace_back();
+					item.mesh = &mesh;
+					item.primitive = UINT32_MAX;
+					item.transformIndex = m_renderPasses[i].transforms.GetSize() - 1;
+				}
+			}
+		}
+
+		// Append transform to primitive passes
+		for (uint32_t i = 0; i < primitiveRenderPasses.index; ++i)
+			m_renderPasses[primitiveRenderPasses.indices[i]].transforms.Push(nodeWorldTransform);
+
+		// primitive lists
+		for (uint32_t i = 0; i < mesh.GetPrimitiveCount(); ++i)
+		{
+			const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[i];
+			for (uint32_t j = 0; j < primitiveRenderPasses.index; ++j)
+			{
+				check(primitive.material);
+				const RenderPassInfo& info = m_creationInfo[primitiveRenderPasses.indices[j]];
+				RenderPass& pass = m_renderPasses[primitiveRenderPasses.indices[j]];
+				if (primitive.renderPassMask & info.pass)
+				{
+					// Render info
+					RenderItem& item = pass.items.emplace_back();
+					item.mesh = &mesh;
+					item.primitive = i;
+					item.transformIndex = pass.transforms.GetSize() - 1;
+
+					// link material to render item
+					const cMaterial* mtl = primitive.material;
+					pass.materialRenderData.Push(mtl->GetRenderData());
+					item.materialIndex = pass.materialRenderData.GetSize() - 1;
+
+					// Culling info
+					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(nodeWorldTransform));
+				}
+			}
+		}
+#endif // 0
+
+	}
+
+	uint16_t SceneRenderer::RenderListBuilder::ProcessMaterials(const cModel* model)
+	{
+		check(m_sceneRenderer.m_materials.GetSize() == m_sceneRenderer.m_materialRenderData.GetSize());
+		uint16_t currentRoot = m_sceneRenderer.m_materials.GetSize();
+		for (uint32_t mtlIndex = 0; mtlIndex < model->GetMaterialCount(); ++mtlIndex)
+		{
+			const cMaterial& mtl = model->GetMaterial(mtlIndex);
+			m_sceneRenderer.m_materialRenderData.Push(mtl.GetRenderData());
+			m_sceneRenderer.m_materials.Push(&mtl);
+		}
+		return currentRoot;
 	}
 
 }
