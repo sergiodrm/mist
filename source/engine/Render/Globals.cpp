@@ -8,16 +8,5 @@ namespace Mist
 {
 	namespace globals
 	{
-		// Assets reference
-		const char* BasicVertexShader = SHADER_FILEPATH("basic.vert");
-		const char* BasicFragmentShader = SHADER_FILEPATH("basic.frag");
-		const char* LineVertexShader = SHADER_FILEPATH("line.vert");
-		const char* LineFragmentShader = SHADER_FILEPATH("line.frag");
-		const char* DepthVertexShader = SHADER_FILEPATH("depth.vert");
-		const char* DepthFragmentShader = SHADER_FILEPATH("depth.frag");
-		const char* QuadVertexShader = SHADER_FILEPATH("quad.vert");
-		const char* QuadFragmentShader = SHADER_FILEPATH("quad.frag");
-		const char* DepthQuadFragmentShader = SHADER_FILEPATH("depth_quad.frag");
-
 	}
 }

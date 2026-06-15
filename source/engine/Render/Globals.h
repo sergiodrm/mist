@@ -24,12 +24,6 @@
 #define SHADER_ADDITIONAL_EXTENSION ".spv"
 #endif // SHADER_RUNTIME_COMPILATION
 
-
-#define SHADER_COMPUTE_FILE_EXTENSION ".comp" SHADER_ADDITIONAL_EXTENSION
-#define SHADER_VERTEX_FILE_EXTENSION ".vert" SHADER_ADDITIONAL_EXTENSION
-#define SHADER_FRAG_FILE_EXTENSION ".frag" SHADER_ADDITIONAL_EXTENSION
-#define SHADER_FILEPATH(filepath) SHADER_ROOT_PATH filepath SHADER_ADDITIONAL_EXTENSION
-
 #define MAX_SHADOW_MAPS 3
 #define MAX_SHADOW_MAPS_STR "3"
 
@@ -38,15 +32,6 @@ namespace Mist
 	namespace globals
 	{
 		// Assets reference
-		extern const char* BasicVertexShader;
-		extern const char* BasicFragmentShader;
-		extern const char* LineVertexShader;
-		extern const char* LineFragmentShader;
-		extern const char* DepthVertexShader;
-		extern const char* DepthFragmentShader;
-		extern const char* QuadVertexShader;
-		extern const char* QuadFragmentShader;
-		extern const char* DepthQuadFragmentShader;
 		inline constexpr unsigned int MaxOverlappedFrames = 3;
 		inline constexpr unsigned int MaxRenderObjects = 1500;
 		inline constexpr unsigned int MaxMaterials = 256;
