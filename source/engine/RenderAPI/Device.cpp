@@ -3027,6 +3027,22 @@ namespace render
 
     void Device::DestroyMemoryContext()
     {
+#ifdef DEVICE_ENABLE_RESOURCE_TRACKING
+        if (m_context->memoryContext.bufferStats.allocationCounts)
+        {
+            logferror("Device buffer memory leak. (%d pending to destroy | %d mapped | %lld bytes)\n", m_context->memoryContext.bufferStats.allocationCounts,
+                m_bufferTracking.size(), m_context->memoryContext.bufferStats.currentAllocated);
+            for (auto it = m_bufferTracking.begin(); it != m_bufferTracking.end(); ++it)
+                logferror("> 0x%016llx: '%32s' %lld bytes\n", it->first, it->second->m_description.debugName.c_str(), it->second->m_description.size);
+        }
+		if (m_context->memoryContext.imageStats.allocationCounts)
+		{
+			logferror("Device image memory leak. (%d pending to destroy | %d mapped | %lld bytes)\n", m_context->memoryContext.imageStats.allocationCounts,
+				m_textureTracking.size(), m_context->memoryContext.imageStats.currentAllocated);
+			for (auto it = m_textureTracking.begin(); it != m_textureTracking.end(); ++it)
+				logferror("> 0x%016llx: '%32s'\n", it->first, it->second->m_description.debugName.c_str());
+		}
+#endif // DEVICE_ENABLE_RESOURCE_TRACKING
         check(m_context);
         check(m_context->memoryContext.bufferStats.allocationCounts == 0 && m_context->memoryContext.bufferStats.currentAllocated == 0);
         check(m_context->memoryContext.imageStats.allocationCounts == 0 && m_context->memoryContext.imageStats.currentAllocated == 0);
