@@ -2,7 +2,6 @@
 
 #include "RenderAPI/Device.h"
 #include "RenderSystem/TextureLoader.h"
-#include "Core/Atomic.h"
 #include "Core/Thread.h"
 #include "Core/Mutex.h"
 
