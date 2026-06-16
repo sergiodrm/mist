@@ -324,7 +324,7 @@ namespace rendersystem
             strcpy_s(shaderDesc[shaderIndex].options.entryPoint, entryPoint);
         }
 
-        inline void SetGraphics(const char* vertexShaderFile, const char* fragmentShaderFile, const char* tesselationControl = nullptr, const char* tesselationEvaluation = nullptr)
+        inline void SetGraphics(const char* vertexShaderFile, const char* fragmentShaderFile, const char* tesselationControl = nullptr, const char* tesselationEvaluation = nullptr, const char* geometryShaderFile = nullptr)
         {
             Clear();
             type = ShaderProgram_Graphics;
@@ -332,10 +332,12 @@ namespace rendersystem
             SetEntryPoint(render::ShaderType_Fragment, "main");
             SetEntryPoint(render::ShaderType_TesselationControl, "main");
             SetEntryPoint(render::ShaderType_TesselationEvaluation, "main");
+            SetEntryPoint(render::ShaderType_Geometry, "main");
             SetFileDescription(render::ShaderType_Vertex, vertexShaderFile);
             SetFileDescription(render::ShaderType_Fragment, fragmentShaderFile);
             SetFileDescription(render::ShaderType_TesselationControl, tesselationControl);
             SetFileDescription(render::ShaderType_TesselationEvaluation, tesselationEvaluation);
+            SetFileDescription(render::ShaderType_Geometry, geometryShaderFile);
         }
 
         inline void SetCompute(const char* computeShaderFile)

@@ -269,6 +269,7 @@ namespace Mist
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_OCCLUSION);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_METALLIC_ROUGHNESS);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
+		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_COUNT);
 #undef DECLARE_MACRO_ENUM
 	}
 
@@ -319,10 +320,10 @@ namespace Mist
 
 	void cMaterial::SetupShader(rendersystem::RenderSystem* renderSystem)
 	{
-		static const char* gbuffervs = "shaders/gbuffer_main.vert";
-		static const char* gbufferfs = "shaders/gbuffer_main.frag";
-		static const char* forwardvs = "shaders/forward_lighting.vert";
-		static const char* forwardfs = "shaders/forward_lighting.frag";
+		static const char* gbuffervs = "shaders/render_pipeline/gbuffer_main.vert";
+		static const char* gbufferfs = "shaders/render_pipeline/gbuffer_main.frag";
+		static const char* forwardvs = "shaders/render_pipeline/forward_lighting.vert";
+		static const char* forwardfs = "shaders/render_pipeline/forward_lighting.frag";
 		if (m_flags & MATERIAL_FLAG_BLEND)
 			SetupShader(renderSystem, forwardvs, forwardfs);
 		else
@@ -331,13 +332,26 @@ namespace Mist
 
 	void cMaterial::SetupShader(rendersystem::RenderSystem* renderSystem, const char* vsFile, const char* fsFile)
 	{
+		MaterialShaderDescription desc;
+		desc.shaderFilepaths[render::ShaderType_Vertex].Set(vsFile);
+		desc.shaderFilepaths[render::ShaderType_Fragment].Set(fsFile);
+		SetupShader(renderSystem, desc);
+	}
+
+	void cMaterial::SetupShader(rendersystem::RenderSystem* renderSystem, const MaterialShaderDescription& desc)
+	{
 		static const char* alphaTestFlag = "ALPHA_TEST";
-		rendersystem::ShaderBuildDescription desc;
-		desc.SetGraphics(vsFile, fsFile);
+		rendersystem::ShaderBuildDescription shaderDesc;
+		shaderDesc.SetGraphics(
+			desc.shaderFilepaths[render::ShaderType_Vertex].CStr(), 
+			desc.shaderFilepaths[render::ShaderType_Fragment].CStr(),
+			desc.shaderFilepaths[render::ShaderType_TesselationControl].CStr(),
+			desc.shaderFilepaths[render::ShaderType_TesselationEvaluation].CStr(),
+			desc.shaderFilepaths[render::ShaderType_Geometry].CStr());
 		if (m_flags & MATERIAL_FLAG_BLEND)
 		{
 			check(!(m_flags & MATERIAL_FLAG_OPAQUE) && !(m_flags & MATERIAL_FLAG_MASK));
-			desc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
+			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
 		}
 		else
 		{
@@ -353,12 +367,12 @@ namespace Mist
 			if (m_flags & MATERIAL_FLAG_MASK)
 			{
 				check(!(m_flags & MATERIAL_FLAG_OPAQUE));
-				desc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition(alphaTestFlag);
+				shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition(alphaTestFlag);
 			}
 		}
 
-		ConfigureShaderDescription(m_flags, desc);
-		m_shaderProgram = renderSystem->CreateShader(desc);
+		ConfigureShaderDescription(m_flags, shaderDesc);
+		m_shaderProgram = renderSystem->CreateShader(shaderDesc);
 		check(m_shaderProgram);
 	}
 
@@ -367,8 +381,8 @@ namespace Mist
 		render::TextureHandle textures[MATERIAL_TEXTURE_COUNT];
 		for (uint32_t i = 0; i < MATERIAL_TEXTURE_COUNT; ++i)
 			textures[i] = m_textures[i] ? m_textures[i]->GetDeviceTexture() : nullptr;
-		g_render->SetTextureSlot("u_Textures", textures, MATERIAL_TEXTURE_COUNT);
-		g_render->SetSampler("u_Textures", m_samplers, MATERIAL_TEXTURE_COUNT);
+		g_render->SetTextureSlot("u_materialTextures", textures, MATERIAL_TEXTURE_COUNT);
+		g_render->SetSampler("u_materialTextures", m_samplers, MATERIAL_TEXTURE_COUNT);
 	}
 
 	sMaterialRenderData cMaterial::GetRenderData() const

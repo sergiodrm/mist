@@ -59,6 +59,17 @@ namespace Mist
 		uint32_t _padding[3];
 	};
 
+	struct MaterialShaderDescription
+	{
+		Mist::tFixedString<128> shaderFilepaths[render::ShaderType_Count];
+
+		MaterialShaderDescription()
+		{
+			for (uint32_t i = 0; i < render::ShaderType_Count; ++i)
+				shaderFilepaths[i][0] = 0;
+		}
+	};
+
 	class cMaterial : public cRenderResource<RenderResource_Material>
 	{
 	public:
@@ -73,6 +84,7 @@ namespace Mist
 		void Invalidate();
 		void SetupShader(rendersystem::RenderSystem* renderSystem);
 		void SetupShader(rendersystem::RenderSystem* renderSystem, const char* vsFile, const char* fsFile);
+		void SetupShader(rendersystem::RenderSystem* renderSystem, const MaterialShaderDescription& desc);
 
 		void BindTextures(rendersystem::RenderSystem* renderSystem) const;
 		sMaterialRenderData GetRenderData() const;
