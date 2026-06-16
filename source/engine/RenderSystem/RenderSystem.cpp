@@ -1103,9 +1103,11 @@ namespace rendersystem
 		}
     }
 
-    void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray)
+    bool RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray)
     {
         PERF_COUNTER(RS_ResolveBindings);
+        if (!m_shaderContext.IsSomeSetDirty())
+            return false;
 
 		// Bind descriptors sets and memory before draw call
 		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
@@ -1195,9 +1197,10 @@ namespace rendersystem
 			// clear dirty
             m_shaderContext.ClearDirtySet(paramSet.setIndex);
 		}
+        return true;
     }
 
-    void RenderSystem::ResolvePushConstants()
+    bool RenderSystem::ResolvePushConstants()
     {
         if (m_shaderContext.IsPushConstantDirty())
         {
@@ -1206,7 +1209,9 @@ namespace rendersystem
                 GetCommandList()->PushConstants(m_shaderContext.pushConstantBuffers[i].data, m_shaderContext.pushConstantBuffers[i].size, 0, m_shaderContext.pushConstantBuffers[i].stageMask);
             m_shaderContext.ClearPushConstant();
             m_shaderContext.pushConstantBuffers.Clear();
+            return true;
         }
+        return false;
     }
 
     void RenderSystem::ImGuiDrawGpuProfiler()

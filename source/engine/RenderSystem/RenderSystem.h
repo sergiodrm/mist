@@ -628,6 +628,11 @@ namespace rendersystem
                 dirtyPropertiesFlags &= ~(1 << setIndex);
             }
 
+            inline bool IsSomeSetDirty() const
+            {
+                return dirtyPropertiesFlags & ~PushConstantFlag;
+            }
+
             inline void MarkPushConstantDirty()
             {
                 dirtyPropertiesFlags |= PushConstantFlag;
@@ -850,8 +855,8 @@ namespace rendersystem
         void FlushBeforeDispatch();
         void FlushMemoryContext();
         void ResolveClearRenderTarget();
-        void ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray);
-        void ResolvePushConstants();
+        bool ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray);
+        bool ResolvePushConstants();
         render::GraphicsPipelineHandle GetPso(const render::GraphicsPipelineDescription& psoDesc, render::RenderTargetHandle rt);
         render::ComputePipelineHandle GetPso(const render::ComputePipelineDescription& psoDesc);
 
