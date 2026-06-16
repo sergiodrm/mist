@@ -26,6 +26,32 @@ struct MaterialUniformBuffer
 #define MATERIAL_HAS_EMISSIVE_MAP(_flags) _MATERIAL_HAS_MAP(_flags, MATERIAL_TEXTURE_EMISSIVE)
 #endif
 
+#ifndef _MATERIAL_NOT_DEFINE_UNIFORMS_
+
+#ifndef _MATERIAL_SET_
+#define _MATERIAL_SET_ 2
+#endif
+
+layout(set = _MATERIAL_SET_, binding = 0) uniform sampler2D u_materialTextures[MATERIAL_TEXTURE_COUNT];
+
+#ifndef _MATERIAL_AS_UNIFORM_
+
+layout(set = _MATERIAL_SET_, binding = 1) readonly buffer MaterialBlock
+{
+	MaterialUniformBuffer data[];
+} u_materialBuffer;
+
+#else
+
+layout(set = _MATERIAL_SET_, binding = 1) uniform MaterialBlock
+{
+	MaterialUniformBuffer data;
+} u_materialBuffer;
+
+#endif
+
+#endif
+
 
 struct MaterialPBR
 {
@@ -57,7 +83,7 @@ MaterialPBR Material_ReadPBR(const MaterialUniformBuffer mtl,
 #ifdef MATERIAL_APPLY_TEXTURES
 	if (MATERIAL_HAS_ALBEDO_MAP(mtl.Flags.x))
 	{
-		vec4 albedo = texture(u_Textures[MATERIAL_TEXTURE_ALBEDO], texCoords);
+		vec4 albedo = texture(u_materialTextures[MATERIAL_TEXTURE_ALBEDO], texCoords);
 		data.albedo *= albedo.rgb;
 		data.opacity *= albedo.a;
 	}
@@ -67,7 +93,7 @@ MaterialPBR Material_ReadPBR(const MaterialUniformBuffer mtl,
 	// Normals
 #ifdef MATERIAL_APPLY_TEXTURES
 	if (MATERIAL_HAS_NORMAL_MAP(mtl.Flags.x))
-		data.normal = inTBN * normalize(texture(u_Textures[MATERIAL_TEXTURE_NORMAL], texCoords).xyz * 2.0 - vec3(1.0));
+		data.normal = inTBN * normalize(texture(u_materialTextures[MATERIAL_TEXTURE_NORMAL], texCoords).xyz * 2.0 - vec3(1.0));
 	else
 #endif
 		data.normal = normalize(vertexNormal);
@@ -78,7 +104,7 @@ MaterialPBR Material_ReadPBR(const MaterialUniformBuffer mtl,
 #ifdef MATERIAL_APPLY_TEXTURES
 	if (MATERIAL_HAS_METALLIC_ROUGHNESS_MAP(mtl.Flags.x))
 	{
-		vec3 mr = texture(u_Textures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], texCoords).rgb;
+		vec3 mr = texture(u_materialTextures[MATERIAL_TEXTURE_METALLIC_ROUGHNESS], texCoords).rgb;
 		data.roughness *= mr.g;
 		data.metallic *= mr.b;
 	}
@@ -89,7 +115,7 @@ MaterialPBR Material_ReadPBR(const MaterialUniformBuffer mtl,
 #ifdef MATERIAL_APPLY_TEXTURES
 	if (MATERIAL_HAS_SPECULAR_MAP(mtl.Flags.x))
 	{
-		vec4 specular = texture(u_Textures[MATERIAL_TEXTURE_SPECULAR], texCoords);
+		vec4 specular = texture(u_materialTextures[MATERIAL_TEXTURE_SPECULAR], texCoords);
 		data.specular *= specular.a;
 		data.roughness *= specular.g;
 		data.metallic *= specular.b;

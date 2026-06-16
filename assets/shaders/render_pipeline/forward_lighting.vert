@@ -1,6 +1,9 @@
 #version 460
 
 #include <shaders/includes/camera.glsl>
+#include <shaders/includes/model.glsl>
+#include <shaders/includes/vertex_mesh.glsl>
+#include <shaders/includes/instance_data.glsl>
 
 layout (location = 0) out vec4 outFragPos;
 layout (location = 1) out vec3 outColor;
@@ -12,36 +15,25 @@ layout (location = 6) out vec4 outLightSpaceFragPos_2;
 layout (location = 7) out vec3 outViewDir;
 layout (location = 8) out mat3 outTBN;
 
-// Per frame data
-layout (std140, set = 0, binding = 0) uniform CameraBuffer
-{
-    Camera data;
-} u_camera;
-
-layout (std140, set = 0, binding = 1) uniform DepthInfo
+layout (std140, set = 4, binding = 0) uniform DepthInfo
 {
     mat4 LightMatrix[3];
 } u_ShadowMapInfo;
 
-// Per draw data
-layout (std140, set = 1, binding = 0) uniform Object
-{
-    mat4 modelMatrix;
-} u_model;
-
-#include <shaders/includes/vertex_mesh.glsl>
 
 void main()
 {
-    vec4 wsPos = u_model.modelMatrix * vec4(inPosition, 1.0f);
-    gl_Position = Vertex_ComputeWorldPosToClipSpace(wsPos);
+    vec4 wsPos = u_modelBuffer.data[u_instance.data.modelId].worldTransform * vec4(inPosition, 1.0f);
+    gl_Position = u_camera.data.jitteredViewProjection * wsPos;
 
     // Frag position in world space
     outFragPos = wsPos;
+
     // Normal dir in world space
-    mat3 normalTransform = mat3(u_model.modelMatrix);
+    mat3 normalTransform = mat3(u_modelBuffer.data[u_instance.data.modelId].worldTransform);
     outNormal = normalize(normalTransform * normalize(inNormal));
     vec3 tangent = normalize(normalTransform * normalize(inTangent.xyz));
+    
     // Calculate TBN matrix
     vec3 B = cross(outNormal, tangent) * inTangent.w;
     outTBN = mat3(tangent, B, outNormal);

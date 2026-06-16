@@ -194,12 +194,12 @@ namespace Mist
 			//Renderer* renderer = context.Renderer;
 			{
 				rendersystem::ShaderBuildDescription shaderDesc;
-				shaderDesc.SetGraphics("shaders/line.vert", "shaders/line.frag");
+				shaderDesc.SetGraphics("shaders/debug/line.vert", "shaders/debug/line.frag");
 				DebugRenderPipeline.m_lineShader = g_render->CreateShader(shaderDesc);
 			}
 			{
                 rendersystem::ShaderBuildDescription shaderDesc;
-				shaderDesc.SetGraphics("shaders/screenquad.vert", "shaders/screenquad.frag");
+				shaderDesc.SetGraphics("shaders/render_process/screenquad.vert", "shaders/render_process/screenquad.frag");
                 DebugRenderPipeline.m_quadShader = g_render->CreateShader(shaderDesc);
 			}
 

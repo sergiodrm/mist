@@ -17,15 +17,10 @@ layout (location = 2) out vec4 outGBufferEmissive;
 layout (location = 3) out vec4 outGBufferSpecular;
 layout (location = 4) out vec4 outGBufferMotionVectors;
 
-layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
-
 #include <shaders/includes/material.glsl>
-layout(set = 2, binding = 1) uniform MaterialBlock
-{
-	MaterialUniformBuffer data;
-} u_material;
-
 #include <shaders/includes/gbuffer_write.glsl>
+#include <shaders/includes/instance_data.glsl>
+
 
 float ComputeGridLine(float threshold, float worldOffset, vec3 pos)
 {
@@ -59,18 +54,18 @@ void main()
 	data.opacity = 1.f;
 
 	// Albedo and emissive
-	data.opacity = u_material.data.Albedo.a;
-	data.emissive = u_material.data.Emissive.w * u_material.data.Emissive.rgb;
+	data.opacity = u_materialBuffer.data[u_instance.data.materialId].Albedo.a;
+	data.emissive = u_materialBuffer.data[u_instance.data.materialId].Emissive.w * u_materialBuffer.data[u_instance.data.materialId].Emissive.rgb;
 
  	// Normals
 	data.normal = normalize(inNormal);
 
 	// Metallic and Roughness
-	data.roughness = u_material.data.MetallicRoughness.g;
-	data.metallic = u_material.data.MetallicRoughness.r;
+	data.roughness = u_materialBuffer.data[u_instance.data.materialId].MetallicRoughness.g;
+	data.metallic = u_materialBuffer.data[u_instance.data.materialId].MetallicRoughness.r;
 
 	// Specular
-	data.specular = u_material.data.MetallicRoughness.b;
+	data.specular = u_materialBuffer.data[u_instance.data.materialId].MetallicRoughness.b;
 
 	// Motion vectors
 	vec2 currPos = (inCurrWSPos.xy / inCurrWSPos.w) * 0.5 + 0.5;

@@ -11,26 +11,21 @@ layout (location = 2) out vec4 outGBufferEmissive;
 layout (location = 3) out vec4 outGBufferSpecular;
 layout (location = 4) out vec4 outGBufferMotionVectors;
 
-layout(set = 1, binding = 0) uniform sampler2D u_Textures[6];
-
 #define MATERIAL_DISABLE_TEXTURES
+#define _MATERIAL_AS_UNIFORM_
 #include <shaders/includes/material.glsl>
-layout(set = 1, binding = 1) uniform MaterialBlock
-{
-	MaterialUniformBuffer data;
-} u_material;
 
 #include <shaders/includes/gbuffer_write.glsl>
 
 void main() 
 {
-	MaterialPBR pbrData = Material_ReadPBR(u_material.data, vec3(0,1,0));
+	MaterialPBR pbrData = Material_ReadPBR(u_materialBuffer.data, vec3(0,1,0));
 
 	GBuffer data;
 	data.opacity = pbrData.opacity;
 #ifdef ALPHA_TEST
 	// Do alpha test
-	//if (Material_DoAlphaTest(data.opacity, u_material.data.MetallicRoughness.a))
+	//if (Material_DoAlphaTest(data.opacity, u_materialBuffer.data.MetallicRoughness.a))
 	//	discard;
 #endif
 	data.albedo = pbrData.albedo;

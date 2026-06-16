@@ -12,6 +12,15 @@ layout (set = 1, binding = 3) uniform TAAParams
     vec2 alpha;
 } u_params;
 
+#ifdef TAA_CLAMPING_COLOR
+#define neighbour_clamping_offset_count 8
+ivec2 neighbourClampingOffsets[neighbour_clamping_offset_count] = ivec2[neighbour_clamping_offset_count] (
+    ivec2(-1,-1), ivec2(-1,0), ivec2(-1,1),
+    ivec2(0,-1), ivec2(0, 1),
+    ivec2(1,-1), ivec2(1, 0), ivec2(1, 1)
+);
+#endif // TAA_CLAMPING_COLOR
+
 vec2 CameraReprojection(vec2 tc)
 {
     return tc - texture(u_motionVectorsTex, tc).rg;
@@ -25,14 +34,15 @@ vec4 ComputeColor(vec2 tc, vec4 color)
 
     // 3x3 color clamping
     vec2 sampleDiff = vec2(1.f)/vec2(u_params.texSize.x, u_params.texSize.y);
-    for (int x = -1; x < 2; ++x)
+    for (int i = 0; i < neighbour_clamping_offset_count; ++i)
     {
-        for (int y = -1; y < 2; ++y)
-        {
-            vec4 c = texture(u_currentTex, tc + sampleDiff * vec2(x, y));
-            minColor = min(minColor, c);
-            maxColor = max(maxColor, c);
-        }
+        vec2 neighbourTc = tc + sampleDiff * vec2(neighbourClampingOffsets[i].x, neighbourClampingOffsets[i].y);
+        //if (neighbourTc.x < sampleDiff.x || neighbourTc.x > (1.f-sampleDiff.x)
+        //    || neighbourTc.y < sampleDiff.y || neighbourTc.y > (1.f-sampleDiff.y))
+        //    continue;
+        vec4 c = texture(u_currentTex, neighbourTc);
+        minColor = min(minColor, c);
+        maxColor = max(maxColor, c);
     }
     return clamp(color, minColor, maxColor);
 #else

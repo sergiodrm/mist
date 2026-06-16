@@ -55,7 +55,6 @@ namespace Mist
 
 	private:
 		render::BufferHandle m_vb;
-		rendersystem::ShaderProgram* m_shader;
 		TerrainDescription m_description;
 		TesselationControlParams m_controlParams;
 		TesselationEvaluationParams m_evaluationParams;

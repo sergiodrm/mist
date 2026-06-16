@@ -11,9 +11,16 @@ void main()
 {
     vec3 normal = normalize(localPos);
     vec3 irradiance = vec3(0.0);
+#if 0
     vec3 up = vec3(0,1,0);
     vec3 right = normalize(cross(up, normal));
     up = normalize(cross(normal, right));
+#else
+    vec3 up = abs(normal.y) < 0.999 ? vec3(0,1,0) : vec3(1,0,0);
+    vec3 right = normalize(cross(up, normal));
+    up = cross(normal, right);
+#endif
+
 
     float sampleDelta = 0.025;
     int nrSamples = 0;

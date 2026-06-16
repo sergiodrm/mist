@@ -8,12 +8,12 @@
 
 namespace Mist
 {
-	CIntVar CVar_Terrain("r_terrain", 1);
+	CIntVar CVar_Terrain("r_terrain", 0);
 
 	extern rendersystem::RenderSystem* g_render;
 
 	Terrain::Terrain()
-		: m_vb(nullptr), m_shader(nullptr), m_heightMap(nullptr), m_noiseTex(nullptr), m_transform{ {0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f} }
+		: m_vb(nullptr), m_heightMap(nullptr), m_noiseTex(nullptr), m_transform{{0.f, 0.f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}
 	{
 	}
 
@@ -35,9 +35,12 @@ namespace Mist
 		desc.patchPoints = 4;
 		InitTerrainVertices(rs, desc);
 
-		rendersystem::ShaderBuildDescription shaderDesc;
-		shaderDesc.SetGraphics("shaders/gbuffer_terrain_dyn.vert", "shaders/gbuffer_terrain.frag", "shaders/terrain.tcs", "shaders/terrain.tes");
-		m_shader = rs->CreateShader(shaderDesc);
+		MaterialShaderDescription mtlDesc;
+		mtlDesc.shaderFilepaths[render::ShaderType_Vertex].Set("shaders/render_pipeline/gbuffer_terrain_dyn.vert");
+		mtlDesc.shaderFilepaths[render::ShaderType_Fragment].Set("shaders/render_pipeline/gbuffer_terrain.frag");
+		mtlDesc.shaderFilepaths[render::ShaderType_TesselationControl].Set("shaders/render_pipeline/terrain.tcs");
+		mtlDesc.shaderFilepaths[render::ShaderType_TesselationEvaluation].Set("shaders/render_pipeline/terrain.tes");
+		m_mtl.SetupShader(rs, mtlDesc);
 
 		rendersystem::ui::AddWindowCallback("Terrain", [](void* data)
 			{
@@ -59,14 +62,14 @@ namespace Mist
 			return;
 
 		rs->BeginMarker("Terrain tesselation");
-		rs->SetShader(m_shader);
+		rs->SetShader(m_mtl.GetShaderProgram());
 		rs->SetDepthEnable(true, true);
 		rs->SetBlendEnable(false);
 		rs->SetPatchControlPoints(4);
 		rs->SetPrimitive(render::PrimitiveType_PatchList);
 		rs->SetVertexBuffer(m_vb);
 		sMaterialRenderData materialData = m_mtl.GetRenderData();
-		rs->SetShaderProperty("u_material", &materialData, sizeof(materialData));
+		rs->SetShaderProperty("u_materialBuffer", &materialData, sizeof(materialData));
 		rs->SetTextureSlot("u_HeightMap", m_noiseTex);
 		rs->SetSampler("u_HeightMap", 
 			render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
@@ -77,7 +80,7 @@ namespace Mist
 		rs->SetShaderProperty("u_params", &m_evaluationParams, sizeof(TesselationEvaluationParams));
 		glm::mat4 t;
 		TransformComponentToMatrix(&m_transform, &t, 1);
-		rs->SetShaderProperty("u_model", &t, sizeof(glm::mat4));
+		rs->SetShaderProperty("u_modelBuffer", &t, sizeof(glm::mat4));
 		rs->Draw(GetVertexCount());
 		rs->EndMarker();
 
@@ -93,6 +96,7 @@ namespace Mist
 	{
 		ImGui::Begin("Terrain");
 		static bool moveWithCamera = false;
+		ImGuiUtils::EditCVar(CVar_Terrain);
 		ImGui::Checkbox("Move with camera", &moveWithCamera);
 		if (!moveWithCamera)
 			ImGuiUtils::EditTransform("Transform", &m_transform.Position[0], &m_transform.Rotation, &m_transform.Scale[0]);

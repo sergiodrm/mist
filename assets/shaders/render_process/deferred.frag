@@ -3,7 +3,7 @@
 layout(location = 0) in vec2 inTexCoords;
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 1) uniform ShadowMapInfo
+layout(set = 3, binding = 1) uniform ShadowMapInfo
 {
     mat4 LightViewMat[MAX_SHADOW_MAPS];
     vec4 noiseParams;
@@ -13,11 +13,8 @@ layout(set = 0, binding = 1) uniform ShadowMapInfo
 #define LIGHTING_SHADOWS_NOISE_FACTOR u_ShadowMapInfo.noiseParams.y
 #define LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE int(u_ShadowMapInfo.noiseParams.z)
 
+#define _CAMERA_NOT_PREV_FRAME_
 #include <shaders/includes/camera.glsl>
-layout(set = 0, binding = 2) uniform CameraInfo
-{
-    Camera data;
-} u_camera;
 #define CAMERA_DATA u_camera.data
 
 // GBuffer textures
@@ -54,7 +51,7 @@ layout(set = 2, binding = 3) uniform sampler2D u_blueNoise;
 #define CAMERA_DATA_INV_PROJECTION (CAMERA_DATA.invViewProjection)
 #include <shaders/includes/gbuffer_read.glsl>
 
-layout (std140, set = 0, binding = 0) uniform EnvBlock
+layout (std140, set = 3, binding = 0) uniform EnvBlock
 {
     Environment data;
 } u_env;

@@ -1,6 +1,6 @@
 - Name: unknown
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/metalrough/Spheres_BaseColor.png

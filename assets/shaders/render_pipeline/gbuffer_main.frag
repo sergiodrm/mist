@@ -15,25 +15,19 @@ layout (location = 2) out vec4 outGBufferEmissive;
 layout (location = 3) out vec4 outGBufferSpecular;
 layout (location = 4) out vec4 outGBufferMotionVectors;
 
-layout(set = 2, binding = 0) uniform sampler2D u_Textures[6];
-
 #include <shaders/includes/material.glsl>
-layout(set = 2, binding = 1) uniform MaterialBlock
-{
-	MaterialUniformBuffer data;
-} u_material;
-
+#include <shaders/includes/instance_data.glsl>
 #include <shaders/includes/gbuffer_write.glsl>
 
 void main() 
 {
-	MaterialPBR pbrData = Material_ReadPBR(u_material.data, inUV, inNormal);
+	MaterialPBR pbrData = Material_ReadPBR(u_materialBuffer.data[u_instance.data.materialId], inUV, inNormal);
 
 	GBuffer data;
 	data.opacity = pbrData.opacity;
 #ifdef ALPHA_TEST
 	// Do alpha test
-	if (Material_DoAlphaTest(data.opacity, u_material.data.MetallicRoughness.a))
+	if (Material_DoAlphaTest(data.opacity, u_materialBuffer.data[u_instance.data.materialId].MetallicRoughness.a))
 		discard;
 #endif
 	data.albedo = pbrData.albedo;
@@ -43,5 +37,6 @@ void main()
 	data.metallic = pbrData.metallic;
 	data.specular = pbrData.specular;
 	data.motionVectors = GBuffer_ComputeMotionVectors(inCurrWSPos, inPrevWSPos);
+	
 	GBuffer_Write(data);
 }

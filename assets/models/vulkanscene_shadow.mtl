@@ -1,6 +1,6 @@
 - Name: White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -18,8 +18,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -37,8 +37,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: White_003
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -56,8 +56,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Black_003
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -75,8 +75,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Logo_003
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -94,8 +94,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: White_002
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -113,8 +113,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Black_002
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -132,8 +132,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: White_001
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -151,8 +151,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Logo_001
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -170,8 +170,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Black_001
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -189,8 +189,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Material.001
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:

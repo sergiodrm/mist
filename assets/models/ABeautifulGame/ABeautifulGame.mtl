@@ -1,6 +1,6 @@
 - Name: King_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/king_black_base_color.jpg
@@ -26,8 +26,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: King_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/king_white_base_color.jpg
@@ -53,8 +53,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Queen_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/queen_black_base_color.jpg
@@ -80,8 +80,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Queen_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/queen_white_base_color.jpg
@@ -107,8 +107,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Chessboard
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/chessboard_base_color.jpg
@@ -134,8 +134,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pawn_Top_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_NORMAL:
       Tex: models/ABeautifulGame/Pawn_normal.jpg
@@ -158,8 +158,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pawn_Body_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/pawn_white_base_color.jpg
@@ -185,8 +185,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pawn_Top_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_NORMAL:
       Tex: models/ABeautifulGame/Pawn_normal.jpg
@@ -209,8 +209,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pawn_Body_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/pawn_black_base_color.jpg
@@ -236,8 +236,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Castle_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/castle_black_base_color.jpg
@@ -263,8 +263,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Castle_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/castle_white_base_color.jpg
@@ -290,8 +290,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Knight_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/knight_black_base_color.jpg
@@ -317,8 +317,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Knight_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/knight_white_base_color.jpg
@@ -344,8 +344,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Bishop_Black
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/bishop_black_base_color.jpg
@@ -371,8 +371,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Bishop_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/ABeautifulGame/bishop_white_base_color.jpg

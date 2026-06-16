@@ -60,7 +60,7 @@ namespace Mist
 
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.SetGraphics("shaders/quad.vert", "shaders/deferred.frag");
+			shaderDesc.SetGraphics("shaders/render_process/quad.vert", "shaders/render_process/deferred.frag");
 			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SHADOW_MAPS", static_cast<int>(globals::MaxShadowMapAttachments));
 			m_lightingShader = rs->CreateShader(shaderDesc);
 			shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("DEFERRED_APPLY_FOG");
@@ -68,7 +68,7 @@ namespace Mist
 		}
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.SetGraphics("shaders/skybox.vert", "shaders/skybox.frag");
+			shaderDesc.SetGraphics("shaders/render_process/skybox.vert", "shaders/render_process/skybox.frag");
             m_skyboxShader = rs->CreateShader(shaderDesc);
 		}
 

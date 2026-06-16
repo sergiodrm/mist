@@ -49,12 +49,12 @@ namespace Mist
 		// Create shader
 		{
 			rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.SetCompute("shaders/particles.comp");
+			shaderDesc.SetCompute("shaders/particles/particles.comp");
 			m_computeShader = renderSystem->CreateShader(shaderDesc);
 		}
 		{
             rendersystem::ShaderBuildDescription shaderDesc;
-			shaderDesc.SetGraphics("shaders/particles.vert", "shaders/particles.frag");
+			shaderDesc.SetGraphics("shaders/particles/particles.vert", "shaders/particles/particles.frag");
             m_graphicsShader = renderSystem->CreateShader(shaderDesc);
 		}
 

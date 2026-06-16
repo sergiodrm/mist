@@ -3,23 +3,10 @@
 layout (quads, fractional_odd_spacing, ccw) in;
 
 
-#include <shaders/includes/model.glsl>
 #include <shaders/includes/camera.glsl>
 
-
-// Uniforms
-layout (set = 0, binding = 0) uniform CameraBlock 
-{
-	Camera data;
-} u_camera;
-
-layout (set = 0, binding = 1) uniform PrevCameraBlock 
-{
-	Camera data;
-} u_prevCamera;
-
-layout (set = 2, binding = 0) uniform sampler2D u_HeightMap;
-layout (set = 2, binding = 1) uniform UBO
+layout (set = 4, binding = 0) uniform sampler2D u_HeightMap;
+layout (set = 4, binding = 1) uniform UBO
 {
     float heightScale;
     float heightShift;

@@ -13,16 +13,16 @@ namespace Mist
 	void PreprocessIrradianceResources::Init(rendersystem::RenderSystem* rs)
 	{
 		rendersystem::ShaderBuildDescription shaderDesc;
-		shaderDesc.SetGraphics("shaders/preprocess_equirectangular_cubemap.vert", "shaders/preprocess_equirectangular_cubemap.frag");
+		shaderDesc.SetGraphics("shaders/render_preprocess/preprocess_equirectangular_cubemap.vert", "shaders/render_preprocess/preprocess_equirectangular_cubemap.frag");
 		equirectangularShader = rs->CreateShader(shaderDesc);
 
-		shaderDesc.SetGraphics("shaders/preprocess_equirectangular_cubemap.vert", "shaders/preprocess_irradiance_cubemap.frag");
+		shaderDesc.SetGraphics("shaders/render_preprocess/preprocess_equirectangular_cubemap.vert", "shaders/render_preprocess/preprocess_irradiance_cubemap.frag");
 		irradianceShader = rs->CreateShader(shaderDesc);
 
-		shaderDesc.SetGraphics("shaders/preprocess_equirectangular_cubemap.vert", "shaders/preprocess_specular_cubemap.frag");
+		shaderDesc.SetGraphics("shaders/render_preprocess/preprocess_equirectangular_cubemap.vert", "shaders/render_preprocess/preprocess_specular_cubemap.frag");
 		specularShader = rs->CreateShader(shaderDesc);
 
-		shaderDesc.SetGraphics("shaders/quad.vert", "shaders/preprocess_brdf.frag");
+		shaderDesc.SetGraphics("shaders/render_process/quad.vert", "shaders/render_preprocess/preprocess_brdf.frag");
 		brdfShader = rs->CreateShader(shaderDesc);
 
 		render::TextureDescription texDesc;

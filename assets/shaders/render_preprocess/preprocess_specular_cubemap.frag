@@ -68,6 +68,7 @@ void main()
 {
     vec3 N = normalize(localPos);    
 	N.y *= -1.f; // invert y direction, vulkan has 0 coordinate on top-left.
+	N.x *= -1.f; // invert y direction, vulkan has 0 coordinate on top-left.
     vec3 R = N;
     vec3 V = R;
     float roughness = max(u_data.data.x, 0.04f);

@@ -1,6 +1,6 @@
 - Name: Emit4
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -18,8 +18,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: FlatBackdrop
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/emissive/PlainGrid.png
@@ -39,8 +39,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Emit2
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -58,8 +58,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Emit1
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -77,8 +77,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Emit8
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:
@@ -96,8 +96,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Emit16
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     {}
   Properties:

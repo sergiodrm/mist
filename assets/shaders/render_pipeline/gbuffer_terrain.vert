@@ -22,7 +22,7 @@ layout (set = 0, binding = 1) uniform PrevCameraBlock
 	Camera data;
 } u_prevCamera;
 
-#define VERTEX_MESH_DISABLE_DEFAULT_VERTEX
+#define _VERTEX_MESH_DISABLE_DEFAULT_VERTEX_
 #include <shaders/includes/vertex_mesh.glsl>
 layout (location = 0) in vec3 inPosition;
 

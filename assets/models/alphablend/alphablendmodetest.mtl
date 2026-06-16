@@ -1,6 +1,6 @@
 - Name: MatBed
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/alphablend/MatBed_baseColor.jpg
@@ -26,8 +26,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MatBlend
-  Vertex shader: shaders/forward_lighting.vert
-  Fragment shader: shaders/forward_lighting.frag
+  Vertex shader: shaders/render_pipeline/forward_lighting.vert
+  Fragment shader: shaders/render_pipeline/forward_lighting.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/alphablend/AlphaBlendLabels.png
@@ -47,8 +47,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MatCutoff25
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/alphablend/AlphaBlendLabels.png
@@ -68,8 +68,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MatCutoff75
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/alphablend/AlphaBlendLabels.png
@@ -89,8 +89,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MatCutoffDefault
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/alphablend/AlphaBlendLabels.png
@@ -110,8 +110,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MatOpaque
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/alphablend/AlphaBlendLabels.png

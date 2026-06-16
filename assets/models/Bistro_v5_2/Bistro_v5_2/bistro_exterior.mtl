@@ -1,6 +1,6 @@
 - Name: Vespa_Headlight
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Vespa_Headlight_BaseColor-Vespa_Headlight_BaseColor.png
@@ -26,8 +26,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Leaves.DoubleSided
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Leaves_BaseColor-Foliage_Leaves_BaseColor.png
@@ -53,8 +53,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Trunk
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Trunk_BaseColor-Foliage_Trunk_BaseColor.png
@@ -80,8 +80,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Vespa_Odometer_Glass
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Vespa_Odometer_Glass_BaseColor-Vespa_Odometer_Glass_BaseColor.png
@@ -107,8 +107,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Vespa
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Vespa_BaseColor-Vespa_BaseColor.png
@@ -134,8 +134,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Vespa_Odometer
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Vespa_Odometer_BaseColor-Vespa_Odometer_BaseColor.png
@@ -161,8 +161,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Bux_Hedges46.DoubleSided
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Bux_Hedges46_BaseColor-Foliage_Bux_Hedges46_BaseColor.png
@@ -188,8 +188,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Ivy_leaf_a.DoubleSided
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Ivy_leaf_a_BaseColor-Foliage_Ivy_leaf_a_BaseColor.png
@@ -215,8 +215,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Ivy_branches
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Ivy_branches_BaseColor-Foliage_Ivy_branches_BaseColor.png
@@ -242,8 +242,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Linde_Tree_Large_Trunk
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Linde_Tree_Large_Trunk_BaseColor-Foliage_Linde_Tree_Large_Trunk_BaseColor.png
@@ -269,8 +269,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Linde_Tree_Large_Orange_Leaves.DoubleSided
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Linde_Tree_Large_Orange_Leaves_BaseColor-Foliage_Linde_Tree_Large_Orange_Leaves_BaseColor.png
@@ -296,8 +296,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Linde_Tree_Large_Green_Leaves.DoubleSided
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Linde_Tree_Large_Green_Leaves_BaseColor-Foliage_Linde_Tree_Large_Green_Leaves_BaseColor.png
@@ -323,8 +323,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Antenna_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Antenna_Metal_BaseColor-Antenna_Metal_BaseColor.png
@@ -350,8 +350,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Antenna_Plastic_Blue
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Antenna_Plastic_Blue_BaseColor-Antenna_Plastic_Blue_BaseColor.png
@@ -377,8 +377,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Antenna_Plastic
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Antenna_Plastic_BaseColor-Antenna_Plastic_BaseColor.png
@@ -404,8 +404,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Ashtray
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Ashtray_BaseColor-Ashtray_BaseColor.png
@@ -431,8 +431,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Awnings_Hotel_Fabric
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Awnings_Hotel_Fabric_BaseColor-Awnings_Hotel_Fabric_BaseColor.png
@@ -458,8 +458,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Awnings_Fabric
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Awnings_Fabric_BaseColor-Awnings_Fabric_BaseColor.png
@@ -485,8 +485,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Awnings_Beams
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Awnings_Beams_BaseColor-Awnings_Beams_BaseColor.png
@@ -512,8 +512,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Bistro_Sign_Main
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Bistro_Sign_Main_BaseColor-Bistro_Sign_Main_BaseColor.png
@@ -539,8 +539,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Bistro_Sign_Letters
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Bistro_Sign_Letters_BaseColor-Bistro_Sign_Letters_BaseColor.png
@@ -566,8 +566,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Banner_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Banner_Metal_BaseColor-Banner_Metal_BaseColor.png
@@ -593,8 +593,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Bollards
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Bollards_BaseColor-Bollards_BaseColor.png
@@ -620,8 +620,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Wood_Painted3
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Wood_Painted3_BaseColor-MASTER_Wood_Painted3_BaseColor.png
@@ -647,8 +647,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_Grooved
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_Grooved_BaseColor-MASTER_Concrete_Grooved_BaseColor.png
@@ -674,8 +674,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_Smooth
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_Smooth_BaseColor-MASTER_Concrete_Smooth_BaseColor.png
@@ -701,8 +701,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_Plaster1_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_Plaster1_BLENDSHADER_BaseColor-MASTER_Concrete_Plaster1_BLENDSHADER_BaseColor.png
@@ -728,8 +728,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Spotlight_Glass_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Spotlight_Glass_Emissive_BaseColor-Spotlight_Glass_Emissive_BaseColor.png
@@ -755,8 +755,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Focus
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Focus_BaseColor-MASTER_Focus_BaseColor.png
@@ -782,8 +782,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Grain_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Grain_Metal_BaseColor-MASTER_Grain_Metal_BaseColor.png
@@ -809,8 +809,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Glass_Exterior
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Glass_Exterior_BaseColor-MASTER_Glass_Exterior_BaseColor.png
@@ -836,8 +836,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Metal_BaseColor-MASTER_Metal_BaseColor.png
@@ -863,8 +863,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Light_Bulb
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Light_Bulb_BaseColor-MASTER_Light_Bulb_BaseColor.png
@@ -890,8 +890,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Metal_Pipe
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Metal_Pipe_BaseColor-MASTER_Metal_Pipe_BaseColor.png
@@ -917,8 +917,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Forge_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Forge_Metal_BaseColor-MASTER_Forge_Metal_BaseColor.png
@@ -944,8 +944,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Focus_Ornament
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Focus_Ornament_BaseColor-MASTER_Focus_Ornament_BaseColor.png
@@ -971,8 +971,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Wood_Polished
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Wood_Polished_BaseColor-MASTER_Wood_Polished_BaseColor.png
@@ -998,8 +998,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Roofing_Shingle_Grey
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Roofing_Shingle_Grey_BaseColor-MASTER_Roofing_Shingle_Grey_BaseColor.png
@@ -1025,8 +1025,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Roofing_Shingle_Green
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Roofing_Shingle_Green_BaseColor-MASTER_Roofing_Shingle_Green_BaseColor.png
@@ -1052,8 +1052,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Plastic
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Plastic_BaseColor-MASTER_Plastic_BaseColor.png
@@ -1079,8 +1079,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete1
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete1_BaseColor-MASTER_Concrete1_BaseColor.png
@@ -1106,8 +1106,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Curtains
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Curtains_BaseColor-MASTER_Curtains_BaseColor.png
@@ -1133,8 +1133,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Glass_Dirty_MASKED
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Glass_Dirty_MASKED_BaseColor-MASTER_Glass_Dirty_MASKED_BaseColor.png
@@ -1160,8 +1160,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_BaseColor-MASTER_Concrete_BaseColor.png
@@ -1187,8 +1187,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Bistro_Main_Door
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Bistro_Main_Door_BaseColor-MASTER_Bistro_Main_Door_BaseColor.png
@@ -1214,8 +1214,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_Yellow
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_Yellow_BaseColor-MASTER_Concrete_Yellow_BaseColor.png
@@ -1241,8 +1241,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Trim_Cornice
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Trim_Cornice_BaseColor-MASTER_Trim_Cornice_BaseColor.png
@@ -1268,8 +1268,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Emissive_StreetLight
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Emissive_StreetLight_BaseColor-Emissive_StreetLight_BaseColor.png
@@ -1295,8 +1295,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Side_Letters
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Side_Letters_BaseColor-MASTER_Side_Letters_BaseColor.png
@@ -1322,8 +1322,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Glass_Dirty
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Glass_Dirty_BaseColor-MASTER_Glass_Dirty_BaseColor.png
@@ -1349,8 +1349,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Doors
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Doors_BaseColor-MASTER_Doors_BaseColor.png
@@ -1376,8 +1376,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Brick_Large_Beige_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Brick_Large_Beige_BLENDSHADER_BaseColor-MASTER_Brick_Large_Beige_BLENDSHADER_BaseColor.png
@@ -1403,8 +1403,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Wood_Brown
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Wood_Brown_BaseColor-MASTER_Wood_Brown_BaseColor.png
@@ -1430,8 +1430,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Brick_Small_Red_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Brick_Small_Red_BLENDSHADER_BaseColor-MASTER_Brick_Small_Red_BLENDSHADER_BaseColor.png
@@ -1457,8 +1457,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Wood_Painted_Green
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Wood_Painted_Green_BaseColor-MASTER_Wood_Painted_Green_BaseColor.png
@@ -1484,8 +1484,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_Plaster
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_Plaster_BaseColor-MASTER_Concrete_Plaster_BaseColor.png
@@ -1511,8 +1511,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Black_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Black_Metal_BaseColor-MASTER_Black_Metal_BaseColor.png
@@ -1538,8 +1538,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Brick_Large_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Brick_Large_White_BaseColor-MASTER_Brick_Large_White_BaseColor.png
@@ -1565,8 +1565,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Building_Details
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Building_Details_BaseColor-MASTER_Building_Details_BaseColor.png
@@ -1592,8 +1592,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Wood_Painted_Cyan
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Wood_Painted_Cyan_BaseColor-MASTER_Wood_Painted_Cyan_BaseColor.png
@@ -1619,8 +1619,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Brick_Small_Red
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Brick_Small_Red_BaseColor-MASTER_Brick_Small_Red_BaseColor.png
@@ -1646,8 +1646,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Roofing_Metal_01
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Roofing_Metal_01_BaseColor-MASTER_Roofing_Metal_01_BaseColor.png
@@ -1673,8 +1673,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Room_Interior
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Room_Interior_BaseColor-MASTER_Room_Interior_BaseColor.png
@@ -1700,8 +1700,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Awning_Beams
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Awning_Beams_BaseColor-MASTER_Awning_Beams_BaseColor.png
@@ -1727,8 +1727,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Boulangerie
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Boulangerie_BaseColor-MASTER_Boulangerie_BaseColor.png
@@ -1754,8 +1754,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Frosted_Glass
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Frosted_Glass_BaseColor-MASTER_Frosted_Glass_BaseColor.png
@@ -1781,8 +1781,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Awning_Fabric_Cyan
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Awning_Fabric_Cyan_BaseColor-MASTER_Awning_Fabric_Cyan_BaseColor.png
@@ -1808,8 +1808,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_White
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_White_BaseColor-MASTER_Concrete_White_BaseColor.png
@@ -1835,8 +1835,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Bronze_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Bronze_BLENDSHADER_BaseColor-MASTER_Bronze_BLENDSHADER_BaseColor.png
@@ -1862,8 +1862,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Awning_Fabric_Red
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Awning_Fabric_Red_BaseColor-MASTER_Awning_Fabric_Red_BaseColor.png
@@ -1889,8 +1889,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Book_Covers
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Book_Covers_BaseColor-MASTER_Book_Covers_BaseColor.png
@@ -1916,8 +1916,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Concrete_Smooth_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Concrete_Smooth_BLENDSHADER_BaseColor-MASTER_Concrete_Smooth_BLENDSHADER_BaseColor.png
@@ -1943,8 +1943,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Wood_Painted_Green_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Wood_Painted_Green_BLENDSHADER_BaseColor-MASTER_Wood_Painted_Green_BLENDSHADER_BaseColor.png
@@ -1970,8 +1970,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Rollup_Door
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Rollup_Door_BaseColor-MASTER_Rollup_Door_BaseColor.png
@@ -1997,8 +1997,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MASTER_Details_Dark
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MASTER_Details_Dark_BaseColor-MASTER_Details_Dark_BaseColor.png
@@ -2024,8 +2024,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_Chair_01
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_Chair_01_BaseColor-Paris_Chair_01_BaseColor.png
@@ -2051,8 +2051,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Concrete
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Concrete_BaseColor-Concrete_BaseColor.png
@@ -2078,8 +2078,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Plaster
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Plaster_BaseColor-Plaster_BaseColor.png
@@ -2105,8 +2105,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Concrete2
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Concrete2_BaseColor-Concrete2_BaseColor.png
@@ -2132,8 +2132,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Chimneys_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Chimneys_Metal_BaseColor-Chimneys_Metal_BaseColor.png
@@ -2159,8 +2159,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Concrete_Striped
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Concrete_Striped_BaseColor-Concrete_Striped_BaseColor.png
@@ -2186,8 +2186,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: ElectricBox
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/ElectricBox_BaseColor-ElectricBox_BaseColor.png
@@ -2213,8 +2213,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Paris_Flowers
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Paris_Flowers_BaseColor-Foliage_Paris_Flowers_BaseColor.png
@@ -2240,8 +2240,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Foliage_Flowers.DoubleSided
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Foliage_Flowers_BaseColor-Foliage_Flowers_BaseColor.png
@@ -2267,8 +2267,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_LiquorBottle_01_Glass_Wine
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_LiquorBottle_01_Glass_Wine_BaseColor-Paris_LiquorBottle_01_Glass_Wine_BaseColor.png
@@ -2294,8 +2294,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_LiquorBottle_01_Caps
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_LiquorBottle_01_Caps_BaseColor-Paris_LiquorBottle_01_Caps_BaseColor.png
@@ -2321,8 +2321,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_LiquorBottle_01_Labels
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_LiquorBottle_01_Labels_BaseColor-Paris_LiquorBottle_01_Labels_BaseColor.png
@@ -2345,8 +2345,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Balcony_Concrete
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Balcony_Concrete_BaseColor-Balcony_Concrete_BaseColor.png
@@ -2372,8 +2372,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Balcony_Trims
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Balcony_Trims_BaseColor-Balcony_Trims_BaseColor.png
@@ -2399,8 +2399,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Balcony_Ornaments
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Balcony_Ornaments_BaseColor-Balcony_Ornaments_BaseColor.png
@@ -2426,8 +2426,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Balcony_Green_Wood
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Balcony_Green_Wood_BaseColor-Balcony_Green_Wood_BaseColor.png
@@ -2453,8 +2453,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MenuSign_01
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MenuSign_01_BaseColor-MenuSign_01_BaseColor.png
@@ -2480,8 +2480,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MenuSign_02_Mesh
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MenuSign_02_Mesh_BaseColor-MenuSign_02_Mesh_BaseColor.png
@@ -2507,8 +2507,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: MenuSign_02_Glass
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/MenuSign_02_Glass_BaseColor-MenuSign_02_Glass_BaseColor.png
@@ -2534,8 +2534,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: NapkinHolder
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/NapkinHolder_BaseColor-NapkinHolder_BaseColor.png
@@ -2561,8 +2561,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Plantpots
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Plantpots_BaseColor-Plantpots_BaseColor.png
@@ -2588,8 +2588,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Shopsign_Bakery
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Shopsign_Bakery_BaseColor-Shopsign_Bakery_BaseColor.png
@@ -2615,8 +2615,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Shopsign_Ties_Shop
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Shopsign_Ties_Shop_BaseColor-Shopsign_Ties_Shop_BaseColor.png
@@ -2642,8 +2642,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Shopsign_Book_Store_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Shopsign_Book_Store_Emissive_BaseColor-Shopsign_Book_Store_Emissive_BaseColor.png
@@ -2669,8 +2669,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Shopsign_Pharmacy_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Shopsign_Pharmacy_Emissive_BaseColor-Shopsign_Pharmacy_Emissive_BaseColor.png
@@ -2696,8 +2696,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Sidewalkbarrier
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Sidewalkbarrier_BaseColor-Sidewalkbarrier_BaseColor.png
@@ -2723,8 +2723,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Curbstones
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Curbstones_BaseColor-Pavement_Curbstones_BaseColor.png
@@ -2750,8 +2750,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobblestone_Small_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobblestone_Small_BLENDSHADER_BaseColor-Pavement_Cobblestone_Small_BLENDSHADER_BaseColor.png
@@ -2777,8 +2777,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobblestone_Big_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobblestone_Big_BLENDSHADER_BaseColor-Pavement_Cobblestone_Big_BLENDSHADER_BaseColor.png
@@ -2804,8 +2804,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Brick_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Brick_BLENDSHADER_BaseColor-Pavement_Brick_BLENDSHADER_BaseColor.png
@@ -2831,8 +2831,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobblestone_02
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobblestone_02_BaseColor-Pavement_Cobblestone_02_BaseColor.png
@@ -2858,8 +2858,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Ground_Wet
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Ground_Wet_BaseColor-Pavement_Ground_Wet_BaseColor.png
@@ -2885,8 +2885,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobblestone_Wet_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobblestone_Wet_BLENDSHADER_BaseColor-Pavement_Cobblestone_Wet_BLENDSHADER_BaseColor.png
@@ -2912,8 +2912,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobblestone_Wet_Leaves_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobblestone_Wet_Leaves_BLENDSHADER_BaseColor-Pavement_Cobblestone_Wet_Leaves_BLENDSHADER_BaseColor.png
@@ -2939,8 +2939,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobble_Leaves_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobble_Leaves_BLENDSHADER_BaseColor-Pavement_Cobble_Leaves_BLENDSHADER_BaseColor.png
@@ -2966,8 +2966,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Cobblestone_01_BLENDSHADER
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Cobblestone_01_BLENDSHADER_BaseColor-Pavement_Cobblestone_01_BLENDSHADER_BaseColor.png
@@ -2993,8 +2993,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Concrete3
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Concrete3_BaseColor-Concrete3_BaseColor.png
@@ -3020,8 +3020,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Streetlight_Metal
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Streetlight_Metal_BaseColor-Streetlight_Metal_BaseColor.png
@@ -3047,8 +3047,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Streetlight_Chains
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Streetlight_Chains_BaseColor-Streetlight_Chains_BaseColor.png
@@ -3074,8 +3074,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_White_Color
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_White_Color_BaseColor-Paris_StringLights_01_White_Color_BaseColor.png
@@ -3101,8 +3101,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Streetlight_Support_Bulb
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Streetlight_Support_Bulb_BaseColor-Streetlight_Support_Bulb_BaseColor.png
@@ -3128,8 +3128,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StreetPivot
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StreetPivot_BaseColor-Paris_StreetPivot_BaseColor.png
@@ -3155,8 +3155,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StreetSign_01
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StreetSign_01_BaseColor-Paris_StreetSign_01_BaseColor.png
@@ -3182,8 +3182,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_Table_Terrace
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_Table_Terrace_BaseColor-Paris_Table_Terrace_BaseColor.png
@@ -3209,8 +3209,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_TrafficSign_A
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_TrafficSign_A_BaseColor-Paris_TrafficSign_A_BaseColor.png
@@ -3236,8 +3236,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Trashcan
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Trashcan_BaseColor-Trashcan_BaseColor.png
@@ -3263,8 +3263,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Spotlight_Main
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Spotlight_Main_BaseColor-Spotlight_Main_BaseColor.png
@@ -3290,8 +3290,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Spotlight_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Spotlight_Emissive_BaseColor-Spotlight_Emissive_BaseColor.png
@@ -3317,8 +3317,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: LanternEmissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/LanternEmissive_BaseColor-LanternEmissive_BaseColor.png
@@ -3344,8 +3344,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Pavement_Manhole_Cover
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Pavement_Manhole_Cover_BaseColor-Pavement_Manhole_Cover_BaseColor.png
@@ -3371,8 +3371,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Stringlights
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Stringlights_BaseColor-Stringlights_BaseColor.png
@@ -3398,8 +3398,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_Orange_Color_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_Orange_Color_Emissive_BaseColor-Paris_StringLights_01_Orange_Color_Emissive_BaseColor.png
@@ -3425,8 +3425,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_Red_Color_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_Red_Color_Emissive_BaseColor-Paris_StringLights_01_Red_Color_Emissive_BaseColor.png
@@ -3452,8 +3452,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_White_Color_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_White_Color_Emissive_BaseColor-Paris_StringLights_01_White_Color_Emissive_BaseColor.png
@@ -3479,8 +3479,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_Pink_Color_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_Pink_Color_Emissive_BaseColor-Paris_StringLights_01_Pink_Color_Emissive_BaseColor.png
@@ -3506,8 +3506,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_Blue_Color_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_Blue_Color_Emissive_BaseColor-Paris_StringLights_01_Blue_Color_Emissive_BaseColor.png
@@ -3533,8 +3533,8 @@
     MATERIAL_FLAG_NO_PROJECT_SHADOWS: false
     MATERIAL_FLAG_NO_PROJECTED_BY_SHADOWS: false
 - Name: Paris_StringLights_01_Green_Color_Emissive
-  Vertex shader: shaders/gbuffer_main.vert
-  Fragment shader: shaders/gbuffer_main.frag
+  Vertex shader: shaders/render_pipeline/gbuffer_main.vert
+  Fragment shader: shaders/render_pipeline/gbuffer_main.frag
   Textures:
     MATERIAL_TEXTURE_ALBEDO:
       Tex: models/bistro_v5_2/bistro_v5_2/Paris_StringLights_01_Green_Color_Emissive_BaseColor-Paris_StringLights_01_Green_Color_Emissive_BaseColor.png
