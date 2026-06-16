@@ -17,6 +17,7 @@ namespace Mist
 	class IRenderEngine;
 	class cTexture;
 	class cModel;
+	class Terrain;
 	struct PreprocessIrradianceInfo;
 
 	struct sRenderObject
@@ -307,6 +308,9 @@ namespace Mist
 		bool IsDirty() const;
 		const EnvironmentData& GetEnvironmentData() const { return m_environmentData; }
 
+		const Terrain* GetTerrain() const { return m_terrain; }
+		Terrain* GetTerrain() { return m_terrain; }
+
 	protected:
 		void ProcessEnvironmentData(EnvironmentData& environmentData);
 		void RecalculateTransforms();
@@ -351,6 +355,8 @@ namespace Mist
 		index_t m_cameraIndex = index_invalid;
 
 		PreprocessIrradianceInfo* m_irradianceRequestInfo;
+
+		class Terrain* m_terrain;
 	};
 
 	struct RenderItem

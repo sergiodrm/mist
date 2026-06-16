@@ -34,6 +34,7 @@
 #include "Render/RenderProcesses/ShadowMap.h"
 #include "Render/RenderProcesses/Preprocesses.h"
 #include "RenderSystem/UI.h"
+#include "Render/Terrain.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -115,6 +116,7 @@ namespace Mist
 		m_irradianceRequestInfo->specularCubemapWidthHeight = 128;
 		strcpy_s(m_irradianceRequestInfo->hdrFilepath, g_iblImagePaths[g_iblIndex]);
 		m_irradianceRequestInfo->userData = this;
+		m_terrain = nullptr;
 	}
 
 	Scene::~Scene()
@@ -133,10 +135,22 @@ namespace Mist
 		for (uint32_t i = 0; i < MaxNodeLevel; ++i)
 			m_dirtyNodes[i].Allocate(globals::MaxRenderObjects);
 		m_renderTransforms.AllocateAndResize(globals::MaxRenderObjects);
+
+		if (!m_terrain)
+		{
+			m_terrain = _new Terrain();
+			m_terrain->Init(g_render);
+		}
 	}
 
 	void Scene::Destroy()
 	{
+		if (m_terrain)
+		{
+			m_terrain->Destroy();
+			delete m_terrain;
+			m_terrain = nullptr;
+		}
 		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
 			m_models[i].Destroy();
 		m_models.Clear();

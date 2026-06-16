@@ -1,6 +1,7 @@
 #include "GBuffer.h"
 #include "Render/VulkanRenderEngine.h"
 #include "Render/DebugRender.h"
+#include "Render/Terrain.h"
 #include "Scene/Scene.h"
 #include <imgui/imgui.h>
 #include "Application/CmdParser.h"
@@ -82,6 +83,8 @@ namespace Mist
 		rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 		rs->SetDepthEnable(true, true);
 		SceneRenderer::GetSceneRenderer()->DrawList({ .passId = m_renderListId, .rs = rs });
+		if (scene->GetTerrain())
+			scene->GetTerrain()->Draw(rs);
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
 	}
