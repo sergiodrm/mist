@@ -3,27 +3,6 @@
 
 #pragma once
 
-#define UNIFORM_ID_SCENE_MODEL_TRANSFORM_ARRAY "u_model"
-#define UNIFORM_ID_SCENE_ENV_DATA "Environment"
-#define UNIFORM_ID_TIME "Time"
-#define UNIFORM_ID_SHADOW_MAP_VP "ShadowMapVP"
-#define UNIFORM_ID_LIGHT_VP "LightVP"
-#define UNIFORM_ID_CAMERA "Camera"
-
-
-#define ASSET_ROOT_PATH //"../assets/"
-
-#define ASSET_PATH(path) ASSET_ROOT_PATH path
-
-#define SHADER_RUNTIME_COMPILATION
-#ifdef SHADER_RUNTIME_COMPILATION
-#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/"
-#define SHADER_ADDITIONAL_EXTENSION
-#else
-#define SHADER_ROOT_PATH ASSET_ROOT_PATH "shaders/compiled/"
-#define SHADER_ADDITIONAL_EXTENSION ".spv"
-#endif // SHADER_RUNTIME_COMPILATION
-
 #define MAX_SHADOW_MAPS 3
 #define MAX_SHADOW_MAPS_STR "3"
 

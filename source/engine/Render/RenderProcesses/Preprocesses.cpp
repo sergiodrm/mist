@@ -37,7 +37,7 @@ namespace Mist
 		rtDesc.AddColorAttachment(rtTexture, render::TextureSubresourceRange(0, 1, 0, 1));
 		rt = rs->GetDevice()->CreateRenderTarget(rtDesc);
 
-		cubeModel.LoadModel(rs->GetDevice(), ASSET_PATH("models/cube.gltf"));
+		cubeModel.LoadModel(rs->GetDevice(), "models/cube.gltf");
 	}
 
 	void PreprocessIrradianceResources::PrepareDraw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& _rt, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader)

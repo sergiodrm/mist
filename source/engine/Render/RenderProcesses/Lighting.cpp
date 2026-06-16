@@ -73,7 +73,7 @@ namespace Mist
 		}
 
         m_skyModel = _new cModel();
-        m_skyModel->LoadModel(device, ASSET_PATH("models/cube.gltf"));
+        m_skyModel->LoadModel(device, "models/cube.gltf");
 
 		m_forwardRenderListId = SceneRenderer::GetSceneRenderer()->CreateRenderList({ .pass = RenderPass_Transparent });
 	}
