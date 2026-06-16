@@ -753,6 +753,111 @@ namespace Mist
 	private:
 		std::atomic<size_t> m_counter;
 	};
+
+	template <class T>
+	class RingBufferContainer
+	{
+		enum { InvalidIndex = UINT32_MAX };
+	public:
+		using ThisType = RingBufferContainer<T>;
+
+		RingBufferContainer() = default;
+
+		RingBufferContainer(uint32_t count)
+		{
+			Init(count);
+		}
+
+		~RingBufferContainer()
+		{
+			Destroy();
+		}
+
+		RingBufferContainer(const ThisType& other)
+		{
+			Copy(other);
+		}
+
+		RingBufferContainer(ThisType&& other)
+		{
+			Move(other);
+		}
+
+		ThisType& operator=(const ThisType& other)
+		{
+			Copy(other);
+			return *this;
+		}
+
+		ThisType& operator=(ThisType&& other)
+		{
+			Move(other);
+			return *this;
+		}
+
+		void Init(uint32_t count)
+		{
+			Destroy();
+			if (count)
+			{
+				m_items = _new T[count];
+				m_itemCount = count;
+				m_head = 0;
+			}
+		}
+
+		void Destroy()
+		{
+			if (m_items)
+			{
+				delete[] m_items;
+				m_items = nullptr;
+			}
+			m_itemCount = 0;
+			m_head = InvalidIndex;
+		}
+
+		void Next()
+		{
+			m_head = (m_head + 1) % m_itemCount;
+		}
+
+		T& GetHead() { return Get(m_head); }
+		const T& GetHead() const { return Get(m_head); }
+		uint32_t GetCount() const { return m_itemCount; }
+		T& Get(uint32_t index) { checkdbg(index < m_itemCount); return m_items[index]; }
+		const T& Get(uint32_t index) const { checkdbg(index < m_itemCount); return m_items[index]; }
+
+		void Copy(const ThisType& other)
+		{
+			Destroy();
+			if (other.m_itemCount)
+			{
+				Init(other.m_itemCount);
+				for (uint32_t i = 0; i < m_itemCount; ++i)
+				{
+					m_items[i] = other.m_items[i];
+				}
+				m_head = other.m_head;
+			}
+		}
+
+		void Move(ThisType&& rvl)
+		{
+			Destroy();
+			m_items = rvl.m_items;
+			m_itemCount = rvl.m_itemCount;
+			m_head = rvl.m_head;
+			rvl.m_items = nullptr;
+			rvl.m_itemCount = 0;
+			rvl.m_head = InvalidIndex;
+		}
+
+	private:
+		T* m_items = nullptr;
+		uint32_t m_itemCount = 0;
+		uint32_t m_head = InvalidIndex;
+	};
 }
 
 /**
