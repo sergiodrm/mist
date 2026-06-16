@@ -1338,6 +1338,10 @@ namespace Mist
 	{
 		const cMesh* mesh = m_meshes[id.GetMesh()];
 		BindMesh(renderContext, *mesh);
+		RenderData_Id rdid;
+		rdid.modelId = id.GetMesh();
+		rdid.materialId = id.GetMaterial();
+		renderContext.rs->PushConstant("u_instance", &rdid, sizeof(rdid));
 		renderContext.rs->DrawIndexed(mesh->GetIndexCount());
 	}
 
@@ -1471,63 +1475,6 @@ namespace Mist
 				}
 			}
 		}
-
-#if 0
-
-		// First iterarion in passes to get the geometry passes.
-		for (uint32_t i = 0; i < m_sceneRenderer.m_creationInfo.GetSize(); ++i)
-		{
-			AABB_t aabb = mesh.GetAABB().ApplyTransform(nodeWorldTransform);
-			if ((mesh.GetRenderPassMask() & m_sceneRenderer.m_creationInfo[i].pass) && (IsAABBVisibleConditional(aabb, Frustum(m_sceneRenderer.m_creationInfo[i].cameraData.ViewProjection))))
-			{
-				if (!IsGeometryPass(m_creationInfo[i].pass))
-					primitiveRenderPasses.indices[primitiveRenderPasses.index++] = i;
-				else if (m_creationInfo[i].pass & RenderPass_ShadowMap)
-				{
-					m_renderPasses[i].transforms.Push(nodeWorldTransform);
-
-					// add whole mesh to the list
-					RenderItem& item = m_renderPasses[i].items.emplace_back();
-					item.mesh = &mesh;
-					item.primitive = UINT32_MAX;
-					item.transformIndex = m_renderPasses[i].transforms.GetSize() - 1;
-				}
-			}
-		}
-
-		// Append transform to primitive passes
-		for (uint32_t i = 0; i < primitiveRenderPasses.index; ++i)
-			m_renderPasses[primitiveRenderPasses.indices[i]].transforms.Push(nodeWorldTransform);
-
-		// primitive lists
-		for (uint32_t i = 0; i < mesh.GetPrimitiveCount(); ++i)
-		{
-			const PrimitiveMeshData& primitive = mesh.GetPrimitiveArray()[i];
-			for (uint32_t j = 0; j < primitiveRenderPasses.index; ++j)
-			{
-				check(primitive.material);
-				const RenderPassInfo& info = m_creationInfo[primitiveRenderPasses.indices[j]];
-				RenderPass& pass = m_renderPasses[primitiveRenderPasses.indices[j]];
-				if (primitive.renderPassMask & info.pass)
-				{
-					// Render info
-					RenderItem& item = pass.items.emplace_back();
-					item.mesh = &mesh;
-					item.primitive = i;
-					item.transformIndex = pass.transforms.GetSize() - 1;
-
-					// link material to render item
-					const cMaterial* mtl = primitive.material;
-					pass.materialRenderData.Push(mtl->GetRenderData());
-					item.materialIndex = pass.materialRenderData.GetSize() - 1;
-
-					// Culling info
-					pass.cullingData.emplace_back(primitive.aabb.ApplyTransform(nodeWorldTransform));
-				}
-			}
-		}
-#endif // 0
-
 	}
 
 	uint16_t SceneRenderer::RenderListBuilder::ProcessMaterials(const cModel* model)
