@@ -27,7 +27,9 @@ namespace Mist
 	{
 		const RenderSortId& id0 = *static_cast<const RenderSortId*>(item0);
 		const RenderSortId& id1 = *static_cast<const RenderSortId*>(item1);
-		return id0.id - id1.id;
+		if (id0.id == id1.id) return 0;
+		if (id0.id > id1.id) return 1;
+		return -1;
 	}
 
 	SceneRenderer::SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount, uint32_t maxItemCount)
