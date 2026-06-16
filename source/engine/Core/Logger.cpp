@@ -192,7 +192,7 @@ namespace Mist
 		if (level == LogLevel::Error && CVar_LogToConsole.Get() > 0 || CVar_LogToConsole.Get() == 2)
 		{
 			const char* msgFormat = Mist::ThisThread::IsMainThread() ? ANSI_RESET_ALL : ANSI_STYLE_ITALIC;
-			printf("%s%s[%5d][%6lld][%4.2f]%s%s %s%s", 
+			printf("%s%s[%5d][%6lld][%8.2f]%s%s %s%s", 
 				ANSI_COLOR_CYAN, ANSI_STYLE_ITALIC, Mist::ThisThread::GetId(), frame, appTime, msgFormat,
 				LogLevelFormat(level), msg, ANSI_RESET_ALL);
 		}
