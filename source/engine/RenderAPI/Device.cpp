@@ -979,6 +979,7 @@ namespace render
 
         if (m_graphicsState.pipeline != state.pipeline && state.pipeline)
         {
+            PERF_COUNTER(Cmd_SetPSO);
             state.pipeline->UsePipeline(m_currentCommandBuffer);
 
             // Invalidate bindings if pipeline layout change
