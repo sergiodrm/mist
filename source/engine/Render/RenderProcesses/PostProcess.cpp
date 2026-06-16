@@ -123,7 +123,7 @@ namespace Mist
 
 	void TAA::Draw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& rt)
 	{
-		CPU_PROFILE_SCOPE(CpuTAA);
+		PROF_SCOPE(CpuTAA);
 		if (!CVar_TAA.Get())
 		{
 			rs->BeginMarker("TAA (bypass)");
@@ -234,7 +234,7 @@ namespace Mist
 
 	void Bloom::Draw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& inputRt)
 	{
-		CPU_PROFILE_SCOPE(Bloom);
+		PROF_SCOPE(Bloom);
 
 		if (!CVar_EnableBloom.Get())
 			return;
@@ -465,7 +465,7 @@ namespace Mist
 		// HDR
 		render::RenderTargetHandle rt = rs->GetLDRTarget();
 		{
-			CPU_PROFILE_SCOPE(CpuHDR);
+			PROF_SCOPE(CpuHDR);
 			rs->BeginMarker("HDR");
 			// HDR and tone mapping
 			struct

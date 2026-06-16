@@ -143,7 +143,7 @@ namespace Mist
 	
 	bool VulkanRenderEngine::Init(const Window& window)
 	{
-		CPU_PROFILE_SCOPE(Init);
+		PROF_SCOPE(Init);
 #ifndef _DEBUG
 		logfinfo("Running app in %s mode.\n", "RELEASE");
 #else
@@ -220,7 +220,7 @@ namespace Mist
 
 	bool VulkanRenderEngine::RenderProcess()
 	{
-		CPU_PROFILE_SCOPE(Process);
+		PROF_SCOPE(Process);
 		if (m_scene)
 		{
 			m_scene->UpdateRenderData();
@@ -315,7 +315,7 @@ namespace Mist
 
 	void VulkanRenderEngine::BeginFrame()
 	{
-		CPU_PROFILE_SCOPE(BeginFrame);
+		PROF_SCOPE(BeginFrame);
 		g_render->BeginFrame(); 
 	}
 

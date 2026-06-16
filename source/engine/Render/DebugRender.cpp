@@ -301,7 +301,7 @@ namespace Mist
 
 		void Draw(const render::RenderTargetHandle& rt)
 		{
-			CPU_PROFILE_SCOPE(DebugPass);
+			PROF_SCOPE(DebugPass);
 
 			g_render->ClearState();
 			g_render->SetDefaultGraphicsState();

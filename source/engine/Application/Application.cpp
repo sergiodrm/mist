@@ -218,7 +218,7 @@ namespace Mist
 			memory::Slot();
 			GFrame++;
 			Profiling::CpuProf_Reset();
-			CPU_PROFILE_SCOPE(CpuTime);
+			PROF_SCOPE(CpuTime);
 
 			// Tick time
 			m_tickTimer.ProcessTimePoint();

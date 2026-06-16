@@ -124,7 +124,7 @@ namespace Mist
 			render::TextureHandle specular = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().specular : scene->GetSkyboxTexture();
 
 			{
-				CPU_PROFILE_SCOPE(Lighting);
+				PROF_SCOPE(Lighting);
 				rendersystem::ShaderProgram* shader = !CVar_FogEnabled.Get() ? m_lightingShader : m_lightingFogShader;
 
 				// Composition

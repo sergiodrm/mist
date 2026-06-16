@@ -178,13 +178,18 @@ namespace rendersystem
 
     render::BindingSetHandle BindingCache::GetCachedBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout)
     {
-        auto it = m_cache.find(desc);
-        if (it != m_cache.end())
-        {
-            //logfdebug("[%20s -> %3d] Reuse cached binding set\n", "BindingSetCache", m_cache.size());
-            return it->second;
-        }
+		{
+            PERF_COUNTER(FindBindingSet);
+			auto it = m_cache.find(desc);
+			if (it != m_cache.end())
+			{
+				//logfdebug("[%20s -> %3d] Reuse cached binding set\n", "BindingSetCache", m_cache.size());
+				return it->second;
+			}
+		}
 
+        PROF_ZONE_SCOPED("CreateBindingSet");
+        PERF_COUNTER(CreateBindingSet);
         render::BindingSetHandle handle = m_device->CreateBindingSet(desc, layout);
         m_cache[desc] = handle;
 #if 0
@@ -838,7 +843,7 @@ namespace rendersystem
 
     void RenderSystem::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t firstVertex, uint32_t firstInstance)
     {
-        CPU_TSC(DrawIndexed);
+        PERF_COUNTER(DrawIndexed);
         check(AllowsGraphicsCommand());
         FlushBeforeDraw();
         GetCommandList()->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
@@ -981,7 +986,7 @@ namespace rendersystem
         m_screenQuadCopy.sampler = m_device->CreateSampler(samplerDesc);
 
         ShaderBuildDescription shaderDesc;
-        shaderDesc.SetGraphics("shaders/quad.vert", "shaders/quad.frag");
+        shaderDesc.SetGraphics("shaders/render_process/quad.vert", "shaders/render_process/quad.frag");
         m_screenQuadCopy.shader = CreateShader(shaderDesc);
     }
 
@@ -1056,7 +1061,7 @@ namespace rendersystem
 
 
 		{
-			CPU_TSC(SetGraphicsState);
+			PERF_COUNTER(SetGraphicsState);
 			GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
 		}
 
@@ -1099,7 +1104,7 @@ namespace rendersystem
 
     void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray)
     {
-        CPU_TSC(ResolveBindings);
+        PERF_COUNTER(ResolveBindings);
 		// Bind descriptors sets and memory before draw call
 		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
 		render::BindingSetDescription& desc = m_bindingDesc;
@@ -1209,7 +1214,7 @@ namespace rendersystem
 
     void RenderSystem::BeginFrame()
     {
-        CPU_PROFILE_SCOPE(BeginFrame);
+        PROF_SCOPE(BeginFrame);
         check(m_swapchainIndex == UINT32_MAX);
         m_frame++;
 
@@ -1222,26 +1227,26 @@ namespace rendersystem
 
         if (CVar_ForceFrameSync.Get())
         {
-            CPU_PROFILE_SCOPE(WaitIdleForceSync);
+            PROF_SCOPE(WaitIdleForceSync);
             m_device->WaitIdle();
         }
 
         const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 
 		{
-            CPU_PROFILE_SCOPE(WaitFrameInFlight);
+            PROF_SCOPE(WaitFrameInFlight);
 			// wait for last frame before acquire swapchain image
 			if (GetPresentSubmissionId())
 				check(m_device->WaitForSubmissionId(GetPresentSubmissionId()));
 		}
 
         {
-            CPU_PROFILE_SCOPE(DeviceGC);
+            PROF_SCOPE(DeviceGC);
             m_device->RunGarbageCollector();
         }
 
         {
-            CPU_PROFILE_SCOPE(AcquireSwapchain);
+            PROF_SCOPE(AcquireSwapchain);
             m_swapchainIndex = m_device->AcquireSwapchainIndex(presentSemaphore);
         }
 
@@ -1254,7 +1259,7 @@ namespace rendersystem
         ImGuiDrawGpuProfiler();
 
 		{
-            CPU_PROFILE_SCOPE(RenderSystem_PrepareCmdQueue);
+            PROF_SCOPE(RenderSystem_PrepareCmdQueue);
 			const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
 			render::CommandQueue* commandQueue = m_device->GetCommandQueue(render::Queue_Graphics);
 			commandQueue->ProcessInFlightCommands();
@@ -1271,7 +1276,7 @@ namespace rendersystem
 
     void RenderSystem::EndFrame()
     {
-        CPU_PROFILE_SCOPE(EndFrame);
+        PROF_SCOPE(EndFrame);
         ui::EndFrame(GetCommandList());
 
         BeginMarker("CopyToPresent");
@@ -1290,7 +1295,7 @@ namespace rendersystem
 		const render::SemaphoreHandle& presentSemaphore = GetPresentSemaphore();
 		const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
         {
-            CPU_PROFILE_SCOPE(CpuPresent);
+            PROF_SCOPE(CpuPresent);
             m_device->Present(renderSemaphore);
         }
 

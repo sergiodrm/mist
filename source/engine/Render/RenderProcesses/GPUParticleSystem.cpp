@@ -105,7 +105,7 @@ namespace Mist
 
 	void GPUParticleSystem::UpdateBuffers(rendersystem::RenderSystem* renderSystem)
 	{
-		CPU_PROFILE_SCOPE(ParticlesUpdateBuffers);
+		PROF_SCOPE(ParticlesUpdateBuffers);
 		ParameterUBO params = m_params;
 		if (m_flags & GPU_PARTICLES_FOLLOW_MOUSE)
 		{
@@ -136,7 +136,7 @@ namespace Mist
 
 	void GPUParticleSystem::Dispatch(rendersystem::RenderSystem* renderSystem)
 	{
-		CPU_PROFILE_SCOPE(ParticlesDispatch);
+		PROF_SCOPE(ParticlesDispatch);
 
 		UpdateBuffers(renderSystem);
 
@@ -149,7 +149,7 @@ namespace Mist
 
 	void GPUParticleSystem::Draw(rendersystem::RenderSystem* renderSystem)
 	{
-		CPU_PROFILE_SCOPE(ParticlesDraw);
+		PROF_SCOPE(ParticlesDraw);
         
 		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{

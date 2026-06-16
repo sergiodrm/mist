@@ -276,7 +276,7 @@ namespace Mist
 
 	void ShadowMapProcess::Draw(rendersystem::RenderSystem* rs)
 	{
-		CPU_PROFILE_SCOPE(CpuShadowMapping);
+		PROF_SCOPE(CpuShadowMapping);
 		Scene* scene = GetEngine()->GetScene();
 		if (!scene)
 			return;

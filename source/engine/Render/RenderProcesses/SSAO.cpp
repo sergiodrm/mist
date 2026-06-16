@@ -52,7 +52,7 @@ namespace Mist
 
 	void SSAO::Draw(rendersystem::RenderSystem* rs)
 	{
-		CPU_PROFILE_SCOPE(CpuSSAO);
+		PROF_SCOPE(CpuSSAO);
 		{
 			m_ssaoParams.Projection = GetCameraData()->Projection;
 			m_ssaoParams.InverseProjection = glm::inverse(m_ssaoParams.Projection);

@@ -266,6 +266,76 @@ namespace Mist
 		size_t GetLastFrameIndex() { return (GetFrame() - 1) % 2; }
 		size_t GetCurrentFrameIndex() { return GetFrame() % 2; }
 
+		static const char* PC_mapToStr[] =
+		{
+			"BindingSet",
+			"ResolveBindings",
+			"SetGraphicsState",
+			"CreateBindingSet",
+			"FindBindingSet",
+			"DrawIndexed",
+			"Count"
+		};
+		static_assert(_countof(PC_mapToStr) == PC_Count+1);
+
+		struct PerformanceCounter
+		{
+			struct Item
+			{
+				uint32_t count = 0;
+				double sum = 0.0;
+				double min = 0.0;
+				double max = 0.0;
+			};
+
+			static Item items[PC_Count];
+		
+			static void Push(uint32_t pc, double v)
+			{
+				check(pc < PC_Count);
+				items[pc].count++;
+				items[pc].sum += v;
+				items[pc].max = __max(items[pc].max, v);
+				items[pc].min = __min(items[pc].min, v);
+			}
+
+			static const Item& Get(uint32_t pc)
+			{
+				check(pc < PC_Count);
+				return items[pc];
+			}
+
+			static void Reset()
+			{
+				memset(items, 0x0000, sizeof(items));
+				for (uint32_t i = 0; i < PC_Count; ++i)
+				{
+					items[i].max = -DBL_MAX;
+					items[i].min = DBL_MAX;
+				}
+			}
+
+			static const char* ToStr(uint32_t pc)
+			{
+				switch (pc)
+				{
+				case PC_BindingSet:
+				case PC_ResolveBindings:
+				case PC_SetGraphicsState:
+				case PC_CreateBindingSet:
+				case PC_FindBindingSet:
+				case PC_DrawIndexed:
+				case PC_Count:
+					return PC_mapToStr[pc];
+				}
+				unreachable_code();
+				return nullptr;
+			}
+		};
+
+		PerformanceCounter::Item PerformanceCounter::items[PC_Count] = {};
+
+
 		struct tCpuProfItem
 		{
 			tFixedString<64> Label;
@@ -444,6 +514,18 @@ namespace Mist
 			CpuProf_End(static_cast<float>(elapsed));
 		}
 
+		PerfCounterSampler::PerfCounterSampler(uint32_t tsc)
+			: m_pcId(tsc)
+		{
+			Start();
+		}
+
+		PerfCounterSampler::~PerfCounterSampler()
+		{
+			double v = Stop();
+			PerformanceCounter::Push(m_pcId, v);
+		}
+
 		void sRenderStats::Reset()
 		{
 			TrianglesCount = 0;
@@ -541,6 +623,18 @@ namespace Mist
 				ImGui::Text("Cpu %2.3f ms", cpuTimes.meanMs);
 				ImGui::Text("Gpu %2.3f ms", g_render->GetGpuTimeUs() * 0.001f);
 				ImGui::Text("%ux%u", g_render->GetRenderResolution().width, g_render->GetRenderResolution().height);
+
+				{
+					for (uint32_t i = 0; i < PC_Count; ++i)
+					{
+						const PerformanceCounter::Item& item = PerformanceCounter::Get(i);
+						if (item.count)
+							ImGui::Text("%s: %5d %f %f %f %f", PerformanceCounter::ToStr(i), item.count, item.sum / item.count, item.min, item.max, item.sum);
+						else
+							ImGui::Text("%s: %5d %f %f %f %f", PerformanceCounter::ToStr(i), item.count, 0.0,0.0,0.0,0.0);
+					}
+				}
+
 				if (CVar_ShowStats.Get() > 1 && 0)
 				{
 					ImGui::Columns(3, nullptr, false);
@@ -632,15 +726,6 @@ namespace Mist
 					ImGui::Text("Images:            %7d (%4.4f b/%4.4f b)", stats.imageStats.allocationCounts,
 						(double)stats.imageStats.currentAllocated / 1024.f / 1024.f, (double)stats.imageStats.maxAllocated / 1024.f / 1024.f);
 
-					ImGui::SeparatorText("Shader memory pool");
-					ImGui::Text("Memory pool count:         %4d", stats.shaderMemoryStats.poolCount);
-					ImGui::Text("Contexts free:             %4d", stats.shaderMemoryStats.poolFree);
-					ImGui::Text("Contexts used:             %4d", stats.shaderMemoryStats.poolUsed);
-					ImGui::SeparatorText("Shader memory frame context");
-					ImGui::Text("Buffers:                   %4d", stats.shaderMemoryStats.bufferCount);
-					ImGui::Text("Device size:               %2.4f KB", (float)stats.shaderMemoryStats.deviceMemoryUsedSize / 1024.f);
-					ImGui::Text("Temporal buffer size:      %4d", stats.shaderMemoryStats.temporalBufferSize);
-					ImGui::Text("Property count:            %4d", stats.shaderMemoryStats.propertyCount);
 					ImGui::Text("Shaders:                   %7d", stats.shaderCount);
 					ImGui::SeparatorText("Descriptor pool");
 					ImGui::Text("Binding cache:             %7d", stats.bindingSetCacheSize);
@@ -700,6 +785,7 @@ namespace Mist
 			}
 			if (IsCpuProfActive())
 				CpuProfGetStack().Reset();
+			PerformanceCounter::Reset();
 		}
 
 		void CpuProf_ImGuiDraw()

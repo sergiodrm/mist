@@ -617,15 +617,15 @@ namespace Mist
 
 	void Scene::RecalculateTransforms()
 	{
-		CPU_PROFILE_SCOPE(RecalculateTransforms);
+		PROF_SCOPE(RecalculateTransforms);
 		{
-			CPU_PROFILE_SCOPE(TransformComponentToMatrices);
+			PROF_SCOPE(TransformComponentToMatrices);
 			check(m_localTransforms.GetSize() == m_transformComponents.GetSize());
 			check(m_globalTransforms.GetSize() == m_transformComponents.GetSize());
 			TransformComponentToMatrix(m_transformComponents.GetData(), m_localTransforms.GetData(), m_transformComponents.GetSize());
 		}
 		{
-			CPU_PROFILE_SCOPE(SceneUpdate);
+			PROF_SCOPE(SceneUpdate);
 			// Process root level first
 			if (!m_dirtyNodes[0].IsEmpty())
 			{
@@ -652,7 +652,7 @@ namespace Mist
 		}
 
 		{
-			CPU_PROFILE_SCOPE(ModelUpdate);
+			PROF_SCOPE(ModelUpdate);
 			index_t offset = 0;
 			for (index_t i = 0; i < m_hierarchy.GetSize(); ++i)
 			{
@@ -1040,7 +1040,7 @@ namespace Mist
 
 	void Scene::UpdateRenderData()
 	{
-		CPU_PROFILE_SCOPE(SceneUpdateRenderData);
+		PROF_SCOPE(SceneUpdateRenderData);
 		if (GetRenderObjectCount())
 		{
 			// Update geometry
@@ -1058,7 +1058,7 @@ namespace Mist
 
 	void Scene::ProcessEnvironmentData(EnvironmentData& environmentData)
 	{
-		CPU_PROFILE_SCOPE(ProcessEnvData);
+		PROF_SCOPE(ProcessEnvData);
 		environmentData.Reset();
 		environmentData.ambientColor = m_ambientColor;
 		VulkanRenderEngine* engine = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
@@ -1147,7 +1147,7 @@ namespace Mist
 
 	void SceneRenderer::BuildRenderLists(rendersystem::RenderSystem* rs, const Scene* scene)
 	{
-		CPU_PROFILE_SCOPE(BuildRenderLists);
+		PROF_SCOPE(BuildRenderLists);
 		if (!scene)
 			return;
 		check(m_renderPasses.GetSize() == m_creationInfo.GetSize());
@@ -1190,7 +1190,7 @@ namespace Mist
 		m_state.Invalidate();
 		if (!IsGeometryPass(m_creationInfo[renderContext.passId].pass))
 		{
-			CPU_PROFILE_SCOPE(Scene_Draw);
+			PROF_SCOPE(Scene_Draw);
 
 			if (CVar_RenderWireframe.Get())
 			{
@@ -1203,7 +1203,7 @@ namespace Mist
 		}
 		else
 		{
-			CPU_PROFILE_SCOPE(Scene_DrawGeometry);
+			PROF_SCOPE(Scene_DrawGeometry);
 			for (uint32_t i = 0; i < pass.m_sortIds.GetSize(); ++i)
 				DrawGeometryItem(renderContext, pass.m_sortIds[i]);
 		}
@@ -1295,7 +1295,7 @@ namespace Mist
 	void SceneRenderer::DoCulling()
 	{
 #if 0
-		CPU_PROFILE_SCOPE(Culling);
+		PROF_SCOPE(Culling);
 		if (!IsCullingEnabled())
 			return;
 		for (uint32_t i = 0; i < m_creationInfo.GetSize(); ++i)

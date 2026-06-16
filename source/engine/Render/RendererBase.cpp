@@ -58,17 +58,17 @@ namespace Mist
 
 	void Renderer::Update()
 	{
-		CPU_PROFILE_SCOPE(RendererUpdate);
+		PROF_SCOPE(RendererUpdate);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 			m_processArray[i]->Update();
 	}
 
 	void Renderer::Draw(rendersystem::RenderSystem* rs)
 	{
-		CPU_PROFILE_SCOPE(RendererDraw);
+		PROF_SCOPE(RendererDraw);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 		{
-			CPU_PROFILE_SCOPE(RendererDraw_Slot);
+			PROF_SCOPE(RendererDraw_Slot);
 			g_render->BeginMarker(RenderProcessNames[i]);
 			m_processArray[i]->Draw(rs);
 			g_render->EndMarker();
@@ -77,14 +77,14 @@ namespace Mist
 
 	void Renderer::DebugRender()
 	{
-		CPU_PROFILE_SCOPE(RendererDebugDraw);
+		PROF_SCOPE(RendererDebugDraw);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 			m_processArray[i]->DebugDraw();
 	}
 
 	void Renderer::ImGuiDraw()
 	{
-		CPU_PROFILE_SCOPE(RendererImGui);
+		PROF_SCOPE(RendererImGui);
 		for (uint32_t i = 0; i < RENDERPROCESS_COUNT; ++i)
 			m_processArray[i]->ImGuiDraw();
 	}

@@ -179,7 +179,7 @@ namespace Mist
 		void ResourceLoaderThread::ProcMainThread()
 		{
 			check(ThisThread::IsMainThread());
-			CPU_PROFILE_SCOPE(ResourceLoader_ProcMainThread);
+			PROF_SCOPE(ResourceLoader_ProcMainThread);
 			
 			m_mutex.Lock();
 			std::swap(m_localMainThreadTasks, m_mainThreadTasks);

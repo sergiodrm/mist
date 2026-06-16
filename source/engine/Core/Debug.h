@@ -80,8 +80,8 @@ do \
 #define PROF_FREE_NAMED(p, n) DUMMY_MACRO
 #endif
 
-
-#define CPU_PROFILE_SCOPE(name) Mist::Profiling::sScopedTimer __timer##name(#name); PROF_ZONE_SCOPED(#name)
+#define PROF_SCOPE(name) Mist::Profiling::sScopedTimer __timer##name(#name); PROF_ZONE_SCOPED(#name)
+#define PERF_COUNTER(_counter) ::Mist::Profiling::PerfCounterSampler _perfcounter_##_counter##(::Mist::Profiling::PC_##_counter)
 
 namespace Mist
 {
@@ -121,6 +121,18 @@ namespace Mist
 		typedef std::chrono::high_resolution_clock::time_point tTimePoint;
 #endif
 
+		enum
+		{
+			PC_BindingSet,
+			PC_ResolveBindings,
+			PC_SetGraphicsState,
+			PC_CreateBindingSet,
+			PC_FindBindingSet,
+			PC_DrawIndexed,
+
+			PC_Count
+		};
+
 		struct sProfilingTimer
 		{
 			tTimePoint StartPoint;
@@ -133,6 +145,14 @@ namespace Mist
 			sScopedTimer(const char* id);
 			~sScopedTimer();
 			char Id[32];
+		};
+
+		// PerformanceCounter
+		struct PerfCounterSampler : public sProfilingTimer
+		{
+			PerfCounterSampler(uint32_t pcId);
+			~PerfCounterSampler();
+			uint32_t m_pcId;
 		};
 
 		struct sRenderStats

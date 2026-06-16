@@ -211,7 +211,7 @@ namespace rendersystem
 
             void Draw(render::CommandListHandle cmd)
             {
-                CPU_PROFILE_SCOPE(ImGuiPass);
+                PROF_SCOPE(ImGuiPass);
                 cmd->BeginMarker("ImGui");
                 render::GraphicsState state{};
                 state.rt = m_rt;
@@ -266,7 +266,7 @@ namespace rendersystem
 
         void BeginFrame()
         {
-            CPU_PROFILE_SCOPE(UI_Begin);
+            PROF_SCOPE(UI_Begin);
             g_imgui.BeginFrame();
         }
 
@@ -280,7 +280,7 @@ namespace rendersystem
 
         void Show()
         {
-            CPU_PROFILE_SCOPE(UIProcessDeferred);
+            PROF_SCOPE(UIProcessDeferred);
             if (ImGui::BeginMainMenuBar())
             {
                 if (ImGui::BeginMenu("Windows"))

@@ -66,7 +66,7 @@ namespace Mist
 
 	void GBuffer::Draw(rendersystem::RenderSystem* rs)
 	{
-		CPU_PROFILE_SCOPE(CpuGBuffer);
+		PROF_SCOPE(CpuGBuffer);
 		const Scene* scene = GetEngine()->GetScene();
 		if (!scene)
 			return;
