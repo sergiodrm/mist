@@ -123,12 +123,21 @@ namespace Mist
 
 		enum
 		{
-			PC_BindingSet,
-			PC_ResolveBindings,
-			PC_SetGraphicsState,
-			PC_CreateBindingSet,
-			PC_FindBindingSet,
-			PC_DrawIndexed,
+			PC_RS_ResolveBindings,
+			PC_RS_ResolvePushConstants,
+			PC_RS_CreateBindingSet,
+			PC_RS_FindBindingSet,
+
+			PC_Cmd_TextureBarrier,
+			PC_Cmd_SetGraphicsState,
+			PC_Cmd_SetComputeState,
+			PC_Cmd_PushConstants,
+			PC_Cmd_BindDescriptors,
+			PC_Cmd_BindVertexBuffer,
+			PC_Cmd_BindIndexBuffer,
+			PC_Cmd_DrawIndexed,
+			PC_Cmd_Draw,
+			PC_Cmd_DispatchCompute,
 
 			PC_Count
 		};

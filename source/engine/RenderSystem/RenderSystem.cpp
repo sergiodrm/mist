@@ -131,6 +131,10 @@ namespace rendersystem
     {
 		uint32_t index = itemIndex;
 		const char* valuefmt = "%8.4f";
+        static constexpr glm::vec4 goodColor = glm::vec4{ 0,1,0,1 };
+        static constexpr glm::vec4 badColor = glm::vec4{ 1,0,0,1 };
+        static constexpr double goodValue = 500.0;
+        static constexpr double badValue = 3000.0;
 		while (tree.IsValidIndex(index))
 		{
 			ImGui::TableNextRow();
@@ -152,9 +156,10 @@ namespace rendersystem
 			}
 			else
 			{
-				ImGui::Text("%s", data.tag);
+                glm::vec4 c = glm::mix(goodColor, badColor, (tree.Data[item.DataIndex].value - goodValue) / (badValue - goodValue));
+                ImGui::TextColored({c.x,c.y,c.z,c.a}, "%s", data.tag);
 				ImGui::TableNextColumn();
-				ImGui::Text(valuefmt, tree.Data[item.DataIndex].value);
+                ImGui::TextColored({c.x,c.y,c.z,c.a},valuefmt, tree.Data[item.DataIndex].value);
 			}
 			index = item.Sibling;
 		}
@@ -179,7 +184,7 @@ namespace rendersystem
     render::BindingSetHandle BindingCache::GetCachedBindingSet(const render::BindingSetDescription& desc, const render::BindingLayoutHandle& layout)
     {
 		{
-            PERF_COUNTER(FindBindingSet);
+            PERF_COUNTER(RS_FindBindingSet);
 			auto it = m_cache.find(desc);
 			if (it != m_cache.end())
 			{
@@ -189,7 +194,7 @@ namespace rendersystem
 		}
 
         PROF_ZONE_SCOPED("CreateBindingSet");
-        PERF_COUNTER(CreateBindingSet);
+        PERF_COUNTER(RS_CreateBindingSet);
         render::BindingSetHandle handle = m_device->CreateBindingSet(desc, layout);
         m_cache[desc] = handle;
 #if 0
@@ -844,7 +849,6 @@ namespace rendersystem
 
     void RenderSystem::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t firstVertex, uint32_t firstInstance)
     {
-        PERF_COUNTER(DrawIndexed);
         check(AllowsGraphicsCommand());
         FlushBeforeDraw();
         GetCommandList()->DrawIndexed(indexCount, instanceCount, firstIndex, firstVertex, firstInstance);
@@ -1060,11 +1064,7 @@ namespace rendersystem
         // Process graphics pipeline
         m_graphicsContext.graphicsState.pipeline = GetPso(m_graphicsContext.pso, m_graphicsContext.graphicsState.rt);
 
-
-		{
-			PERF_COUNTER(SetGraphicsState);
-			GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
-		}
+		GetCommandList()->SetGraphicsState(m_graphicsContext.graphicsState);
 
         ResolveClearRenderTarget();
 
@@ -1105,7 +1105,8 @@ namespace rendersystem
 
     void RenderSystem::ResolveBindings(render::BindingSetVector& bindingSetVector, const render::BindingLayoutArray& bindingLayoutArray)
     {
-        PERF_COUNTER(ResolveBindings);
+        PERF_COUNTER(RS_ResolveBindings);
+
 		// Bind descriptors sets and memory before draw call
 		const render::shader_compiler::ShaderReflectionProperties* properties = m_shaderContext.program->m_properties;
 		render::BindingSetDescription& desc = m_bindingDesc;
@@ -1200,6 +1201,7 @@ namespace rendersystem
     {
         if (m_shaderContext.IsPushConstantDirty())
         {
+            PERF_COUNTER(RS_ResolvePushConstants);
             for (uint32_t i =0;i< m_shaderContext.pushConstantBuffers.GetSize(); ++i)
                 GetCommandList()->PushConstants(m_shaderContext.pushConstantBuffers[i].data, m_shaderContext.pushConstantBuffers[i].size, 0, m_shaderContext.pushConstantBuffers[i].stageMask);
             m_shaderContext.ClearPushConstant();

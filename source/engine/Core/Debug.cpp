@@ -255,6 +255,7 @@ namespace Mist
 	CIntVar CVar_ShowStats("ShowStats", 1);
 	CIntVar CVar_ShowCpuProf("r_ShowCpuProf", 0);
 	CIntVar CVar_ShowCpuProfRatio("r_ShowCpuProfRatio", 5);
+	CIntVar CVar_ShowPerformanceCounters("r_showPerfCounters", 0);
 
 	namespace Profiling
 	{
@@ -268,13 +269,23 @@ namespace Mist
 
 		static const char* PC_mapToStr[] =
 		{
-			"BindingSet",
-			"ResolveBindings",
-			"SetGraphicsState",
-			"CreateBindingSet",
-			"FindBindingSet",
-			"DrawIndexed",
-			"Count"
+			"PC_RS_ResolveBindings",
+			"PC_RS_ResolvePushConstants",
+			"PC_RS_CreateBindingSet",
+			"PC_RS_FindBindingSet",
+
+			"PC_Cmd_TextureBarrier",
+			"PC_Cmd_SetGraphicsState",
+			"PC_Cmd_SetComputeState",
+			"PC_Cmd_PushConstants",
+			"PC_Cmd_BindDescriptors",
+			"PC_Cmd_BindVertexBuffer",
+			"PC_Cmd_BindIndexBuffer",
+			"PC_Cmd_DrawIndexed",
+			"PC_Cmd_Draw",
+			"PC_Cmd_DispatchCompute",
+
+			"PC_Count"
 		};
 		static_assert(_countof(PC_mapToStr) == PC_Count+1);
 
@@ -317,19 +328,65 @@ namespace Mist
 
 			static const char* ToStr(uint32_t pc)
 			{
-				switch (pc)
+				check(pc < PC_Count);
+				return PC_mapToStr[pc];
+			}
+
+			static void ImGuiDraw()
+			{
+				if (!CVar_ShowPerformanceCounters.Get())
+					return;
+
+				ImGuiViewport* viewport = ImGui::GetMainViewport();
+				float x = 0.7f;
+				float y = 0.1f;
+				ImGui::SetNextWindowPos(ImVec2{ viewport->Pos.x + x * viewport->Size.x, viewport->Pos.y + y * viewport->Size.y });
+
+				ImGui::Begin("PerformanceCounter", nullptr, 
+					ImGuiWindowFlags_NoBackground 
+					| ImGuiWindowFlags_NoDecoration 
+					| ImGuiWindowFlags_AlwaysAutoResize
+					| ImGuiWindowFlags_NoDocking);
+				ImGuiTableFlags tableFlags = 
+					ImGuiTableFlags_Reorderable
+					| ImGuiTableFlags_SizingFixedFit
+					| ImGuiTableFlags_RowBg
+					| ImGuiTableFlags_NoBordersInBody
+					| ImGuiTableFlags_NoHostExtendX
+					//| ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
+					;
+				ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4{ 0.2f, 0.2f, 0.2f, 0.2f });
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.f, 0.5f, 0.f, 1.f });
+				if (ImGui::BeginTable("PerformanceCounters", 6, tableFlags))
 				{
-				case PC_BindingSet:
-				case PC_ResolveBindings:
-				case PC_SetGraphicsState:
-				case PC_CreateBindingSet:
-				case PC_FindBindingSet:
-				case PC_DrawIndexed:
-				case PC_Count:
-					return PC_mapToStr[pc];
+					ImGui::TableSetupColumn("Name");
+					ImGui::TableSetupColumn("Count");
+					ImGui::TableSetupColumn("Acc");
+					ImGui::TableSetupColumn("Avg");
+					ImGui::TableSetupColumn("Min");
+					ImGui::TableSetupColumn("Max");
+					ImGui::TableHeadersRow();
+					ImVec4 col = { 0.f, 1.f, 0.f, 1.f };
+					for (uint32_t i = 0; i < PC_Count; ++i)
+					{
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn();
+						ImGui::TextColored(col, "%16s", ToStr(i));
+						ImGui::TableNextColumn();
+						ImGui::TextColored(col, "%5d", items[i].count);
+						ImGui::TableNextColumn();
+						ImGui::TextColored(col, "%2.4f", items[i].sum);
+						ImGui::TableNextColumn();
+						ImGui::TextColored(col, "%2.4f", items[i].count ? items[i].sum/(double)items[i].count : 0.0);
+						ImGui::TableNextColumn();
+						ImGui::TextColored(col, "%2.4f", items[i].count ? items[i].min : 0.0);
+						ImGui::TableNextColumn();
+						ImGui::TextColored(col, "%2.4f", items[i].count ? items[i].max : 0.0);
+					}
+					ImGui::EndTable();
 				}
-				unreachable_code();
-				return nullptr;
+				ImGui::PopStyleColor(2);
+				ImGui::End();
 			}
 		};
 
@@ -624,17 +681,6 @@ namespace Mist
 				ImGui::Text("Gpu %2.3f ms", g_render->GetGpuTimeUs() * 0.001f);
 				ImGui::Text("%ux%u", g_render->GetRenderResolution().width, g_render->GetRenderResolution().height);
 
-				{
-					for (uint32_t i = 0; i < PC_Count; ++i)
-					{
-						const PerformanceCounter::Item& item = PerformanceCounter::Get(i);
-						if (item.count)
-							ImGui::Text("%s: %5d %f %f %f %f", PerformanceCounter::ToStr(i), item.count, item.sum / item.count, item.min, item.max, item.sum);
-						else
-							ImGui::Text("%s: %5d %f %f %f %f", PerformanceCounter::ToStr(i), item.count, 0.0,0.0,0.0,0.0);
-					}
-				}
-
 				if (CVar_ShowStats.Get() > 1 && 0)
 				{
 					ImGui::Columns(3, nullptr, false);
@@ -792,6 +838,7 @@ namespace Mist
 		{
 			if (Profiling::g_cpuProfilingEnabled)
 				GetProfiler().ImGuiDraw();
+			PerformanceCounter::ImGuiDraw();
 		}
 }
 }

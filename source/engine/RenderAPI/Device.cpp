@@ -854,6 +854,7 @@ namespace render
 
     void CommandList::PushConstants(const void* data, uint64_t size, uint64_t offset, ShaderStageMask stageMask)
     {
+        PERF_COUNTER(Cmd_PushConstants);
         check(IsRecording());
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
         if (m_graphicsState.pipeline)
@@ -883,6 +884,7 @@ namespace render
             {
                 if (!m_vksets.IsEmpty())
                 {
+                    PERF_COUNTER(Cmd_BindDescriptors);
                     // flush sets
 					check(m_firstSet != UINT32_MAX);
 					m_cmd->FlushRequiredStates();
@@ -967,6 +969,7 @@ namespace render
 
     void CommandList::SetGraphicsState(const GraphicsState& state)
     {
+        PERF_COUNTER(Cmd_SetGraphicsState);
         PROF_ZONE_SCOPED("SetGraphicsState");
         check(AllowsCommandType(Queue_Graphics));
 
@@ -1035,6 +1038,7 @@ namespace render
 
     void CommandList::BindVertexBuffer(BufferHandle vb)
     {
+        PERF_COUNTER(Cmd_BindVertexBuffer);
         check(AllowsCommandType(Queue_Graphics));
         if (vb == m_graphicsState.vertexBuffer)
             return;
@@ -1046,6 +1050,7 @@ namespace render
 
     void CommandList::BindIndexBuffer(BufferHandle ib)
     {
+        PERF_COUNTER(Cmd_BindIndexBuffer);
         check(AllowsCommandType(Queue_Graphics));
         if (ib == m_graphicsState.indexBuffer)
             return;
@@ -1057,6 +1062,7 @@ namespace render
 
     void CommandList::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
     {
+        PERF_COUNTER(Cmd_Draw);
         check(AllowsCommandType(Queue_Graphics));
         vkCmdDraw(m_currentCommandBuffer->cmd, vertexCount, instanceCount, firstVertex, firstInstance);
         ++m_stats.drawCalls;
@@ -1069,6 +1075,7 @@ namespace render
 
     void CommandList::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
     {
+        PERF_COUNTER(Cmd_DrawIndexed);
         check(AllowsCommandType(Queue_Graphics));
         vkCmdDrawIndexed(m_currentCommandBuffer->cmd, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
         ++m_stats.drawCalls;
@@ -1081,6 +1088,7 @@ namespace render
 
     void CommandList::SetComputeState(const ComputeState& state)
     {
+        PERF_COUNTER(Cmd_SetComputeState);
         check(AllowsCommandType(Queue_Compute));
         if (state == m_computeState)
             return;
@@ -1108,12 +1116,14 @@ namespace render
 
     void CommandList::Dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
     {
+        PERF_COUNTER(Cmd_DispatchCompute);
         check(AllowsCommandType(Queue_Compute));
         vkCmdDispatch(m_currentCommandBuffer->cmd, groupCountX, groupCountY, groupCountZ);
     }
 
     void CommandList::SetTextureState(const TextureBarrier* barriers, uint32_t count)
     {
+        PERF_COUNTER(Cmd_TextureBarrier);
         static constexpr uint32_t MaxBarriers = 32;
         check(count <= MaxBarriers);
         Mist::tStaticArray<VkImageMemoryBarrier2, MaxBarriers> imageBarriers;
