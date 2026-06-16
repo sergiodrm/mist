@@ -321,6 +321,7 @@ namespace rendersystem
         delete m_samplerCache;
         delete m_shaderContext.memoryPool;
         m_shaderContext.memoryPool = nullptr;
+        m_shaderContext.Destroy();
         for (auto it = m_shaderDb.m_programs.begin(); it != m_shaderDb.m_programs.end(); ++it)
             delete it->second;
         m_shaderDb.m_programs.clear();
@@ -1915,12 +1916,12 @@ namespace rendersystem
 	void ShaderBufferPool::BeginUseBuffer()
 	{
         m_buffers.Next();
-        m_buffers.Get().BeginUse(m_rs->GetDevice(), &m_tempBuffer);
+        m_buffers.GetHead().BeginUse(m_rs->GetDevice(), &m_tempBuffer);
 	}
 
 	ShaderBuffer& ShaderBufferPool::Get()
 	{
-		return m_buffers.Get();
+		return m_buffers.GetHead();
 	}
 
     void ShaderBufferPool::EndUseBuffer()
