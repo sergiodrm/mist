@@ -130,6 +130,7 @@ namespace Mist
 
 			PC_Cmd_TextureBarrier,
 			PC_Cmd_SetGraphicsState,
+			PC_Cmd_SetPSO,
 			PC_Cmd_SetComputeState,
 			PC_Cmd_PushConstants,
 			PC_Cmd_BindDescriptors,

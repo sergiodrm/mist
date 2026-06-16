@@ -276,6 +276,7 @@ namespace Mist
 
 			"PC_Cmd_TextureBarrier",
 			"PC_Cmd_SetGraphicsState",
+			"PC_Cmd_SetPSO",
 			"PC_Cmd_SetComputeState",
 			"PC_Cmd_PushConstants",
 			"PC_Cmd_BindDescriptors",
@@ -355,7 +356,9 @@ namespace Mist
 					| ImGuiTableFlags_NoHostExtendX
 					//| ImGuiTableFlags_BordersV | ImGuiTableFlags_BordersOuterH
 					;
-				ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4{ 0.2f, 0.2f, 0.2f, 0.2f });
+				ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImVec4{ 0.33f, 0.33f, 0.33f, 0.33f });
+				ImGui::PushStyleColor(ImGuiCol_TableRowBg, ImVec4{ 0.2f, 0.2f, 0.2f, 0.2f });
+				ImGui::PushStyleColor(ImGuiCol_TableRowBgAlt, ImVec4{ 0.3f, 0.3f, 0.3f, 0.3f });
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.f, 0.5f, 0.f, 1.f });
 				if (ImGui::BeginTable("PerformanceCounters", 6, tableFlags))
 				{
@@ -371,7 +374,7 @@ namespace Mist
 					{
 						ImGui::TableNextRow();
 						ImGui::TableNextColumn();
-						ImGui::TextColored(col, "%16s", ToStr(i));
+						ImGui::TextColored(col, "%32s", ToStr(i));
 						ImGui::TableNextColumn();
 						ImGui::TextColored(col, "%5d", items[i].count);
 						ImGui::TableNextColumn();
@@ -385,7 +388,7 @@ namespace Mist
 					}
 					ImGui::EndTable();
 				}
-				ImGui::PopStyleColor(2);
+				ImGui::PopStyleColor(4);
 				ImGui::End();
 			}
 		};
