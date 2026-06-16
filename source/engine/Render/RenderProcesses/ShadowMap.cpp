@@ -4,6 +4,7 @@
 #include "Core/Logger.h"
 #include "GBuffer.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneRenderer.h"
 #include "Render/DebugRender.h"
 #include "imgui_internal.h"
 #include "glm/ext/matrix_clip_space.inl"

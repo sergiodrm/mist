@@ -18,6 +18,7 @@
 #include "Render/Globals.h"
 #include "Resources/ResourceLoader.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneRenderer.h"
 #include "Utils/GenericUtils.h"
 #include "RenderProcesses/RenderProcess.h"
 #include "Utils/TimeUtils.h"
@@ -167,7 +168,7 @@ namespace Mist
 		g_render = m_renderSystem;
 		g_device = m_renderSystem->GetDevice();
 
-		SceneRenderer::Init();
+		SceneRenderer::Init(m_renderSystem);
 		m_renderer.Init(m_renderSystem, this);
 		m_gpuParticleSystem.Init(g_render);
 		DebugRender::Init();

@@ -3,6 +3,7 @@
 #include "Render/DebugRender.h"
 #include "Render/Terrain.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneRenderer.h"
 #include <imgui/imgui.h>
 #include "Application/CmdParser.h"
 #include "Application/Application.h"

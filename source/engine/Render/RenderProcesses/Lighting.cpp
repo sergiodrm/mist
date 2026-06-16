@@ -6,6 +6,7 @@
 #include "GBuffer.h"
 #include "SSAO.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneRenderer.h"
 #include "imgui_internal.h"
 #include "Application/Application.h"
 #include "Application/CmdParser.h"
