@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <cstring>
+#include <utility>
 #include <string.h>
 #include <vector>
 #include <queue>
@@ -425,9 +426,7 @@ namespace Mist
 		void Clear()
 		{
 			for (IndexType i = 0; i < m_index; ++i)
-			{
 				m_data[i].~DataType();
-			}
 			m_index = 0;
 		}
 
@@ -442,6 +441,13 @@ namespace Mist
 			check(m_data && m_index < m_count);
 			new (&m_data[m_index++]) DataType(value);
 			//m_data[m_index++] = value;
+		}
+
+		template <typename ... Args>
+		void Push(Args&&... args)
+		{
+			check(m_data && m_index < m_count);
+			new (&m_data[m_index++]) DataType(std::forward<Args>(args)...);
 		}
 
 		void Pop()
