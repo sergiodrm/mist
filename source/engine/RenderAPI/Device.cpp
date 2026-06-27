@@ -3286,23 +3286,12 @@ namespace render
             return device->CreateBuffer(desc);
         }
 
-        BufferHandle CreateStorageBuffer(Device* device, uint64_t size, const char* debugName)
+        BufferHandle CreateStorageBuffer(Device* device, uint64_t size, BufferUsage usage, MemoryUsage memoryUsage, const char* debugName)
         {
 			BufferDescription desc;
 			desc.size = device->AlignUniformSize(size);
-			desc.bufferUsage = BufferUsage_StorageBuffer;
-			desc.memoryUsage = MemoryUsage_CpuToGpu;
-			if (debugName && *debugName)
-				desc.debugName = debugName;
-			return device->CreateBuffer(desc);
-        }
-
-        BufferHandle CreateGPUStorageBuffer(Device* device, uint64_t size, const char* debugName)
-        {
-			BufferDescription desc;
-			desc.size = device->AlignUniformSize(size);
-			desc.bufferUsage = BufferUsage_StorageBuffer;
-			desc.memoryUsage = MemoryUsage_Gpu;
+			desc.bufferUsage = usage;
+			desc.memoryUsage = memoryUsage;
 			if (debugName && *debugName)
 				desc.debugName = debugName;
 			return device->CreateBuffer(desc);

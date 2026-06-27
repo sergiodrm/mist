@@ -44,10 +44,13 @@ namespace Mist
 		m_ssboTransforms.Init(rs->GetFramesInFlightCount());
 		m_ssboMaterials.Init(rs->GetFramesInFlightCount());
 
+		render::MemoryUsage memUsage = render::MemoryUsage_CpuToGpu;
+		render::BufferUsage bufferUsage = render::BufferUsage_StorageBuffer;
+
 		for (uint32_t i = 0; i < m_ssboMaterials.GetCount(); ++i)
 		{
-			m_ssboTransforms.Get(i) = render::utils::CreateStorageBuffer(rs->GetDevice(), sizeof(glm::mat4) * m_transforms.GetReservedSize(), "Transforms SSBO");
-			m_ssboMaterials.Get(i) = render::utils::CreateStorageBuffer(rs->GetDevice(), sizeof(sMaterialRenderData) * m_materialRenderData.GetReservedSize(), "Materials SSBO");
+			m_ssboTransforms.Get(i) = render::utils::CreateStorageBuffer(rs->GetDevice(), sizeof(glm::mat4) * m_transforms.GetReservedSize(), bufferUsage, memUsage, "Transforms SSBO");
+			m_ssboMaterials.Get(i) = render::utils::CreateStorageBuffer(rs->GetDevice(), sizeof(sMaterialRenderData) * m_materialRenderData.GetReservedSize(), bufferUsage, memUsage, "Materials SSBO");
 		}
 	}
 
