@@ -74,17 +74,7 @@ namespace Mist
 	private:
 
 		Renderer m_renderer;
-
-		uint32_t m_currentSwapchainIndex;
-
 		Scene* m_scene = nullptr;
-
-		GPUParticleSystem m_gpuParticleSystem;
-#if 0
-		Gol* m_gol;
-#endif // 0
-
-
 		rendersystem::RenderSystem* m_renderSystem;
 	};
 

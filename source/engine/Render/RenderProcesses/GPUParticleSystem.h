@@ -5,6 +5,7 @@
 #include "Render/Globals.h"
 #include <glm/glm.hpp>
 #include "RenderAPI/Device.h"
+#include "Render/RenderProcesses/RenderProcess.h"
 
 namespace rendersystem
 {
@@ -32,7 +33,23 @@ namespace Mist
 		glm::vec4 Color;
 	};
 
-	class GPUParticleSystem
+	struct DustParameters
+	{
+		float deltaTime;
+		float time;
+		float freqX;
+		float freqY;
+	};
+
+	struct DustParticle
+	{
+		glm::vec3 position;
+		float lifeTime;
+		glm::vec4 velocity;
+		glm::vec4 color;
+	};
+
+	class GPUParticleSystem : public RenderProcess
 	{
 		enum
 		{
@@ -47,19 +64,27 @@ namespace Mist
 		};
 	public:
 
-		GPUParticleSystem();
-		void Init(rendersystem::RenderSystem* renderSystem);
+		GPUParticleSystem(Renderer* renderer, IRenderEngine* engine);
+		virtual RenderProcessType GetProcessType() const override { return RENDERPROCESS_PARTICLES; }
+		virtual render::RenderTarget* GetRenderTarget(uint32_t index = 0) const override { return nullptr; }
+		virtual void Init(rendersystem::RenderSystem* renderSystem) override;
 		void UpdateBuffers(rendersystem::RenderSystem* renderSystem);
 		void Dispatch(rendersystem::RenderSystem* renderSystem);
-		void Draw(rendersystem::RenderSystem* renderSystem);
-		void Destroy(rendersystem::RenderSystem* renderSystem);
-		void ImGuiDraw();
+		virtual void Draw(rendersystem::RenderSystem* renderSystem) override;
+		virtual void Destroy(rendersystem::RenderSystem* renderSystem) override;
+		virtual void ImGuiDraw() override;
 		void ResetParticles(render::Device* device);
+		void ResetDustParticles(render::Device* device);
 
 	private:
 		rendersystem::ShaderProgram* m_computeShader;
 		render::BufferHandle m_particlesBuffer;
 		render::TextureHandle m_circleGradientTexture;
+
+		RingBufferContainer<render::BufferHandle> m_dustBuffer;
+		rendersystem::ShaderProgram* m_dustCS;
+		rendersystem::ShaderProgram* m_dustPS;
+		uint32_t m_dustParticleCount;
 
 		rendersystem::ShaderProgram* m_graphicsShader;
 		render::RenderTargetHandle m_renderTarget;

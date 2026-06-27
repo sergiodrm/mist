@@ -5,6 +5,7 @@
 #include "RenderProcesses/PostProcess.h"
 #include "RenderProcesses/Preprocesses.h"
 #include "RenderProcesses/ShadowMap.h"
+#include "RenderProcesses/GPUParticleSystem.h"
 #include "Core/SystemMemory.h"
 #include "Application/Application.h"
 #include "VulkanRenderEngine.h"
@@ -33,6 +34,7 @@ namespace Mist
 		m_processArray[RENDERPROCESS_SSAO] = _new SSAO(this, engine);
 		m_processArray[RENDERPROCESS_GBUFFER] = _new GBuffer(this, engine);
 		m_processArray[RENDERPROCESS_LIGHTING] = _new Lighting(this, engine);
+		m_processArray[RENDERPROCESS_PARTICLES] = _new GPUParticleSystem(this, engine);
 		m_processArray[RENDERPROCESS_SHADOWMAP] = _new ShadowMapProcess(this, engine);
 		m_processArray[RENDERPROCESS_PREPROCESSES] = _new Preprocess(this, engine);
 		m_processArray[RENDERPROCESS_POSTPRO] = _new PostProcess(this, engine);

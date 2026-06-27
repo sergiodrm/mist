@@ -11,6 +11,8 @@
 #include "../VulkanRenderEngine.h"
 #include "RenderSystem/RenderSystem.h"
 #include "RenderSystem/TextureLoader.h"
+#include "Lighting.h"
+#include "GBuffer.h"
 
 #define PARTICLE_COUNT 512 * 512
 #define PARTICLE_STORAGE_BUFFER_SIZE PARTICLE_COUNT * sizeof(Particle)
@@ -21,14 +23,13 @@ namespace Mist
     CBoolVar CVar_ShowGol("r_showgol", false);
     CBoolVar CVar_ComputeGol("r_computegol", false);
 
-
-
-	GPUParticleSystem::GPUParticleSystem()
-		: m_flags(GPU_PARTICLES_ACTIVE), m_particleCount(PARTICLE_COUNT), m_renderTarget(nullptr) {}
+	GPUParticleSystem::GPUParticleSystem(Renderer* renderer, IRenderEngine* engine)
+		: RenderProcess(renderer, engine), m_flags(GPU_PARTICLES_ACTIVE), m_particleCount(PARTICLE_COUNT), m_renderTarget(nullptr) {}
 
 	void GPUParticleSystem::Init(rendersystem::RenderSystem* renderSystem)
 	{
 		render::Device* device = renderSystem->GetDevice();
+		const Lighting* lighting = GetRenderer()->GetRenderProcessAs<Lighting>();
 
 		render::Extent2D extent = renderSystem->GetRenderResolution();
 		uint32_t width = extent.width;
@@ -42,7 +43,9 @@ namespace Mist
 			render::TextureHandle texture = device->CreateTexture(texDesc);
 
 			render::RenderTargetDescription rtDesc;
-			rtDesc.AddColorAttachment(texture);
+			check(lighting->GetRenderTarget()->m_description.colorAttachments[0].texture && lighting->GetRenderTarget()->m_description.depthStencilAttachment.texture);
+			rtDesc.AddColorAttachment(lighting->GetRenderTarget()->m_description.colorAttachments[0].texture);
+			rtDesc.SetDepthStencilAttachment(lighting->GetRenderTarget()->m_description.depthStencilAttachment.texture);
 			m_renderTarget = device->CreateRenderTarget(rtDesc);
 		}
 
@@ -64,23 +67,20 @@ namespace Mist
 		bufferDesc.size = PARTICLE_STORAGE_BUFFER_SIZE;
 		bufferDesc.debugName = "ParticlesBuffer";
 		m_particlesBuffer = device->CreateBuffer(bufferDesc);
-		/*m_particlesBuffer = MemNewBuffer(context.Allocator, PARTICLE_STORAGE_BUFFER_SIZE,
-			VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-			| VK_BUFFER_USAGE_TRANSFER_DST_BIT
-			| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			EMemUsage::MEMORY_USAGE_GPU);*/
-		//SetVkObjectName(context, &m_particlesBuffer.GetBuffer(), VK_OBJECT_TYPE_BUFFER, "ParticlesBuffer");
+
+		
 
 		// Fill particles
 		ResetParticles(device);
+		ResetDustParticles(device);
+
+		rendersystem::ShaderBuildDescription shaderDesc;
+		shaderDesc.SetGraphics("shaders/particles/dust/dust.vert", "shaders/particles/dust/dust.frag");
+		m_dustPS = renderSystem->CreateShader(shaderDesc);
+		shaderDesc.SetCompute("shaders/particles/dust/dust.comp");
+		m_dustCS = renderSystem->CreateShader(shaderDesc);
 
 		rendersystem::textureloader::LoadTextureFromFile(&m_circleGradientTexture, renderSystem->GetDevice(), "textures/circlegradient.jpg");
-
-#if 0
-		LoadTextureFromFile(context, ASSET_PATH("textures/circlegradient.jpg"), &m_circleGradientTexture, FORMAT_R8G8B8A8_UNORM);
-		m_circleGradientTexture->CreateView(context, tViewDescription());
-#endif // 0
-
 	}
 
 #if 0
@@ -132,6 +132,8 @@ namespace Mist
 			renderSystem->GetDevice()->WaitIdle();
 			ResetParticles(renderSystem->GetDevice());
 		}
+
+		m_dustBuffer.Next();
 	}
 
 	void GPUParticleSystem::Dispatch(rendersystem::RenderSystem* renderSystem)
@@ -145,13 +147,24 @@ namespace Mist
 		renderSystem->BindUAV("u_particles", m_particlesBuffer);
 		renderSystem->SetShaderProperty("u_movParams", &m_params, sizeof(ParameterUBO));
 		renderSystem->Dispatch(PARTICLE_COUNT / 256, 1, 1);
+
+		renderSystem->BeginMarker("Dust compute");
+		renderSystem->SetShader(m_dustCS);
+		renderSystem->BindUAV("u_particlesRead", m_dustBuffer.GetTail());
+		renderSystem->BindUAV("u_particlesWrite", m_dustBuffer.GetHead());
+		renderSystem->SetShaderProperty("u_movParams", &m_params, sizeof(ParameterUBO));
+		renderSystem->Dispatch((uint32_t)ceilf((float)m_dustParticleCount / 256.f), 1, 1);
+		renderSystem->EndMarker();
 	}
 
 	void GPUParticleSystem::Draw(rendersystem::RenderSystem* renderSystem)
 	{
 		PROF_SCOPE(ParticlesDraw);
+		return;
+
+		Dispatch(renderSystem);
         
-		if (m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
+		if (0&& m_flags & GPU_PARTICLES_GRAPHICS_ACTIVE)
 		{
 			renderSystem->SetRenderTarget(m_renderTarget);
 			renderSystem->ClearColor();
@@ -167,8 +180,33 @@ namespace Mist
 			renderSystem->ClearState();
 			renderSystem->SetDefaultGraphicsState();
 		}
+
+		renderSystem->BeginMarker("DustDraw");
+		renderSystem->SetRenderTarget(m_renderTarget);
+		renderSystem->SetBlendEnable(true);
+		renderSystem->SetBlendFactor(render::BlendFactor_SrcAlpha, render::BlendFactor_OneMinusSrcAlpha);
+		renderSystem->SetDepthEnable(true, false);
+		renderSystem->SetStencilEnable(false);
+		renderSystem->SetViewport(m_renderTarget->m_info.GetViewport());
+		renderSystem->SetScissor(m_renderTarget->m_info.GetScissor());
+		renderSystem->SetShader(m_dustPS);
+		renderSystem->SetVertexBuffer(m_dustBuffer.GetHead());
+		renderSystem->SetPrimitive(render::PrimitiveType_PointList);
+		renderSystem->SetTextureSlot("u_gradientTex", m_circleGradientTexture);
+
+		DustParameters params;
+		params.deltaTime = tApplication::GetApp().GetTimer().GetFixStepMs();
+		params.time = tApplication::GetApp().GetTimer().GetTotalTime();
+		renderSystem->SetShaderProperty("u_params", &params, sizeof(DustParameters));
+
+		const CameraData* cd = GetCameraData();
+		renderSystem->SetShaderProperty("u_camera", cd, sizeof(CameraData));
+		renderSystem->Draw(m_dustParticleCount);
+		renderSystem->ClearState();
+		renderSystem->SetDefaultGraphicsState();
+		renderSystem->EndMarker();
 		
-		if (m_flags & GPU_PARTICLES_SHOW_RT)
+		if (0&&m_flags & GPU_PARTICLES_SHOW_RT)
 		{
 			float width = (float)renderSystem->GetRenderResolution().width;
 			float height = (float)renderSystem->GetRenderResolution().height;
@@ -184,8 +222,11 @@ namespace Mist
 		m_renderTarget = nullptr;
 		m_particlesBuffer = nullptr;
 		m_circleGradientTexture = nullptr;
+		m_dustBuffer.Destroy();
 		renderSystem->DestroyShader(&m_graphicsShader);
 		renderSystem->DestroyShader(&m_computeShader);
+		renderSystem->DestroyShader(&m_dustCS);
+		renderSystem->DestroyShader(&m_dustPS);
 	}
 
 	void GPUParticleSystem::ImGuiDraw()
@@ -228,6 +269,48 @@ namespace Mist
 		upload.Submit();
 
 		delete[] particles;
+	}
+
+	void GPUParticleSystem::ResetDustParticles(render::Device* device)
+	{
+		m_dustBuffer.Destroy();
+		m_dustBuffer.Init(2);
+
+		// volume
+		glm::vec3 center = { 0.f,0.f, 0.f };
+		glm::vec3 extent = { 50.f, 50.f, 50.f };
+		m_dustParticleCount = extent.x * extent.y * extent.z;
+		size_t particleSize = m_dustParticleCount * sizeof(DustParticle);
+		std::default_random_engine rndEng((uint32_t)time(nullptr));
+		std::uniform_real_distribution<float> rndDist(0.f, 1.f);
+
+		glm::vec4 baseColor = { 0.993f, 0.993f, 0.983f,1.f };
+		auto lmb = [&](float scl) -> float { return scl * (rndDist(rndEng) - 0.5f); };
+
+		DustParticle* particles = (DustParticle*)_malloc(particleSize);
+		for (uint32_t i = 0; i < m_dustParticleCount; ++i)
+		{
+			float x = center.x + float(i % (uint32_t)extent.x) - 0.5f * extent.x;
+			float y = center.y + float((i / (uint32_t)extent.x) % (uint32_t)extent.y);
+			float z = center.z + float(i / (uint32_t)(extent.x * extent.y)) - 0.5f * extent.z;
+			particles[i] = {};
+			particles[i].color = baseColor * glm::vec4(lmb(0.01f), lmb(0.01f), lmb(0.01f), 1.f);
+			particles[i].lifeTime = rndDist(rndEng);
+			particles[i].position = { x + lmb(1.f), y + lmb(1.f), z + lmb(1.f) };
+			particles[i].velocity = { rndDist(rndEng), rndDist(rndEng) , rndDist(rndEng) , 1.f };
+		}
+
+		render::utils::UploadContext ctx(device);
+		for (uint32_t i = 0; i < m_dustBuffer.GetCount(); ++i)
+		{
+			char buff[32];
+			sprintf_s(buff, "Dust particle buffer %d", i);
+			m_dustBuffer.Get(i) = render::utils::CreateStorageBuffer(device, particleSize, 
+				render::BufferUsage_StorageBuffer | render::BufferUsage_VertexBuffer, render::MemoryUsage_Gpu, buff);
+			ctx.WriteBuffer(m_dustBuffer.Get(i), particles, particleSize);
+		}
+
+		_free(particles);
 	}
 
 

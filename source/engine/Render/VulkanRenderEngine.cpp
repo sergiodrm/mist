@@ -170,7 +170,6 @@ namespace Mist
 
 		SceneRenderer::Init(m_renderSystem);
 		m_renderer.Init(m_renderSystem, this);
-		m_gpuParticleSystem.Init(g_render);
 		DebugRender::Init();
 		resources::InitLoadThread();
 		//////////////////////////////////////
@@ -185,12 +184,6 @@ namespace Mist
 		rendersystem::ui::AddWindowCallback("AppInfo", [](void*) { Profiling::ImGuiDraw(); }, nullptr, true);
 		rendersystem::ui::AddWindowCallback("InputState", &ImGuiDrawInputState);
 		rendersystem::ui::AddWindowCallback("ImGuiDemo", [](void*) { ImGui::ShowDemoWindow(); });
-		rendersystem::ui::AddWindowCallback("Gpu particles", [](void* data) 
-			{
-				check(data);
-				GPUParticleSystem* ps = static_cast<GPUParticleSystem*>(data);
-				ps->ImGuiDraw();
-			}, &m_gpuParticleSystem);
 #if 0
 		rendersystem::ui::AddWindowCallback("Game of life demo", [](void* data)
 			{
@@ -248,7 +241,6 @@ namespace Mist
 			delete m_scene;
 			m_scene = nullptr;
 		}
-		m_gpuParticleSystem.Destroy(g_render);
 		DebugRender::Destroy();
 		m_renderer.Destroy(m_renderSystem);
 		SceneRenderer::Destroy();
@@ -328,12 +320,6 @@ namespace Mist
 
 		g_render->BeginMarker("Renderer");
 		m_renderer.Draw(m_renderSystem);
-		g_render->EndMarker();
-
-		g_render->BeginMarker("Test compute shaders");
-		m_gpuParticleSystem.Dispatch(g_render);
-		m_gpuParticleSystem.Draw(g_render);
-		//m_gol->Compute();
 		g_render->EndMarker();
 
 		g_render->BeginMarker("Debug render");
