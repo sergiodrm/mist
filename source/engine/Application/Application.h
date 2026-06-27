@@ -40,6 +40,7 @@ namespace Mist
 
 		static tApplication* CreateApplication(int argc, char** argv);
 		static void DestroyApplication(tApplication* app);
+		static tApplication& GetApp();
 
 		tApplication();
 		virtual ~tApplication() = default;
@@ -48,6 +49,7 @@ namespace Mist
 
 		int Run();
 		class IRenderEngine* GetEngineInstance() const { return m_engine; }
+		const FixTickTimer& GetTimer() const { return m_tickTimer; }
 		static uint64_t GetFrame();
 		static float GetAppTime();
 		static void ImGuiDraw();

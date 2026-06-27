@@ -141,6 +141,12 @@ namespace Mist
 		GApp = nullptr;
 	}
 
+	tApplication& tApplication::GetApp()
+	{
+		check(GApp);
+		return *GApp;
+	}
+
 	tApplication::tApplication()
 		: m_windowClosed(false)
 	{
