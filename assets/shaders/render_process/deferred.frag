@@ -6,12 +6,21 @@ layout(location = 0) out vec4 outColor;
 layout(set = 3, binding = 1) uniform ShadowMapInfo
 {
     mat4 LightViewMat[MAX_SHADOW_MAPS];
-    vec4 noiseParams;
+    vec4 noiseParams; // w: padding
+    vec4 textureOffset3DSize; // xyz: tex3D offset size. w: filter radius
+    vec4 textureOffsetParams; // x: window size. y: filter size. zw: shadow map texture size
 } u_ShadowMapInfo;
 
 #define LIGHTING_SHADOWS_NOISE_SCALE u_ShadowMapInfo.noiseParams.x
 #define LIGHTING_SHADOWS_NOISE_FACTOR u_ShadowMapInfo.noiseParams.y
 #define LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE int(u_ShadowMapInfo.noiseParams.z)
+
+#define LIGHTING_SHADOWS_TEXTURE_OFFSET_3D_SIZE u_ShadowMapInfo.textureOffset3DSize.xyz
+#define LIGHTING_SHADOWS_TEXTURE_FILTER_RADIUS u_ShadowMapInfo.noiseParams.w
+#define LIGHTING_SHADOWS_TEXTURE_WINDOW_SIZE int(u_ShadowMapInfo.textureOffsetParams.x)
+#define LIGHTING_SHADOWS_TEXTURE_FILTER_SIZE int(u_ShadowMapInfo.textureOffsetParams.y)
+
+#define LIGHTING_SHADOWS_SHADOW_MAP_SIZE u_ShadowMapInfo.textureOffsetParams.zw
 
 #define _CAMERA_NOT_PREV_FRAME_
 #include <shaders/includes/camera.glsl>
@@ -34,6 +43,7 @@ layout(set = 2, binding = 1) uniform samplerCube u_prefilterMap;
 layout(set = 2, binding = 2) uniform sampler2D u_brdfMap;
 
 layout(set = 2, binding = 3) uniform sampler2D u_blueNoise;
+layout(set = 2, binding = 4) uniform sampler3D u_offset3D;
 
 //#define LIGHTING_NO_SHADOWS
 #define LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX //u_ShadowMapInfo.LightViewMat
@@ -100,4 +110,5 @@ void main()
 #else
     outColor = lightingColor;
 #endif // DEFERRED_APPLY_FOG
+//outColor = vec4(gl_FragCoord.xyz / vec3(1920, 1080, 1), 1.f);
 }

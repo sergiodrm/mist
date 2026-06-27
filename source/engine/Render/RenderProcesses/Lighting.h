@@ -17,7 +17,11 @@ namespace Mist
 			float noiseScale = 0.0025f;
 			float noiseFactor = 1.25f;
 			float noisePCFKernelSize = 5.f;
-			float _padding = 0.f;
+			float filterRadius = 8.f;
+			glm::vec4 textureOffset3DSize;
+			float windowSize = 32.f;
+			float filterSize = 8.f;
+			glm::vec2 textureShadowMapSize;
 		};
 	public:
 		Lighting(Renderer* renderer, IRenderEngine* engine);
@@ -32,11 +36,15 @@ namespace Mist
 		virtual void ImGuiDraw() override;
 		virtual void DebugDraw() override;
 	private:
+		void ResetTextureOffset3D(render::Device* device);
+	private:
 		rendersystem::ShaderProgram* m_lightingShader;
 		rendersystem::ShaderProgram* m_lightingFogShader;
 		rendersystem::ShaderProgram* m_skyboxShader;
 		uint32_t m_forwardRenderListId;
 		cModel* m_skyModel;
+
+		render::TextureHandle m_texOffset3D;
 
 		render::RenderTargetHandle m_lightingRt;
 		render::RenderTargetHandle m_skyboxRt;

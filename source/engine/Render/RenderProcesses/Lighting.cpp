@@ -15,12 +15,45 @@
 #include "Render/DebugRender.h"
 #include "RenderSystem/RenderSystem.h"
 #include "RenderSystem/UI.h"
+#include "../Noise.h"
 
 
 namespace Mist
 {
 	CBoolVar CVar_FogEnabled("r_fogenabled", false);
 	CBoolVar CVar_ForwardPipelineEnabled("r_forwardPipelineEnabled", true);
+
+	static void GenerateTextureFilterOffset3D(float** data, uint64_t* size, uint32_t windowSize, uint32_t filterSize)
+	{
+		uint64_t count = windowSize * windowSize * filterSize * filterSize * 2;
+		PROFILE_SCOPE_LOGF(TextureGeneration, "Texture offset 3d generation (window size: %d; filter size: %d; count: %lld; bytes: %lld)",
+			windowSize, filterSize, count, count * sizeof(float));
+
+		*size = sizeof(float) * count;
+		*data = (float*)_malloc(*size);
+		uint32_t index = 0;
+		for (uint32_t texelY = 0; texelY < windowSize; ++texelY)
+		{
+			for (uint32_t texelX = 0; texelX < windowSize; ++texelX)
+			{
+				for (uint32_t v = filterSize - 1; v < filterSize; --v)
+				{
+					for (uint32_t u = 0; u < filterSize; ++u)
+					{
+						float x = ((float)u + 0.5f + (Random()-0.5f)) / (float)filterSize;
+						float y = ((float)v + 0.5f + (Random()-0.5f)) / (float)filterSize;
+
+						check(index + 1 < count);
+						(*data)[index] = sqrtf(y) * cosf(2.f * (float)M_PI * (float)x) * 0.5f + 0.5f;
+						(*data)[index+1] = sqrtf(y) * sinf(2.f * (float)M_PI * (float)x) * 0.5f + 0.5f;
+						check((*data)[index] >= 0.f && (*data)[index] <= 1.f);
+						check((*data)[index+1] >= 0.f && (*data)[index+1] <= 1.f);
+						index += 2;
+					}
+				}
+			}
+		}
+	}
 
 	Lighting::Lighting(Renderer* renderer, IRenderEngine* engine)
 		: RenderProcess(renderer, engine)
@@ -72,6 +105,7 @@ namespace Mist
 			shaderDesc.SetGraphics("shaders/render_process/skybox.vert", "shaders/render_process/skybox.frag");
             m_skyboxShader = rs->CreateShader(shaderDesc);
 		}
+		ResetTextureOffset3D(rs->GetDevice());
 
         m_skyModel = _new cModel();
         m_skyModel->LoadModel(device, "models/cube.gltf");
@@ -165,6 +199,7 @@ namespace Mist
 					true, render::CompareOp_LessOrEqual);
 				render::SamplerHandle samplers[] = { shadowMapSampler, shadowMapSampler, shadowMapSampler };
 				rs->SetSampler("u_ShadowMap", samplers, Mist::CountOf(samplers));
+				m_shadowMapParams.textureShadowMapSize = { shadowMapTextures[0]->m_description.extent.width, shadowMapTextures[1]->m_description.extent.height };
 				rs->SetShaderProperty("u_ShadowMapInfo", &m_shadowMapParams, sizeof(ShadowMapParams));
 				rs->SetTextureSlot("u_blueNoise", rs->GetBlueNoiseTexture());
 				rs->SetSampler("u_blueNoise", 
@@ -174,9 +209,7 @@ namespace Mist
 					render::SamplerAddressMode_Repeat,
 					render::SamplerAddressMode_Repeat,
 					render::SamplerAddressMode_Repeat);
-
-
-				
+				rs->SetTextureSlot("u_offset3D", m_texOffset3D);
 
 				const EnvironmentData& env = scene->GetEnvironmentData();
 				rs->SetShaderProperty("u_env", &env, sizeof(env));
@@ -337,11 +370,48 @@ namespace Mist
 		ImGui::DragFloat("Noise scale", &m_shadowMapParams.noiseScale, 0.0001f, 0.f, 10.f, "%.5f");
 		ImGui::DragFloat("Noise factor", &m_shadowMapParams.noiseFactor, 0.25f, 0.f, 100.f);
 		ImGui::DragFloat("Noise kernel", &m_shadowMapParams.noisePCFKernelSize, 1.f, 0.f, 21.f);
+
+		int ws = m_shadowMapParams.windowSize;
+		ImGui::DragInt("Window size", &ws, 1, 0, INT_MAX);
+		m_shadowMapParams.windowSize = ws;
+
+		ws = m_shadowMapParams.filterSize;
+		ImGui::DragInt("Filter size", &ws, 1, 0, INT_MAX);
+		m_shadowMapParams.filterSize = ws;
+
+		ws = m_shadowMapParams.filterRadius;
+		ImGui::DragInt("Filter radius", &ws, 1, 0, INT_MAX);
+		m_shadowMapParams.filterRadius = ws;
+		if (ImGui::Button("Regenerate"))
+			ResetTextureOffset3D(g_device);
 		ImGui::End();
 	}
 
 	void Lighting::DebugDraw()
 	{
+	}
+
+	void Lighting::ResetTextureOffset3D(render::Device* device)
+	{
+		render::TextureDescription desc;
+		desc.dimension = render::ImageDimension_3D;
+		desc.isShaderResource = true;
+		desc.memoryUsage = render::MemoryUsage_Gpu;
+		desc.format = render::Format_R32G32B32A32_SFloat;
+		desc.extent = { uint32_t(m_shadowMapParams.filterSize * m_shadowMapParams.filterSize / 2.f), (uint32_t)m_shadowMapParams.windowSize, (uint32_t)m_shadowMapParams.windowSize };
+		desc.debugName = "TexOffset3D_Lighting";
+		m_texOffset3D = device->CreateTexture(desc);
+
+		float* data = nullptr;
+		uint64_t size = 0;
+		GenerateTextureFilterOffset3D(&data, &size, (uint32_t)m_shadowMapParams.windowSize, (uint32_t)m_shadowMapParams.filterSize);
+ 		render::utils::UploadContext ctx(device);
+		ctx.WriteTexture(m_texOffset3D, 0, 0, data, size);
+		_free(data);
+
+		m_shadowMapParams.textureOffset3DSize.x = (float)desc.extent.width;
+		m_shadowMapParams.textureOffset3DSize.y = (float)desc.extent.height;
+		m_shadowMapParams.textureOffset3DSize.z = (float)desc.extent.depth;
 	}
 
 }
