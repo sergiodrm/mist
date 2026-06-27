@@ -824,6 +824,8 @@ namespace Mist
 
 		T& GetHead() { return Get(m_head); }
 		const T& GetHead() const { return Get(m_head); }
+		T& GetTail() { return Get((m_head-1)%m_itemCount); }
+		const T& GetTail() const { return Get((m_head - 1) % m_itemCount); }
 		uint32_t GetCount() const { return m_itemCount; }
 		T& Get(uint32_t index) { checkdbg(index < m_itemCount); return m_items[index]; }
 		const T& Get(uint32_t index) const { checkdbg(index < m_itemCount); return m_items[index]; }
