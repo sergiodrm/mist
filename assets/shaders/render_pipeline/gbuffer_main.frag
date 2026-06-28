@@ -9,12 +9,8 @@ layout (location = 5) in vec4 inCurrWSPos;
 layout (location = 6) in vec4 inPrevWSPos;
 layout (location = 7) in mat3 inTBN;
 
-layout (location = 0) out vec4 outGBufferNormal;
-layout (location = 1) out vec4 outGBufferAlbedo;
-layout (location = 2) out vec4 outGBufferEmissive;
-layout (location = 3) out vec4 outGBufferSpecular;
-layout (location = 4) out vec4 outGBufferMotionVectors;
-
+#define CAMERA_DATA_INV_VIEW_PROJECTION (u_camera.data.invViewProjection)
+#include <shaders/includes/camera.glsl>
 #include <shaders/includes/material.glsl>
 #include <shaders/includes/instance_data.glsl>
 #include <shaders/includes/gbuffer_write.glsl>

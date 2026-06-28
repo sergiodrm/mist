@@ -1,4 +1,5 @@
 
+#define _GBUFFER_WRITE_
 #include <shaders/includes/gbuffer.glsl>
 
 void GBuffer_Write(GBuffer data)

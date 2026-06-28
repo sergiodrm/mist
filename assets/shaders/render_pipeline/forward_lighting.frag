@@ -15,31 +15,9 @@ layout(location = 6) in vec4 inLightSpaceFragPos_2;
 layout(location = 7) in vec3 inViewDir;
 layout(location = 8) in mat3 inTBN;
 
-// Shadow mapping
-layout (set = 3, binding = 0) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
-// Irradiance maps
-layout(set = 3, binding = 1) uniform samplerCube u_irradianceMap;
-layout(set = 3, binding = 2) uniform samplerCube u_prefilterMap;
-layout(set = 3, binding = 3) uniform sampler2D u_brdfMap;
-layout(set = 3, binding = 4) uniform samplerCube u_cubemap;
-
-#define LIGHTING_NO_SHADOWS
-#define LIGHTING_SHADOWS_TEXTURE_ARRAY u_ShadowMap
-#define ENVIRONMENT_DATA u_env.data
-#define IRRADIANCE_MAP u_irradianceMap
-#define PREFILTERED_MAP u_prefilterMap
-#define BRDF_MAP u_brdfMap
-
-#include <shaders/includes/environment_data.glsl>
 #include <shaders/includes/material.glsl>
 #include <shaders/includes/instance_data.glsl>
-
-// Per frame data
-layout (std140, set = 3, binding = 5) uniform EnvBlock
-{
-    Environment data;
-} u_env;
-#include <shaders/includes/environment.glsl>
+//#include <shaders/includes/lighting.glsl>
 
 
 vec3 ComputeNormalMapping(vec3 normal)
@@ -56,39 +34,39 @@ vec3 ComputeNormalMapping(vec3 normal)
     }
 }
 
-vec3 ComputeCubemapReflection(vec3 fragPos, vec3 normal, vec3 viewPos)
-{
-    vec3 I = normalize(fragPos - viewPos);
-    vec3 R = reflect(I, normalize(normal));
-    return texture(u_cubemap, R).rgb;
-}
+// vec3 ComputeCubemapReflection(vec3 fragPos, vec3 normal, vec3 viewPos)
+// {
+//     vec3 I = normalize(fragPos - viewPos);
+//     vec3 R = reflect(I, normalize(normal));
+//     return texture(u_cubemap, R).rgb;
+// }
 
-vec4 DoLighting(vec3 fragPos, vec3 viewDir, vec3 normal, vec3 albedo, float opacity, float metallic, float roughness)
-{
-    ShadowInfo shadowInfo;
-    shadowInfo.ShadowCoordArray[0] = inLightSpaceFragPos_0;
-    shadowInfo.ShadowCoordArray[1] = inLightSpaceFragPos_1;
-    shadowInfo.ShadowCoordArray[2] = inLightSpaceFragPos_2;
+// vec4 DoLighting(vec3 fragPos, vec3 viewDir, vec3 normal, vec3 albedo, float opacity, float metallic, float roughness)
+// {
+//     ShadowInfo shadowInfo;
+//     shadowInfo.ShadowCoordArray[0] = inLightSpaceFragPos_0;
+//     shadowInfo.ShadowCoordArray[1] = inLightSpaceFragPos_1;
+//     shadowInfo.ShadowCoordArray[2] = inLightSpaceFragPos_2;
     
-    vec3 lightColor = DoEnvironmentLighting(fragPos, viewDir, normal, albedo, metallic, roughness, 1.f, shadowInfo);
-    vec4 color = vec4(lightColor, opacity);
+//     vec3 lightColor = DoEnvironmentLighting(fragPos, viewDir, normal, albedo, metallic, roughness, 1.f, shadowInfo);
+//     vec4 color = vec4(lightColor, opacity);
 
-//#ifdef CUBEMAP_REFLECTION
-//    // Cubemap reflection
-//    vec3 reflection = ComputeCubemapReflection(fragPos, normal, vec3(0.f));
-//    color = vec4(mix(color.rgb, reflection, 0.02f*metallic), color.a);
-//#endif // CUBEMAP_REFLECTION
-//#ifdef DEBUG_SPECULAR
-//    color = vec4(lightColor, 1.f);
-//#endif // DEBUG_SPECULAR
-    return color;
-}
+// //#ifdef CUBEMAP_REFLECTION
+// //    // Cubemap reflection
+// //    vec3 reflection = ComputeCubemapReflection(fragPos, normal, vec3(0.f));
+// //    color = vec4(mix(color.rgb, reflection, 0.02f*metallic), color.a);
+// //#endif // CUBEMAP_REFLECTION
+// //#ifdef DEBUG_SPECULAR
+// //    color = vec4(lightColor, 1.f);
+// //#endif // DEBUG_SPECULAR
+//     return color;
+// }
 
 void main()
 {
     outColor = vec4(1,0,0,0.2);
     MaterialPBR mtl = Material_ReadPBR(u_materialBuffer.data[u_instance.data.materialId], inTexCoords, inNormal);
     
-    vec4 color = DoLighting(inFragPosWS.xyz, inViewDir, mtl.normal, mtl.albedo, mtl.opacity, mtl.metallic, mtl.roughness);
+    vec4 color = vec4(mtl.albedo,1.f);//DoLighting(inFragPosWS.xyz, inViewDir, mtl.normal, mtl.albedo, mtl.opacity, mtl.metallic, mtl.roughness);
     outColor = color;
 }

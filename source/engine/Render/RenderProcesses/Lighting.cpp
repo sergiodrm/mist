@@ -212,7 +212,7 @@ namespace Mist
 				rs->SetTextureSlot("u_offset3D", m_texOffset3D);
 
 				const EnvironmentData& env = scene->GetEnvironmentData();
-				rs->SetShaderProperty("u_env", &env, sizeof(env));
+				rs->SetShaderProperty("u_lighting", &env, sizeof(env));
 				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 
 				rs->SetTextureSlot("u_irradianceMap", irradiance);

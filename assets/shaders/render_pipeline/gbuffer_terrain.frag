@@ -5,12 +5,6 @@ layout (location = 1) in vec3 inWorldPos;
 layout (location = 2) in vec4 inCurrWSPos;
 layout (location = 3) in vec4 inPrevWSPos;
 
-layout (location = 0) out vec4 outGBufferNormal;
-layout (location = 1) out vec4 outGBufferAlbedo;
-layout (location = 2) out vec4 outGBufferEmissive;
-layout (location = 3) out vec4 outGBufferSpecular;
-layout (location = 4) out vec4 outGBufferMotionVectors;
-
 #define MATERIAL_DISABLE_TEXTURES
 #define _MATERIAL_AS_UNIFORM_
 #include <shaders/includes/material.glsl>

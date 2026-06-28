@@ -271,6 +271,11 @@ namespace Mist
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_EMISSIVE);
 		DECLARE_MACRO_ENUM(MATERIAL_TEXTURE_COUNT);
 #undef DECLARE_MACRO_ENUM
+
+		shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_POINT_LIGHTS", (int)EnvironmentData::MaxPointLights);
+		shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SPOT_LIGHTS", (int)EnvironmentData::MaxSpotLights);
+		shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_DIRECTIONAL_LIGHTS", (int)EnvironmentData::MaxDirectionalLights);
+		shaderDesc.shaderDesc[render::ShaderType_Fragment].options.PushMacroDefinition("MAX_SHADOW_MAPS", (int)EnvironmentData::MaxShadowMaps);
 	}
 
 	bool cMaterial::SerializeMaterials(const char* filepath, const cMaterial* mtls, uint32_t count)

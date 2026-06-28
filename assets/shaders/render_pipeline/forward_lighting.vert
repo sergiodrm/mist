@@ -15,7 +15,7 @@ layout (location = 6) out vec4 outLightSpaceFragPos_2;
 layout (location = 7) out vec3 outViewDir;
 layout (location = 8) out mat3 outTBN;
 
-layout (std140, set = 4, binding = 0) uniform DepthInfo
+layout (std140, set = 3, binding = 0) uniform DepthInfo
 {
     mat4 LightMatrix[3];
 } u_ShadowMapInfo;

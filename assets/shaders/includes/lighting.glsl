@@ -1,5 +1,6 @@
 
 #include <shaders/includes/math.glsl>
+#include <shaders/includes/pbr.glsl>
 
 /*
  * Data structures for lighting
@@ -11,7 +12,7 @@ struct LightData
     float Compression;
     
 
-    vec3 Pos; // w: pointlight-radius; directional-project shadows (-1.f not project. >=0.f shadow map index)
+    vec3 Pos;
     float Radius;
     
 
@@ -25,41 +26,80 @@ struct LightData
     
 };
 
-/*
- * Data structures for lighting
-*/
-//#define LIGHTING_NO_SHADOWS
-#ifndef LIGHTING_NO_SHADOWS
+#ifndef MAX_POINT_LIGHTS
+#define MAX_POINT_LIGHTS 10
+#endif
 
-#ifndef LIGHTING_SHADOWS_TEXTURE_ARRAY
-#error Macro LIGHTING_SHADOWS_TEXTURE_ARRAY must be define to calculate shadow value
-#endif // !LIGHTING_SHADOWS_TEXTURE_ARRAY
+#ifndef MAX_DIRECTIONAL_LIGHTS
+#define MAX_DIRECTIONAL_LIGHTS 1
+#endif
+
+#ifndef MAX_SPOT_LIGHTS
+#define MAX_SPOT_LIGHTS 10
+#endif
 
 #ifndef MAX_SHADOW_MAPS
-#error Must define num of shadow maps
-#endif // !MAX_SHADOW_MAPS
-#endif // !LIGHTING_NO_SHADOWS
-
-#ifndef IRRADIANCE_MAP
-#error Must define irradiance map sampler.
+#define MAX_SHADOW_MAPS 3
 #endif
 
-#ifndef PREFILTERED_MAP
-#error Must define prefiltered map sampler.
-#endif
-
-#ifndef BRDF_MAP
-#error Must define brdf map sampler.
-#endif
-
-struct ShadowInfo
+struct LightingData
 {
-#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    vec4 ShadowCoordArray[MAX_SHADOW_MAPS];
-#else
-    mat4 LightViewMatrices[MAX_SHADOW_MAPS];
-#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
+    vec3 ambientColor;
+    int numOfSpotLights;
+
+    int numOfDirectionalLights;
+    int numOfPointLights;
+    vec2 _padding;
+
+    LightData pointLights[MAX_POINT_LIGHTS];
+    LightData directionalLights[MAX_DIRECTIONAL_LIGHTS];
+    LightData spotLights[MAX_SPOT_LIGHTS];
 };
+
+/**
+ * Input
+*/
+
+layout (std140, set = LIGHTING_DATA_SET, binding = 0) uniform LightingDataBlock
+{
+    LightingData data;
+} u_lighting;
+
+layout(set = LIGHTING_DATA_SET, binding = 1) uniform ShadowMapInfo
+{
+#ifndef LIGHTING_SHADOWS_COORDS
+    mat4 LightViewMat[MAX_SHADOW_MAPS];
+#endif
+    vec4 noiseParams; // w: padding
+    vec4 textureOffset3DSize; // xyz: tex3D offset size. w: filter radius
+    vec4 textureOffsetParams; // x: window size. y: filter size. zw: shadow map texture size
+} u_ShadowMapInfo;
+
+// Irradiance map
+layout(set = LIGHTING_TEXTURES_SET, binding = 0) uniform samplerCube u_irradianceMap;
+layout(set = LIGHTING_TEXTURES_SET, binding = 1) uniform samplerCube u_prefilterMap;
+layout(set = LIGHTING_TEXTURES_SET, binding = 2) uniform sampler2D u_brdfMap;
+// Shadow maps
+layout(set = LIGHTING_TEXTURES_SET, binding = 3) uniform sampler2D u_ShadowMap[MAX_SHADOW_MAPS];
+layout(set = LIGHTING_TEXTURES_SET, binding = 4) uniform sampler2D u_blueNoise;
+layout(set = LIGHTING_TEXTURES_SET, binding = 5) uniform sampler3D u_offset3D;
+
+#define LIGHTING_SHADOWS_NOISE_SCALE u_ShadowMapInfo.noiseParams.x
+#define LIGHTING_SHADOWS_NOISE_FACTOR u_ShadowMapInfo.noiseParams.y
+#define LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE int(u_ShadowMapInfo.noiseParams.z)
+
+#define LIGHTING_SHADOWS_TEXTURE_OFFSET_3D_SIZE u_ShadowMapInfo.textureOffset3DSize.xyz
+#define LIGHTING_SHADOWS_TEXTURE_FILTER_RADIUS u_ShadowMapInfo.noiseParams.w
+#define LIGHTING_SHADOWS_TEXTURE_WINDOW_SIZE int(u_ShadowMapInfo.textureOffsetParams.x)
+#define LIGHTING_SHADOWS_TEXTURE_FILTER_SIZE int(u_ShadowMapInfo.textureOffsetParams.y)
+
+#define LIGHTING_SHADOWS_SHADOW_MAP_SIZE u_ShadowMapInfo.textureOffsetParams.zw
+
+
+
+//#define LIGHTING_NO_SHADOWS
+//#ifndef LIGHTING_NO_SHADOWS
+
 
 
 /**
@@ -82,88 +122,6 @@ float CalculateAttenuation(float distance, float radius, float compression)
 #endif
 }
 
-/**
- * PBR functions
-*/
-
-
-// The Fresnel-Schlick approximation expects a F0 parameter 
-// which is known as the surface reflection at zero incidence 
-// or how much the surface reflects if looking directly at the surface.
-vec3 FresnelSchlick(float cosTheta, vec3 F0)
-{
-    return F0 + (1.f-F0) * pow(clamp(1.f-cosTheta, 0.f, 1.f), 5.f);
-}
-
-vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
-{
-    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
-}
-
-float DistributionGGX(vec3 N, vec3 H, float roughness)
-{
-    float a = roughness * roughness;
-    float a2 = a * a;
-    float NdotH = max(dot(N, H), 0.f);
-    float NdotH2 = NdotH*NdotH;
-
-    float num = a2;
-    float denom = NdotH2 * (a2 - 1.f) + 1.f;
-    denom = M_PI * denom * denom;
-    return num / denom;
-}
-
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
-    float r = roughness + 1.f;
-    float k = (r*r)/8.f;
-    float num = NdotV;
-    float denom = NdotV * (1.f-k) + k;
-    return num/denom;
-}
-
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.f);
-    float NdotL = max(dot(N, L), 0.f);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-    return ggx1*ggx2;
-}
-
-vec3 GetF0()
-{
-    return vec3(0.04);
-}
-
-vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float metallic, float roughness, vec3 viewDir, vec3 halfway)
-{
-    vec3 F0 = GetF0();
-    F0 = mix(F0, albedo, metallic);
-    vec3 F = FresnelSchlick(max(dot(halfway, viewDir), 0.f), F0);
-
-    // Normal distribution
-    float NDF = DistributionGGX(normal, halfway, roughness);
-    // Geometry distribution
-    float G = GeometrySmith(normal, viewDir, lightDir, roughness);
-    // Calculate Cook-Torrance BRDF
-    vec3 num = NDF * G * F;
-    float denom = 4.f * max(dot(normal, viewDir), 0.f) * max(dot(normal, lightDir), 0.f) + 0.0001f;
-    vec3 specular = num/denom;
-#ifdef DEBUG_SPECULAR
-    return specular;
-#endif // DEBUG_SPECULAR
-
-    // Light contribution
-    vec3 kS = F; // specular contribution
-    vec3 kD = vec3(1.f)-kS; // diffuse contribution (energy conservation)
-    kD *= 1.f-metallic;
-
-    float NdotL = max(dot(normal, lightDir), 0.f);
-    return (kD * albedo / M_PI + specular) * radiance * NdotL;
-}
-
-
 
 /**
  * Shadows functions
@@ -171,40 +129,26 @@ vec3 CalculateBRDF(vec3 normal, vec3 lightDir, vec3 radiance, vec3 albedo, float
 
 #ifndef LIGHTING_NO_SHADOWS
 
-#define LIGHTING_SHADOWS_PCF
-//#define LIGHTING_SHADOWS_DEBUG
+// Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
+#ifndef LIGHTING_SHADOWS_COORDS
+vec4 CalculateShadowCoords(int shadowIndex, vec3 fragPos)
+{
+    vec4 shadowCoord = u_ShadowMapInfo.LightViewMat[shadowIndex] * vec4(fragPos, 1.f);
+    shadowCoord = shadowCoord / shadowCoord.w;
+    return shadowCoord;
+}
+#endif // !LIGHTING_SHADOWS_COORDS
 
-#ifndef LIGHTING_SHADOWS_NOISE_SCALE
-#define LIGHTING_SHADOWS_NOISE_SCALE 0.0025
-#endif
-
-#ifndef LIGHTING_SHADOWS_NOISE_FACTOR
-#define LIGHTING_SHADOWS_NOISE_FACTOR 3
-#endif
-
-#ifndef LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE 
-#define LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE 9
-#endif
-
-float ComputeShadowRandomSampling(vec3 lightDir, vec3 normal, vec3 fragPos, ShadowInfo info, int shadowIndex)
+float ComputeShadowRandomSampling(int shadowIndex, vec4 shadowCoords, float bias)
 {
     ivec3 offsetCoord;
     offsetCoord.yz = ivec2(mod(gl_FragCoord.xy, vec2(LIGHTING_SHADOWS_TEXTURE_WINDOW_SIZE)));
     int samplesDiv2 = int(LIGHTING_SHADOWS_TEXTURE_FILTER_SIZE * LIGHTING_SHADOWS_TEXTURE_FILTER_SIZE / 2.f);
     // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
-#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    vec4 shadowCoord = info.ShadowCoordArray[shadowIndex];
-#else
-    vec4 shadowCoord = info.LightViewMatrices[shadowIndex] * vec4(fragPos, 1.f);
-#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    shadowCoord = shadowCoord / shadowCoord.w;
-    vec4 sc = shadowCoord;
+    vec4 sc = shadowCoords;
 
     vec2 texelSize = vec2(1.f,1.f) / LIGHTING_SHADOWS_SHADOW_MAP_SIZE;
-    float diffuseFactor = dot(normal, lightDir);
-    float bias = mix(0.001, 0.f, diffuseFactor);
     
-
     float sum = 0.f;
     float depth = 0.f;
     for (int i = 0; i < 4; ++i)
@@ -212,16 +156,16 @@ float ComputeShadowRandomSampling(vec3 lightDir, vec3 normal, vec3 fragPos, Shad
         offsetCoord.x = i;
         vec4 offsets = texelFetch(u_offset3D, offsetCoord, 0) * LIGHTING_SHADOWS_TEXTURE_FILTER_RADIUS * 2.f - 0.5f;
         offsets *= texelSize.xyxy;
-        sc.xy = shadowCoord.xy + offsets.xy;
-        depth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], sc.xy).x;
-        if (depth + bias < shadowCoord.z)
+        sc.xy = shadowCoords.xy + offsets.xy;
+        depth = texture(u_ShadowMap[shadowIndex], sc.xy).x;
+        if (depth + bias < shadowCoords.z)
             sum += 0.f;
         else
             sum += 1.f;
 
-        sc.xy = shadowCoord.xy + offsets.zw;
-        depth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], sc.xy).x;
-        if (depth + bias < shadowCoord.z)
+        sc.xy = shadowCoords.xy + offsets.zw;
+        depth = texture(u_ShadowMap[shadowIndex], sc.xy).x;
+        if (depth + bias < shadowCoords.z)
             sum += 0.f;
         else
             sum += 1.f;
@@ -234,16 +178,16 @@ float ComputeShadowRandomSampling(vec3 lightDir, vec3 normal, vec3 fragPos, Shad
         {
             offsetCoord.x = i;
             vec4 offsets = texelFetch(u_offset3D, offsetCoord, 0) * LIGHTING_SHADOWS_TEXTURE_FILTER_RADIUS* 2.f - 0.5f;
-            sc.xy = shadowCoord.xy + offsets.xy * texelSize;
-            depth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], sc.xy).x;
-            if (depth + bias < shadowCoord.z)
+            sc.xy = shadowCoords.xy + offsets.xy * texelSize;
+            depth = texture(u_ShadowMap[shadowIndex], sc.xy).x;
+            if (depth + bias < shadowCoords.z)
                 sum += 0.f;
             else
                 sum += 1.f;
 
-            sc.xy = shadowCoord.xy + offsets.zw * texelSize;
-            depth = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], sc.xy).x;
-            if (depth + bias < shadowCoord.z)
+            sc.xy = shadowCoords.xy + offsets.zw * texelSize;
+            depth = texture(u_ShadowMap[shadowIndex], sc.xy).x;
+            if (depth + bias < shadowCoords.z)
                 sum += 0.f;
             else
                 sum += 1.f;
@@ -254,24 +198,14 @@ float ComputeShadowRandomSampling(vec3 lightDir, vec3 normal, vec3 fragPos, Shad
     return shadow;
 }
 
-float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
+float ComputeShadowPCF(int shadowIndex, vec4 shadowCoords, float bias)
 {
-    // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
-#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    vec4 shadowCoord = info.ShadowCoordArray[shadowIndex];
-#else
-    vec4 shadowCoord = info.LightViewMatrices[shadowIndex] * vec4(fragPos, 1.f);
-#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    shadowCoord = shadowCoord / shadowCoord.w;
-
-    const float bias = 0.005f;
     float shadow = 0.0;
 
-#if defined(LIGHTING_SHADOWS_PCF)
     // TO-DO: pass texture size in uniform buffer
-    vec2 texelSize = 1.0 / vec2(textureSize(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], 0));
+    vec2 texelSize = 1.0 / LIGHTING_SHADOWS_SHADOW_MAP_SIZE;
     vec2 noiseTexelSize = 1.f / vec2(textureSize(u_blueNoise, 0));
-    float currentDepth = shadowCoord.z;
+    float currentDepth = shadowCoords.z;
 
     const int kernelSize = LIGHTING_SHADOWS_NOISE_PCF_KERNEL_SIZE;
     const int halfKernelSize = kernelSize/2;
@@ -281,7 +215,7 @@ float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
         for (float y = -halfKernelSize; y <= halfKernelSize; ++y)
         {
             // Get noise for this sample
-            vec2 noiseTc = shadowCoord.xy/(noiseTexelSize.xy*LIGHTING_SHADOWS_NOISE_SCALE);
+            vec2 noiseTc = shadowCoords.xy/(noiseTexelSize.xy*LIGHTING_SHADOWS_NOISE_SCALE);
             vec2 noise = texture(u_blueNoise, noiseTc).xy;
             // transform from [0,1] to [-0.5, 0.5]
             noise = noise - 0.5f; 
@@ -289,64 +223,71 @@ float ComputeShadow(ShadowInfo info, vec3 fragPos, int shadowIndex)
             // Offset of pixel tc to be filtered
             vec2 offset = vec2(x*texelSize.x, y*texelSize.y);
             offset+=(noise*texelSize*LIGHTING_SHADOWS_NOISE_FACTOR);
-            float d = texture(LIGHTING_SHADOWS_TEXTURE_ARRAY[shadowIndex], shadowCoord.xy+offset).r;
-            shadow += (d<(shadowCoord.z-bias) ? 0.f : 1.f);
+            float d = texture(u_ShadowMap[shadowIndex], shadowCoords.xy+offset).r;
+            shadow += (d<(shadowCoords.z-bias) ? 0.f : 1.f);
         }
     }
     shadow /= (kernelSize*kernelSize);
-#else
-    float z = shadowCoord.z;
+	return shadow;
+}
+
+float ComputeShadow(int shadowIndex, vec4 shadowCoords, float bias)
+{
+    float shadow = 0.0;
+    float z = shadowCoords.z;
 	if ( z > -1.0 && z < 1.0 ) 
 	{
-		shadow = texture( u_ShadowMap[shadowIndex], shadowCoord.xy ).r;
-		if ( shadowCoord.w > 0.0 && z - bias > shadow ) 
+		shadow = texture( u_ShadowMap[shadowIndex], shadowCoords.xy ).r;
+		if ( shadowCoords.w > 0.0 && z - bias > shadow ) 
 			shadow = 0.f;
         else
             shadow = 1.f;
 	}
-#endif // defined(LIGHTING_SHADOWS_PCF)
-	return shadow;
+    return shadow;
 }
 
 #endif // !LIGHTING_NO_SHADOWS
 
-vec3 ComputeLightShadow(ShadowInfo info, vec3 fragPos, vec3 lightDir, vec3 normal, LightData light, vec3 irradiance)
+vec3 ComputeLightShadow(vec3 fragPos, vec3 lightDir, vec3 normal, LightData light, vec3 irradiance
+#ifdef LIGHTING_SHADOWS_COORDS
+    , vec4 shadowCoords
+#endif
+    )
 {
-#if !defined(LIGHTING_NO_SHADOWS)
+#ifndef LIGHTING_NO_SHADOWS
+
     float shadow = 0.f;
-    if (light.ShadowMapIndex >= 0)
+    int shadowMapIndex = int(light.ShadowMapIndex);
+    if (shadowMapIndex >= 0)
     {
+#ifndef LIGHTING_SHADOWS_COORDS
+        vec4 shadowCoords = CalculateShadowCoords(light.ShadowMapIndex, fragPos);
+#endif // !LIGHTING_SHADOWS_COORDS
+        float diffuseFactor = dot(normal, lightDir);
+        float bias = mix(0.001, 0.f, diffuseFactor);
 #if 0
-        shadow = ComputeShadow(info, fragPos, light.ShadowMapIndex);
+        shadow = ComputeShadow(shadowMapIndex, shadowCoords, bias);
+#elif 0
+        shadow = ComputeShadowPCF(shadowMapIndex, shadowCoords, bias);
 #else
-        shadow = ComputeShadowRandomSampling(lightDir, normal, fragPos, info, light.ShadowMapIndex);
+        shadow = ComputeShadowRandomSampling(light.ShadowMapIndex, shadowCoords, bias);
 #endif
     }
-#if defined(LIGHTING_SHADOWS_DEBUG)
-    // Calculate shadow coordinate from ShadowInfo (LightViewMatrix or precalculated fragPos into light space).
-#ifndef LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    vec4 shadowCoord = info.ShadowCoordArray[light.ShadowMapIndex];
-#else
-    vec4 shadowCoord = info.LightViewMatrices[light.ShadowMapIndex] * vec4(fragPos, 1.f);
-#endif // !LIGHTING_SHADOWS_LIGHT_VIEW_MATRIX
-    shadowCoord = shadowCoord / shadowCoord.w;
-    vec2 noise = texture(u_blueNoise, shadowCoord.xy).xy;
-    //return noise.xxy;
+
+#ifdef LIGHTING_SHADOWS_DEBUG
     return shadow.xxx;
-#endif
+#else
     return shadow*irradiance;
+#endif
 
 #else
     return irradiance;
-#endif
+#endif // !LIGHTING_NO_SHADOWS
 }
 
 /**
  * Lighting functions
 */
-
-#define LightRadius(l) l.Pos.a
-#define LightCompression(l) l.Color.w
 
 // Basic lighting without PBR
 vec3 CalculateLighting(vec3 fragPos, vec3 fragNormal, vec3 viewPos, vec3 lightDir, vec3 lightColor)
@@ -373,25 +314,24 @@ vec3 ProcessIrradiance(vec3 normal, vec3 view, vec3 albedo, float roughness, flo
     vec3 V = normalize(view);
     //return V;
 
-    vec3 F0 = GetF0();
-    F0 = mix(F0, albedo, metallic);
+    vec3 F0 = mix(F0_Default, albedo, metallic);
 
     float NdotV = max(dot(N, V), 0.0);
     // diffuse irradiance
     vec3 kS = FresnelSchlickRoughness(NdotV, F0, roughness);
     vec3 kD = 1.f-kS;
     kD *= 1.f-metallic;
-    vec3 i = texture(IRRADIANCE_MAP, N).rgb;
+    vec3 i = texture(u_irradianceMap, N).rgb;
     vec3 diffuse = i * albedo;
     // debug diffuse
     //return kD * diffuse * ao;
 
     // specular reflection
-    vec2 envBrdf = texture(BRDF_MAP, vec2(NdotV, roughness)).rg;
+    vec2 envBrdf = texture(u_brdfMap, vec2(NdotV, roughness)).rg;
     const float MAX_REFLECTION_LOD = 8.f;
     vec3 r = normalize(reflect(-V, N));
     const float mipLevel = roughness * MAX_REFLECTION_LOD;
-    vec3 prefilteredColor = textureLod(PREFILTERED_MAP, r, mipLevel).rgb;
+    vec3 prefilteredColor = textureLod(u_prefilterMap, r, mipLevel).rgb;
     vec3 specular = prefilteredColor * (kS * envBrdf.x + envBrdf.y);
     return (kD * diffuse + specular) * ao;
 }
@@ -428,7 +368,11 @@ vec3 ProcessPointLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData li
     return CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
 }
 
-vec3 ProcessDirectionalLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
+vec3 ProcessDirectionalLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness
+#ifdef LIGHTING_SHADOWS_COORDS
+    , vec4 shadowCoords
+#endif
+    )
 {
     vec3 V = normalize(viewDir);
     vec3 lightDir = normalize(vec3(-light.Dir));
@@ -436,11 +380,19 @@ vec3 ProcessDirectionalLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightD
     vec3 radiance = light.Color.rgb * light.Strength;
     // Calculate pbr contribution
     vec3 lighting = CalculateBRDF(fragNormal, lightDir, radiance, albedo, metallic, roughness, V, H);
-    lighting = ComputeLightShadow(shadowInfo, fragPos, lightDir, fragNormal, light, lighting);
+    lighting = ComputeLightShadow(fragPos, lightDir, fragNormal, light, lighting
+#ifdef LIGHTING_SHADOWS_COORDS
+                        , shadowCoords
+#endif
+                    );
     return lighting;
 }
 
-vec3 ProcessSpotLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness, ShadowInfo shadowInfo)
+vec3 ProcessSpotLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData light, vec3 albedo, float metallic, float roughness
+#ifdef LIGHTING_SHADOWS_COORDS
+    , vec4 shadowCoords
+#endif
+    )
 {
     vec3 lighting = vec3(0.f);
     float intensity = ComputeSpotLightIntensity(light, fragPos);
@@ -455,7 +407,73 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData lig
         vec3 V = normalize(viewDir);
         vec3 H = normalize(V + L);
         lighting = CalculateBRDF(fragNormal, L, radiance, albedo, metallic, roughness, V, H);
-        lighting = ComputeLightShadow(shadowInfo, fragPos, L, fragNormal, light, lighting) * 0.f;
+        lighting = ComputeLightShadow(fragPos, L, fragNormal, light, lighting
+#ifdef LIGHTING_SHADOWS_COORDS
+                        , shadowCoords
+#endif
+                    );
     }
     return lighting * intensity;
+}
+
+//#define LIGHTING_DEBUG_AMBIENT
+//#define LIGHTING_DEBUG_LIGHTS 
+
+#define LIGHTING_APPLY_GI
+
+/// DoEnvironmentLighting
+/// * fragPos: fragment position in world space
+/// * viewDir: view direction -> normalize(fragWorldPos - viewWorldPos)
+/// * normal: fragment normal in world space
+vec3 DoLighting(vec3 fragPos, vec3 viewDir, vec3 normal, vec3 albedo, float metallic, float roughness, float ao
+#ifdef LIGHTING_SHADOWS_COORDS
+    , vec4 shadowCoords
+#endif
+    )
+{
+    // Point lights
+    vec3 pointLightsColor = vec3(0.f);
+    for (int i = 0; i < u_lighting.data.numOfPointLights; ++i)
+    {
+        pointLightsColor += ProcessPointLight(fragPos, viewDir, normal, u_lighting.data.pointLights[i], albedo, metallic, roughness);
+    }
+
+    // Spot lights
+    vec3 spotLightsColor = vec3(0.f);
+    for (int i = 0; i < u_lighting.data.numOfSpotLights; ++i)
+    {
+        spotLightsColor += ProcessSpotLight(fragPos, viewDir, normal, u_lighting.data.spotLights[i], albedo, metallic, roughness
+#ifdef LIGHTING_SHADOWS_COORDS
+        , shadowCoords
+#endif
+        );
+    }
+
+    // Directional light
+    vec3 directionalLightColor = vec3(0.f);
+    for (int i = 0; i < u_lighting.data.numOfDirectionalLights; ++i)
+    {
+        directionalLightColor += ProcessDirectionalLight(fragPos, viewDir, normal, u_lighting.data.directionalLights[i], albedo, metallic, roughness
+#ifdef LIGHTING_SHADOWS_COORDS
+        , shadowCoords
+#endif
+        );
+    }
+
+    vec3 lightColor = (pointLightsColor + spotLightsColor + directionalLightColor);
+
+    // Ambient color
+#ifdef LIGHTING_APPLY_GI
+    vec3 ambientColor = u_lighting.data.ambientColor * ProcessIrradiance(normal, viewDir, albedo, roughness, metallic, ao);
+#else
+    vec3 ambientColor = u_lighting.data.ambientColor * albedo * ao;
+#endif
+
+#if defined(LIGHTING_DEBUG_AMBIENT)
+	return ambientColor;
+#elif defined(LIGHTING_DEBUG_LIGHTS)
+    return lightColor;
+#else
+    return lightColor + ambientColor;
+#endif
 }

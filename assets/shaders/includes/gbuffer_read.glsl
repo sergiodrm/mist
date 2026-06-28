@@ -1,4 +1,5 @@
 
+#define _GBUFFER_READ_
 #include <shaders/includes/gbuffer.glsl>
 
 GBuffer GBuffer_Read(vec2 uv)

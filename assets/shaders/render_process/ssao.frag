@@ -33,7 +33,7 @@ layout (set = 1, binding = 0) uniform sampler2D u_GBufferDepth;
 layout (set = 2, binding = 0) uniform sampler2D u_GBufferNormal;
 layout (set = 3, binding = 0) uniform sampler2D u_SSAONoise;
 
-#define CAMERA_DATA_INV_PROJECTION u_ssao.InverseProjection
+#define CAMERA_DATA_INV_VIEW_PROJECTION u_ssao.InverseProjection
 #include <shaders/includes/gbuffer.glsl>
 
 vec3 GetPosVSFromDepth(float depth, vec2 uv)

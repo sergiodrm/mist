@@ -150,10 +150,11 @@ namespace Mist
 		int directionalLightsCount;
 		int pointLightsCount;
 		glm::vec2 _padding;
-		static constexpr uint32_t MaxLights = 500;
+		static constexpr uint32_t MaxLights = 10;
 		static constexpr uint32_t MaxPointLights = MaxLights;
 		static constexpr uint32_t MaxSpotLights = MaxLights;
-		static constexpr uint32_t MaxDirectionalLights = 5;
+		static constexpr uint32_t MaxDirectionalLights = 1;
+		static constexpr uint32_t MaxShadowMaps = globals::MaxShadowMapAttachments;
 		LightData pointLights[MaxLights];
 		LightData directionalLights[MaxDirectionalLights];
 		LightData spotLights[MaxLights];
