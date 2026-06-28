@@ -1160,6 +1160,8 @@ namespace rendersystem
 				{
                     ShaderPropertyDescriptor propertyDescriptor = m_shaderContext.memoryPool->Get().GetProperty(property.name.c_str());
 					check_msgf(propertyDescriptor.IsValid(), "Uniform buffer with no data found. [%s]", property.name.c_str());
+                    //if (property.size != propertyDescriptor.size)
+                    //    logfwarn("Size of property \"%s\" (%lld bytes) does not match with memory pool buffer descriptor (%lld bytes)\n", property.name.c_str(), property.size, propertyDescriptor.size);
 					desc.PushConstantBuffer(property.binding, propertyDescriptor.buffer.GetPtr(), property.stageMask, render::BufferRange(propertyDescriptor.offset, propertyDescriptor.size));
 				}
 				break;

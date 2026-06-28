@@ -1,6 +1,6 @@
 #pragma once
 
-#define LOG_MSG_MAX_SIZE 1024*10
+#define LOG_MSG_MAX_SIZE 1024*10*2
 
 namespace Mist
 {

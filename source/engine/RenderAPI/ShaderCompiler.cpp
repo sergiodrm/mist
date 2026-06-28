@@ -413,7 +413,7 @@ namespace render
             shaderlogf("Compiling shader source: [%s]\n", filepath);
             if (additionalOptions)
             {
-                shaderlogf("* Generate debug info: %s\n", additionalOptions->generateDebugInfo);
+                shaderlogf("* Generate debug info: %s\n", additionalOptions->generateDebugInfo ? "true" : "false");
                 shaderlogf("* Entry point: %s\n", additionalOptions->entryPoint);
                 shaderlog("* Macro definitions:\n");
                 for (uint32_t i = 0; i < additionalOptions->macroDefinitionArray.size(); ++i)
@@ -546,7 +546,9 @@ namespace render
                     {
                         // Binding already exists. Must match with current binding.
                         check(bindingDesc.binding == bufferInfo.binding);
-                        check(!strcmp(bindingDesc.name.c_str(), bufferInfo.name.c_str()));
+                        check_msgf(!strcmp(bindingDesc.name.c_str(), bufferInfo.name.c_str()), 
+                            "Uniform buffers with the same set and binding have different names at different shader stages. (set %d; binding %d) Name: %s and %s",
+                            setIndex, bindingDesc.binding, bindingDesc.name.c_str(), bufferInfo.name.c_str());
                         check(bindingDesc.size == bufferInfo.size);
                         check(bindingDesc.arrayCount == bufferInfo.arrayCount);
                         check(bindingDesc.type == bufferInfo.type);
@@ -554,11 +556,8 @@ namespace render
                         bindingDesc.stageMask |= bufferInfo.stageMask;
                     }
 
-
-#ifdef MIST_SHADER_REFLECTION_LOG
-                    logfdebug("> %s [ShaderStage: %d; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", render::utils::ConvertResourceTypeToStr(resourceType),
+                    shaderlogf("> %s [ShaderStage: %d; Name:%s; Set: %u; Binding: %u; Size: %u; ArrayCount: %u;]\n", render::utils::ConvertResourceTypeToStr(resourceType),
                         shaderMask, bufferInfo.name.c_str(), setIndex, bufferInfo.binding, bufferInfo.size, bufferInfo.arrayCount);
-#endif // MIST_SHADER_REFLECTION_LOG
 
                     return setIndex;
                 };
@@ -567,9 +566,7 @@ namespace render
             spirv_cross::CompilerGLSL compiler(bin.binary, bin.binaryCount);
             spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-#ifdef MIST_SHADER_REFLECTION_LOG
-            logdebug("Processing shader reflection...\n");
-#endif // MIST_SHADER_REFLECTION_LOG
+            shaderlogf("Processing shader reflection...\n");
 
 
             for (const spirv_cross::Resource& resource : resources.uniform_buffers)
@@ -595,10 +592,10 @@ namespace render
                         check(outProperties.pushConstants[index].offset == compiler.get_decoration(resource.id, spv::DecorationOffset));
                         check(outProperties.pushConstants[index].size == compiler.get_declared_struct_size(type));
                         outProperties.pushConstants[index].stage |= shaderMask;
-#ifdef MIST_SHADER_REFLECTION_LOG
-						logfdebug("> PUSH_CONSTANT [ShaderStage: %d; Name: %s; Offset: %zd; Size: %zd]\n",
+
+                        shaderlogf("> PUSH_CONSTANT [ShaderStage: %d; Name: %s; Offset: %zd; Size: %zd]\n",
 							shaderMask, outProperties.pushConstants[index].name.c_str(), outProperties.pushConstants[index].offset, outProperties.pushConstants[index].size);
-#endif // MIST_SHADER_REFLECTION_LOG
+
                         alreadyExists = true;
                         break;
                     }
@@ -611,10 +608,9 @@ namespace render
                     desc.size = (uint32_t)compiler.get_declared_struct_size(type);
                     desc.stage = shaderMask;
                     outProperties.pushConstants.emplace_back(desc);
-#ifdef MIST_SHADER_REFLECTION_LOG
-                logfdebug("> PUSH_CONSTANT [ShaderStage: %d; Name: %s; Offset: %zd; Size: %zd]\n",
-                    shaderMask, desc.name.c_str(), desc.offset, desc.size);
-#endif // MIST_SHADER_REFLECTION_LOG
+
+                    shaderlogf("> PUSH_CONSTANT [ShaderStage: %d; Name: %s; Offset: %zd; Size: %zd]\n",
+                        shaderMask, desc.name.c_str(), desc.offset, desc.size);
                 }
 
             }
@@ -636,9 +632,7 @@ namespace render
                 }
             }
 
-#ifdef MIST_SHADER_REFLECTION_LOG
-            logdebug("End shader reflection.\n");
-#endif // MIST_SHADER_REFLECTION_LOG
+            shaderlogf("End shader reflection.\n");
             return true;
         }
 

@@ -21,6 +21,7 @@ do \
 { \
 	if (!expand(expr)) \
 	{ \
+		logferror(fmt "\n", __VA_ARGS__); \
         ::Mist::Debug::DialogMsgErrorF(::Mist::Debug::DIALOG_BUTTON_OK, fmt, __VA_ARGS__); \
 		if (Mist::Debug::DebugCheck(#expr, __FILE__, __FUNCTION__, __LINE__)) \
 			MIST_DEBUG_BREAK; \
