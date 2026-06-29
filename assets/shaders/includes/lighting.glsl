@@ -256,7 +256,7 @@ vec3 ComputeLightShadow(vec3 fragPos, vec3 lightDir, vec3 normal, LightData ligh
 {
 #ifndef LIGHTING_NO_SHADOWS
 
-    float shadow = 0.f;
+    float shadow = 1.f;
     int shadowMapIndex = int(light.ShadowMapIndex);
     if (shadowMapIndex >= 0)
     {

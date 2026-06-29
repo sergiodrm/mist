@@ -284,21 +284,26 @@ namespace Mist
 
 		check(m_lightCount <= globals::MaxShadowMapAttachments);
 		rs->SetShader(m_shadowMapPipeline.GetShader());
-		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
+		for (uint32_t i = 0; i < m_lightCount; ++i)
 		{
+			char buff[64];
+			sprintf_s(buff, "Shadow Map %d", i);
+			rs->BeginMarker(buff);
+
 			rs->SetRenderTarget(m_shadowMapTargetArray[i]);
 			rs->SetViewport(m_shadowMapTargetArray[i]->m_info.GetViewport());
 			rs->SetScissor(m_shadowMapTargetArray[i]->m_info.GetScissor());
 			rs->ClearDepthStencil();
 			rs->SetDepthEnable();
-			if (i < m_lightCount)
-			{
-				rs->SetShaderProperty("u_ubo", &m_shadowMapPipeline.GetDepthVP(i), sizeof(glm::mat4));
-				RenderContext rc;
-				rc.rs = rs;
-				rc.passId = m_renderListIds[i];
-				SceneRenderer::GetSceneRenderer()->DrawList(rc);
-			}
+
+			rs->SetShaderProperty("u_ubo", &m_shadowMapPipeline.GetDepthVP(i), sizeof(glm::mat4));
+
+			RenderContext rc;
+			rc.rs = rs;
+			rc.passId = m_renderListIds[i];
+			SceneRenderer::GetSceneRenderer()->DrawList(rc);
+
+			rs->EndMarker();
 		}
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
