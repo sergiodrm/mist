@@ -70,8 +70,9 @@ namespace render
 		Mist::tStaticArray<VkDescriptorSetLayout, BindingLayout::MaxLayouts> layouts;
 		for (uint32_t i = 0; i < description.bindingLayouts.GetSize(); ++i)
 		{
-			if (description.bindingLayouts[i] && description.bindingLayouts[i]->m_layout)
-				layouts.Push(description.bindingLayouts[i]->m_layout);
+            // Layouts must have all sets with valid info. All SetLayout sent to vulkan must be != nullptr.
+            check(description.bindingLayouts[i] && description.bindingLayouts[i]->m_layout);
+			layouts.Push(description.bindingLayouts[i]->m_layout);
 		}
 
 		Mist::tStaticArray<VkPushConstantRange, PushConstantDescription::MaxPushConstant> pushConstantRanges;
