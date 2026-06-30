@@ -286,6 +286,9 @@ namespace Mist
 			"PC_Cmd_Draw",
 			"PC_Cmd_DispatchCompute",
 
+			"PC_RefCounter_Add",
+			"PC_RefCounter_Decrease",
+
 			"PC_Count"
 		};
 		static_assert(_countof(PC_mapToStr) == PC_Count+1);

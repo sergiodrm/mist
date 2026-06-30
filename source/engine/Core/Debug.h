@@ -141,6 +141,9 @@ namespace Mist
 			PC_Cmd_Draw,
 			PC_Cmd_DispatchCompute,
 
+			PC_RefCounter_Add,
+			PC_RefCounter_Decrease,
+
 			PC_Count
 		};
 

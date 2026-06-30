@@ -738,11 +738,13 @@ namespace Mist
 
 		size_t AddRef()
 		{
+			PERF_COUNTER(RefCounter_Add);
 			return ++m_counter;
 		}
 
 		size_t ReleaseRef()
 		{
+			PERF_COUNTER(RefCounter_Decrease);
 			check(m_counter > 0);
 			size_t c = --m_counter;
 			return c;
