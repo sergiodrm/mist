@@ -395,6 +395,21 @@ namespace Mist
 				*count = 0;
 			}
 		}
+
+		tFixedHeapArray(const ThisType& other)
+			: m_data(nullptr), m_count(0), m_index(0)
+		{
+			Allocate(other.GetReservedSize());
+			m_index = other.m_index;
+			for (uint32_t i = 0; i < m_index; ++i)
+				new (&m_data[i]) DataType(other.m_data[i]);
+		}
+
+		tFixedHeapArray(ThisType&& other)
+		{
+			*this = other.Move();
+		}
+
 		~tFixedHeapArray()
 		{
 			Delete();
