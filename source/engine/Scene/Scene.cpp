@@ -156,7 +156,6 @@ namespace Mist
 
 	void Scene::Tick(float deltaTime)
 	{
-		check(m_cameraIndex <m_cameras.GetSize());
 		CameraController& c = GetCamera();
 		c.Tick(deltaTime);
 		m_engine->UpdateSceneView(c.GetCamera().GetView(), c.GetCamera().GetProjection());
@@ -164,12 +163,16 @@ namespace Mist
 
 	const CameraController& Scene::GetCamera() const
 	{
+		if (m_cameras.IsEmpty())
+			return m_defaultCamera;
 		check(m_cameraIndex <m_cameras.GetSize());
 		return m_cameras[m_cameraIndex];
 	}
 
 	CameraController& Scene::GetCamera()
 	{
+		if (m_cameras.IsEmpty())
+			return m_defaultCamera;
 		check(m_cameraIndex <m_cameras.GetSize());
 		return m_cameras[m_cameraIndex];
 	}

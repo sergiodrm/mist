@@ -213,11 +213,14 @@ namespace Mist
 				rs->SetShaderProperty("u_lighting", &env, sizeof(env));
 				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 
-				rs->SetTextureSlot("u_irradianceMap", irradiance);
-				rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge);
+				if (irradiance)
+				{
+					rs->SetTextureSlot("u_irradianceMap", irradiance);
+					rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
+				}
 
 				if (brdf)
 				{
@@ -228,11 +231,14 @@ namespace Mist
 						render::SamplerAddressMode_ClampToEdge);
 				}
 
-				rs->SetTextureSlot("u_prefilterMap", specular);
-				rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge);
+				if (specular)
+				{
+					rs->SetTextureSlot("u_prefilterMap", specular);
+					rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
+				}
 
 				rs->DrawFullscreenQuad();
 				rs->EndMarker();
@@ -260,11 +266,14 @@ namespace Mist
 				rs->SetShaderProperty("u_env", &env, sizeof(env));
 				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
 
-				rs->SetTextureSlot("u_irradianceMap", irradiance);
-				rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge);
+				if (irradiance)
+				{
+					rs->SetTextureSlot("u_irradianceMap", irradiance);
+					rs->SetSampler("u_irradianceMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
+				}
 
 				if (brdf)
 				{
@@ -275,11 +284,14 @@ namespace Mist
 						render::SamplerAddressMode_ClampToEdge);
 				}
 
-				rs->SetTextureSlot("u_prefilterMap", specular);
-				rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge,
-					render::SamplerAddressMode_ClampToEdge);
+				if (specular)
+				{
+					rs->SetTextureSlot("u_prefilterMap", specular);
+					rs->SetSampler("u_prefilterMap", render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge,
+						render::SamplerAddressMode_ClampToEdge);
+				}
 				SceneRenderer::GetSceneRenderer()->DrawList({ .passId = m_forwardRenderListId, .rs = rs });
 				rs->EndMarker();
 			}
@@ -309,7 +321,8 @@ namespace Mist
 				cameraData.Set(view, proj);
 				rs->SetShaderProperty("u_camera", &cameraData, sizeof(CameraData));
 
-				rs->SetTextureSlot("u_cubemap", scene->GetSkyboxTexture());
+				if (scene->GetSkyboxTexture())
+					rs->SetTextureSlot("u_cubemap", scene->GetSkyboxTexture());
 
 				rs->DrawIndexed(m_skyModel->GetMesh(0).GetIndexCount());
 				rs->ClearState();

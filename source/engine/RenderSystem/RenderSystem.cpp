@@ -473,9 +473,8 @@ namespace rendersystem
 
     void RenderSystem::ClearState()
     {
-        if (AllowsGraphicsCommand() && (m_graphicsContext.pendingClearColor || m_graphicsContext.pendingClearDepthStencil))
+        if (AllowsGraphicsCommand() && (m_graphicsContext.pendingClearColor || m_graphicsContext.pendingClearDepthStencil) && m_graphicsContext.graphicsState.rt)
         {
-            check(m_graphicsContext.graphicsState.rt);
             ResolveClearRenderTarget();
         }
         m_computeContext.Invalidate();
