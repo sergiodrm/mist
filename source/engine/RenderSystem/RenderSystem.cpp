@@ -18,7 +18,7 @@ namespace rendersystem
     ShaderPropertyDescriptor ShaderPropertyDescriptor::Invalid = ShaderPropertyDescriptor{ nullptr, UINT64_MAX, UINT64_MAX };
 
 	GpuFrameProfiler::GpuFrameProfiler(render::Device* device)
-        : m_device(device), m_queryId(0), m_state(State_Idle)
+        : m_device(device), m_queryId(0), m_state(State_Idle), m_queryIdOverflow(0)
 	{
         check(m_device);
         m_pool = m_device->CreateQueryPool({ .type = render::QueryType_Timestamp, .count = MaxSize * 2 });
@@ -30,25 +30,39 @@ namespace rendersystem
         if (!CanRecord())
             return;
         check(tag && m_queryId != UINT32_MAX);
-        cmd->WriteQueryTimestamp(m_pool, m_queryId);
-        m_tree.Push({ .id = m_queryId, .value = 0.0 });
-        QueryEntry& entry = m_tree.GetCurrent();
-        strcpy_s(entry.tag, tag);
-        m_queryId += 2;
+        if (m_queryId < m_pool->m_description.count)
+        {
+            cmd->WriteQueryTimestamp(m_pool, m_queryId);
+            m_tree.Push({ .id = m_queryId, .value = 0.0 });
+            QueryEntry& entry = m_tree.GetCurrent();
+            strcpy_s(entry.tag, tag);
+            m_queryId += 2;
+        }
+        else
+        {
+            ++m_queryIdOverflow;
+            logferror("Timestamp query overflow ( query count: %d ) ( overflow: %d ) ( tag: %s )\n", m_queryId, m_queryIdOverflow, tag);
+        }
 	}
 
 	void GpuFrameProfiler::EndZone(const render::CommandListHandle& cmd)
 	{
 		if (!CanRecord())
 			return;
-        QueryEntry& entry = m_tree.GetCurrent();
-        check(entry.id != QueryEntry::InvalidQueryId);
-        cmd->WriteQueryTimestamp(m_pool, entry.id + 1);
-        m_tree.Pop();
+        if (m_queryIdOverflow == 0)
+        {
+            QueryEntry& entry = m_tree.GetCurrent();
+            check(entry.id != QueryEntry::InvalidQueryId);
+            cmd->WriteQueryTimestamp(m_pool, entry.id + 1);
+            m_tree.Pop();
+        }
+        else
+            --m_queryIdOverflow;
 	}
 
     void GpuFrameProfiler::Reset(const render::CommandListHandle& cmd)
     {
+        check(m_queryIdOverflow == 0);
         m_queryId = 0;
         cmd->ResetTimestampQuery(&m_pool, 1);
         m_tree.Reset();

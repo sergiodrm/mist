@@ -115,6 +115,7 @@ namespace rendersystem
         render::Device* m_device;
         render::QueryPoolHandle m_pool;
         uint32_t m_queryId;
+        uint32_t m_queryIdOverflow;
         uint32_t m_state;
 
        
