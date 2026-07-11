@@ -118,11 +118,15 @@ namespace Mist
 
 	void Preprocess::PushIrradiancePreprocess(const PreprocessIrradianceInfo& info, fnPreprocessIrradianceCallback fn)
 	{
-		check(m_irradianceRequestCount < MaxRequests);
-		check(fn);
-		uint32_t index = m_irradianceRequestCount++;
-		m_irradianceInfoArray[index] = info;
-		m_irradianceFnArray[index] = fn;
+		if (m_irradianceRequestCount < MaxRequests)
+		{
+			check(fn);
+			uint32_t index = m_irradianceRequestCount++;
+			m_irradianceInfoArray[index] = info;
+			m_irradianceFnArray[index] = fn;
+		}
+		else
+			logferror("Irradiance process request overflow ( max: %d )\n", MaxRequests);
 	}
 
 	PreprocessIrradianceResult Preprocess::ProcessIrradianceRequest(rendersystem::RenderSystem* rs, const PreprocessIrradianceInfo& info)
