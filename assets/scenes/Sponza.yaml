@@ -84,8 +84,8 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, -0, 0]
       Scale: [10, 10, 10]
-    MeshComponent:
-      MeshAssetPath: models/sponza/sponza.gltf
+    ModelComponent:
+      ModelPath: models/sponza/sponza.gltf
   - RenderObject: 5
     Name: DefaultMainCamera
     Parent: 0

@@ -15,8 +15,8 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [10, 10, 10]
-    MeshComponent:
-      MeshAssetPath: models/ABeautifulGame/ABeautifulGame.gltf
+    ModelComponent:
+      ModelPath: models/ABeautifulGame/ABeautifulGame.gltf
   - RenderObject: 2
     Name: DefaultMainCamera
     Parent: 0

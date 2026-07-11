@@ -8,8 +8,8 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, -0, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/vulkanscene_shadow.gltf
+    ModelComponent:
+      ModelPath: models/vulkanscene_shadow.gltf
   - RenderObject: 1
     Name: Light_2
     Parent: 65535
@@ -51,5 +51,5 @@ RenderObjects:
       Position: [10, 0, 0]
       Rotation: [0, -0, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/vulkanscene_shadow.gltf
+    ModelComponent:
+      ModelPath: models/vulkanscene_shadow.gltf

@@ -84,8 +84,8 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, -25, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/bistro_v5_2/bistro_v5_2/bistro_exterior.gltf
+    ModelComponent:
+      ModelPath: models/bistro_v5_2/bistro_v5_2/bistro_exterior.gltf
   - RenderObject: 5
     Name: DefaultMainCamera
     Parent: 0

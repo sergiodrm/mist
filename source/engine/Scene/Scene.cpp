@@ -377,11 +377,11 @@ namespace Mist
 				SetLight(rb, lightComponent);
 			}
 
-			YAML::Node meshNode = it["MeshComponent"];
+			YAML::Node meshNode = it["ModelComponent"];
 			if (meshNode)
 			{
 				ModelComponent m;
-				std::string filepath = std::move(meshNode["MeshAssetPath"].as<std::string>());
+				std::string filepath = std::move(meshNode["ModelPath"].as<std::string>());
 				m.model = LoadModel(filepath.c_str());
 				SetMesh(rb, m);
 			}
@@ -473,10 +473,10 @@ namespace Mist
 				const ModelComponent& mesh = m_meshComponentMap[i];
 				if (mesh.model)
 				{
-					emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
+					emitter << YAML::Key << "ModelComponent" << YAML::BeginMap;
 					const cModel* model = mesh.model;
 					check(model);
-					emitter << YAML::Key << "MeshAssetPath" << YAML::Value << model->GetResourceName();
+					emitter << YAML::Key << "ModelPath" << YAML::Value << model->GetResourceName();
 					emitter << YAML::EndMap;
 				}
 			}

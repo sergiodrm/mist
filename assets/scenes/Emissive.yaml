@@ -84,8 +84,8 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, -0, 0]
       Scale: [10, 10, 10]
-    MeshComponent:
-      MeshAssetPath: models/sponza/sponza.gltf
+    ModelComponent:
+      ModelPath: models/sponza/sponza.gltf
   - RenderObject: 5
     Name: EmissiveTest
     Parent: 0
@@ -93,8 +93,8 @@ RenderObjects:
       Position: [52, 8.5, 9]
       Rotation: [0, -180, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/emissive/emissivestrengthtest.gltf
+    ModelComponent:
+      ModelPath: models/emissive/emissivestrengthtest.gltf
   - RenderObject: 6
     Name: MetalRoughSpheres
     Parent: 0
@@ -102,8 +102,8 @@ RenderObjects:
       Position: [27, 15.5, 0]
       Rotation: [0, -90, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/metalrough/metalroughspheres.gltf
+    ModelComponent:
+      ModelPath: models/metalrough/metalroughspheres.gltf
   - RenderObject: 7
     Name: DefaultMainCamera
     Parent: 0
@@ -122,5 +122,5 @@ RenderObjects:
       Position: [0, 0, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
-    MeshComponent:
-      MeshAssetPath: models/alphablend/alphablendmodetest.gltf
+    ModelComponent:
+      ModelPath: models/alphablend/alphablendmodetest.gltf
