@@ -88,6 +88,17 @@ namespace Mist
 	const CameraData* GetCameraData() { return &g_cameraData; }
 	const CameraData* GetPrevCameraData() { return &g_previousCameraData; }
 
+	::rendersystem::RenderSystem* GetRenderSystem()
+	{
+		check(g_render);
+		return g_render;
+	}
+
+	::render::Device* GetRenderDevice()
+	{
+		return GetRenderSystem()->GetDevice();
+	}
+
 	static void UpdateCameraData(const glm::mat4& view, const glm::mat4& proj, const glm::mat4& jitteredProj)
 	{
 		g_previousCameraData = g_cameraData;

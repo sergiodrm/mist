@@ -83,4 +83,7 @@ namespace Mist
 
 	extern ::render::Device* g_device;
 	extern ::rendersystem::RenderSystem* g_render;
+
+	::rendersystem::RenderSystem* GetRenderSystem();
+	::render::Device* GetRenderDevice();
 }
