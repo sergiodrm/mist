@@ -10,7 +10,6 @@ namespace Mist
 
 	namespace FileSystem
 	{
-
 		void InitWorkspace();
 		// Relative path to the asset directory. All files needed must be read from this root path.
 		const char* GetWorkspacePath();
@@ -43,6 +42,8 @@ namespace Mist
 		bool GetFileExtension(const char* filepath, char* outBuffer, size_t bufferSize);
 
 		void BuildFilepathInWorkspace(const char* filepath, char* filepathInWs, size_t bufferSize);
+
+		void FileListDir(char**& outFilepaths, uint32_t* count, const char* path, bool onlyFiles = true, bool recursive = false);
 	}
 
 	class cFile

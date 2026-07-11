@@ -510,6 +510,12 @@ namespace Mist
 		logfok("--- Scene file saved in: %s (%d bytes) ---\n", filepath, size);
 	}
 
+	void Scene::SaveScene()
+	{
+		check(*m_sceneFile);
+		SaveScene(m_sceneFile);
+	}
+
 	void Scene::DestroyRenderObject(sRenderObject object)
 	{
 		check(false && "not implemented yet" && __FUNCTION__ && __FILE__ && __LINE__);

@@ -3,6 +3,7 @@
 #include <direct.h>
 #include "Application/CmdParser.h"
 #include <fstream>
+#include <filesystem>
 
 namespace Mist
 {
@@ -313,6 +314,72 @@ namespace Mist
 	void FileSystem::BuildFilepathInWorkspace(const char* filepath, char* filepathInWs, size_t bufferSize)
 	{
 		AssetPath::BuildWorkspacePath(filepathInWs, bufferSize, filepath);
+	}
+
+	void FileSystem::FileListDir(char**& outFilepaths, uint32_t* count, const char* path, bool onlyFiles, bool recursive)
+	{
+		check(!outFilepaths && count);
+		AssetPath assetPath(path);
+		*count = 0;
+
+		if (recursive)
+		{
+			for (auto it : std::filesystem::recursive_directory_iterator(assetPath.c_str()))
+			{
+				if (!onlyFiles || !it.is_directory())
+					++*count;
+			}
+		}
+		else
+		{
+			for (auto it : std::filesystem::directory_iterator(assetPath.c_str()))
+			{
+				if (!onlyFiles || !it.is_directory())
+					++*count;
+			}
+		}
+
+		if (*count)
+		{
+			outFilepaths = _new char* [*count];
+			uint32_t index = 0;
+			if (recursive)
+			{
+				for (auto it : std::filesystem::recursive_directory_iterator(assetPath.c_str()))
+				{
+					if (!onlyFiles || !it.is_directory())
+					{
+						check(index < *count);
+						std::string itPath = it.path().string();
+
+						const char* localPath = strstr(itPath.c_str(), path);
+						check(localPath);
+						uint64_t len = strlen(localPath) + 1;
+						outFilepaths[index] = _new char[len];
+						strcpy_s(outFilepaths[index], len, localPath);
+						++index;
+					}
+				}
+			}
+			else
+			{
+				for (auto it : std::filesystem::directory_iterator(assetPath.c_str()))
+				{
+					if (!onlyFiles || !it.is_directory())
+					{
+						check(index < *count);
+						std::string itPath = it.path().string();
+
+						const char* localPath = strstr(itPath.c_str(), path);
+						check(localPath);
+						uint64_t len = strlen(localPath) + 1;
+						outFilepaths[index] = _new char[len];
+						strcpy_s(outFilepaths[index], len, localPath);
+						++index;
+					}
+				}
+			}
+		}
 	}
 
 	cFile::~cFile()

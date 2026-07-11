@@ -273,6 +273,8 @@ namespace Mist
 
 		void LoadScene(const char* filepath);
 		void SaveScene(const char* filepath);
+		void SaveScene();
+		const char* GetSceneFileName() const { return m_sceneFile; }
 
 		sRenderObject CreateRenderObject(sRenderObject parent);
 		void DestroyRenderObject(sRenderObject object);
