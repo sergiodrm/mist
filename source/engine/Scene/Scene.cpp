@@ -93,7 +93,7 @@ namespace Mist
 		ambientColor = { 0.02f, 0.02f, 0.02f };
 	}
 
-	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine))
+	Scene::Scene(IRenderEngine* engine) : m_engine(static_cast<VulkanRenderEngine*>(engine)), m_sceneFile{0}
 	{
 		m_irradianceRequestInfo = _new PreprocessIrradianceInfo();
 		m_irradianceRequestInfo->cubemapWidthHeight = 1024;
@@ -420,6 +420,12 @@ namespace Mist
 
 	void Scene::SaveScene(const char* filepath)
 	{
+		if (!filepath || !*filepath)
+		{
+			logerror("Invalid filepath to save scene.\n");
+			return;
+		}
+
 		YAML::Emitter emitter;
 
 		emitter << YAML::BeginMap;
@@ -512,7 +518,6 @@ namespace Mist
 
 	void Scene::SaveScene()
 	{
-		check(*m_sceneFile);
 		SaveScene(m_sceneFile);
 	}
 
