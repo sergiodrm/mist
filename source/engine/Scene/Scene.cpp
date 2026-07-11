@@ -136,9 +136,8 @@ namespace Mist
 			delete m_terrain;
 			m_terrain = nullptr;
 		}
-		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
-			m_models[i].Destroy();
-		m_models.Clear();
+		for (auto it = m_meshComponentMap.begin(); it != m_meshComponentMap.end(); ++it)
+			resource_system::DestroyResource(it->second.model);
 		m_transformComponents.Clear();
 		m_renderTransforms.Clear();
 		m_renderTransforms.Resize(globals::MaxRenderObjects);
@@ -215,17 +214,11 @@ namespace Mist
 		return node;
 	}
 
-	index_t Scene::LoadModel(const char* filepath)
+	cModel* Scene::LoadModel(const char* filepath)
 	{
-		cModel* model = GetModel(filepath);
-		if (!model)
-		{
-			m_models.Push();
-			model = &m_models.GetBack();
-			check(model->LoadModel(g_device, filepath));
-		}
+		cModel* model = resource_system::LoadResource<cModel>(filepath);
 		check(model);
-		return (index_t)(model-m_models.GetData());
+		return model;
 	}
 
 	void Scene::ImGuiDrawModel(const cModel* model, const glm::mat4& transform)
@@ -243,7 +236,7 @@ namespace Mist
 			DebugRender::DrawBox(aabb.min, aabb.max, { 0,1,0 });
 			if (ImGui::Button("Dump info"))
 				model->DumpInfo();
-			ImGui::PushID(model->GetName());
+			ImGui::PushID(model->GetResourceName());
 			for (index_t i = 0; i < model->GetTransformsCount(); ++i)
 			{
 				const cModel::Node& node = *model->GetNode(i);
@@ -384,9 +377,9 @@ namespace Mist
 			YAML::Node meshNode = it["MeshComponent"];
 			if (meshNode)
 			{
-				MeshComponent m;
+				ModelComponent m;
 				std::string filepath = std::move(meshNode["MeshAssetPath"].as<std::string>());
-				m.MeshIndex = LoadModel(filepath.c_str());
+				m.model = LoadModel(filepath.c_str());
 				SetMesh(rb, m);
 			}
 
@@ -474,13 +467,13 @@ namespace Mist
 
 			if (m_meshComponentMap.contains(i))
 			{
-				const MeshComponent& mesh = m_meshComponentMap[i];
-				if (mesh.MeshIndex != UINT32_MAX)
+				const ModelComponent& mesh = m_meshComponentMap[i];
+				if (mesh.model)
 				{
 					emitter << YAML::Key << "MeshComponent" << YAML::BeginMap;
-					const cModel* model = GetModel(mesh.MeshIndex);
+					const cModel* model = mesh.model;
 					check(model);
-					emitter << YAML::Key << "MeshAssetPath" << YAML::Value << model->GetName();
+					emitter << YAML::Key << "MeshAssetPath" << YAML::Value << model->GetResourceName();
 					emitter << YAML::EndMap;
 				}
 			}
@@ -519,16 +512,16 @@ namespace Mist
 		check(false && "not implemented yet" && __FUNCTION__ && __FILE__ && __LINE__);
 	}
 
-	const MeshComponent* Scene::GetMesh(sRenderObject renderObject) const
+	const ModelComponent* Scene::GetMesh(sRenderObject renderObject) const
 	{
 		check(IsValid(renderObject));
-		const MeshComponent* mesh = nullptr;
+		const ModelComponent* mesh = nullptr;
 		if (m_meshComponentMap.contains(renderObject))
 			mesh = &m_meshComponentMap.at(renderObject);
 		return mesh;
 	}
 
-	void Scene::SetMesh(sRenderObject renderObject, const MeshComponent& meshComponent)
+	void Scene::SetMesh(sRenderObject renderObject, const ModelComponent& meshComponent)
 	{
 		check(IsValid(renderObject));
 		m_meshComponentMap[renderObject] = meshComponent;
@@ -643,8 +636,8 @@ namespace Mist
 			{
 				if (m_meshComponentMap.contains(i))
 				{
-					index_t meshIndex = m_meshComponentMap[i].MeshIndex;
-					const cModel& model = m_models[meshIndex];
+					check(m_meshComponentMap[i].model);
+					const cModel& model = *m_meshComponentMap[i].model;
 					uint32_t count = model.GetTransformsCount();
 					check(offset + count < m_renderTransforms.GetSize());
 					model.UpdateRenderTransforms(m_renderTransforms.GetData() + offset, m_globalTransforms[i]);
@@ -716,16 +709,6 @@ namespace Mist
 				scene->m_irradianceCube.brdf = result.brdf;
 			});
 		return true;
-	}
-
-	cModel* Scene::GetModel(const char* modelName)
-	{
-		for (uint32_t i = 0; i < m_models.GetSize(); ++i)
-		{
-			if (!strcmp(m_models[i].GetName(), modelName))
-				return &m_models[i];
-		}
-		return nullptr;
 	}
 
 	render::TextureHandle Scene::GetSkyboxTexture() const
@@ -902,11 +885,11 @@ namespace Mist
 					{
 						if (ImGui::TreeNode("Mesh component"))
 						{
-							const MeshComponent& meshComp = m_meshComponentMap.at(i);
-							const cModel& model = m_models[meshComp.MeshIndex];
+							const ModelComponent& meshComp = m_meshComponentMap.at(i);
+							const cModel& model = *meshComp.model;
 							AABB_t aabb = model.GetAABB().ApplyTransform(transform);
 							DebugRender::DrawBox(aabb.min, aabb.max, glm::vec3(0, 1, 0));
-							ImGui::Text("Model name: %s", model.GetName());
+							ImGui::Text("Model name: %s", model.GetResourceName());
 							if (ImGui::Button("Dump info"))
 								model.DumpInfo();
 							if (ImGui::TreeNode("Meshes"))
@@ -953,38 +936,38 @@ namespace Mist
 		}
 		if (ImGui::TreeNode("Model list"))
 		{
-			ImGui::Columns(2);
-			char buff[32];
-			for (index_t i = 0; i < m_models.GetSize(); ++i)
-			{
-				ImGui::Text("Model: %s", m_models[i].GetName());
-				ImGui::NextColumn();
-				sprintf_s(buff, "##modelbutton_%d", i);
-				ImGui::PushID(buff);
-				if (ImGui::Button("..."))
-				{ 
-					logfinfo("editing model %s\n", m_models[i].GetName());
-					m_editingModel = i;
-				}
-				ImGui::PopID();
-				ImGui::NextColumn();
-			}
-			ImGui::Columns();
-			ImGui::TreePop();
+			//ImGui::Columns(2);
+			//char buff[32];
+			//for (index_t i = 0; i < m_models.GetSize(); ++i)
+			//{
+			//	ImGui::Text("Model: %s", m_models[i].GetResourceName());
+			//	ImGui::NextColumn();
+			//	sprintf_s(buff, "##modelbutton_%d", i);
+			//	ImGui::PushID(buff);
+			//	if (ImGui::Button("..."))
+			//	{ 
+			//		logfinfo("editing model %s\n", m_models[i].GetResourceName());
+			//		m_editingModel = i;
+			//	}
+			//	ImGui::PopID();
+			//	ImGui::NextColumn();
+			//}
+			//ImGui::Columns();
+			//ImGui::TreePop();
 
-			if (m_editingModel != index_invalid)
-			{
-				ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
-				if (ImGui::BeginChild("EditingModelChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
-				{
-					ImGui::Text("Editing model %s", m_models[m_editingModel].GetName());
-					ImGui::Separator();
-					//m_models[m_editingModel].ImGuiDraw();
-					//ImGuiDrawModel(m_models[m_editingModel], )
-				}
-				ImGui::PopStyleColor();
-				ImGui::EndChild();
-			}
+			//if (m_editingModel != index_invalid)
+			//{
+			//	ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+			//	if (ImGui::BeginChild("EditingModelChild", ImVec2(-FLT_MIN, ImGui::GetTextLineHeightWithSpacing() * 8), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
+			//	{
+			//		ImGui::Text("Editing model %s", m_models[m_editingModel].GetResourceName());
+			//		ImGui::Separator();
+			//		//m_models[m_editingModel].ImGuiDraw();
+			//		//ImGuiDrawModel(m_models[m_editingModel], )
+			//	}
+			//	ImGui::PopStyleColor();
+			//	ImGui::EndChild();
+			//}
 		}
 		if (ImGui::TreeNode("IBL cubemap"))
 		{

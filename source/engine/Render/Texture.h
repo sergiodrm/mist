@@ -6,7 +6,7 @@
 #include "Core/Mutex.h"
 
 #include "Utils/FileSystem.h"
-#include "Resources/ResourceLoader.h"
+#include "Resources/ResourceSystem.h"
 
 namespace rendersystem
 {
@@ -23,7 +23,7 @@ namespace Mist
     {
     public:
 
-        class TextureLoader : public resources::IResourceLoader
+        class TextureLoader : public resource_system::IResourceLoader
         {
         public:
 

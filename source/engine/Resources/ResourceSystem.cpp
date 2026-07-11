@@ -1,4 +1,4 @@
-#include "ResourceLoader.h"
+#include "ResourceSystem.h"
 #include "Core/Thread.h"
 #include "Core/Mutex.h"
 #include "Core/Types.h"
@@ -7,6 +7,7 @@
 #include "Utils/TimeUtils.h"
 #include "RenderSystem/UI.h"
 #include "imgui.h"
+#include "Render/Model.h"
 
 #define RESOURCE_LOADER_PROFILING
 #ifdef RESOURCE_LOADER_PROFILING
@@ -19,7 +20,7 @@
 
 namespace Mist
 {
-	namespace resources
+	namespace resource_system
 	{
 		class ResourceLoaderThread
 		{
@@ -56,7 +57,74 @@ namespace Mist
 			tDynArray<IResourceLoader*> m_localLoadThreadTasks;
 		};
 
+		class ResourceCache
+		{
+			struct ItemInfo
+			{
+				uint32_t ref;
+			};
+		public:
+
+			typedef IResource* (*FnCreateResourceInstance)();
+			typedef void(*FnDestroyResourceInstance)(IResource* resource);
+
+			struct CacheDescription
+			{
+				uint32_t count{ 0 };
+				FnCreateResourceInstance fnCreate{ nullptr };
+				FnDestroyResourceInstance fnDestroy{ nullptr };
+			};
+
+			ResourceCache(const CacheDescription& desc);
+			~ResourceCache();
+
+			IResource* LoadResource(const char* id);
+			IResource* FindResource(const char* id);
+			IResource* FindResource(uint64_t h);
+			void ReleaseResource(IResource* resource);
+
+		private:
+			uint64_t Hash(const char* id);
+
+		private:
+			CacheDescription m_description;
+			tFixedHeapArray<IResource*> m_resources;
+			tFixedHeapArray<ItemInfo> m_infoArray;
+			tFixedHeapArray<uint32_t> m_freeSlots;
+			tMap<uint64_t, uint32_t> m_indexMap;
+		};
+
+		class ResourceManager
+		{
+		public:
+			ResourceManager()
+			{
+				m_caches[ResourceType_Model] = _new ResourceCache({ 128, 
+					// Create
+					[]() -> IResource* {
+						return _new cModel();
+					}, 
+					// Destroy
+					[](IResource* resource) {
+						delete resource;
+					}
+					});
+			}
+
+			~ResourceManager()
+			{
+				for (uint32_t i = 0; i < ResourceType_Count; ++i)
+					delete m_caches[i];
+			}
+
+			ResourceCache& GetCache(ResourceType type) { check(type < ResourceType_Count); return *m_caches[type]; }
+
+		private:
+			ResourceCache* m_caches[ResourceType_Count];
+		};
+
 		static ResourceLoaderThread* g_loaderThread = nullptr;
+		static ResourceManager* g_resourceManager = nullptr;
 
 		static bool g_inmediateModeStack[4];
 		static uint32_t g_inmediateModeIndex = 0;
@@ -66,7 +134,23 @@ namespace Mist
 			return g_inmediateModeIndex > 0 ? g_inmediateModeStack[g_inmediateModeIndex - 1] : false;
 		}
 
-		void InitLoadThread()
+		static size_t GetSizeOfResourceType(ResourceType type)
+		{
+			switch (type)
+			{
+			case ResourceType_Model: return sizeof(cModel);
+			}
+			unreachable_code();
+			return 0;
+		}
+
+		static ResourceManager* GetResourceManager() { return g_resourceManager; }
+
+		/**
+		 * Load thread implementation
+		 */
+
+		static void InitLoadThread()
 		{
 			if (g_loaderThread)
 				logwarn("Trying to initialize ResourceLoaderThread but it is already initialized!\n");
@@ -74,17 +158,40 @@ namespace Mist
 				g_loaderThread = _new ResourceLoaderThread();
 		}
 
-		void TerminateLoadThread()
+		static void TerminateLoadThread()
 		{
 			if (g_loaderThread)
 				delete g_loaderThread;
 			g_loaderThread = nullptr;
 		}
 
-		void SlotMainThread()
+		static void SlotMainThread()
 		{
 			check(g_loaderThread);
 			g_loaderThread->ProcMainThread();
+		}
+
+		/**
+		 * Public API implementation
+		 */
+		void Init()
+		{
+			check(!g_resourceManager);
+			g_resourceManager = _new ResourceManager();
+			InitLoadThread();
+		}
+
+		void Terminate()
+		{
+			TerminateLoadThread();
+			check(g_resourceManager);
+			delete g_resourceManager;
+			g_resourceManager = nullptr;
+		}
+
+		void Update()
+		{
+			SlotMainThread();
 		}
 
 		void PushLoader(IResourceLoader* loader)
@@ -107,8 +214,20 @@ namespace Mist
 			--g_inmediateModeIndex;
 		}
 
+		IResource* LoadResource(ResourceType type, const char* id)
+		{
+			check(type < ResourceType_Count && id && *id);
+			return GetResourceManager()->GetCache(type).LoadResource(id);
+		}
+
+		void DestroyResource(IResource* resource)
+		{
+			check(resource);
+			GetResourceManager()->GetCache(resource->GetResourceType()).ReleaseResource(resource);
+		}
+
 		/**
-		 * ResourceLoaderThread Implementation
+		 * Internal ResourceLoaderThread Implementation
 		 */
 
 		ResourceLoaderThread::ResourceLoaderThread()
@@ -281,6 +400,112 @@ namespace Mist
 			for (uint32_t i = 0; i < m_finishedTasks.size(); ++i)
 				delete m_finishedTasks[i];
 			m_finishedTasks.clear();
+		}
+
+		/**
+		 * Internal Resource cache implementation
+		 */
+
+		ResourceCache::ResourceCache(const CacheDescription& desc)
+			: m_description(desc)
+		{
+			check(m_description.count);
+			check(m_description.fnCreate);
+			check(m_description.fnDestroy);
+			m_resources.AllocateAndResize(m_description.count);
+			m_infoArray.AllocateAndResize(m_description.count);
+			m_freeSlots.AllocateAndResize(m_description.count);
+			for (uint32_t i = 0; i < m_resources.GetSize(); ++i)
+			{
+				m_freeSlots[i] = m_resources.GetSize() - 1 - i;
+				m_infoArray[i] = { UINT32_MAX };
+			}
+		}
+
+		ResourceCache::~ResourceCache()
+		{
+			check(m_indexMap.empty());
+		}
+
+		IResource* ResourceCache::LoadResource(const char* id)
+		{
+			uint64_t h = Hash(id);
+			IResource* r = FindResource(h);
+			if (r)
+			{
+				// Add reference counter to resource
+				auto it = m_indexMap.find(r->GetResourceHashId());
+				check(it != m_indexMap.end());
+				++m_infoArray[it->second].ref;
+				logfinfo("[LoadResource] Resource in memory (%s) (refs: %d)\n", id, m_infoArray[it->second].ref);
+				return r;
+			}
+
+			// Check if there is enough room
+			check(m_freeSlots.GetSize() > 0);
+
+			// Gather free resource index
+			uint32_t index = m_freeSlots.Back();
+			m_freeSlots.Back() = UINT32_MAX;
+			m_freeSlots.Pop();
+
+  			// Gather resource memory and build
+			check(!m_resources[index]);
+			m_resources[index] = (*m_description.fnCreate)();
+			check(m_resources[index]);
+			r = m_resources[index];
+			r->SetResourceHashId(h);
+			r->SetResourceName(id);
+
+			// Submit new resource into registers and reference counters
+			check(!m_indexMap.contains(h));
+			check(m_infoArray[index].ref == UINT32_MAX);
+			m_indexMap[h] = index;
+			m_infoArray[index].ref = 1;
+
+			r->LoadResource();
+
+			logfinfo("[LoadResource] Resource created (%s) (refs: %d)\n", id, m_infoArray[index].ref);
+			return r;
+		}
+
+		IResource* ResourceCache::FindResource(const char* id)
+		{
+			uint64_t h = Hash(id);
+			return FindResource(h);
+		}
+
+		IResource* ResourceCache::FindResource(uint64_t h)
+		{
+			auto it = m_indexMap.find(h);
+			return it != m_indexMap.end() ? m_resources[it->second] : nullptr;
+		}
+
+		void ResourceCache::ReleaseResource(IResource* resource)
+		{
+			IResource* r = resource;
+			auto it = m_indexMap.find(r->GetResourceHashId());
+			check(it != m_indexMap.end());
+			check(m_infoArray[it->second].ref > 0);
+			check(m_resources[it->second] == resource);
+			uint32_t c = --m_infoArray[it->second].ref;
+			logfinfo("[ReleaseResource] Resource in memory (%s) (refs: %d)\n", r->GetResourceName(), m_infoArray[it->second].ref);
+			if (!c)
+			{
+				logfinfo("[ReleaseResource] Resource with zero refs (%s)\n", r->GetResourceName());
+				r->DestroyResource();
+				(*m_description.fnDestroy)(r);
+				m_infoArray[it->second].ref = UINT32_MAX;
+				m_freeSlots.Push();
+				m_freeSlots.Back() = it->second;
+				m_resources[it->second] = nullptr;
+				m_indexMap.erase(it);
+			}
+		}
+
+		uint64_t ResourceCache::Hash(const char* id)
+		{
+			return hash(id);
 		}
 	}
 }

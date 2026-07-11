@@ -20,7 +20,7 @@ namespace Mist
 		rendersystem::ShaderProgram* irradianceShader;
 		rendersystem::ShaderProgram* specularShader;
 		render::RenderTargetHandle rt;
-		cModel cubeModel;
+		cModel* cubeModel;
 
 		void Init(rendersystem::RenderSystem* rs);
 		void PrepareDraw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& _rt, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader);

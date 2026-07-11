@@ -107,16 +107,14 @@ namespace Mist
 		}
 		ResetTextureOffset3D(rs->GetDevice());
 
-        m_skyModel = _new cModel();
-        m_skyModel->LoadModel(device, "models/cube.gltf");
+		m_skyModel = resource_system::LoadResource<cModel>("models/cube.gltf");
 
 		m_forwardRenderListId = SceneRenderer::GetSceneRenderer()->CreateRenderList({ .pass = RenderPass_Transparent });
 	}
 
 	void Lighting::Destroy(rendersystem::RenderSystem* rs)
 	{
-		m_skyModel->Destroy();
-		delete m_skyModel;
+		resource_system::DestroyResource(m_skyModel);
 		m_skyModel = nullptr;
 
 		rs->DestroyShader(&m_lightingShader);

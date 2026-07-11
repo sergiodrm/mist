@@ -78,11 +78,11 @@ namespace Mist
 		{ }
 	};
 
-	struct MeshComponent
+	struct ModelComponent
 	{
-		uint32_t MeshIndex;
+		cModel* model;
 
-		MeshComponent() : MeshIndex(UINT32_MAX) { }
+		ModelComponent() : model(nullptr) { }
 	};
 
 	struct CameraComponent
@@ -281,9 +281,9 @@ namespace Mist
 
 		sRenderObject GetRoot() const;
 
-		const MeshComponent* GetMesh(sRenderObject renderObject) const;
-		void SetMesh(sRenderObject renderObject, const MeshComponent& meshComponent);
-		const cModel* GetModel(uint32_t index) const { return &m_models[index]; }
+		const ModelComponent* GetMesh(sRenderObject renderObject) const;
+		void SetMesh(sRenderObject renderObject, const ModelComponent& meshComponent);
+		//const cModel* GetModel(uint32_t index) const { return &m_models[index]; }
 
 		const char* GetRenderObjectName(sRenderObject object) const;
 		void SetRenderObjectName(sRenderObject renderObject, const char* name);
@@ -318,9 +318,7 @@ namespace Mist
 		bool LoadSkybox(Skybox& skybox, const char* front, const char* back, const char* left, const char* right, const char* top, const char* bottom);
 		bool LoadIrradianceCube(const PreprocessIrradianceInfo& info);
 
-		const cModel* GetModel(const char* modelName) const { return const_cast<Scene*>(this)->GetModel(modelName); }
-		cModel* GetModel(const char* modelName);
-		index_t LoadModel(const char* filepath);
+		cModel* LoadModel(const char* filepath);
 		void ImGuiDrawModel(const cModel* model, const glm::mat4& transform);
 
 		index_t NewCamera();
@@ -333,12 +331,13 @@ namespace Mist
 		tFixedHeapArray<String> m_names;
 		tFixedHeapArray<Hierarchy> m_hierarchy;
 		tFixedHeapArray<TransformComponent> m_transformComponents;
-		tMap<index_t, MeshComponent> m_meshComponentMap;
+		tMap<index_t, ModelComponent> m_meshComponentMap;
 		tMap<index_t, LightComponent> m_lightComponentMap;
 		tMap<index_t, CameraComponent> m_cameraComponentMap;
 
-		tStaticArray<cModel, MIST_MAX_MODELS> m_models;
+		//tStaticArray<cModel, MIST_MAX_MODELS> m_models;
 		tStaticArray<CameraController, MIST_MAX_CAMERAS> m_cameras;
+		CameraController m_defaultCamera;
 
 		tFixedHeapArray<glm::mat4> m_localTransforms;
 		tFixedHeapArray<glm::mat4> m_globalTransforms;

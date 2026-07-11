@@ -5,7 +5,6 @@
 #include "Utils/GenericUtils.h"
 
 #include "UI.h"
-#include "ModelLoader.h"
 #include <imgui.h>
 #include "Utils/TimeUtils.h"
 #include "Render/Noise.h"

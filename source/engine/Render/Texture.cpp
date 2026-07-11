@@ -25,7 +25,7 @@ namespace Mist
 		check(!m_deviceTexture);
 		m_loadParams = loadParams;
 		TextureLoader* loader = _new TextureLoader(this, loadParams);
-		resources::PushLoader(loader);
+		resource_system::PushLoader(loader);
 		return true;
     }
 
@@ -36,12 +36,12 @@ namespace Mist
 		check(FileSystem::FileExists(m_params.filepath));
 	}
 
-	resources::IResourceLoader::ProcType Texture::TextureLoader::GetProcType() const
+	resource_system::IResourceLoader::ProcType Texture::TextureLoader::GetProcType() const
 	{
 		return ProcType::LoadThread;
 	}
 
-	resources::IResourceLoader::ProcType Texture::TextureLoader::ProcessLoadThread()
+	resource_system::IResourceLoader::ProcType Texture::TextureLoader::ProcessLoadThread()
 	{
 		if (!rendersystem::textureloader::LoadTextureData_u8(&m_textureData, m_params.filepath, m_params.flipVertical))
 		{
@@ -51,7 +51,7 @@ namespace Mist
 		return ProcType::MainThread;
 	}
 
-	resources::IResourceLoader::ProcType Texture::TextureLoader::ProcessMainThread()
+	resource_system::IResourceLoader::ProcType Texture::TextureLoader::ProcessMainThread()
 	{
 		check(m_textureData.u8data);
 		check(m_textureData.width && m_textureData.height && m_textureData.depth);

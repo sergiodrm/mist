@@ -16,7 +16,7 @@
 #include "Core/Console.h"
 #include "Core/Debug.h"
 #include "Render/Globals.h"
-#include "Resources/ResourceLoader.h"
+#include "Resources/ResourceSystem.h"
 #include "Scene/Scene.h"
 #include "Scene/SceneRenderer.h"
 #include "Utils/GenericUtils.h"
@@ -163,6 +163,7 @@ namespace Mist
 #endif // _DEBUG
 			
 
+		resource_system::Init();
 		SDL_Init(SDL_INIT_VIDEO);
 
 		class WindowRenderInterface : public rendersystem::IWindow
@@ -182,7 +183,6 @@ namespace Mist
 		SceneRenderer::Init(m_renderSystem);
 		m_renderer.Init(m_renderSystem, this);
 		DebugRender::Init();
-		resources::InitLoadThread();
 		//////////////////////////////////////
 		// Console commands
 		//////////////////////////////////////
@@ -237,7 +237,7 @@ namespace Mist
 
 		FlushPendingConsoleCommands();
 		Draw();
-		resources::SlotMainThread();
+		resource_system::Update();
 		return true;
 	}
 
@@ -245,7 +245,6 @@ namespace Mist
 	{
 		loginfo("Shutdown render engine.\n");
 		g_device->WaitIdle();
-		resources::TerminateLoadThread();
 		if (m_scene)
 		{
 			m_scene->Destroy();
@@ -259,6 +258,7 @@ namespace Mist
 		g_render = nullptr;
 		m_renderSystem->Destroy();
 		delete m_renderSystem;
+		resource_system::Terminate();
 	}
 
 	void VulkanRenderEngine::UpdateSceneView(const glm::mat4& view, const glm::mat4& projection)

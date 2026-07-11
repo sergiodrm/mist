@@ -37,15 +37,15 @@ namespace Mist
 		rtDesc.AddColorAttachment(rtTexture, render::TextureSubresourceRange(0, 1, 0, 1));
 		rt = rs->GetDevice()->CreateRenderTarget(rtDesc);
 
-		cubeModel.LoadModel(rs->GetDevice(), "models/cube.gltf");
+		cubeModel = resource_system::LoadResource<cModel>("models/cube.gltf");
 	}
 
 	void PreprocessIrradianceResources::PrepareDraw(rendersystem::RenderSystem* rs, const render::RenderTargetHandle& _rt, render::Extent2D viewportSize, rendersystem::ShaderProgram* shader)
 	{
 		rs->SetShader(shader);
 		rs->SetDepthEnable(false, false);
-		rs->SetVertexBuffer(cubeModel.GetMesh(0).GetVertexBuffer());
-		rs->SetIndexBuffer(cubeModel.GetMesh(0).GetIndexBuffer());
+		rs->SetVertexBuffer(cubeModel->GetMesh(0).GetVertexBuffer());
+		rs->SetIndexBuffer(cubeModel->GetMesh(0).GetIndexBuffer());
 		rs->SetRenderTarget(_rt);
 		rs->SetViewport(0.f, 0.f, (float)viewportSize.width, (float)viewportSize.height);
 		rs->SetScissor(0.f, (float)viewportSize.width, 0.f, (float)viewportSize.height);
@@ -54,12 +54,13 @@ namespace Mist
 
 	void PreprocessIrradianceResources::DrawCube(rendersystem::RenderSystem* rs)
 	{
-		rs->DrawIndexed(cubeModel.GetMesh(0).GetIndexCount());
+		rs->DrawIndexed(cubeModel->GetMesh(0).GetIndexCount());
 	}
 
 	void PreprocessIrradianceResources::Destroy(rendersystem::RenderSystem* rs)
 	{
-		cubeModel.Destroy();
+		resource_system::DestroyResource(cubeModel);
+		
 		rt = nullptr;
 		rs->DestroyShader(&equirectangularShader);
 		rs->DestroyShader(&irradianceShader);

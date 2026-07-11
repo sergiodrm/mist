@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Mesh.h"
+#include "Material.h"
+#include "Resources/ResourceSystem.h"
 #include "RenderResource.h"
 #include "Core/Types.h"
 
@@ -18,7 +20,7 @@ namespace Mist
 	};
 	typedef uint8_t StencilMask;
 
-	class cModel : public cRenderResource<RenderResource_Model>
+	class cModel : public resource_system::TResource<resource_system::ResourceType_Model>
 	{
 	public:
 		struct Node
@@ -36,15 +38,25 @@ namespace Mist
 			inline bool IsValid() const { return node != index_invalid && mesh != index_invalid; }
 		};
 
-		bool LoadModel(render::Device* device, const char* filepath);
-		void Destroy();
+
+		virtual bool LoadResource() override;
+		virtual void DestroyResource() override;
+
+		void InitNodes(index_t n);
+		void InitMeshes(index_t n);
+		void InitMaterials(index_t n);
 		
 		inline const glm::mat4& GetTransform(index_t nodeIndex) const { return m_transforms[nodeIndex]; }
+		inline glm::mat4& GetTransform(index_t nodeIndex) { return m_transforms[nodeIndex]; }
 		inline index_t GetTransformsCount() const { return m_transforms.GetSize(); }
+
 		inline const cMaterial& GetMaterial(index_t index) const { return m_materials[index]; }
+		inline cMaterial& GetMaterial(index_t index) { return m_materials[index]; }
 		inline index_t GetMaterialCount() const { return m_materials.GetSize(); }
+
 		void UpdateRenderTransforms(glm::mat4* globalTransforms, const glm::mat4& worldTransform) const;
 		void UpdateMaterials(sMaterialRenderData* materials) const;
+
 		index_t GetRoot() const { return m_root; }
 		index_t GetNodeIndex(const Node* node) const { check(m_nodes.GetData() <= node); return node - m_nodes.GetData(); }
 		const Node* GetNode(index_t nodeIndex) const { return nodeIndex < m_nodes.GetSize() ? &m_nodes[nodeIndex] : nullptr; }
@@ -52,26 +64,30 @@ namespace Mist
 
 		const cMesh* GetMeshFromNode(index_t node) const { return (node < m_nodes.GetSize() && m_nodes[node].meshInfoIndex != index_invalid) ? &m_meshes[m_nodeMeshInfoArray[m_nodes[node].meshInfoIndex].mesh] : nullptr; }
 		const cMesh& GetMesh(uint32_t index) const { return m_meshes[index]; }
+		cMesh& GetMesh(uint32_t index) { return m_meshes[index]; }
 		uint32_t GetMeshCount() const { return m_meshes.GetSize(); }
 
 		inline const AABB_t& GetAABB() const { return m_aabb; }
-		inline RenderPassType GetRenderPassMask() const { return m_renderPassMask; }
-		void DumpInfo() const;
-	private:
-		void InitNodes(index_t n);
-		void InitMeshes(index_t n);
-		void InitMaterials(index_t n);
+		inline void SetAABB(const AABB_t& aabb) { m_aabb = aabb; }
 
+		inline RenderPassType GetRenderPassMask() const { return m_renderPassMask; }
+		inline void SetRenderPassMask(RenderPassType renderPass) { m_renderPassMask = renderPass; }
+		void DumpInfo() const;
+
+		void MoveMaterials(tFixedHeapArray<cMaterial>&& materials);
+		index_t LinkNodeToMesh(index_t node, index_t meshId);
+		index_t BuildNode(index_t nodeIndex, index_t parentIndex, const char* nodeName);
+	private:
 		void CalculateGlobalTransforms(glm::mat4* transforms, index_t node) const;
 
-		index_t BuildNode(index_t nodeIndex, index_t parentIndex, const char* nodeName);
 		Node* GetNode(index_t i);
 		void SetNodeName(index_t i, const char* name);
 		void SetNodeTransform(index_t i, const glm::mat4& transform);
 
 		index_t CreateMesh();
 		index_t CreateMaterial();
-		index_t LinkNodeToMesh(index_t node, index_t meshId);
+
+		void Destroy();
 
 		index_t m_root = index_invalid;
 	private:
@@ -85,7 +101,7 @@ namespace Mist
 		// Materials used by meshes. Several meshes can use the same material.
 		tFixedHeapArray<cMaterial> m_materials;
 
-		// indices to relate the meshes with their nodes.
+		// indices to relate the meshes with their nodes. 
 		tFixedHeapArray<NodeMeshInfo> m_nodeMeshInfoArray;
 
 		// Cached info. Computed at model creation. Must be constant after loading.

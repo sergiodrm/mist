@@ -291,11 +291,11 @@ namespace Mist
 		const glm::mat4* worldTransforms = scene->GetRawGlobalTransforms();
 		for (uint32_t i = 0; i < scene->GetRenderObjectCount(); ++i)
 		{
-			const MeshComponent* mc = scene->GetMesh(i);
+			const ModelComponent* mc = scene->GetMesh(i);
 			if (mc)
 			{
-				check(mc->MeshIndex != UINT32_MAX);
-				const cModel* model = scene->GetModel(mc->MeshIndex);
+				check(mc->model);
+				const cModel* model = mc->model;// scene->GetModel(mc->MeshIndex);
 				const glm::mat4& transform = worldTransforms[i];
 
 				// Coarse culling
