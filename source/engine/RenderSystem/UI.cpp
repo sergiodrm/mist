@@ -26,9 +26,23 @@ namespace rendersystem
             void* userData = nullptr;
         };
 
+        struct MenuCallbackEntry
+        {
+            char id[32];
+            ImGuiMenuCallback fn = nullptr;
+            void* userData = nullptr;
+        };
+
         static constexpr size_t MaxWindowCallbacks = 128;
-        WindowCallbackEntry g_windowCallbacks[MaxWindowCallbacks];
-        uint32_t g_windowCallbackIndex = 0;
+        static constexpr size_t MaxMenuCallbacks = 8;
+
+        static WindowCallbackEntry g_windowCallbacks[MaxWindowCallbacks];
+        static uint32_t g_windowCallbackIndex = 0;
+
+        static MenuCallbackEntry g_menuCallbacks[MaxMenuCallbacks];
+        static uint32_t g_menuCallbackIndex = 0;
+
+
 
         void ExecCommand_ActivateMultipleViewports(const char* cmd)
         {
@@ -299,6 +313,11 @@ namespace rendersystem
                     Mist::DrawConsoleFunctions();
                     ImGui::EndMenu();
                 }
+                for (uint32_t i = 0; i < g_menuCallbackIndex; ++i)
+                {
+					check(g_menuCallbacks[i].fn);
+					g_menuCallbacks[i].fn(g_menuCallbacks[i].userData);
+                }
                 ImGui::EndMainMenuBar();
             }
 
@@ -318,6 +337,16 @@ namespace rendersystem
                     return i;
             }
             return UINT32_MAX;
+        }
+
+        uint32_t FindMenuCallback(const char* id)
+        {
+			for (uint32_t i = 0; i < g_menuCallbackIndex; ++i)
+			{
+				if (!stricmp(id, g_menuCallbacks[i].id))
+					return i;
+			}
+			return UINT32_MAX;
         }
 
         void AddWindowCallback(const char* id, ImGuiWindowCallback fn, void* userData, bool openByDefault)
@@ -343,8 +372,25 @@ namespace rendersystem
             g_windowCallbacks[callbackIndex].userData = userData;
         }
 
-        void AddMenuCallback(const char* id, ImGuiMenuCallback fn)
+        void AddMenuCallback(const char* id, ImGuiMenuCallback fn, void* userData)
         {
+			check(g_menuCallbackIndex < MaxMenuCallbacks);
+			check(id && *id && fn);
+			uint32_t callbackIndex = FindMenuCallback(id);
+			if (callbackIndex != UINT32_MAX)
+			{
+				logfwarn("Overriding existing callback \"%s\" [index: %d]. Old (%0xp, %0xp). New (%0xp, %0xp).\n",
+					id, callbackIndex, g_menuCallbacks[callbackIndex].fn, g_menuCallbacks[callbackIndex].userData,
+					fn, userData);
+			}
+			else
+			{
+				callbackIndex = g_menuCallbackIndex++;
+				strcpy_s(g_menuCallbacks[callbackIndex].id, id);
+			}
+			check(callbackIndex < MaxMenuCallbacks);
+			g_menuCallbacks[callbackIndex].fn = fn;
+			g_menuCallbacks[callbackIndex].userData = userData;
         }
     }
 
