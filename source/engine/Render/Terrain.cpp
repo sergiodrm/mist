@@ -5,6 +5,7 @@
 #include "VulkanRenderEngine.h"
 #include "Noise.h"
 #include "RenderSystem/UI.h"
+#include "Utils/TimeUtils.h"
 
 namespace Mist
 {
@@ -19,6 +20,7 @@ namespace Mist
 
 	void Terrain::Init(rendersystem::RenderSystem* rs)
 	{
+		PROFILE_SCOPE_LOG(TerrainInit, "Init terrain");
 		// Load Iceland Heightmap test
 		const char* heightMap = "textures/iceland_heightmap.png";
 		rendersystem::textureloader::TextureData texData;
