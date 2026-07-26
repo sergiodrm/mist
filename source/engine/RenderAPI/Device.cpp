@@ -2020,8 +2020,14 @@ namespace render
         viewport.y = description.renderState.viewportState.viewport.y;
         viewport.width = description.renderState.viewportState.viewport.width;
         viewport.height = description.renderState.viewportState.viewport.height;
-        viewport.minDepth = 0.f;
-        viewport.maxDepth = 1.f;
+        viewport.minDepth = description.renderState.viewportState.viewport.minDepth;
+        viewport.maxDepth = description.renderState.viewportState.viewport.maxDepth;
+
+		// The Vulkan spec states : If the VK_EXT_depth_range_unrestricted extension is not enabled, 
+        // minDepth must be between 0.0 and 1.0, inclusive
+        // (https ://docs.vulkan.org/spec/latest/chapters/vertexpostproc.html#VUID-VkViewport-minDepth-01234)
+        check(viewport.minDepth >= 0.f && viewport.maxDepth <= 1.f);
+
         VkRect2D scissor = {};
         scissor.extent.width = (uint32_t)description.renderState.viewportState.scissor.GetWidth();
         scissor.extent.height = (uint32_t)description.renderState.viewportState.scissor.GetHeight();

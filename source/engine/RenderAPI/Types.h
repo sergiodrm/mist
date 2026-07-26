@@ -168,7 +168,7 @@ namespace render
 		float maxDepth;
 
 		Viewport()
-			: x(0.f), width(0.f), y(0.f), height(0.f), minDepth(0.f), maxDepth(0.f)
+			: x(0.f), width(0.f), y(0.f), height(0.f), minDepth(0.f), maxDepth(1.f)
 		{
 		}
 

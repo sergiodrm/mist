@@ -795,7 +795,7 @@ namespace render
         RenderTargetInfo() = default;
         RenderTargetInfo(const RenderTargetDescription& description);
 
-        inline Viewport GetViewport() const { return Viewport(0, 0, static_cast<float>(extent.width), static_cast<float>(extent.height), 0, 0); }
+        inline Viewport GetViewport() const { return Viewport(0, 0, static_cast<float>(extent.width), static_cast<float>(extent.height), 0, 1); }
         inline Rect GetScissor() const { return Rect(0, static_cast<float>(extent.width), 0, static_cast<float>(extent.height)); }
 	};
 
