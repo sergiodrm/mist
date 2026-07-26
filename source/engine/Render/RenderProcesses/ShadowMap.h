@@ -65,7 +65,9 @@ namespace Mist
 
 	private:
 		virtual void DebugDraw() override;
+		void InitShadowMaps(rendersystem::RenderSystem* rs, const render::Extent2D& resolution);
 	private:
+		render::Extent2D m_shadowMapResolution;
 		ShadowMap m_shadowMaps[globals::MaxShadowMapAttachments];
 		uint32_t m_renderListIds[globals::MaxShadowMapAttachments];
 		uint32_t m_lightCount = 0;
@@ -73,7 +75,7 @@ namespace Mist
 		float m_directionalClipFar = 100.f;
 
 		rendersystem::ShaderProgram* m_shader;
-		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
+		tStaticArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 
 
 		EDebugMode m_debugMode = DEBUG_NONE;

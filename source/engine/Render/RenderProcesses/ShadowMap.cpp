@@ -16,9 +16,6 @@
 
 namespace Mist
 {
-	CIntVar CVar_ShadowMapResolutionWidth("r_shadowMapResolutionWidth", 1024);
-	CIntVar CVar_ShadowMapResolutionHeight("r_shadowMapResolutionHeight", 1024);
-
 	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip)
 	{
 		//return glm::perspective(2.f * glm::radians(cutOff), 1.f, nearClip, farClip);
@@ -172,29 +169,20 @@ namespace Mist
 	//}
 
 	ShadowMapProcess::ShadowMapProcess(Renderer* renderer, IRenderEngine* engine)
-		: RenderProcess(renderer, engine)
+		: RenderProcess(renderer, engine), m_shadowMapResolution{1024, 1024}
 	{
 		m_camera.GetCamera().SetFarClip(10.f);
 		m_zmult = 1.f;
 		m_camera.GetCamera().SetProjectionType(ECameraProjectionType::Perspective);
+		m_shadowMapTargetArray.Resize(m_shadowMapTargetArray.GetCapacity());
 	}
 
 	void ShadowMapProcess::Init(rendersystem::RenderSystem* rs)
 	{
 		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
-		{
-			render::TextureDescription texDesc;
-			texDesc.extent = { .width = (uint32_t)CVar_ShadowMapResolutionWidth.Get(), .height = (uint32_t)CVar_ShadowMapResolutionHeight.Get(), .depth = 1};
-			texDesc.format = render::Format_D32_SFloat;
-			texDesc.isRenderTarget = true;
-			render::TextureHandle depthTex = rs->GetDevice()->CreateTexture(texDesc);
-
-			render::RenderTargetDescription rtDesc;
-			rtDesc.SetDepthStencilAttachment(depthTex);
-			m_shadowMapTargetArray[i] = rs->GetDevice()->CreateRenderTarget(rtDesc);
-
 			m_renderListIds[i] = SceneRenderer::GetSceneRenderer()->CreateRenderList({ RenderPass_ShadowMap, {} });
-		}
+
+		InitShadowMaps(rs, m_shadowMapResolution);
 
 		rendersystem::ShaderBuildDescription shaderDesc;
 		shaderDesc.SetGraphics("shaders/render_pipeline/depth.vert", nullptr);
@@ -279,6 +267,16 @@ namespace Mist
 			ImGui::InputInt("ShadowMap index", (int*)&m_textureDebugIndex);
 			m_textureDebugIndex = math::Clamp(m_textureDebugIndex, 0u, globals::MaxShadowMapAttachments - 1);
 		}
+		int res[] = { (int)m_shadowMapResolution.width, (int)m_shadowMapResolution.height };
+		if (ImGui::DragInt2("Shadow map resolution", res))
+		{
+			m_shadowMapResolution.width = limits_cast<uint32_t>(res[0]);
+			m_shadowMapResolution.height = limits_cast<uint32_t>(res[1]);
+		}
+		if (ImGui::Button("Reload"))
+		{
+			InitShadowMaps(GetRenderSystem(), m_shadowMapResolution);
+		}
 		ImGui::End();
 	}
 
@@ -312,18 +310,17 @@ namespace Mist
 				//GetFitOrthoViewProj(shadowMap.proj, shadowMap.view, f, -rot.Forward(), m_zmult);
 				GetFitOrthoViewProj(shadowMap.proj, shadowMap.view, m_cameraFrustum, rot, m_zmult);
 				//GetFitOrthoViewProj(shadowMap.proj, shadowMap.view, fitCameraProj, cameraView, rot, m_zmult);
-				m_cameraFrustum.DrawDebug();
+				//m_cameraFrustum.DrawDebug();
 				m_lightFrustum = shadowMap.GetVP();
-				m_lightFrustum.DrawDebug({ 0,1,0 });
+				//m_lightFrustum.DrawDebug({ 0,1,0 });
 			}
 			else
 			{
 				shadowMap.view = glm::lookAt(camera.GetPosition(), camera.GetPosition() - rot.Forward(), rot.Up());
 				shadowMap.proj = math::OrthoProj(left, right, bottom, top, nearClip, farClip);
-				Frustum f(shadowMap.proj * shadowMap.view);
-				f.DrawDebug({0,1,1});
+				//Frustum f(shadowMap.proj * shadowMap.view);
+				//f.DrawDebug({0,1,1});
 			}
-
 
 			CameraData lightAsCameraData;
 			lightAsCameraData.Set(shadowMap.view, shadowMap.proj);
@@ -381,6 +378,27 @@ namespace Mist
 				}
 			}
 			break;
+		}
+	}
+
+	void ShadowMapProcess::InitShadowMaps(rendersystem::RenderSystem* rs, const render::Extent2D& resolution)
+	{
+		// invalidate
+		for (uint32_t i = 0; i < m_shadowMapTargetArray.GetSize(); ++i)
+			m_shadowMapTargetArray[i] = nullptr;
+
+		// Create
+		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
+		{
+			render::TextureDescription texDesc;
+			texDesc.extent = { .width = resolution.width, .height = resolution.height, .depth = 1 };
+			texDesc.format = render::Format_D32_SFloat;
+			texDesc.isRenderTarget = true;
+			render::TextureHandle depthTex = rs->GetDevice()->CreateTexture(texDesc);
+
+			render::RenderTargetDescription rtDesc;
+			rtDesc.SetDepthStencilAttachment(depthTex);
+			m_shadowMapTargetArray[i] = rs->GetDevice()->CreateRenderTarget(rtDesc);
 		}
 	}
 }
