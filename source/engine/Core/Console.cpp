@@ -20,7 +20,7 @@ namespace Mist
 {
 	CIntVar CVar_ShowConsole("ShowConsole", 0);
 
-	Console g_Console;
+	static Console g_Console;
 
 	extern ImVec4 LogLevelImGuiColor(LogLevel level);
 
@@ -60,7 +60,7 @@ namespace Mist
 				check(data);
 				Console* c = static_cast<Console*>(data);
 				c->Draw();
-			}, this);
+			}, this, true);
 	}
 
 	void Console::AddCommandCallback(const char* cmdname, FnExecCommandCallback fn)
