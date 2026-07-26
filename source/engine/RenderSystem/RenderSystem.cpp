@@ -8,6 +8,7 @@
 #include <imgui.h>
 #include "Utils/TimeUtils.h"
 #include "Render/Noise.h"
+#include "Core/Debug.h"
 
 Mist::CIntVar CVar_ForceFrameSync("r_forceframesync", 0);
 Mist::CIntVar CVar_GpuProfiling("r_gpuProfiling", 0);
@@ -1318,7 +1319,10 @@ namespace rendersystem
 		const render::SemaphoreHandle& renderSemaphore = GetRenderSemaphore();
         {
             PROF_SCOPE(CpuPresent);
+            Mist::Profiling::sProfilingTimer prof;
+            prof.Start();
             m_device->Present(renderSemaphore);
+            m_presentTime = prof.Stop();
         }
 
         SetPresentSubmissionId(submissionId);

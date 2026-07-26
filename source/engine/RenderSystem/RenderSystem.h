@@ -832,6 +832,7 @@ namespace rendersystem
         void DumpState();
 
         double GetGpuTimeUs() const { return m_gpuTime; }
+        double GetCpuPresentTime() const { return m_presentTime; }
         RenderStats GetStats() const;
 
         inline bool AllowsCommand(ShaderProgramType type) const { return m_shaderContext.program && m_shaderContext.program->m_description->type == type; }
@@ -932,6 +933,7 @@ namespace rendersystem
 
         ShaderDb m_shaderDb;
         double m_gpuTime;
+        double m_presentTime;
         GpuFrameProfiler::QueryTree m_lastQueryTree;
     };
 }
