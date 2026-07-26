@@ -2,7 +2,6 @@
 
 #include "Render/Globals.h"
 #include "Render/Model.h"
-#include <glm/glm.hpp>
 #include "RenderProcess.h"
 #include "Utils/FileSystem.h"
 

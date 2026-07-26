@@ -2,8 +2,6 @@
 #include "RenderSystem/RenderSystem.h"
 #include "Render/VulkanRenderEngine.h"
 #include "RenderSystem/TextureLoader.h"
-#include "glm/ext/matrix_clip_space.inl"
-#include "glm/ext/matrix_transform.inl"
 #include "Core/Logger.h"
 #include "Application/Application.h"
 
@@ -183,7 +181,7 @@ namespace Mist
 		check(rendersystem::textureloader::LoadHDRTextureFromFile(&hdrFileContent, device, info.hdrFilepath, false));
 
 		// Prepare uniform data
-		glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+		glm::mat4 captureProjection = math::PerspectiveProj(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
 		//captureProjection[1][1] *= -1.f;
 		glm::mat4 captureViews[] =
 		{
