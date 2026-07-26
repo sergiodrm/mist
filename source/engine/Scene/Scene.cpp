@@ -871,18 +871,18 @@ namespace Mist
 								DebugRender::DrawSphere(m_transformComponents[i].Position, light.Radius, light.Color, 32);
 								break;
 							case ELightType::Directional:
-							{
-								glm::mat4 vp = GetLightVPMatrix(m_transformComponents[i].Position, m_transformComponents[i].Rotation, 
-									light.OrthoLeft, light.OrthoRight, light.OrthoBottom, light.OrthoTop, light.NearClip, light.FarClip);
-								Frustum f(vp);
-								f.DrawDebug(light.Color);
-							}
+								DebugRender::DrawSphere(m_transformComponents[i].Position, 25.f, light.Color);
+								DebugRender::DrawLine3D(m_transformComponents[i].Position,
+									m_transformComponents[i].Position + m_transformComponents[i].Rotation.Forward() * -50.f,
+									light.Color);
 								break;
 							case ELightType::Spot:
 							{
-								glm::mat4 vp = GetLightVPMatrix(m_transformComponents[i].Position, m_transformComponents[i].Rotation, 
-									light.Cutoff, light.NearClip, light.FarClip);
-								Frustum f(vp);
+								glm::mat4 p = GetSpotLightProjection(light.Cutoff, light.NearClip, light.FarClip);
+								glm::mat4 v;
+								TransformComponentToMatrix(&m_transformComponents[i], &v, 1);
+
+								Frustum f(p * glm::inverse(v));
 								f.DrawDebug(light.Color);
 							}
 								break;
@@ -948,7 +948,7 @@ namespace Mist
 			}
 			ImGui::TreePop();
 		}
-		if (ImGui::TreeNode("Model list"))
+		//if (ImGui::TreeNode("Model list"))
 		{
 			//ImGui::Columns(2);
 			//char buff[32];
@@ -1056,7 +1056,7 @@ namespace Mist
 				const TransformComponent& transform = m_transformComponents[i];
 				const glm::mat4& mat = m_globalTransforms[i];
 				const glm::vec3 pos = math::GetPos(mat);
-				const glm::vec3 dir = -1.f*math::GetDir(mat);
+				const glm::vec3 dir = -1.f*math::GetForwardFromTransform(mat);
 
 				uint32_t shadowMapIndex = UINT32_MAX;
 				if (light.ProjectShadows && light.Type != ELightType::Point)

@@ -62,9 +62,13 @@ option(RBE_VK "Use Vulkan API" ON)
 configure_file(version.h.in version.h)
 
 if (RBE_VK)
-	add_compile_definitions(RBE_VK)
+add_compile_definitions(RBE_VK)
 endif(RBE_VK)
-add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
+add_compile_definitions(
+	GLM_ENABLE_EXPERIMENTAL
+	GLM_FORCE_DEPTH_ZERO_TO_ONE
+	#GLM_FORCE_LEFT_HANDED
+	)
 add_library(mist_engine ${ENGINE_SOURCES} ${IMGUI_SOURCES} ${VKBOOTSTRAP_SOURCES})
 set_target_properties(mist_engine PROPERTIES LINKER_LANGUAGE CXX)
 set_property(TARGET mist_engine PROPERTY CXX_STANDARD 20)
