@@ -69,9 +69,13 @@ namespace Mist
 		glm::mat4 ToMat4() const;
 		const float* ToFloat() const { return m_angles; }
 		float* ToFloat() { return m_angles; }
-		glm::vec3 ToVec3() const { return glm::vec3(m_roll, m_pitch, m_yaw); }
+		glm::vec3 ToVec3() const { return glm::vec3(m_pitch, m_yaw, m_roll); }
 
-		// roll pitch yaw stored in degrees.
+		glm::vec3 Forward() const;
+		glm::vec3 Up() const;
+		glm::vec3 Right() const;
+
+		// roll pitch yaw stored in radians.
 		union
 		{
 			float m_angles[3];

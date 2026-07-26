@@ -1,5 +1,6 @@
 
 #include "Angles.h"
+#include "GenericUtils.h"
 
 namespace Mist
 {
@@ -8,12 +9,12 @@ namespace Mist
 		glm::mat3 mat;
 		float sr, sp, sy, cr, cp, cy;
 
-		sy = glm::sin(glm::radians(m_pitch));
-		cy = glm::cos(glm::radians(m_pitch));
-		sp = glm::sin(glm::radians(m_yaw));
-		cp = glm::cos(glm::radians(m_yaw));
-		sr = glm::sin(glm::radians(m_roll));
-		cr = glm::cos(glm::radians(m_roll));
+		sy = glm::sin(m_pitch);
+		cy = glm::cos(m_pitch);
+		sp = glm::sin(m_yaw);
+		cp = glm::cos(m_yaw);
+		sr = glm::sin(m_roll);
+		cr = glm::cos(m_roll);
 
 		mat[0] = glm::vec3(cp * cy, cp * sy, -sp);
 		mat[1] = glm::vec3(sr * sp * cy + cr * -sy, sr * sp * sy + cr * cy, sr * cp);
@@ -25,5 +26,20 @@ namespace Mist
 	glm::mat4 tAngles::ToMat4() const
 	{
 		return ToMat3();
+	}
+
+	glm::vec3 tAngles::Forward() const
+	{
+		return math::GetForwardFromTransform(ToMat4());
+	}
+
+	glm::vec3 tAngles::Up() const
+	{
+		return math::GetUpFromTransform(ToMat4());
+	}
+
+	glm::vec3 tAngles::Right() const
+	{
+		return math::GetRightFromTransform(ToMat4());
 	}
 }
