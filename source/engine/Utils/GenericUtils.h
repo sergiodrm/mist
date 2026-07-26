@@ -3,6 +3,7 @@
 #include "Core/Types.h"
 #include "Angles.h"
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Mist
 {
@@ -15,24 +16,30 @@ namespace Mist
 	// Math
 	namespace math
 	{
+		inline glm::mat4 Identity() { return glm::mat4(1.f); }
+
+		inline float ToRadians(float degrees) { return glm::radians(degrees); }
+		inline float ToDegrees(float rads) { return glm::degrees(rads); }
+
+		inline glm::vec3 ToRadians(glm::vec3 degrees) { return glm::radians(degrees); }
+		inline glm::vec3 ToDegrees(glm::vec3 rads) { return glm::degrees(rads); }
+
 		inline float Lerp(float a, float b, float f) { return a + f * (b - a); }
-		template <typename T>
+
+		template <typename T> 
 		inline T Clamp(const T& v, const T& _min, const T& _max) { return v > _max ? _max : (v < _min ? _min : v); }
 
 		inline glm::vec3 ComposeMinVector(const glm::vec3& a, const glm::vec3& b) { return { __min(a.x, b.x), __min(a.y, b.y), __min(a.z, b.z) }; }
 		inline glm::vec3 ComposeMaxVector(const glm::vec3& a, const glm::vec3& b) { return { __max(a.x, b.x), __max(a.y, b.y), __max(a.z, b.z) }; }
 
 		glm::vec3 ToRot(const glm::vec3& direction);
-		glm::mat4 PitchYawRollToMat4(const glm::vec3& pyr);
-		glm::mat4 ToMat4(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scl);
 		glm::mat4 ToMat4(const glm::vec3& pos, const tAngles& a, const glm::vec3& scl);
-		glm::mat4 PosToMat4(const glm::vec3& pos);
+		inline glm::mat4 Translate(const glm::mat4& m, const glm::vec3& p) { return glm::translate(m, p); }
 
-		glm::vec3 GetDir(const glm::mat4& transform);
-		glm::vec3 GetPos(const glm::mat4& transform);
 		void DecomposeMatrix(const glm::mat4& transform, glm::vec3& pos, glm::vec3& rot, glm::vec3& scale);
 
-		inline glm::vec3 GetRightFromTransform(const glm::mat4& transform) { return glm::vec3(transform[0]); }
+		inline glm::vec3 GetPos(const glm::mat4& transform) { return transform[3]; }
+		inline glm::vec3 GetRightFromTransform(const glm::mat4& transform) { return -glm::vec3(transform[0]); }
 		inline glm::vec3 GetUpFromTransform(const glm::mat4& transform) { return glm::vec3(transform[1]); }
 		inline glm::vec3 GetForwardFromTransform(const glm::mat4& transform) { return glm::vec3(transform[2]); }
 
@@ -47,6 +54,20 @@ namespace Mist
 			float GetSignedDistance(const glm::vec3& point) const { return glm::dot(normal, point) - distance; }
 		};
 
+		inline glm::mat4 PerspectiveProj(float fovy, float aspectRatio, float nearClip, float farClip)
+		{
+			glm::mat4 p = glm::perspective(fovy, aspectRatio, nearClip, farClip);
+			p[1][1] *= -1.f;
+			return p;
+		}
+
+		inline glm::mat4 OrthoProj(float minX, float maxX, float minY, float maxY, float minZ, float maxZ)
+		{
+			// Invert minY and maxY.
+			glm::mat4 p = glm::ortho(minX, maxX, maxY, minY, minZ, maxZ);
+			//glm::mat4 p = glm::ortho(minX, maxX, minY, maxY, minZ, maxZ);
+			return p;
+		}
 	}
 
 	void PrintMat(const glm::mat4& mat);

@@ -3,6 +3,7 @@
 #include "Core/Types.h"
 #include "Utils/Angles.h"
 #include "Application/CmdParser.h"
+#include "GenericUtils.h"
 
 namespace Mist
 {
@@ -160,7 +161,7 @@ inline YAML::Emitter& operator<<(YAML::Emitter& e, const glm::vec4& v)
 
 inline YAML::Emitter& operator<<(YAML::Emitter& e, const Mist::tAngles& a)
 {
-	e << YAML::Flow << YAML::BeginSeq << a.m_pitch << a.m_yaw << a.m_roll << YAML::EndSeq;
+	e << YAML::Flow << YAML::BeginSeq << Mist::math::ToDegrees(a.m_pitch) << Mist::math::ToDegrees(a.m_yaw) << Mist::math::ToDegrees(a.m_roll) << YAML::EndSeq;
 	return e;
 }
 
@@ -245,9 +246,9 @@ namespace YAML
 		static Node encode(const Mist::tAngles& rhs)
 		{
 			Node node;
-			node.push_back(rhs.m_pitch);
-			node.push_back(rhs.m_yaw);
-			node.push_back(rhs.m_roll);
+			node.push_back(Mist::math::ToDegrees(rhs.m_pitch));
+			node.push_back(Mist::math::ToDegrees(rhs.m_yaw));
+			node.push_back(Mist::math::ToDegrees(rhs.m_roll));
 			return node;
 		}
 
@@ -256,9 +257,9 @@ namespace YAML
 			if (!node.IsSequence() || node.size() != 3)
 				return false;
 
-			rhs.m_pitch = node[0].as<float>();
-			rhs.m_yaw = node[1].as<float>();
-			rhs.m_roll = node[2].as<float>();
+			rhs.m_pitch = Mist::math::ToRadians(node[0].as<float>());
+			rhs.m_yaw = Mist::math::ToRadians(node[1].as<float>());
+			rhs.m_roll = Mist::math::ToRadians(node[2].as<float>());
 			return true;
 		}
 	};
