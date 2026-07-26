@@ -3,6 +3,8 @@
 #include "RenderProcess.h"
 #include "Render/Globals.h"
 #include "Utils/Angles.h"
+#include "../Camera.h"
+#include "../Culling.h"
 
 namespace rendersystem
 {
@@ -12,55 +14,27 @@ namespace rendersystem
 namespace Mist
 {
 	class Scene;
+	class Frustum;
 
 	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip);
-	glm::mat4 GetDirectionalLightProjection(float left, float right, float bottom, float top, float nearClip, float farClip);
 
-	// Calculate the VP matrix used as "camera" for geometry pass on shadow mapping.
-	// It computes the translation matrix and adapts the projection to right axis and returns the mul result.
-	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, const glm::mat4& proj);
-	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, float cutoff, float nearClip, float farClip);
-	glm::mat4 GetLightVPMatrix(const glm::vec3& pos, const tAngles& angles, float left, float right, float bottom, float top, float nearClip, float farClip);
-
-	class ShadowMapPipeline
+	struct ShadowMap
 	{
-	public:
-		enum EShadowMapProjectionType
+		glm::mat4 proj;
+		glm::mat4 view;
+
+		inline glm::mat4 GetVP() const { return (proj * view); }
+		inline glm::mat4 GetVPBiased() const
 		{
-			PROJECTION_PERSPECTIVE,
-			PROJECTION_ORTHOGRAPHIC,
-		};
-
-		ShadowMapPipeline();
-		~ShadowMapPipeline();
-
-		void Init(rendersystem::RenderSystem* rs);
-		void Destroy(rendersystem::RenderSystem* rs);
-
-		void SetupLight(uint32_t lightIndex, const glm::vec3& lightPos, const tAngles& lightRot, const glm::mat4& lightProj, const glm::mat4& viewMatrix);
-
-		void SetupSpotLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip = 0.1f, float farClip = 1000.f);
-		void SetupDirectionalLight(uint32_t lightIndex, const glm::mat4& cameraView, const glm::mat4& cameraProj, const tAngles& lightRot, float left, float right, float bottom, float top, float nearClip = 0.1f, float farClip = 1000.f);
-
-		const glm::mat4& GetDepthVP(uint32_t index) const;
-		const glm::mat4& GetLightVP(uint32_t index) const;
-		void SetDepthVP(uint32_t index, const glm::mat4& mat);
-		void SetLightVP(uint32_t index, const glm::mat4& mat);
-		uint32_t GetBufferSize() const;
-
-		void ImGuiDraw(bool createWindow = false);
-
-        rendersystem::ShaderProgram* GetShader() const { return m_shader; }
-
-	protected:
-		glm::mat4 ComputeShadowVolume(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDir, float nearClip, float farClip, float splitLambda = 0.95f);
-		void SetupLight(uint32_t lightIndex, const glm::mat4& depthViewProjection, const glm::mat4& view);
-	private:
-		// Shader shadowmap pipeline
-		rendersystem::ShaderProgram* m_shader;
-		// Cache for save depth view projection data until flush to gpu buffer.
-		glm::mat4 m_depthMVPCache[globals::MaxShadowMapAttachments];
-		glm::mat4 m_lightMVPCache[globals::MaxShadowMapAttachments];
+			static constexpr glm::mat4 bias =
+			{
+				0.5f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.5f, 0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				0.5f, 0.5f, 0.0f, 1.0f
+			};
+			return bias * GetVP();
+		}
 	};
 
 	class ShadowMapProcess : public RenderProcess
@@ -84,7 +58,7 @@ namespace Mist
 		virtual void ImGuiDraw() override;
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
-		const ShadowMapPipeline& GetPipeline() const { return m_shadowMapPipeline; }
+		inline const ShadowMap& GetShadowMapData(uint32_t index) const { check(index < globals::MaxOverlappedFrames); return m_shadowMaps[index]; }
 
 		uint32_t SetupDirectionalLight(const glm::vec3& pos, const tAngles& rot, float left, float right, float top, float bottom, float nearClip, float farClip);
 		uint32_t SetupSpotLight(const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip);
@@ -92,12 +66,22 @@ namespace Mist
 	private:
 		virtual void DebugDraw() override;
 	private:
-		ShadowMapPipeline m_shadowMapPipeline;
-		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
+		ShadowMap m_shadowMaps[globals::MaxShadowMapAttachments];
+		uint32_t m_renderListIds[globals::MaxShadowMapAttachments];
 		uint32_t m_lightCount = 0;
+		float m_zmult = 100.f;
+		float m_directionalClipFar = 100.f;
+
+		rendersystem::ShaderProgram* m_shader;
+		tArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
+
+
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_textureDebugIndex = 0;
+		CameraController m_camera;
 
-		uint32_t m_renderListIds[globals::MaxShadowMapAttachments];
+		Frustum m_cameraFrustum;
+		Frustum m_lightFrustum;
+		bool m_test;
 	};
 }
