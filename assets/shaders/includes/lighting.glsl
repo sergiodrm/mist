@@ -2,6 +2,12 @@
 #include <shaders/includes/math.glsl>
 #include <shaders/includes/pbr.glsl>
 
+
+//#define LIGHTING_DEBUG_AMBIENT
+//#define LIGHTING_DEBUG_LIGHTS 
+//#define LIGHTING_APPLY_GI
+//#define LIGHTING_SHADOWS_DEBUG
+
 /*
  * Data structures for lighting
 */
@@ -263,15 +269,24 @@ vec3 ComputeLightShadow(vec3 fragPos, vec3 lightDir, vec3 normal, LightData ligh
 #ifndef LIGHTING_SHADOWS_COORDS
         vec4 shadowCoords = CalculateShadowCoords(light.ShadowMapIndex, fragPos);
 #endif // !LIGHTING_SHADOWS_COORDS
-        float diffuseFactor = dot(normal, lightDir);
-        float bias = mix(0.001, 0.f, diffuseFactor);
+        if (shadowCoords.x < 0.f || shadowCoords.x >= 1.f
+            ||shadowCoords.y < 0.f || shadowCoords.y >= 1.f)
+        {
+            shadow = 1.f;
+        }
+        else
+        {
+            float diffuseFactor = dot(normal, lightDir);
+            float bias = mix(0.01f, 0.001f, diffuseFactor);
+            //bias = 0.001f;
 #if 0
-        shadow = ComputeShadow(shadowMapIndex, shadowCoords, bias);
+            shadow = ComputeShadow(shadowMapIndex, shadowCoords, bias);
 #elif 0
-        shadow = ComputeShadowPCF(shadowMapIndex, shadowCoords, bias);
+            shadow = ComputeShadowPCF(shadowMapIndex, shadowCoords, bias);
 #else
-        shadow = ComputeShadowRandomSampling(light.ShadowMapIndex, shadowCoords, bias);
+            shadow = ComputeShadowRandomSampling(light.ShadowMapIndex, shadowCoords, bias);
 #endif
+        }
     }
 
 #ifdef LIGHTING_SHADOWS_DEBUG
@@ -415,11 +430,6 @@ vec3 ProcessSpotLight(vec3 fragPos, vec3 viewDir, vec3 fragNormal, LightData lig
     }
     return lighting * intensity;
 }
-
-//#define LIGHTING_DEBUG_AMBIENT
-//#define LIGHTING_DEBUG_LIGHTS 
-
-#define LIGHTING_APPLY_GI
 
 /// DoEnvironmentLighting
 /// * fragPos: fragment position in world space

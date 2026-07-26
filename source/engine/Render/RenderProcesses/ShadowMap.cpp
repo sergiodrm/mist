@@ -279,22 +279,6 @@ namespace Mist
 			ImGui::InputInt("ShadowMap index", (int*)&m_textureDebugIndex);
 			m_textureDebugIndex = math::Clamp(m_textureDebugIndex, 0u, globals::MaxShadowMapAttachments - 1);
 		}
-		auto lmb = [](const char* title, const Frustum& f)
-			{
-				ImGui::Text("%s", title);
-				ImGui::Text("Center: %f %f %f", f.GetCenter().x, f.GetCenter().y, f.GetCenter().z);
-				ImGui::Text("Left bottom near: %f %f %f", f.GetPoint(0).x, f.GetPoint(0).y, f.GetPoint(0).z);
-				ImGui::Text("Left top near: %f %f %f", f.GetPoint(1).x, f.GetPoint(1).y, f.GetPoint(1).z);
-				ImGui::Text("Right bottom near: %f %f %f", f.GetPoint(2).x, f.GetPoint(2).y, f.GetPoint(2).z);
-				ImGui::Text("Right top near: %f %f %f", f.GetPoint(3).x, f.GetPoint(3).y, f.GetPoint(3).z);
-				ImGui::Text("Left bottom far: %f %f %f", f.GetPoint(4).x, f.GetPoint(4).y, f.GetPoint(4).z);
-				ImGui::Text("Left top far: %f %f %f", f.GetPoint(5).x, f.GetPoint(5).y, f.GetPoint(5).z);
-				ImGui::Text("Right bottom far: %f %f %f", f.GetPoint(6).x, f.GetPoint(6).y, f.GetPoint(6).z);
-				ImGui::Text("Right top far: %f %f %f", f.GetPoint(7).x, f.GetPoint(7).y, f.GetPoint(7).z);
-			};
-		lmb("Camera", m_cameraFrustum);
-		lmb("Light", m_lightFrustum);
-		
 		ImGui::End();
 	}
 
