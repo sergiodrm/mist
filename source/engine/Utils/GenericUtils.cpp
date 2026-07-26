@@ -57,7 +57,7 @@ bool Mist::ImGuiUtils::CheckboxBitField(const char* id, int32_t* bitfield, int32
 	return false;
 }
 
-bool Mist::ImGuiUtils::EditAngles(const char* id, const char* label, tAngles& a, float speed, float min, float max, const char* fmt)
+bool Mist::ImGuiUtils::EditAngles(const char* id, const char* label, tAngles& a, float speed, float min, float max, const char* fmt, bool showInDegrees)
 {
 	int col = ImGui::GetColumnsCount();
 	ImGui::Columns(2);
@@ -65,7 +65,15 @@ bool Mist::ImGuiUtils::EditAngles(const char* id, const char* label, tAngles& a,
 	ImGui::NextColumn();
 	char buff[256];
 	sprintf_s(buff, "##%s", id);
-	bool ret = ImGui::DragFloat3(buff, a.ToFloat(), speed, min, max, fmt);
+	glm::vec3 deg = showInDegrees ? math::ToDegrees(a.ToVec3()) : a.ToVec3();
+	bool ret = ImGui::DragFloat3(buff, &deg[0], speed, min, max, fmt);
+	if (ret)
+	{
+		if (showInDegrees)
+			a.Set(math::ToRadians(deg.x), math::ToRadians(deg.y), math::ToRadians(deg.z));
+		else
+			a.Set(deg.x, deg.y, deg.z);
+	}
 	ImGui::Columns(col);
 	return ret;
 }
