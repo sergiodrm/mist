@@ -320,7 +320,7 @@ namespace Mist
 				g_render->SetIndexBuffer(nullptr);
 				g_render->SetPrimitive(render::PrimitiveType_LineList);
 				g_render->SetDepthEnable(false, false);
-				g_render->SetShaderProperty("camera", &cameraData, sizeof(cameraData));
+				g_render->SetShaderProperty("u_camera", &cameraData, sizeof(cameraData));
 				g_render->Draw(DebugRenderPipeline.LineBatch.LineArray.GetSize());
 				g_render->SetDefaultGraphicsState();
 				DebugRenderPipeline.LineBatch.Reset();
