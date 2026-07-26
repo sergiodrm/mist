@@ -682,9 +682,11 @@ namespace Mist
 #endif
 				if (CVar_EnableValidationLayer.Get())
 					ImGui::TextColored(ImVec4(0.7f, 0.2f, 0.1f, 1.f), "Vulkan validation layers enabled");
-				ImGui::Text("Frame: %6d | %6.2f fps", tApplication::GetFrame(), 1000.f / cpuTimes.meanMs);
-				ImGui::Text("Cpu %2.3f ms", cpuTimes.meanMs);
-				ImGui::Text("Gpu %2.3f ms", g_render->GetGpuTimeUs() * 0.001f);
+				ImGui::Text("Frame			%6d", tApplication::GetFrame());
+				ImGui::Text("Frame rate		%4.2f fps", 1000.f / cpuTimes.meanMs);
+				ImGui::Text("Cpu			%2.3f ms", cpuTimes.meanMs);
+				ImGui::Text("Gpu			%2.3f ms", g_render->GetGpuTimeUs() * 0.001f);
+				ImGui::Text("Present		%2.3f ms", g_render->GetCpuPresentTime());
 				ImGui::Text("%ux%u", g_render->GetRenderResolution().width, g_render->GetRenderResolution().height);
 
 				if (CVar_ShowStats.Get() > 1 && 0)
@@ -725,7 +727,8 @@ namespace Mist
 					ImGui::NextColumn();
 					if (ImGui::BeginChild("Child_mem"))
 					{
-						/*auto lmbShowMemStat = [](const char* label, uint64_t allocated, uint64_t maxAllocated)
+						/*
+						auto lmbShowMemStat = [](const char* label, uint64_t allocated, uint64_t maxAllocated)
 							{
 								ImGui::Text("%15s", label);
 								ImGui::NextColumn();
@@ -744,7 +747,8 @@ namespace Mist
 						lmbShowMemStat("System", systemStats.Allocated, systemStats.MaxAllocated);
 						lmbShowMemStat("GPU buffer", bufferStats.Allocated, bufferStats.MaxAllocated);
 						lmbShowMemStat("GPU texture", texStats.Allocated, texStats.MaxAllocated);
-						ImGui::Columns();*/
+						ImGui::Columns();
+						*/
 						ImGui::EndChild();
 					}
 
