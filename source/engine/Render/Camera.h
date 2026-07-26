@@ -26,6 +26,11 @@ namespace Mist
 		glm::vec3 GetUp() const;
 		glm::vec3 GetRight() const;
 
+		float GetNearClip() const { return m_nearClip; }
+		float GetFarClip() const { return m_farClip; }
+		float GetFOV() const { return m_fov; }
+		float GetAspectRatio() const { return m_aspectRatio; }
+
 		const glm::vec3& GetPosition() const;
 		const glm::vec3& GetRotation() const;
 		void SetPosition(const glm::vec3& pos);
@@ -82,7 +87,7 @@ namespace Mist
 		const Camera& GetCamera() const { return m_camera; }
 		Camera& GetCamera() { return m_camera; }
 
-		void ImGuiDraw();
+		void ImGuiDraw(bool createWindow = true);
 		void ProcessEvent(void* d);
 	protected:
 		void ReadKeyboardState();

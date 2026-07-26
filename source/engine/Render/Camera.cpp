@@ -11,6 +11,8 @@
 #include "Utils/GenericUtils.h"
 #include "Utils/Angles.h"
 #include "DebugRender.h"
+#include "VulkanRenderEngine.h"
+#include "RenderSystem/RenderSystem.h"
 
 namespace Mist
 {
@@ -238,10 +240,10 @@ namespace Mist
 			// Mouse drag as camera control rotation
 			glm::ivec2 diff;
 			SDL_GetRelativeMouseState(&diff[0], &diff[1]);
-			static constexpr float swidth = 1920.f;
-			static constexpr float sheight = 1080.f;
-			const float yawdiff = (float)(diff.x) / swidth;
-			const float pitchdiff = (float)(diff.y) / sheight;
+			const float width = (float)GetRenderSystem()->GetBackbufferResolution().width;
+			const float height = (float)GetRenderSystem()->GetBackbufferResolution().height;
+			const float yawdiff = (float)(diff.x) / width;
+			const float pitchdiff = (float)(diff.y) / height;
 			m_motionRotation += glm::vec2{ -pitchdiff, -yawdiff };
 
 			// Mouse scroll to increase/decrease max speed
@@ -280,9 +282,10 @@ namespace Mist
 		}
 	}
 
-	void CameraController::ImGuiDraw()
+	void CameraController::ImGuiDraw(bool createWindow)
 	{
-		ImGui::Begin("Camera");
+		if (createWindow)
+			ImGui::Begin("Camera");
 		if (ImGui::CollapsingHeader("Camera control"))
 		{ 
 			ImGui::Checkbox("auto move camera", &m_scriptActive);
@@ -302,7 +305,8 @@ namespace Mist
 		}
 		if (ImGui::CollapsingHeader("Camera info"))
 			m_camera.ImGuiDraw();
-		ImGui::End();
+		if (createWindow)
+			ImGui::End();
 	}
 
 	void CameraController::ProcessEvent(void* d)
