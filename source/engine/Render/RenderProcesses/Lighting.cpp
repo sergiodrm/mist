@@ -189,16 +189,17 @@ namespace Mist
 					render::SamplerAddressMode_ClampToEdge);
 
 				// ShadowMapping textures
-				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
+				rs->SetTextureSlot("u_shadowMaps", shadowMapTextures, globals::MaxShadowMapAttachments);
 				render::SamplerHandle shadowMapSampler = rs->GetSampler(render::Filter_Linear, render::Filter_Linear, render::Filter_Linear,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge,
 					render::SamplerAddressMode_ClampToEdge,
 					true, render::CompareOp_LessOrEqual);
 				render::SamplerHandle samplers[] = { shadowMapSampler, shadowMapSampler, shadowMapSampler };
-				rs->SetSampler("u_ShadowMap", samplers, Mist::CountOf(samplers));
+				rs->SetSampler("u_shadowMaps", samplers, Mist::CountOf(samplers));
 				m_shadowMapParams.textureShadowMapSize = { shadowMapTextures[0]->m_description.extent.width, shadowMapTextures[1]->m_description.extent.height };
-				rs->SetShaderProperty("u_ShadowMapInfo", &m_shadowMapParams, sizeof(ShadowMapParams));
+				m_shadowMapParams.textureShadowMapTexelSize = { 1.f / m_shadowMapParams.textureShadowMapSize.x, 1.f / m_shadowMapParams.textureShadowMapSize.y };
+				rs->SetShaderProperty("u_shadowData", &m_shadowMapParams, sizeof(ShadowMapParams));
 				rs->SetTextureSlot("u_blueNoise", rs->GetBlueNoiseTexture());
 				rs->SetSampler("u_blueNoise", 
 					render::Filter_Nearest,
@@ -259,8 +260,8 @@ namespace Mist
 				rs->SetStencilMask(0xff, 0xff, StencilMask_Geometry);
 				rs->SetStencilOpFrontAndBack(render::StencilOp_Keep, render::StencilOp_Keep, render::StencilOp_Replace);
 
-				rs->SetTextureSlot("u_ShadowMap", shadowMapTextures, globals::MaxShadowMapAttachments);
-				rs->SetShaderProperty("u_ShadowMapInfo", m_shadowMapParams.lightViewProjectionArray.data(), sizeof(glm::mat4) * (uint32_t)m_shadowMapParams.lightViewProjectionArray.size());
+				rs->SetTextureSlot("u_shadowMaps", shadowMapTextures, globals::MaxShadowMapAttachments);
+				rs->SetShaderProperty("u_shadowData", m_shadowMapParams.lightViewProjectionArray.data(), sizeof(glm::mat4) * (uint32_t)m_shadowMapParams.lightViewProjectionArray.size());
 				
 				const EnvironmentData& env = scene->GetEnvironmentData();
 				rs->SetShaderProperty("u_env", &env, sizeof(env));
@@ -419,10 +420,6 @@ namespace Mist
  		render::utils::UploadContext ctx(device);
 		ctx.WriteTexture(m_texOffset3D, 0, 0, data, size);
 		_free(data);
-
-		m_shadowMapParams.textureOffset3DSize.x = (float)desc.extent.width;
-		m_shadowMapParams.textureOffset3DSize.y = (float)desc.extent.height;
-		m_shadowMapParams.textureOffset3DSize.z = (float)desc.extent.depth;
 	}
 
 }

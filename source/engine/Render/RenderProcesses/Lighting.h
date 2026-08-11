@@ -14,14 +14,17 @@ namespace Mist
 		struct ShadowMapParams
 		{
 			tArray<glm::mat4, globals::MaxShadowMapAttachments> lightViewProjectionArray;
-			float noiseScale = 0.0025f;
-			float noiseFactor = 1.25f;
-			float noisePCFKernelSize = 5.f;
-			float filterRadius = 8.f;
-			glm::vec4 textureOffset3DSize;
+
+			glm::vec2 textureShadowMapSize;
+			glm::vec2 textureShadowMapTexelSize;
+
 			float windowSize = 32.f;
 			float filterSize = 8.f;
-			glm::vec2 textureShadowMapSize;
+			float filterRadius = 8.f;
+			float noisePCFKernelSize = 5.f;
+
+			float noiseScale = 0.0025f;
+			float noiseFactor = 1.25f;
 		};
 	public:
 		Lighting(Renderer* renderer, IRenderEngine* engine);
