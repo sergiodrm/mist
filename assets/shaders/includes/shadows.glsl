@@ -19,9 +19,9 @@ layout ( set = _SHADOWS_SET_, binding = 0) uniform ShadowBlock
     vec4 params1; // x: pcf noise scale; y: pcf noise factor
 } u_shadowData;
 
-layout ( set = _SHADOW_SET_, binding = 1) uniform sampler3D u_offset3D;
-layout ( set = _SHADOW_SET_, binding = 2) uniform sampler2D u_blueNoise;
-layout ( set = _SHADOW_SET_, binding = 3) uniform sampler2D u_shadowMaps[MAX_SHADOW_MAPS];
+layout ( set = _SHADOWS_SET_, binding = 1) uniform sampler3D u_offset3D;
+layout ( set = _SHADOWS_SET_, binding = 2) uniform sampler2D u_blueNoise;
+layout ( set = _SHADOWS_SET_, binding = 3) uniform sampler2D u_shadowMaps[MAX_SHADOW_MAPS];
 
 #define SHADOWS_MAPS_SIZE                       u_shadowData.textureSize.xy
 #define SHADOWS_MAPS_TEXEL_SIZE                 u_shadowData.textureSize.zw

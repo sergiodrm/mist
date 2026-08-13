@@ -58,7 +58,7 @@ namespace Mist
 		virtual void ImGuiDraw() override;
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
-		inline const ShadowMap& GetShadowMapData(uint32_t index) const { check(index < globals::MaxOverlappedFrames); return m_shadowMaps[index]; }
+		inline const ShadowMapTransform& GetShadowMapTransform(uint32_t index) const { check(index < globals::MaxOverlappedFrames); return m_shadowTransfoms[index]; }
 
 		uint32_t SetupDirectionalLight(const glm::vec3& pos, const tAngles& rot, float left, float right, float top, float bottom, float nearClip, float farClip);
 		uint32_t SetupSpotLight(const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip);

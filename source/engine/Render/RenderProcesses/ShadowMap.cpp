@@ -169,10 +169,9 @@ namespace Mist
 	//}
 
 	ShadowMapProcess::ShadowMapProcess(Renderer* renderer, IRenderEngine* engine)
-		: RenderProcess(renderer, engine), m_shadowMapResolution{1024, 1024}
+		: RenderProcess(renderer, engine), m_shadowMapResolution{1024, 1024}, m_shader(nullptr)
 	{
 		m_camera.GetCamera().SetFarClip(10.f);
-		m_zmult = 1.f;
 		m_camera.GetCamera().SetProjectionType(ECameraProjectionType::Perspective);
 		m_shadowMapTargetArray.Resize(m_shadowMapTargetArray.GetCapacity());
 	}

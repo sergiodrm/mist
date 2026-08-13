@@ -145,7 +145,7 @@ namespace Mist
 			// Shadow map lights matrix projection
 			const ShadowMapProcess* shadowMapping = (const ShadowMapProcess*)GetRenderer()->GetRenderProcess(RENDERPROCESS_SHADOWMAP);
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-				m_shadowMapParams.lightViewProjectionArray[i] = shadowMapping->GetShadowMapData(i).GetVPBiased();
+				m_shadowMapParams.lightViewProjectionArray[i] = shadowMapping->GetShadowMapTransform(i).GetVPBiased();
 			// Shadow map textures
 			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)

@@ -8,8 +8,10 @@ layout(location = 0) out vec4 outColor;
 
 #define CAMERA_DATA_INV_VIEW_PROJECTION u_camera.data.invViewProjection
 #define GBUFFER_TEXTURES_SET 1
-#define LIGHTING_DATA_SET 2
+#define _LIGHTING_DATA_SET_ 2
 #define LIGHTING_TEXTURES_SET 3
+#define _SHADOWS_SET_ 4
+
 #include <shaders/includes/gbuffer_read.glsl>
 #include <shaders/includes/lighting.glsl>
 

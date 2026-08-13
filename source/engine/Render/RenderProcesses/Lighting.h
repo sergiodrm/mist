@@ -9,23 +9,24 @@ namespace Mist
 {
 	class cModel;
 
+	struct ShadowMapParams
+	{
+		tArray<glm::mat4, globals::MaxShadowMapAttachments> lightViewProjectionArray;
+
+		glm::vec2 textureShadowMapSize;
+		glm::vec2 textureShadowMapTexelSize;
+
+		float windowSize = 32.f;
+		float filterSize = 8.f;
+		float filterRadius = 8.f;
+		float noisePCFKernelSize = 5.f;
+
+		float noiseScale = 0.0025f;
+		float noiseFactor = 1.25f;
+	};
+
 	class Lighting : public RenderProcess
 	{
-		struct ShadowMapParams
-		{
-			tArray<glm::mat4, globals::MaxShadowMapAttachments> lightViewProjectionArray;
-
-			glm::vec2 textureShadowMapSize;
-			glm::vec2 textureShadowMapTexelSize;
-
-			float windowSize = 32.f;
-			float filterSize = 8.f;
-			float filterRadius = 8.f;
-			float noisePCFKernelSize = 5.f;
-
-			float noiseScale = 0.0025f;
-			float noiseFactor = 1.25f;
-		};
 	public:
 		Lighting(Renderer* renderer, IRenderEngine* engine);
 
