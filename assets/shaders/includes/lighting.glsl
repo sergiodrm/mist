@@ -1,7 +1,9 @@
 
 #include <shaders/includes/math.glsl>
 #include <shaders/includes/pbr.glsl>
+
 #include <shaders/includes/shadows.glsl>
+#include <shaders/includes/lighting_data.glsl>
 
 
 //#define LIGHTING_DEBUG_AMBIENT
@@ -9,64 +11,6 @@
 //#define LIGHTING_APPLY_GI
 //#define LIGHTING_SHADOWS_DEBUG
 
-/*
- * Data structures for lighting
-*/
-
-struct LightData
-{
-    vec3 Color;
-    float Compression;
-    
-
-    vec3 Pos;
-    float Radius;
-    
-
-    vec3 Dir;
-    float _padding;
-    
-
-    vec2 CosCutoff; // x: inner, y: outer
-    int ShadowMapIndex;
-    float Strength;
-    
-};
-
-#ifndef MAX_POINT_LIGHTS
-#define MAX_POINT_LIGHTS 10
-#endif
-
-#ifndef MAX_DIRECTIONAL_LIGHTS
-#define MAX_DIRECTIONAL_LIGHTS 1
-#endif
-
-#ifndef MAX_SPOT_LIGHTS
-#define MAX_SPOT_LIGHTS 10
-#endif
-
-struct LightingData
-{
-    vec3 ambientColor;
-    int numOfSpotLights;
-
-    int numOfDirectionalLights;
-    int numOfPointLights;
-    vec2 _padding;
-
-    LightData pointLights[MAX_POINT_LIGHTS];
-    LightData directionalLights[MAX_DIRECTIONAL_LIGHTS];
-    LightData spotLights[MAX_SPOT_LIGHTS];
-};
-
-/**
- * Input
-*/
-
-layout (std140, set = LIGHTING_DATA_SET, binding = 0) uniform LightingDataBlock
-{
-    LightingData data;
-} u_lighting;
 
 // Irradiance map
 layout(set = LIGHTING_TEXTURES_SET, binding = 0) uniform samplerCube u_irradianceMap;
