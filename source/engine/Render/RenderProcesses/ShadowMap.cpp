@@ -13,6 +13,7 @@
 #include "glm/ext/quaternion_geometric.hpp"
 #include "RenderSystem/RenderSystem.h"
 #include "Utils/Angles.h"
+#include "Lighting.h"
 
 namespace Mist
 {
@@ -22,81 +23,134 @@ namespace Mist
 		return math::PerspectiveProj(2.f * glm::radians(cutOff), 1.f, nearClip, farClip);
 	}
 
-	static void GetFitOrthoViewProj(glm::mat4& proj, glm::mat4& view, const Frustum& frustum, const tAngles& lightRot, float zMult)
+	struct FitOrthoTransform
 	{
-		glm::mat4 inv = glm::inverse(proj * view);
-		glm::vec4 frustumCorners[8];
-		uint32_t index = 0;
-		glm::vec3 center = glm::vec3(0.f);
-		for (unsigned int x = 0; x < 2; ++x)
+		float minX;
+		float maxX;
+		float minY;
+		float maxY;
+		float minZ;
+		float maxZ;
+		glm::mat4 view;
+
+		void Compute(const glm::mat4& cameraProj, const glm::mat4& cameraView, const glm::mat4& lightView, float zMult)
 		{
-			for (unsigned int y = 0; y < 2; ++y)
+			glm::mat4 inv = glm::inverse(cameraProj * cameraView);
+			glm::vec4 frustumCorners[8];
+			uint32_t index = 0;
+			glm::vec3 center = glm::vec3(0.f);
+			for (unsigned int x = 0; x < 2; ++x)
 			{
-				for (unsigned int z = 0; z < 2; ++z)
+				for (unsigned int y = 0; y < 2; ++y)
 				{
-					const glm::vec4 pt =
-						inv * glm::vec4(
-							2.0f * x - 1.0f, // -1, 1
-							2.0f * y - 1.0f, // -1, 1
-							z, //  0, 1
-							1.0f);
-					frustumCorners[index] = pt / pt.w;
-					center += frustumCorners[index++];
+					for (unsigned int z = 0; z < 2; ++z)
+					{
+						const glm::vec4 pt =
+							inv * glm::vec4(
+								2.0f * x - 1.0f, // -1, 1
+								2.0f * y - 1.0f, // -1, 1
+								z, //  0, 1
+								1.0f);
+						frustumCorners[index] = pt / pt.w;
+						center += frustumCorners[index++];
+					}
 				}
 			}
-		}
-		center /= 8.f;
+			center /= 8.f;
+			DebugRender::DrawSphere(center, 5.f, { 1,0,0 });
 
-		const glm::mat4 lightView = glm::lookAt(center, center - lightRot.Forward(), lightRot.Up());
+			view = glm::lookAt(center, center - math::GetForwardFromTransform(lightView), math::GetUpFromTransform(lightView));
 
-		float minX = FLT_MAX;
-		float maxX = -FLT_MAX;
-		float minY = FLT_MAX;
-		float maxY = -FLT_MAX;
-		float minZ = FLT_MAX;
-		float maxZ = -FLT_MAX;
-		for (uint32_t i = 0; i < 8; ++i)
-		{
-			glm::vec4 trf = lightView * frustumCorners[i];
-			minX = __min(minX, trf.x);
-			maxX = __max(maxX, trf.x);
-			minY = __min(minY, trf.y);
-			maxY = __max(maxY, trf.y);
-			minZ = __min(minZ, trf.z);
-			maxZ = __max(maxZ, trf.z);
-		}
-
-		if (minZ < 0)
-			minZ *= zMult;
-		else
-			minZ /= zMult;
-		if (maxZ < 0)
-			maxZ /= zMult;
-		else
-			maxZ *= zMult;
-
-		auto lmb = [](float& _min, float& _max)
+			minX = FLT_MAX;
+			maxX = -FLT_MAX;
+			minY = FLT_MAX;
+			maxY = -FLT_MAX;
+			minZ = FLT_MAX;
+			maxZ = -FLT_MAX;
+			for (uint32_t i = 0; i < 8; ++i)
 			{
-				float diff = (_max - _min);
-				_max = diff - 0.5f * diff;
-				_min = -0.5f * diff;
-			};
+				glm::vec4 trf = view * frustumCorners[i];
+				minX = __min(minX, trf.x);
+				maxX = __max(maxX, trf.x);
+				minY = __min(minY, trf.y);
+				maxY = __max(maxY, trf.y);
+				minZ = __min(minZ, trf.z);
+				maxZ = __max(maxZ, trf.z);
+			}
 
-		//lmb(minX, maxX);
-		//lmb(minY, maxY);
-		//lmb(minZ, maxZ);
+			if (minZ < 0)
+				minZ *= zMult;
+			else
+				minZ /= zMult;
+			if (maxZ < 0)
+				maxZ /= zMult;
+			else
+				maxZ *= zMult;
+		}
+	};
 
-		//logferror("%f %f %f %f %f %f\n", minX, maxX, minY, maxY, minZ, maxZ);
-		const glm::mat4 lightProjection = math::OrthoProj(minX, maxX, minY, maxY, minZ, maxZ);
-		view = lightView;
-		proj = lightProjection;
-	}
-
-	static glm::mat4 GetFitOrthoViewProj(const Frustum& frustum, const tAngles& lightRot, float zMult)
+	static ShadowMapTransform ComputeSlice(const glm::mat4& cameraProj, const glm::mat4& cameraView, const tAngles& lightRot, float zMult)
 	{
-		glm::mat4 proj, view;
-		GetFitOrthoViewProj(proj, view, frustum, lightRot, zMult);
-		return proj * view;
+		//glm::mat4 inv = glm::inverse(cameraProj * cameraView);
+		//glm::vec4 frustumCorners[8];
+		//uint32_t index = 0;
+		//glm::vec3 center = glm::vec3(0.f);
+		//for (unsigned int x = 0; x < 2; ++x)
+		//{
+		//	for (unsigned int y = 0; y < 2; ++y)
+		//	{
+		//		for (unsigned int z = 0; z < 2; ++z)
+		//		{
+		//			const glm::vec4 pt =
+		//				inv * glm::vec4(
+		//					2.0f * x - 1.0f, // -1, 1
+		//					2.0f * y - 1.0f, // -1, 1
+		//					z, //  0, 1
+		//					1.0f);
+		//			frustumCorners[index] = pt / pt.w;
+		//			center += frustumCorners[index++];
+		//		}
+		//	}
+		//}
+		//center /= 8.f;
+		//DebugRender::DrawSphere(center, 5.f, { 1,0,0 });
+
+		//const glm::mat4 lightView = glm::lookAt(center, center - lightRot.Forward(), lightRot.Up());
+
+		//float minX = FLT_MAX;
+		//float maxX = -FLT_MAX;
+		//float minY = FLT_MAX;
+		//float maxY = -FLT_MAX;
+		//float minZ = FLT_MAX;
+		//float maxZ = -FLT_MAX;
+		//for (uint32_t i = 0; i < 8; ++i)
+		//{
+		//	glm::vec4 trf = lightView * frustumCorners[i];
+		//	minX = __min(minX, trf.x);
+		//	maxX = __max(maxX, trf.x);
+		//	minY = __min(minY, trf.y);
+		//	maxY = __max(maxY, trf.y);
+		//	minZ = __min(minZ, trf.z);
+		//	maxZ = __max(maxZ, trf.z);
+		//}
+
+		//if (minZ < 0)
+		//	minZ *= zMult;
+		//else
+		//	minZ /= zMult;
+		//if (maxZ < 0)
+		//	maxZ /= zMult;
+		//else
+		//	maxZ *= zMult;
+
+		FitOrthoTransform orthoTransform;
+		//orthoTransform.Compute(cameraProj, cameraView, lightRot, zMult);
+		const glm::mat4 lightProjection = math::OrthoProj(orthoTransform.minX, orthoTransform.maxX, orthoTransform.minY, orthoTransform.maxY, orthoTransform.minZ, orthoTransform.maxZ);
+
+		ShadowMapTransform transform;
+		transform.proj = lightProjection;
+		transform.view = orthoTransform.view;
+		return transform;
 	}
 
 	//glm::mat4 ShadowMapPipeline::ComputeShadowVolume(const glm::mat4& view, const glm::mat4& projection, const glm::vec3& lightDir, float nearClip, float farClip, float splitLambda)
@@ -221,7 +275,7 @@ namespace Mist
 			rs->SetDepthEnable();
 			//rs->SetCullMode(render::RasterCullMode_Front);
 
-			glm::mat4 lightViewProj = GetShadowMapData(i).GetVP();
+			glm::mat4 lightViewProj = GetShadowMapTransform(i).GetVP();
 			rs->SetShaderProperty("u_ubo", &lightViewProj, sizeof(glm::mat4));
 
 			RenderContext rc;
@@ -233,6 +287,7 @@ namespace Mist
 		}
 		rs->ClearState();
 		rs->SetDefaultGraphicsState();
+
 		m_lightCount = 0;
 	}
 
@@ -241,8 +296,6 @@ namespace Mist
 		ImGui::Begin("Shadow mapping");
 		static const char* modes[] = { "None", "Single tex", "All" };
 		static const uint32_t modesSize = CountOf(modes);
-		ImGui::DragFloat("zmult", &m_zmult);
-		ImGui::DragFloat("far clip", &m_directionalClipFar);
 		static bool followCamera = false;
 		ImGui::Checkbox("Follow camera", &followCamera);
 		ImGui::Checkbox("Test", &m_test);
@@ -285,66 +338,53 @@ namespace Mist
 		return m_shadowMapTargetArray[index].GetPtr();
 	}
 
-	uint32_t ShadowMapProcess::SetupDirectionalLight(const glm::vec3& pos, const tAngles& rot, float left, float right, float top, float bottom, float nearClip, float farClip)
+	uint32_t ShadowMapProcess::SetupDirectionalLight(const Camera& cameraReference, const glm::mat4& lightView, float nearClip, float farClip, float zmult)
 	{
-		uint32_t lightIndex = UINT32_MAX;
-		if (m_lightCount < globals::MaxShadowMapAttachments)
+		const Camera* ref = m_test ? &m_camera.GetCamera() : &cameraReference;
+		float sliceNearClip = nearClip;
+		float sliceFarClip = farClip;
+		if (sliceNearClip >= sliceFarClip)
 		{
-			lightIndex = m_lightCount++;
-			ShadowMap& shadowMap = m_shadowMaps[lightIndex];
-
-			Scene* scene = GetEngine()->GetScene();
-			const Camera& camera = m_camera.GetCamera();
-			//const Camera& camera = scene->GetCamera().GetCamera();
-			if (m_test)
-			{
-
-				glm::mat4 fitCameraProj = math::PerspectiveProj(math::ToRadians(camera.GetFOV()), camera.GetAspectRatio(), camera.GetNearClip(), __min(camera.GetFarClip(), m_directionalClipFar));
-				glm::mat4 cameraView = camera.GetView();
-
-				shadowMap.proj = fitCameraProj;
-				shadowMap.view = cameraView;
-
-				m_cameraFrustum = fitCameraProj * cameraView;
-				//GetFitOrthoViewProj(shadowMap.proj, shadowMap.view, f, -rot.Forward(), m_zmult);
-				GetFitOrthoViewProj(shadowMap.proj, shadowMap.view, m_cameraFrustum, rot, m_zmult);
-				//GetFitOrthoViewProj(shadowMap.proj, shadowMap.view, fitCameraProj, cameraView, rot, m_zmult);
-				//m_cameraFrustum.DrawDebug();
-				m_lightFrustum = shadowMap.GetVP();
-				//m_lightFrustum.DrawDebug({ 0,1,0 });
-			}
-			else
-			{
-				shadowMap.view = glm::lookAt(camera.GetPosition(), camera.GetPosition() - rot.Forward(), rot.Up());
-				shadowMap.proj = math::OrthoProj(left, right, bottom, top, nearClip, farClip);
-				//Frustum f(shadowMap.proj * shadowMap.view);
-				//f.DrawDebug({0,1,1});
-			}
-
-			CameraData lightAsCameraData;
-			lightAsCameraData.Set(shadowMap.view, shadowMap.proj);
-			SceneRenderer::GetSceneRenderer()->SetRenderListInfo(m_renderListIds[lightIndex], { RenderPass_ShadowMap, lightAsCameraData });
+			logferror("Invalid config of clips in directional light shadow map. Near clip must be less than far clip ( near: %f | far: %f )\n", nearClip, farClip);
+			return UINT32_MAX;
 		}
-		return lightIndex;
+
+		glm::mat4 fitCameraProj = math::PerspectiveProj(math::ToRadians(ref->GetFOV()), ref->GetAspectRatio(), sliceNearClip, sliceFarClip);
+		FitOrthoTransform orthoTransform;
+		orthoTransform.Compute(fitCameraProj, ref->GetView(), lightView, zmult);
+
+		return SetupDirectionalLight(orthoTransform.view, orthoTransform.minX, orthoTransform.maxX, orthoTransform.maxY, orthoTransform.minY, orthoTransform.minZ, orthoTransform.maxZ);
 	}
 
-	uint32_t ShadowMapProcess::SetupSpotLight(const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip)
+	uint32_t ShadowMapProcess::SetupDirectionalLight(const glm::mat4& lightView, float left, float right, float top, float bottom, float nearClip, float farClip)
+	{
+		return SetupShadowMap(lightView, math::OrthoProj(left, right, bottom, top, nearClip, farClip));
+	}
+
+	uint32_t ShadowMapProcess::SetupSpotLight(const glm::mat4& lightView, float cutoff, float nearClip, float farClip)
+	{
+		return SetupShadowMap(lightView, GetSpotLightProjection(cutoff, nearClip, farClip));
+	}
+
+	uint32_t ShadowMapProcess::SetupShadowMap(const glm::mat4& view, const glm::mat4& proj, const glm::vec3* debugColor)
 	{
 		uint32_t lightIndex = UINT32_MAX;
 		if (m_lightCount < globals::MaxShadowMapAttachments)
 		{
 			lightIndex = m_lightCount++;
-			ShadowMap& shadowMap = m_shadowMaps[lightIndex];
-
-			shadowMap.view = glm::inverse(math::ToMat4(pos, rot, { 1.f, 1.f,  1.f }));
-			shadowMap.proj = GetSpotLightProjection(cutoff, nearClip, farClip);
-
-			Frustum f(shadowMap.proj * shadowMap.view);
-			f.DrawDebug();
+			ShadowMapTransform& shadowTransform = m_shadowTransfoms[lightIndex];
+			shadowTransform.view = view;
+			shadowTransform.proj = proj;
 
 			CameraData lightAsCameraData;
-			lightAsCameraData.Set(shadowMap.view, shadowMap.proj);
+			lightAsCameraData.Set(shadowTransform.view, shadowTransform.proj);
 			SceneRenderer::GetSceneRenderer()->SetRenderListInfo(m_renderListIds[lightIndex], { RenderPass_ShadowMap, lightAsCameraData });
+
+			if (debugColor)
+			{
+				Frustum f(shadowTransform.GetVP());
+				f.DrawDebug(*debugColor);
+			}
 		}
 		return lightIndex;
 	}
@@ -384,20 +424,24 @@ namespace Mist
 	{
 		// invalidate
 		for (uint32_t i = 0; i < m_shadowMapTargetArray.GetSize(); ++i)
-			m_shadowMapTargetArray[i] = nullptr;
-
-		// Create
-		for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; i++)
 		{
-			render::TextureDescription texDesc;
-			texDesc.extent = { .width = resolution.width, .height = resolution.height, .depth = 1 };
-			texDesc.format = render::Format_D32_SFloat;
-			texDesc.isRenderTarget = true;
-			render::TextureHandle depthTex = rs->GetDevice()->CreateTexture(texDesc);
-
-			render::RenderTargetDescription rtDesc;
-			rtDesc.SetDepthStencilAttachment(depthTex);
-			m_shadowMapTargetArray[i] = rs->GetDevice()->CreateRenderTarget(rtDesc);
+			m_shadowMapTargetArray[i] = nullptr;
+			m_shadowMapTargetArray[i] = CreateDepthRenderTarget(rs, resolution);
 		}
+	}
+
+	render::RenderTargetHandle ShadowMapProcess::CreateDepthRenderTarget(rendersystem::RenderSystem* rs, const render::Extent2D& extent)
+	{
+		render::TextureDescription texDesc;
+		texDesc.extent = { .width = extent.width, .height = extent.height, .depth = 1 };
+		texDesc.format = render::Format_D32_SFloat;
+		texDesc.isRenderTarget = true;
+		render::TextureHandle depthTex = rs->GetDevice()->CreateTexture(texDesc);
+
+		render::RenderTargetDescription rtDesc;
+		rtDesc.SetDepthStencilAttachment(depthTex);
+		render::RenderTargetHandle rt = rs->GetDevice()->CreateRenderTarget(rtDesc);
+		checkdbg(rt);
+		return rt;
 	}
 }

@@ -149,7 +149,9 @@ namespace Mist
 			// Shadow map textures
 			render::TextureHandle shadowMapTextures[globals::MaxShadowMapAttachments];
 			for (uint32_t i = 0; i < globals::MaxShadowMapAttachments; ++i)
-				shadowMapTextures[i] = shadowMapping->GetRenderTarget(i)->m_description.depthStencilAttachment.texture;
+				shadowMapTextures[i] = shadowMapping->GetShadowMap(i);
+			m_shadowMapParams.textureShadowMapSize = { shadowMapTextures[0]->m_description.extent.width, shadowMapTextures[1]->m_description.extent.height };
+			m_shadowMapParams.textureShadowMapTexelSize = { 1.f / m_shadowMapParams.textureShadowMapSize.x, 1.f / m_shadowMapParams.textureShadowMapSize.y };
 
 			// GI textures
 			render::TextureHandle brdf = scene->GetIrradianceCube().brdf ? scene->GetIrradianceCube().brdf : nullptr;
@@ -197,9 +199,11 @@ namespace Mist
 					true, render::CompareOp_LessOrEqual);
 				render::SamplerHandle samplers[] = { shadowMapSampler, shadowMapSampler, shadowMapSampler };
 				rs->SetSampler("u_shadowMaps", samplers, Mist::CountOf(samplers));
-				m_shadowMapParams.textureShadowMapSize = { shadowMapTextures[0]->m_description.extent.width, shadowMapTextures[1]->m_description.extent.height };
-				m_shadowMapParams.textureShadowMapTexelSize = { 1.f / m_shadowMapParams.textureShadowMapSize.x, 1.f / m_shadowMapParams.textureShadowMapSize.y };
+				
+				// Shadow mapping parameters
 				rs->SetShaderProperty("u_shadowData", &m_shadowMapParams, sizeof(ShadowMapParams));
+
+				// Shadow mapping noise textures
 				rs->SetTextureSlot("u_blueNoise", rs->GetBlueNoiseTexture());
 				rs->SetSampler("u_blueNoise", 
 					render::Filter_Nearest,
@@ -210,6 +214,7 @@ namespace Mist
 					render::SamplerAddressMode_Repeat);
 				rs->SetTextureSlot("u_offset3D", m_texOffset3D);
 
+				// Environment data
 				const EnvironmentData& env = scene->GetEnvironmentData();
 				rs->SetShaderProperty("u_lighting", &env, sizeof(env));
 				rs->SetShaderProperty("u_camera", GetCameraData(), sizeof(CameraData));
@@ -293,7 +298,7 @@ namespace Mist
 						render::SamplerAddressMode_ClampToEdge,
 						render::SamplerAddressMode_ClampToEdge);
 				}
-				SceneRenderer::GetSceneRenderer()->DrawList({ .passId = m_forwardRenderListId, .rs = rs });
+				//SceneRenderer::GetSceneRenderer()->DrawList({ .passId = m_forwardRenderListId, .rs = rs });
 				rs->EndMarker();
 			}
 

@@ -15,10 +15,11 @@ namespace Mist
 {
 	class Scene;
 	class Frustum;
+	class Camera;
 
 	glm::mat4 GetSpotLightProjection(float cutOff, float nearClip, float farClip);
 
-	struct ShadowMap
+	struct ShadowMapTransform
 	{
 		glm::mat4 proj;
 		glm::mat4 view;
@@ -59,24 +60,29 @@ namespace Mist
 		virtual render::RenderTarget* GetRenderTarget(uint32_t index) const override;
 
 		inline const ShadowMapTransform& GetShadowMapTransform(uint32_t index) const { check(index < globals::MaxOverlappedFrames); return m_shadowTransfoms[index]; }
+		inline const render::TextureHandle& GetShadowMap(uint32_t index) const { check(index < globals::MaxOverlappedFrames); return m_shadowMapTargetArray[index]->m_description.depthStencilAttachment.texture; }
 
-		uint32_t SetupDirectionalLight(const glm::vec3& pos, const tAngles& rot, float left, float right, float top, float bottom, float nearClip, float farClip);
-		uint32_t SetupSpotLight(const glm::vec3& pos, const tAngles& rot, float cutoff, float nearClip, float farClip);
+		// Compute projection to fit camera reference frustum
+		uint32_t SetupDirectionalLight(const Camera& cameraReference, const glm::mat4& lightView, float nearClip = 1.f, float farClip = 100.f, float zmult = 10.f);
+		// Fixed projection.
+		uint32_t SetupDirectionalLight(const glm::mat4& lightView, float left, float right, float top, float bottom, float nearClip, float farClip);
+		uint32_t SetupSpotLight(const glm::mat4& lightView, float cutoff, float nearClip, float farClip);
+
+		uint32_t SetupShadowMap(const glm::mat4& view, const glm::mat4& proj, const glm::vec3* debugColor = nullptr);
 
 	private:
 		virtual void DebugDraw() override;
 		void InitShadowMaps(rendersystem::RenderSystem* rs, const render::Extent2D& resolution);
+
+		render::RenderTargetHandle CreateDepthRenderTarget(rendersystem::RenderSystem* rs, const render::Extent2D& extent);
 	private:
 		render::Extent2D m_shadowMapResolution;
-		ShadowMap m_shadowMaps[globals::MaxShadowMapAttachments];
-		uint32_t m_renderListIds[globals::MaxShadowMapAttachments];
-		uint32_t m_lightCount = 0;
-		float m_zmult = 100.f;
-		float m_directionalClipFar = 100.f;
-
 		rendersystem::ShaderProgram* m_shader;
 		tStaticArray<render::RenderTargetHandle, globals::MaxShadowMapAttachments> m_shadowMapTargetArray;
 
+		ShadowMapTransform m_shadowTransfoms[globals::MaxShadowMapAttachments];
+		uint32_t m_renderListIds[globals::MaxShadowMapAttachments];
+		uint32_t m_lightCount = 0;
 
 		EDebugMode m_debugMode = DEBUG_NONE;
 		uint32_t m_textureDebugIndex = 0;

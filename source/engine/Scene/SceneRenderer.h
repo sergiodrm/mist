@@ -100,7 +100,7 @@ namespace Mist
 
 	public:
 
-		SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount = 4, uint32_t maxItemCount = 1<<12);
+		SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount = 8, uint32_t maxItemCount = 1<<12);
 		~SceneRenderer();
 
 		uint32_t CreateRenderList(const RenderPassInfo& info);

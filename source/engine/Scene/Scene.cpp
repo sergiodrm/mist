@@ -359,14 +359,14 @@ namespace Mist
 			if (lightNode)
 			{
 				LightComponent lightComponent;
-				lightComponent.Enabled = lightNode["Enabled"].as<bool>();
+				if (lightNode["Flags"])
+					lightComponent.Flags = lightNode["Flags"].as<uint32_t>();
 				lightComponent.Color = lightNode["Color"].as<glm::vec3>();
 				lightComponent.Strength = lightNode["Strength"].as<float>();
 				lightComponent.Radius = lightNode["Radius"].as<float>();
 				lightComponent.Compression = lightNode["Compression"].as<float>();
 				lightComponent.OuterCutoff = lightNode["OuterCutoff"].as<float>();
 				lightComponent.Cutoff = lightNode["Cutoff"].as<float>();
-				lightComponent.ProjectShadows = lightNode["ProjectShadows"].as<bool>();
 				lightComponent.Type = StrToLightType(lightNode["Type"].as<std::string>().c_str());
 				lightComponent.OrthoLeft = lightNode["OrthoLeft"].as<float>();
 				lightComponent.OrthoRight = lightNode["OrthoRight"].as<float>();
@@ -457,14 +457,13 @@ namespace Mist
 				const LightComponent& light = m_lightComponentMap[i];
 				emitter << YAML::Key << "LightComponent" << YAML::BeginMap;
 				emitter << YAML::Key << "Type" << YAML::Value << LightTypeToStr(light.Type);
-				emitter << YAML::Key << "Enabled" << YAML::Value << light.Enabled;
+				emitter << YAML::Key << "Flags" << YAML::Value << light.Flags;
 				emitter << YAML::Key << "Color" << YAML::Value << light.Color;
 				emitter << YAML::Key << "Strength" << YAML::Value << light.Strength;
 				emitter << YAML::Key << "Radius" << YAML::Value << light.Radius;
 				emitter << YAML::Key << "Compression" << YAML::Value << light.Compression;
 				emitter << YAML::Key << "OuterCutoff" << YAML::Value << light.OuterCutoff;
 				emitter << YAML::Key << "Cutoff" << YAML::Value << light.Cutoff;
-				emitter << YAML::Key << "ProjectShadows" << YAML::Value << light.ProjectShadows;
 				emitter << YAML::Key << "OrthoLeft" << YAML::Value << light.OrthoLeft;
 				emitter << YAML::Key << "OrthoRight" << YAML::Value << light.OrthoRight;
 				emitter << YAML::Key << "OrthoBottom" << YAML::Value << light.OrthoBottom;
@@ -790,7 +789,7 @@ namespace Mist
 						{
 							LightComponent& light = m_lightComponentMap[i];
 							ImGui::PushID(i);
-							ImGui::Checkbox("Enabled", &light.Enabled);
+							ImGui::CheckboxFlags("Enabled", &light.Flags, LightFlag_Enabled);
 							static const char* lightTypes[] = { "Point", "Directional", "Spot" };
 							uint32_t lightCount = sizeof(lightTypes) / sizeof(const char*);
 							if (ImGui::BeginCombo("Type", lightTypes[(uint32_t)light.Type]))
@@ -827,40 +826,48 @@ namespace Mist
 							ImGui::NextColumn();
 							ImGui::DragFloat("Cutoff", &light.Cutoff, 0.1f, 0.f, FLT_MAX);
 							ImGui::NextColumn();
-							ImGui::Text("Project shadows");
+							ImGui::CheckboxFlags("Shadows enabled", &light.Flags, LightFlag_ProjectShadows);
 							ImGui::NextColumn();
-							ImGui::Checkbox("Shadows enabled", &light.ProjectShadows);
 							ImGui::NextColumn();
+							if (light.Flags & LightFlag_ProjectShadows)
+							{
+								ImGui::CheckboxFlags("Cascaded shadows", &light.Flags, LightFlag_CascadedShadows);
+								ImGui::NextColumn();
+								ImGui::NextColumn();
 
-							ImGui::Text("Near clip");
-							ImGui::NextColumn();
-							ImGui::DragFloat("Near clip", &light.NearClip, 1.f);
-							ImGui::NextColumn();
+								ImGui::Text("Near clip");
+								ImGui::NextColumn();
+								ImGui::DragFloat("Near clip", &light.NearClip, 1.f);
+								ImGui::NextColumn();
 
-							ImGui::Text("Far clip");
-							ImGui::NextColumn();
-							ImGui::DragFloat("Far clip", &light.FarClip, 1.f);
-							ImGui::NextColumn();
+								ImGui::Text("Far clip");
+								ImGui::NextColumn();
+								ImGui::DragFloat("Far clip", &light.FarClip, 1.f);
+								ImGui::NextColumn();
 
-							ImGui::Text("Ortho left");
-							ImGui::NextColumn();
-							ImGui::DragFloat("Left", &light.OrthoLeft, 1.f);
-							ImGui::NextColumn();
+								if (!(light.Flags & LightFlag_CascadedShadows))
+								{
+									ImGui::Text("Ortho left");
+									ImGui::NextColumn();
+									ImGui::DragFloat("Left", &light.OrthoLeft, 1.f);
+									ImGui::NextColumn();
 
-							ImGui::Text("Ortho right");
-							ImGui::NextColumn();
-							ImGui::DragFloat("Right", &light.OrthoRight, 1.f);
-							ImGui::NextColumn();
+									ImGui::Text("Ortho right");
+									ImGui::NextColumn();
+									ImGui::DragFloat("Right", &light.OrthoRight, 1.f);
+									ImGui::NextColumn();
 
-							ImGui::Text("Ortho bottom");
-							ImGui::NextColumn();
-							ImGui::DragFloat("Bottom", &light.OrthoBottom, 1.f);
-							ImGui::NextColumn();
+									ImGui::Text("Ortho bottom");
+									ImGui::NextColumn();
+									ImGui::DragFloat("Bottom", &light.OrthoBottom, 1.f);
+									ImGui::NextColumn();
 
-							ImGui::Text("Ortho top");
-							ImGui::NextColumn();
-							ImGui::DragFloat("Top", &light.OrthoTop, 1.f);
-							ImGui::NextColumn();
+									ImGui::Text("Ortho top");
+									ImGui::NextColumn();
+									ImGui::DragFloat("Top", &light.OrthoTop, 1.f);
+									ImGui::NextColumn();
+								}
+							}
 
 							ImGui::Columns();
 
@@ -1051,7 +1058,7 @@ namespace Mist
 			if (m_lightComponentMap.contains(i))
 			{
 				const LightComponent& light = m_lightComponentMap[i];
-				if (!light.Enabled)
+				if (!(light.Flags & LightFlag_Enabled))
 					continue;
 				const TransformComponent& transform = m_transformComponents[i];
 				const glm::mat4& mat = m_globalTransforms[i];
@@ -1059,10 +1066,23 @@ namespace Mist
 				const glm::vec3 dir = -1.f*math::GetForwardFromTransform(mat);
 
 				uint32_t shadowMapIndex = UINT32_MAX;
-				if (light.ProjectShadows && light.Type != ELightType::Point)
-					shadowMapIndex = light.Type == ELightType::Directional
-					? shadowMapping->SetupDirectionalLight(transform.Position, transform.Rotation, light.OrthoLeft, light.OrthoRight, light.OrthoTop, light.OrthoBottom, light.NearClip, light.FarClip)
-					: shadowMapping->SetupSpotLight(transform.Position, transform.Rotation, light.OuterCutoff, light.NearClip, light.FarClip);
+				if ((light.Flags & LightFlag_ProjectShadows) && light.Type != ELightType::Point)
+				{
+					switch (light.Type)
+					{
+					case ELightType::Directional:
+						if (light.Flags & LightFlag_CascadedShadows)
+							shadowMapIndex = shadowMapping->SetupDirectionalLight(GetCamera().GetCamera(), mat, light.NearClip, light.FarClip, light.ZMult);
+						else
+							shadowMapIndex = shadowMapping->SetupDirectionalLight(mat, light.OrthoLeft, light.OrthoRight, light.OrthoTop, light.OrthoBottom, light.NearClip, light.FarClip);
+						break;
+					case ELightType::Spot:
+						shadowMapIndex = shadowMapping->SetupSpotLight(mat, light.OuterCutoff, light.NearClip, light.FarClip);
+						break;
+					default:
+						break;
+					}
+				}
 
 				environmentData.PushLight(light, pos, dir, shadowMapIndex != UINT32_MAX ? static_cast<int>(shadowMapIndex) : -1);
 			}

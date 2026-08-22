@@ -34,8 +34,19 @@ namespace Mist
 	{
 		Point,
 		Directional,
-		Spot
+		Spot,
 	};
+
+	enum LightFlagBits
+	{
+		LightFlag_None = 0,
+		LightFlag_Enabled = 0x01,
+		LightFlag_ProjectShadows = 0x02,
+		LightFlag_CascadedShadows = 0x04, // Only valid for directional lights
+
+		LightFlag_All = 0xff
+	};
+	typedef uint32_t LightFlags;
 
 	const char* LightTypeToStr(ELightType);
 	ELightType StrToLightType(const char* str);
@@ -43,6 +54,7 @@ namespace Mist
 	struct LightComponent
 	{
 		ELightType Type;
+		LightFlags Flags;
 		glm::vec3 Color;
 		float Strength;
 		float Radius;
@@ -50,14 +62,13 @@ namespace Mist
 		float OuterCutoff;	// Degrees
 		float Cutoff;		// Degrees
 
-		bool ProjectShadows;
-		bool Enabled;
 		float OrthoLeft;
 		float OrthoRight;
 		float OrthoBottom;
 		float OrthoTop;
 		float NearClip;
 		float FarClip;
+		float ZMult;
 
 		LightComponent()
 			: Type(ELightType::Point),
@@ -67,14 +78,14 @@ namespace Mist
 			Compression(1.f),
 			OuterCutoff(30.f),
 			Cutoff(30.f),
-			ProjectShadows(false),
-			Enabled(true),
+			Flags(LightFlag_Enabled),
 			OrthoLeft(-160.f),
 			OrthoRight(160.f),
 			OrthoBottom(-120.f),
 			OrthoTop(120.f),
 			NearClip(1.f),
-			FarClip(100.f)
+			FarClip(100.f),
+			ZMult(10.f)
 		{ }
 	};
 
