@@ -616,10 +616,11 @@ namespace rendersystem
         switch (shader->m_description->type)
         {
         case ShaderProgram_Graphics:
-            m_graphicsContext.pso.vertexShader = shader->GetVertexShader();
-            m_graphicsContext.pso.fragmentShader = shader->GetFragmentShader();
-            m_graphicsContext.pso.tesselationControlShader = shader->GetTesselationControlShader();
-            m_graphicsContext.pso.tesselationEvaluationShader = shader->GetTesselationEvaluationShader();
+            m_graphicsContext.pso.shaderHandles[render::ShaderType_Vertex] = shader->GetVertexShader();
+            m_graphicsContext.pso.shaderHandles[render::ShaderType_Fragment] = shader->GetFragmentShader();
+            m_graphicsContext.pso.shaderHandles[render::ShaderType_TesselationControl] = shader->GetTesselationControlShader();
+            m_graphicsContext.pso.shaderHandles[render::ShaderType_TesselationEvaluation] = shader->GetTesselationEvaluationShader();
+            m_graphicsContext.pso.shaderHandles[render::ShaderType_Geometry] = shader->GetGeometryShader();
             m_graphicsContext.pso.vertexInputLayout = shader->m_inputLayout;
             m_graphicsContext.pso.bindingLayouts = shader->GetShaderLayout();
             m_graphicsContext.pso.pushConstantDescription = shader->GetPushConstantDescription();
@@ -1716,7 +1717,8 @@ namespace rendersystem
             render::ShaderType_Vertex, 
             render::ShaderType_Fragment, 
             render::ShaderType_TesselationControl, 
-            render::ShaderType_TesselationEvaluation 
+            render::ShaderType_TesselationEvaluation,
+            render::ShaderType_Geometry,
         };
         return ReloadShaderModules(types, Mist::CountOf(types));
     }

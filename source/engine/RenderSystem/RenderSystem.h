@@ -5,6 +5,7 @@
 #include "RenderAPI/ShaderCompiler.h"
 #include <glm/glm.hpp>
 #include "Utils/FileSystem.h"
+#include "RenderAPI/Types.h"
 
 namespace rendersystem
 {
@@ -371,6 +372,7 @@ namespace rendersystem
 				hashCombineShader(h, shaderDesc[render::ShaderType_Fragment]);
 				hashCombineShader(h, shaderDesc[render::ShaderType_TesselationControl]);
 				hashCombineShader(h, shaderDesc[render::ShaderType_TesselationEvaluation]);
+				hashCombineShader(h, shaderDesc[render::ShaderType_Geometry]);
 				break;
 			case ShaderProgram_Compute:
 				hashCombineShader(h, shaderDesc[render::ShaderType_Compute]);
@@ -391,11 +393,13 @@ namespace rendersystem
         bool IsLoaded() const;
         void ReleaseResources();
 
+        const render::ShaderHandle& GetShaderHandle(render::ShaderType type) const { return m_shaders[type]; }
         render::ShaderHandle GetVertexShader() const { return m_shaders[render::ShaderType_Vertex]; }
         render::ShaderHandle GetFragmentShader() const { return m_shaders[render::ShaderType_Fragment]; }
         render::ShaderHandle GetComputeShader() const { return m_shaders[render::ShaderType_Compute]; }
         render::ShaderHandle GetTesselationControlShader() const { return m_shaders[render::ShaderType_TesselationControl]; }
         render::ShaderHandle GetTesselationEvaluationShader() const { return m_shaders[render::ShaderType_TesselationEvaluation]; }
+        render::ShaderHandle GetGeometryShader() const { return m_shaders[render::ShaderType_Geometry]; }
 
         const render::BindingLayoutArray& GetShaderLayout() const { return m_layouts; }
 

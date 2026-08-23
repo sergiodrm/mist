@@ -187,6 +187,7 @@ namespace render
             case ShaderStageMask_Compute: return shaderc_glsl_compute_shader;
             case ShaderStageMask_TesselationControl: return shaderc_glsl_tess_control_shader;
             case ShaderStageMask_TesselationEvaluation: return shaderc_glsl_tess_evaluation_shader;
+            case ShaderStageMask_Geometry: return shaderc_glsl_geometry_shader;
             default: check(false); return shaderc_glsl_infer_from_source;
             }
         }
@@ -213,6 +214,9 @@ namespace render
                     break;
                 case ShaderStageMask_TesselationEvaluation:
                     desiredExt = ".tes";
+                    break;
+                case ShaderStageMask_Geometry:
+                    desiredExt = ".geom";
                     break;
                 default:
                     return res;
