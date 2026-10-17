@@ -44,6 +44,7 @@ namespace Mist
 		rs->SetDepthEnable(false, false);
 		rs->SetVertexBuffer(cubeModel->GetMesh(0).GetVertexBuffer());
 		rs->SetIndexBuffer(cubeModel->GetMesh(0).GetIndexBuffer());
+		rs->SetCullMode(render::RasterCullMode_Front);
 		rs->SetRenderTarget(_rt);
 		rs->SetViewport(0.f, 0.f, (float)viewportSize.width, (float)viewportSize.height);
 		rs->SetScissor(0.f, (float)viewportSize.width, 0.f, (float)viewportSize.height);
@@ -178,17 +179,17 @@ namespace Mist
 
 		// Load image from file
 		render::TextureHandle hdrFileContent;
-		check(rendersystem::textureloader::LoadHDRTextureFromFile(&hdrFileContent, device, info.hdrFilepath, false));
+		check(rendersystem::textureloader::LoadHDRTextureFromFile(&hdrFileContent, device, info.hdrFilepath, true));
 
 		// Prepare uniform data
-		glm::mat4 captureProjection = math::PerspectiveProj(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+		glm::mat4 captureProjection = math::PerspectiveProj(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
 		//captureProjection[1][1] *= -1.f;
 		glm::mat4 captureViews[] =
 		{
 		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, 1.0f,  0.0f)),
 		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, 1.0f,  0.0f)),
-		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f)),
 		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f)),
 		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, 1.0f,  0.0f)),
 		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, 1.0f,  0.0f)),
 		};

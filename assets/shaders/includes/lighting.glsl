@@ -8,8 +8,8 @@
 
 //#define LIGHTING_DEBUG_AMBIENT
 //#define LIGHTING_DEBUG_LIGHTS 
-//#define LIGHTING_APPLY_GI
 //#define LIGHTING_SHADOWS_DEBUG
+#define LIGHTING_APPLY_GI
 
 
 // Irradiance map

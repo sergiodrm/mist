@@ -60,7 +60,7 @@ void main()
     color = (color * (2.51 * color + 0.03)) /
         (color * (2.43 * color + 0.59) + 0.14);
 #endif
-    color = vec4(0.2, 0.2, 0.2, 1.f);
+    //color = vec4(0.2, 0.2, 0.2, 1.f);
     outFragColor = color;
 #else
     outAlbedo = texture(u_cubemap, inTexCoords);
