@@ -483,6 +483,7 @@ namespace Mist
 
 		void ResourceCache::ReleaseResource(IResource* resource)
 		{
+			check(ThisThread::IsMainThread());
 			IResource* r = resource;
 			auto it = m_indexMap.find(r->GetResourceHashId());
 			check(it != m_indexMap.end());
