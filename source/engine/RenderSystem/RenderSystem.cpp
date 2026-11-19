@@ -669,9 +669,12 @@ namespace rendersystem
         check(m_shaderContext.program);
         uint32_t setIndex;
         const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
-        check(property && setIndex != UINT32_MAX && "Property not found in shader uniforms.");
-        //check(property->arrayCount == 1);
-        SetTextureSlot(texture, setIndex, property->binding);
+        if (property)
+        {
+            check(property && setIndex != UINT32_MAX && "Property not found in shader uniforms.");
+            //check(property->arrayCount == 1);
+            SetTextureSlot(texture, setIndex, property->binding);
+        }
     }
 
 	void RenderSystem::SetTextureSlot(const render::TextureHandle* textures, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
@@ -695,9 +698,12 @@ namespace rendersystem
 		    check(m_shaderContext.program);
 		    uint32_t setIndex;
 		    const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
-		    check(property && setIndex != UINT32_MAX);
-            check(count <= property->arrayCount);
-            SetTextureSlot(textures, count, setIndex, property->binding);
+            if (property)
+            {
+		        check(property && setIndex != UINT32_MAX);
+                check(count <= property->arrayCount);
+                SetTextureSlot(textures, count, setIndex, property->binding);
+            }
         }
     }
 
@@ -745,9 +751,12 @@ namespace rendersystem
         check(m_shaderContext.program);
         uint32_t setIndex;
         const render::shader_compiler::ShaderPropertyDescription* property = m_shaderContext.program->GetPropertyDescription(id, &setIndex);
-        check(property && setIndex != UINT32_MAX);
-        check(property->arrayCount >= count);
-        SetSampler(sampler, count, setIndex, property->binding);
+        if (property)
+        {
+            check(property && setIndex != UINT32_MAX);
+            check(property->arrayCount >= count);
+            SetSampler(sampler, count, setIndex, property->binding);
+        }
 	}
 
 	void RenderSystem::SetSampler(const render::SamplerHandle* sampler, uint32_t count, uint32_t set, uint32_t binding /*= 0*/)
