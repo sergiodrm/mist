@@ -11,6 +11,7 @@
 #include "Utils/GenericUtils.h"
 
 #include "ShaderCompiler.h"
+#include "Core/Thread.h"
 
 #define DEVICE_GC
 
@@ -1422,6 +1423,7 @@ namespace render
 	void GarbageCollector::Push(void* resource, DestroyFn destroyFn)
 	{
         check(resource && destroyFn);
+        check(Mist::ThisThread::IsMainThread());
 #ifdef DEVICE_GC
         uint64_t id = m_device->GetCommandQueue(render::Queue_Graphics)->GetLastSubmissionId();
         m_items.emplace_back(Item{ resource, destroyFn, id });
@@ -1432,6 +1434,7 @@ namespace render
 
 	void GarbageCollector::Run(uint64_t lastFinishedSubmissionId)
 	{
+        check(Mist::ThisThread::IsMainThread());
 #ifdef DEVICE_GC
         for (uint32_t i = m_items.size() - 1; i < m_items.size(); --i)
         {
@@ -1459,6 +1462,7 @@ namespace render
     Device::Device(const DeviceDescription& description)
         : m_context(nullptr), m_swapchainIndex(UINT32_MAX), m_queue(nullptr), m_garbageCollector(this)
     {
+        check(Mist::ThisThread::IsMainThread());
         InitContext(description);
         InitMemoryContext();
         InitQueue();
@@ -1470,6 +1474,7 @@ namespace render
 
     Device::~Device()
     {
+        check(Mist::ThisThread::IsMainThread());
         // Finish all pending work
         WaitIdle();
         // Purge to ensure all resources are deleted
@@ -1583,18 +1588,21 @@ namespace render
             &buffer->m_buffer, &buffer->m_alloc, nullptr));
         SetDebugName(buffer, description.debugName.c_str());
 
+        m_deviceMutex.Lock();
         ++m_context->memoryContext.bufferStats.allocationCounts;
         m_context->memoryContext.bufferStats.currentAllocated += description.size;
         m_context->memoryContext.bufferStats.maxAllocated = __max(m_context->memoryContext.bufferStats.currentAllocated, m_context->memoryContext.bufferStats.maxAllocated);
 #if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         m_bufferTracking[size_t(buffer)] = buffer;
 #endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_deviceMutex.Unlock();
         return BufferHandle(buffer);
     }
 
     void Device::DestroyBuffer(Buffer* buffer)
     {
         check(m_context && buffer);
+        m_deviceMutex.Lock();
 #if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         check(m_bufferTracking.contains(size_t(buffer)));
         m_bufferTracking.erase(size_t(buffer));
@@ -1603,6 +1611,7 @@ namespace render
         --m_context->memoryContext.bufferStats.allocationCounts;
         check(m_context->memoryContext.bufferStats.currentAllocated - buffer->m_description.size < m_context->memoryContext.bufferStats.currentAllocated);
         m_context->memoryContext.bufferStats.currentAllocated -= buffer->m_description.size;
+        m_deviceMutex.Unlock();
 
         vmaDestroyBuffer(m_context->memoryContext.allocator, buffer->m_buffer, buffer->m_alloc);
     }
@@ -1721,12 +1730,14 @@ namespace render
             &texture->m_image, &texture->m_alloc, nullptr));
         SetDebugName(texture, description.debugName.c_str());
 
+        m_deviceMutex.Lock();
         ++m_context->memoryContext.imageStats.allocationCounts;
         m_context->memoryContext.imageStats.currentAllocated += texture->GetImageSize();
         m_context->memoryContext.imageStats.maxAllocated = __max(m_context->memoryContext.imageStats.currentAllocated, m_context->memoryContext.imageStats.maxAllocated);
 #if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         m_textureTracking[size_t(texture)] = texture;
 #endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_deviceMutex.Unlock();
         return TextureHandle(texture);
     }
 
@@ -1752,7 +1763,9 @@ namespace render
         }
         SetDebugName(texture, description.debugName.c_str());
 #if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_deviceMutex.Lock();
         m_textureTracking[size_t(texture)] = texture;
+        m_deviceMutex.Unlock();
 #endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
         return TextureHandle(texture);
     }
@@ -1761,8 +1774,10 @@ namespace render
     {
         check(m_context && texture);
 #if defined(DEVICE_ENABLE_RESOURCE_TRACKING)
+        m_deviceMutex.Lock();
         check(m_textureTracking.contains(size_t(texture)));
         m_textureTracking.erase(size_t(texture));
+        m_deviceMutex.Unlock();
 #endif // defined(DEVICE_ENABLE_RESOURCE_TRACKING)
 
         for (Texture::ViewIterator it = texture->m_views.begin(); it != texture->m_views.end(); ++it)
@@ -1775,9 +1790,11 @@ namespace render
 
         if (texture->m_owner)
         {
+            m_deviceMutex.Lock();
             --m_context->memoryContext.imageStats.allocationCounts;
             check(m_context->memoryContext.imageStats.currentAllocated - texture->GetImageSize() < m_context->memoryContext.imageStats.currentAllocated);
             m_context->memoryContext.imageStats.currentAllocated -= texture->GetImageSize();
+            m_deviceMutex.Unlock();
             vmaDestroyImage(m_context->memoryContext.allocator, texture->m_image, texture->m_alloc);
         }
     }
@@ -1973,25 +1990,19 @@ namespace render
         check(rt && rt->m_renderPass != VK_NULL_HANDLE);
 
         // Pipeline Shader Stages
-        ShaderHandle shaders[] = { 
-            description.vertexShader, 
-            description.fragmentShader,
-            description.tesselationControlShader,
-            description.tesselationEvaluationShader,
-        };
-        VkPipelineShaderStageCreateInfo shaderStages[Mist::CountOf(shaders)];
+        VkPipelineShaderStageCreateInfo shaderStages[ShaderType_Count];
         uint32_t stageCount = 0;
         for (uint32_t i = 0; i < Mist::CountOf(shaderStages); ++i)
         {
-            if (!shaders[i])
+            if (!description.shaderHandles[i])
                 continue;
-            check(shaders[i]->m_shader != VK_NULL_HANDLE);
+            check(description.shaderHandles[i]->m_shader != VK_NULL_HANDLE);
             shaderStages[stageCount].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shaderStages[stageCount].pNext = nullptr;
             shaderStages[stageCount].flags = 0;
-            shaderStages[stageCount].stage = (VkShaderStageFlagBits)utils::ConvertShaderStage( 1 << shaders[i]->m_description.type );
-            shaderStages[stageCount].module = shaders[i]->m_shader;
-            shaderStages[stageCount].pName = shaders[i]->m_description.entryPoint.c_str();
+            shaderStages[stageCount].stage = (VkShaderStageFlagBits)utils::ConvertShaderStage( 1 << description.shaderHandles[i]->m_description.type );
+            shaderStages[stageCount].module = description.shaderHandles[i]->m_shader;
+            shaderStages[stageCount].pName = description.shaderHandles[i]->m_description.entryPoint.c_str();
             shaderStages[stageCount].pSpecializationInfo = nullptr;
             ++stageCount;
         }
@@ -2106,7 +2117,7 @@ namespace render
         tesselationState.patchControlPoints = description.renderState.tesselationState.patchPoints;
         if (description.renderState.tesselationState.patchPoints != UINT32_MAX)
         {
-            check(description.tesselationControlShader && description.tesselationEvaluationShader);
+            check(description.shaderHandles[ShaderType_TesselationControl] && description.shaderHandles[ShaderType_TesselationEvaluation]);
             check_msgf(description.primitiveType == PrimitiveType_PatchList, 
                 "Primitive type must be PatchList if PatchControlPoints %d is specified.", description.renderState.tesselationState.patchPoints);
             pTesselation = &tesselationState;

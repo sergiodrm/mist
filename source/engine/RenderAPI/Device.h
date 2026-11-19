@@ -13,6 +13,7 @@
 #include "Core/Types.h"
 #include "Types.h"
 #include "Utils.h"
+#include "Core/Mutex.h"
 
 // declare first the structs which are used in the hash functions
 namespace render
@@ -1355,10 +1356,7 @@ namespace render
     struct GraphicsPipelineDescription : public CommonPipelineDescription
     {
         PrimitiveType primitiveType = PrimitiveType_TriangleList;
-        ShaderHandle vertexShader;
-        ShaderHandle fragmentShader;
-        ShaderHandle tesselationControlShader;
-        ShaderHandle tesselationEvaluationShader;
+        ShaderHandle shaderHandles[ShaderType_Count];
         RenderState renderState;
         VertexInputLayout vertexInputLayout;
         Mist::String debugName;
@@ -1366,10 +1364,7 @@ namespace render
         inline bool operator==(const GraphicsPipelineDescription& desc) const
         {
             return primitiveType == desc.primitiveType &&
-                vertexShader == desc.vertexShader &&
-                fragmentShader == desc.fragmentShader &&
-                tesselationControlShader == desc.tesselationControlShader &&
-                tesselationEvaluationShader == desc.tesselationEvaluationShader &&
+                utils::EqualArrays(shaderHandles, Mist::CountOf(shaderHandles), desc.shaderHandles, Mist::CountOf(desc.shaderHandles)) &&
                 renderState == desc.renderState &&
                 vertexInputLayout == desc.vertexInputLayout &&
                 CommonPipelineDescription::operator==(desc);
@@ -1382,10 +1377,8 @@ namespace render
 
         inline void Invalidate()
         {
-            vertexShader = nullptr;
-            fragmentShader = nullptr;
-            tesselationControlShader = nullptr;
-            tesselationEvaluationShader = nullptr;
+            for (uint32_t i = 0; i < Mist::CountOf(shaderHandles); ++i)
+                shaderHandles[i] = nullptr;
             bindingLayouts.Clear();
         }
     };
@@ -1956,6 +1949,8 @@ namespace render
         Mist::tMap<size_t, Texture*> m_textureTracking;
 
         GarbageCollector m_garbageCollector;
+
+        Mist::Mutex m_deviceMutex;
     };
 
     namespace utils
@@ -2168,10 +2163,11 @@ namespace std
             Mist::HashCombine(seed, desc.primitiveType);
             Mist::HashCombine(seed, desc.renderState);
             Mist::HashCombine(seed, desc.vertexInputLayout);
-            if (desc.vertexShader)
-                Mist::HashCombine(seed, desc.vertexShader->m_description);
-            if (desc.fragmentShader)
-                Mist::HashCombine(seed, desc.fragmentShader->m_description);
+            for (uint32_t i = 0; i < render::ShaderType_Count; ++i)
+            {
+                if (desc.shaderHandles[i])
+                    Mist::HashCombine(seed, desc.shaderHandles[i]->m_description);
+            }
             return seed;
         }
     };
