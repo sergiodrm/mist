@@ -60,6 +60,7 @@ namespace Mist
 
 		virtual void ReloadShaders() override;
 		void DumpShadersInfo();
+		void ResetRender();
 
 	protected:
 		void BeginFrame();

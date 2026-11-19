@@ -141,6 +141,12 @@ namespace Mist
 		}
 	}
 
+	static void ExecCommand_ResetRender(const char* cmd)
+	{
+		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
+		eng->ResetRender();
+	}
+
 	static void ExecCommand_ReloadShaders(const char* cmd)
 	{
 		VulkanRenderEngine* eng = IRenderEngine::GetRenderEngineAs<VulkanRenderEngine>();
@@ -188,6 +194,7 @@ namespace Mist
 		//////////////////////////////////////
 		AddConsoleCommand("r_reloadshaders", ExecCommand_ReloadShaders);
 		AddConsoleCommand("r_dumpshadersinfo", ExecCommand_DumpShadersInfo);
+		AddConsoleCommand("r_reset", ExecCommand_ResetRender);
 
 		//////////////////////////////////////
 		// ImGui callbacks
@@ -315,6 +322,13 @@ namespace Mist
 			m_shaderDb.GetShaderArray()[i]->DumpInfo();
 #endif // 0
 
+	}
+
+	void VulkanRenderEngine::ResetRender()
+	{
+		m_renderSystem->GetDevice()->WaitIdle();
+		m_renderer.Destroy(m_renderSystem);
+		m_renderer.Init(m_renderSystem, this);
 	}
 
 	void VulkanRenderEngine::BeginFrame()
