@@ -1,5 +1,10 @@
 Environment:
   Ambient: [0.0500000007, 0.0500000007, 0.0500000007]
+  IBL:
+    Filepath: textures/san_giuseppe_bridge_4k.hdr
+    Cube resolution: 1024
+    Irradiance resolution: 32
+    Specular resolution: 128
 RenderObjects:
   - RenderObject: 0
     Name: VkScene
@@ -19,14 +24,13 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Enabled: true
+      Flags: 1
       Color: [0.255033553, 0.245372579, 0.205396146]
       Strength: 1
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
       Cutoff: 1
-      ProjectShadows: true
       OrthoLeft: -18
       OrthoRight: 10
       OrthoBottom: -8

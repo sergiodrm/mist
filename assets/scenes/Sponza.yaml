@@ -1,5 +1,10 @@
 Environment:
   Ambient: [0.0500000007, 0.0500000007, 0.0500000007]
+  IBL:
+    Filepath: textures/san_giuseppe_bridge_4k.hdr
+    Cube resolution: 1024
+    Irradiance resolution: 32
+    Specular resolution: 128
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -17,14 +22,13 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Enabled: true
+      Flags: 1
       Color: [0.490066171, 1, 0]
       Strength: 1
       Radius: 10000
       Compression: 10000
       OuterCutoff: 43.5999985
       Cutoff: 0
-      ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
       OrthoBottom: -120
@@ -40,14 +44,13 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Enabled: true
+      Flags: 1
       Color: [0.691275179, 0.571284413, 0.27836585]
       Strength: 1
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
       Cutoff: 1
-      ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
       OrthoBottom: -120
@@ -63,14 +66,13 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Enabled: true
+      Flags: 1
       Color: [0.926174521, 0.229989633, 0.229989633]
       Strength: 1
       Radius: 5000
       Compression: 5000
       OuterCutoff: 54.0999985
       Cutoff: 41.7999992
-      ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
       OrthoBottom: -120

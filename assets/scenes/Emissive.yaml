@@ -1,5 +1,10 @@
 Environment:
   Ambient: [0.0500000007, 0.0500000007, 0.0500000007]
+  IBL:
+    Filepath: textures/san_giuseppe_bridge_4k.hdr
+    Cube resolution: 1024
+    Irradiance resolution: 32
+    Specular resolution: 128
 RenderObjects:
   - RenderObject: 0
     Name: Root
@@ -17,14 +22,13 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Point
-      Enabled: true
+      Flags: 1
       Color: [0.431372553, 0.80392158, 0.4627451]
       Strength: 1
       Radius: 388
       Compression: 388
       OuterCutoff: 28.5
       Cutoff: 1.89999998
-      ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
       OrthoBottom: -120
@@ -35,19 +39,18 @@ RenderObjects:
     Name: Light_2
     Parent: 0
     TransformComponent:
-      Position: [7.5, 36, 0]
-      Rotation: [15, 0, -82.5]
+      Position: [0, 0, 0]
+      Rotation: [0, 0, -76]
       Scale: [1, 1, 1]
     LightComponent:
       Type: Directional
-      Enabled: true
+      Flags: 3
       Color: [0.335570455, 0.309043437, 0.274762392]
       Strength: 13.6000004
       Radius: 1000
       Compression: 1000
       OuterCutoff: 0.800000012
       Cutoff: 1
-      ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
       OrthoBottom: -120
@@ -63,14 +66,13 @@ RenderObjects:
       Scale: [1, 1, 1]
     LightComponent:
       Type: Spot
-      Enabled: true
+      Flags: 3
       Color: [0.838926196, 0.682636023, 0.34345302]
       Strength: 1
       Radius: 5000
       Compression: 5000
       OuterCutoff: 55
       Cutoff: 41.7999992
-      ProjectShadows: true
       OrthoLeft: -160
       OrthoRight: 160
       OrthoBottom: -120
@@ -113,8 +115,8 @@ RenderObjects:
       Scale: [1, 1, 1]
     CameraComponent:
       Main: true
-      Position: [-70.4147644, 10.4421244, 7.04495239]
-      Rotation: [0.106478646, -7.60885382, 0]
+      Position: [-84.4461136, 11.2145395, 2.02103519]
+      Rotation: [0.118888982, -1.3931253, 0]
   - RenderObject: 8
     Name: AlphaBlend
     Parent: 0

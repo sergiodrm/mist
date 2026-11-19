@@ -1,5 +1,10 @@
 Environment:
   Ambient: [0.0500000007, 0.0500000007, 0.0500000007]
+  IBL:
+    Filepath: textures/san_giuseppe_bridge_4k.hdr
+    Cube resolution: 1024
+    Irradiance resolution: 32
+    Specular resolution: 128
 RenderObjects:
   - RenderObject: 0
     Name: Root

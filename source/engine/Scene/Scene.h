@@ -365,6 +365,8 @@ namespace Mist
 		IrradianceCube m_irradianceCube;
 		EnvironmentData m_environmentData;
 
+		cMaterial m_debugMaterial;
+
 		index_t m_cameraIndex = index_invalid;
 
 		PreprocessIrradianceInfo* m_irradianceRequestInfo;

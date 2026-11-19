@@ -35,6 +35,7 @@
 #include "Render/RenderProcesses/Preprocesses.h"
 #include "RenderSystem/UI.h"
 #include "Render/Terrain.h"
+#include "SceneRenderer.h"
 
 //#define MIST_ENABLE_LOADER_LOG
 
@@ -338,6 +339,14 @@ namespace Mist
 		check(root);
 		YAML::Node envNode = root["Environment"];
 		check(envNode);
+		m_ambientColor = envNode["Ambient"].as<glm::vec3>();
+		YAML::Node iblNode = envNode["IBL"];
+		check(iblNode);
+		strcpy_s(m_irradianceRequestInfo->hdrFilepath, sizeof(m_irradianceRequestInfo->hdrFilepath), iblNode["Filepath"].as<std::string>().c_str());
+		m_irradianceRequestInfo->cubemapWidthHeight = iblNode["Cube resolution"].as<uint32_t>();
+		m_irradianceRequestInfo->irradianceCubemapWidthHeight = iblNode["Irradiance resolution"].as<uint32_t>();
+		m_irradianceRequestInfo->specularCubemapWidthHeight = iblNode["Specular resolution"].as<uint32_t>();
+		
 
 		YAML::Node renderObjectSeq = root["RenderObjects"];
 		check(renderObjectSeq);
@@ -433,6 +442,12 @@ namespace Mist
 		{
 			emitter << YAML::BeginMap;
 			emitter << YAML::Key << "Ambient" << YAML::Value << m_ambientColor;
+			emitter << YAML::Key << "IBL" << YAML::Value << YAML::BeginMap;
+			emitter << YAML::Key << "Filepath" << YAML::Value << m_irradianceRequestInfo->hdrFilepath;
+			emitter << YAML::Key << "Cube resolution" << YAML::Value << m_irradianceRequestInfo->cubemapWidthHeight;
+			emitter << YAML::Key << "Irradiance resolution" << YAML::Value << m_irradianceRequestInfo->irradianceCubemapWidthHeight;
+			emitter << YAML::Key << "Specular resolution" << YAML::Value << m_irradianceRequestInfo->specularCubemapWidthHeight;
+			emitter << YAML::EndMap;
 			emitter << YAML::EndMap;
 		}
 		emitter << YAML::Key << "RenderObjects";
@@ -711,6 +726,9 @@ namespace Mist
 		Preprocess* preprocess = (Preprocess*)renderer->GetRenderProcess(RENDERPROCESS_PREPROCESSES);
 		strcpy_s(m_irradianceCube.filepath, sizeof(m_irradianceCube.filepath), info.hdrFilepath);
 		check(info.userData == this);
+
+		logfok("Load irradiance cube: %s, %d, %d, %d\n", info.hdrFilepath, info.cubemapWidthHeight, info.irradianceCubemapWidthHeight, info.specularCubemapWidthHeight);
+
 		preprocess->PushIrradiancePreprocess(info, 
 			[](const PreprocessIrradianceResult& result, void* userData) 
 			{
@@ -762,6 +780,15 @@ namespace Mist
 		ImGui::Text("Environment");
 		ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
 		ImGui::Button("Reload");
+
+		ImGui::Text("Debug material");
+		m_debugMaterial.ImGuiDraw();
+		static bool s_debugMaterial = false;
+		ImGui::Checkbox("Force debug material", &s_debugMaterial);
+		if (s_debugMaterial)
+			SceneRenderer::GetSceneRenderer()->SetDebugMaterial(&m_debugMaterial);
+		else
+			SceneRenderer::GetSceneRenderer()->SetDebugMaterial(nullptr);
 
 		ImGui::Separator();
 		if (ImGui::TreeNode("Scene tree"))
