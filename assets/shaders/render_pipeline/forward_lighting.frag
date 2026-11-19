@@ -9,30 +9,30 @@ layout(location = 0) in vec4 inFragPosWS;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec2 inTexCoords;
-layout(location = 4) in vec4 inLightSpaceFragPos_0;
-layout(location = 5) in vec4 inLightSpaceFragPos_1;
-layout(location = 6) in vec4 inLightSpaceFragPos_2;
-layout(location = 7) in vec3 inViewDir;
-layout(location = 8) in mat3 inTBN;
+//layout(location = 4) in vec4 inLightSpaceFragPos_0;
+//layout(location = 5) in vec4 inLightSpaceFragPos_1;
+//layout(location = 6) in vec4 inLightSpaceFragPos_2;
+layout(location = 4) in vec3 inViewDir;
+layout(location = 5) in mat3 inTBN;
 
-#include <shaders/includes/material.glsl>
-#include <shaders/includes/instance_data.glsl>
+//#include <shaders/includes/material.glsl>
+//#include <shaders/includes/instance_data.glsl>
 //#include <shaders/includes/lighting.glsl>
 
 
-vec3 ComputeNormalMapping(vec3 normal)
-{
-    if (MATERIAL_HAS_NORMAL_MAP(u_materialBuffer.data[u_instance.data.materialId].Flags.x))
-    {
-        vec3 normalValue = texture(u_materialTextures[MATERIAL_TEXTURE_NORMAL], inTexCoords).rgb;
-        normalValue = normalize(normalValue*2.f - vec3(1.f));
-        return normalize(inTBN * normalValue);
-    }
-    else
-    {
-        return normalize(normal);
-    }
-}
+// vec3 ComputeNormalMapping(vec3 normal)
+// {
+//     if (MATERIAL_HAS_NORMAL_MAP(u_materialBuffer.data[u_instance.data.materialId].Flags.x))
+//     {
+//         vec3 normalValue = texture(u_materialTextures[MATERIAL_TEXTURE_NORMAL], inTexCoords).rgb;
+//         normalValue = normalize(normalValue*2.f - vec3(1.f));
+//         return normalize(inTBN * normalValue);
+//     }
+//     else
+//     {
+//         return normalize(normal);
+//     }
+// }
 
 // vec3 ComputeCubemapReflection(vec3 fragPos, vec3 normal, vec3 viewPos)
 // {
@@ -65,8 +65,8 @@ vec3 ComputeNormalMapping(vec3 normal)
 void main()
 {
     outColor = vec4(1,0,0,0.2);
-    MaterialPBR mtl = Material_ReadPBR(u_materialBuffer.data[u_instance.data.materialId], inTexCoords, inNormal);
+    //MaterialPBR mtl = Material_ReadPBR(u_materialBuffer.data[u_instance.data.materialId], inTexCoords, inNormal);
     
-    vec4 color = vec4(mtl.albedo,1.f);//DoLighting(inFragPosWS.xyz, inViewDir, mtl.normal, mtl.albedo, mtl.opacity, mtl.metallic, mtl.roughness);
-    outColor = color;
+    //vec4 color = vec4(mtl.albedo,1.f);//DoLighting(inFragPosWS.xyz, inViewDir, mtl.normal, mtl.albedo, mtl.opacity, mtl.metallic, mtl.roughness);
+    //outColor = color;
 }

@@ -9,16 +9,16 @@ layout (location = 0) out vec4 outFragPos;
 layout (location = 1) out vec3 outColor;
 layout (location = 2) out vec3 outNormal;
 layout (location = 3) out vec2 outTexCoords;
-layout (location = 4) out vec4 outLightSpaceFragPos_0;
-layout (location = 5) out vec4 outLightSpaceFragPos_1;
-layout (location = 6) out vec4 outLightSpaceFragPos_2;
-layout (location = 7) out vec3 outViewDir;
-layout (location = 8) out mat3 outTBN;
+//layout (location = 4) out vec4 outLightSpaceFragPos_0;
+//layout (location = 5) out vec4 outLightSpaceFragPos_1;
+//layout (location = 6) out vec4 outLightSpaceFragPos_2;
+layout (location = 4) out vec3 outViewDir;
+layout (location = 5) out mat3 outTBN;
 
-layout (std140, set = 3, binding = 0) uniform DepthInfo
-{
-    mat4 LightMatrix[3];
-} u_ShadowMapInfo;
+//layout (std140, set = 3, binding = 0) uniform DepthInfo
+//{
+//    mat4 LightMatrix[3];
+//} u_ShadowMapInfo;
 
 
 void main()
@@ -46,7 +46,7 @@ void main()
     outTexCoords = inUV0;
 
     // Precalculate shadow coordinates
-    outLightSpaceFragPos_0 = u_ShadowMapInfo.LightMatrix[0] * outFragPos;
-    outLightSpaceFragPos_1 = u_ShadowMapInfo.LightMatrix[1] * outFragPos;
-    outLightSpaceFragPos_2 = u_ShadowMapInfo.LightMatrix[2] * outFragPos;
+    //outLightSpaceFragPos_0 = u_ShadowMapInfo.LightMatrix[0] * outFragPos;
+    //outLightSpaceFragPos_1 = u_ShadowMapInfo.LightMatrix[1] * outFragPos;
+    //outLightSpaceFragPos_2 = u_ShadowMapInfo.LightMatrix[2] * outFragPos;
 }

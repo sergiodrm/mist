@@ -67,7 +67,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 void main()
 {
     vec3 N = normalize(localPos);    
-	N.y *= -1.f; // invert y direction, vulkan has 0 coordinate on top-left.
+	//N.y *= -1.f; // invert y direction, vulkan has 0 coordinate on top-left.
 	N.x *= -1.f; // invert y direction, vulkan has 0 coordinate on top-left.
     vec3 R = N;
     vec3 V = R;
