@@ -33,6 +33,7 @@ namespace Mist
 	}
 
 	SceneRenderer::SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount, uint32_t maxItemCount)
+		: m_debugMaterial(nullptr)
 	{
 		m_creationInfo.Allocate(passCount);
 		m_renderPasses.Allocate(passCount);
@@ -313,10 +314,16 @@ namespace Mist
 
 				if (visible)
 				{
-					uint16_t materialRoot = ProcessMaterials(model);
+					uint16_t materialRoot = m_sceneRenderer.GetDebugMaterial() ? 0 : ProcessMaterials(model);
 					ProcessModelNode(model, model->GetRoot(), transform, materialRoot);
 				}
 			}
+		}
+
+		if (m_sceneRenderer.GetDebugMaterial())
+		{
+			m_sceneRenderer.m_materialRenderData.Push(m_sceneRenderer.GetDebugMaterial()->GetRenderData());
+			m_sceneRenderer.m_materials.Push(m_sceneRenderer.GetDebugMaterial());
 		}
 
 		if (m_sceneRenderer.m_enableSorting)
@@ -406,7 +413,11 @@ namespace Mist
 					pass.m_items.Back().primitive = primitiveIndex;
 
 					// Push sort id to do the sort of the list
-					uint16_t materialIndex = u64_to_u16(size_t(primitive.material - &model.GetMaterial(0)));
+					uint16_t materialIndex = 0;
+					if (!m_sceneRenderer.GetDebugMaterial())
+					{
+						materialIndex = u64_to_u16(size_t(primitive.material - &model.GetMaterial(0)));
+					}
 					check(materialIndex < u32_to_u16(model.GetMaterialCount()));
 					materialIndex += materialRoot;
 

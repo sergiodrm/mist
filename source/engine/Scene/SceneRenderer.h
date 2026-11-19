@@ -88,7 +88,7 @@ namespace Mist
 		class RenderListBuilder
 		{
 		public:
-			RenderListBuilder(SceneRenderer& renderer) : m_sceneRenderer(renderer) { }
+			RenderListBuilder(SceneRenderer& renderer) : m_sceneRenderer(renderer) {}
 			void Build(const Scene* scene);
 		private:
 			void ProcessModelNode(const cModel* model, index_t nodeIndex, const glm::mat4& parentTransform, uint16_t materialRoot);
@@ -100,7 +100,7 @@ namespace Mist
 
 	public:
 
-		SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount = 8, uint32_t maxItemCount = 1<<12);
+		SceneRenderer(rendersystem::RenderSystem* rs, uint32_t passCount = 8, uint32_t maxItemCount = 1 << 12);
 		~SceneRenderer();
 
 		uint32_t CreateRenderList(const RenderPassInfo& info);
@@ -108,6 +108,9 @@ namespace Mist
 
 		void BuildRenderLists(rendersystem::RenderSystem* rs, const Scene* scene);
 		void DrawList(const RenderContext& renderContext);
+
+		inline const cMaterial* GetDebugMaterial() const { return m_debugMaterial; }
+		inline void SetDebugMaterial(const cMaterial* material) { m_debugMaterial = material; }
 
 		void ImGuiDraw();
 
@@ -137,13 +140,13 @@ namespace Mist
 		 * size of RenderSortId = 8 bytes
 		 * size of RenderItem = 2 bytes
 		 * ~size per RenderPass = N * 8 + N * 2 = 32768 + 8192
-		 * 
+		 *
 		 * transforms = N * 16 * 4 = N * 64 = 262144
 		 * materialRD = N * 64 = 262144
 		 * materials = N * 8 = 32768
 		 * meshes = N * 8 = 32768
 		 * cullingD = N * 24 = 98304
-		 * 
+		 *
 		 * total = 729088 bytes = 712 Kb
 		 */
 
@@ -159,6 +162,8 @@ namespace Mist
 
 		RingBufferContainer<render::BufferHandle> m_ssboTransforms;
 		RingBufferContainer<render::BufferHandle> m_ssboMaterials;
+
+		const cMaterial* m_debugMaterial;
 
 		bool m_enableSorting = true;
 		bool m_enableCulling = true;
